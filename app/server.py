@@ -62,7 +62,6 @@ def worker(q):
         if job is None:
             break  # Exit if no more jobs
         print(f"Processing job: {job}")
-        time.sleep(2)  # Simulate a long-running task
         
         domains = job.domains.split(",")
 
