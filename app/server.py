@@ -19,7 +19,7 @@ app = FastAPI()
 class ArticleRequest(BaseModel):
     id: str
     topic: str
-    domains: List[str]
+    domains: str
     number_of_queries: int = 2
     scraping_model: str = ""
     max_search_results: int = 3
@@ -64,9 +64,11 @@ def worker(q):
         print(f"Processing job: {job}")
         time.sleep(2)  # Simulate a long-running task
         
+        domains = job.domains.split(",")
+
         final_text = ArticleWriter.write_article(
             article_topic=job.topic,
-            domains=job.domains,
+            domains=domains,
             number_of_queries=job.number_of_queries,
             scraping_model=job.scraping_model,
             max_search_results=job.max_search_results,
