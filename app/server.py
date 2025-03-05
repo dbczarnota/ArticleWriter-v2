@@ -45,6 +45,7 @@ def create_article(request_data: ArticleRequest):
         search_days=request_data.search_days,
         extraction_mode=request_data.extraction_mode
     )
+    print(f"final_text {final_text}")
     return {"article": final_text}
 
 # Optional: to run directly from this file

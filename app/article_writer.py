@@ -14,7 +14,7 @@ import tiktoken
 import logging
 from typing import List, Literal, Optional
 from searchandscrape import SearchAndScrape
-import logfire
+# import logfire
 from rich import print
 from dotenv import load_dotenv
 from datetime import date, datetime, timedelta
@@ -25,7 +25,7 @@ from datetime import date, datetime, timedelta
 logger = logging.getLogger(__name__)
 # Load the environment variables
 load_dotenv()
-logfire.configure()
+# logfire.configure()
 current_date = current_date_today = date.today()
 
 ###############################################################################
@@ -620,9 +620,11 @@ class WritingNode(BaseNode):
         ctx.state.messages = result.all_messages()
         if ctx.state.reflection_round > 0:
             save_state(ctx.state)
+            print(f"return End {result.data}")
             return End(result.data)
         else:
             save_state(ctx.state)
+            print(f"go to ReflectionNode")
             return ReflectionNode()
         
         
@@ -752,6 +754,7 @@ class ArticleWriter:
                 WritingNode, ReflectionNode
             ))
             response = await graph.run(SearchNode(), state=state)
+            print(f"_run_graph {response}")
             return response.output
         
         final_article = asyncio.run(_run_graph())

@@ -93,10 +93,13 @@ class SearchAndScrape:
 
         # Configure Browser Settings for the Crawler
         self.browser_config = BrowserConfig(
-            verbose=True,
-            user_agent_mode="random",
-            text_mode=True,
-            light_mode=True,
+            # verbose=True,
+            # user_agent_mode="random",
+            # text_mode=True,
+            # light_mode=True,
+            headless=True,
+            verbose=False,
+            extra_args=["--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox"],
         )
 
         # Configure Crawler Run Settings
@@ -172,7 +175,7 @@ class SearchAndScrape:
                 return {
                     "url": result.url,
                     "title": "",
-                    "article_body": result.markdown,
+                    "article_body": str(result.markdown),
                     "description": desc
                 }
 
@@ -195,7 +198,7 @@ class SearchAndScrape:
             memory_threshold_percent=90.0,
             check_interval=0.5,
             max_session_permit=50,
-            monitor=CrawlerMonitor(display_mode="DETAILED")
+            # monitor=CrawlerMonitor(display_mode="DETAILED")
         )
 
         async with AsyncWebCrawler(config=self.browser_config) as crawler:
