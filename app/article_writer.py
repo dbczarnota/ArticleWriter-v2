@@ -684,7 +684,7 @@ Your review must:
 - **Be based on your previous instructions**
 - **Take high-quality benchmark articles into account** - use them to compare and score revised article against them as well as to co suggest enhancements
 - **Avoid instructing the other agent to verify or double-check any details; it is your job so do it and solely provide actionable advice.**
-- **Check the style** - it should be similar to style of the high-quality benchmark articles and not overly flowery.
+- **Check the style** - it should be similar to style of the high-quality benchmark articles and not overly flowery and to the point.
 
 ### Actionable Instructions for the AI Writing Agent:
 - **Do not include any commentary or meta discussion beyond this prompt.**
