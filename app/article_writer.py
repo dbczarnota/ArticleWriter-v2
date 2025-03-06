@@ -134,7 +134,13 @@ research_agent = Agent[None, ResearchPlan](
 @dataclass
 class SearchNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
-        # Single-retry attribute
+        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        try:
+            return await asyncio.wait_for(self._run_internal(ctx), 480)
+        except asyncio.TimeoutError:
+            return End("SearchNode timed out")
+
+    async def _run_internal(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
         if not hasattr(ctx.state, "_searchnode_tries"):
             ctx.state._searchnode_tries = 0
         try:
@@ -163,6 +169,13 @@ class SearchNode(BaseNode):
 @dataclass
 class ScrapingNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
+        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        try:
+            return await asyncio.wait_for(self._run_internal(ctx), 480)
+        except asyncio.TimeoutError:
+            return End("ScrapingNode timed out")
+
+    async def _run_internal(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
         if not hasattr(ctx.state, "_scrapingnode_tries"):
             ctx.state._scrapingnode_tries = 0
         try:
@@ -263,6 +276,13 @@ parsing_agent = Agent(
 @dataclass
 class ParsingNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> DataExtractionNode | End:
+        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        try:
+            return await asyncio.wait_for(self._run_internal(ctx), 480)
+        except asyncio.TimeoutError:
+            return End("ParsingNode timed out")
+
+    async def _run_internal(self, ctx: GraphRunContext[State]) -> DataExtractionNode | End:
         if not hasattr(ctx.state, "_parsingnode_tries"):
             ctx.state._parsingnode_tries = 0
         try:
@@ -381,6 +401,13 @@ class ResearchedArticle(BaseModel):
 @dataclass
 class DataExtractionNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
+        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        try:
+            return await asyncio.wait_for(self._run_internal(ctx), 480)
+        except asyncio.TimeoutError:
+            return End("DataExtractionNode timed out")
+
+    async def _run_internal(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
         if not hasattr(ctx.state, "_dataextractionnode_tries"):
             ctx.state._dataextractionnode_tries = 0
         try:
@@ -512,7 +539,7 @@ You are an **Editor-in-Chief**. Your task is to provide detailed, structured ins
   - **Driving Users Into the Story**: Suggest hooks, suspenseful openings, and compelling transitions.
 
 ### Constraints:
-- The instructions should focus **only on text** (no images, polls, embeds, meta descriptions, or link placements).
+- The instructions should focus **only on text** (no images, polls, quizzes, embeds, meta descriptions, or link placements).
 - The article should **align with the style and format** of similar articles from the provided references.
 
 ### Reference Articles:
@@ -538,6 +565,13 @@ Write it in the language of the Article Topic, no additional comments are needed
 @dataclass
 class InstructionsNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> WritingNode | End:
+        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        try:
+            return await asyncio.wait_for(self._run_internal(ctx), 480)
+        except asyncio.TimeoutError:
+            return End("InstructionsNode timed out")
+
+    async def _run_internal(self, ctx: GraphRunContext[State]) -> WritingNode | End:
         if not hasattr(ctx.state, "_instructionsnode_tries"):
             ctx.state._instructionsnode_tries = 0
         try:
@@ -608,6 +642,13 @@ Moreover:
 @dataclass
 class WritingNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> End | ReflectionNode:
+        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        try:
+            return await asyncio.wait_for(self._run_internal(ctx), 480)
+        except asyncio.TimeoutError:
+            return End("WritingNode timed out")
+
+    async def _run_internal(self, ctx: GraphRunContext[State]) -> End | ReflectionNode:
         if not hasattr(ctx.state, "_writingnode_tries"):
             ctx.state._writingnode_tries = 0
         try:
@@ -679,6 +720,13 @@ Your review must:
 @dataclass
 class ReflectionNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> WritingNode | End:
+        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        try:
+            return await asyncio.wait_for(self._run_internal(ctx), 480)
+        except asyncio.TimeoutError:
+            return End("ReflectionNode timed out")
+
+    async def _run_internal(self, ctx: GraphRunContext[State]) -> WritingNode | End:
         if not hasattr(ctx.state, "_reflectionnode_tries"):
             ctx.state._reflectionnode_tries = 0
         try:
@@ -762,9 +810,11 @@ async def main():
     ))
     state = State(
         configuration=Configuration(
-            article_topic='Ta małopolska wieś nie bez powodu jest niezwykła. Mieszkają tu anioły - Lanckorona',
+            article_topic='Gibraltar - Królestwo małp i delfinów na krańcu Europy. Lądowanie dostarcza emicji ',
             domains=['podroze.onet.pl','turystyka.wp.pl','top.pl','podroze.se.pl','turysci.pl'],
             search_days=1500,
+            number_of_queries=3,
+            max_search_results=4,
         )
     )
     response = await graph.run(SearchNode(), state=state)
