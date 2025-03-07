@@ -866,7 +866,7 @@ class ArticleWriter:
             graph = Graph(nodes=(
                 SearchNode, ScrapingNode, ParsingNode,
                 DataExtractionNode, InstructionsNode,
-                WritingNode, ReflectionNode
+                WritingNode, ReflectionNode, FollowUpNode
             ))
             response = await graph.run(SearchNode(), state=state)
             print(f"_run_graph {response}")
@@ -883,7 +883,7 @@ async def main():
     graph = Graph(nodes=(
         SearchNode, ScrapingNode, ParsingNode,
         DataExtractionNode, InstructionsNode,
-        WritingNode, ReflectionNode, FollowUpNode
+        WritingNode, ReflectionNode, FollowUpNode,
     ))
     state = State(
         configuration=Configuration(
