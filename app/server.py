@@ -82,7 +82,7 @@ def worker(q):
 
         print(f"Finished job: {job}")
 
-        send_response(job.id, final_text)
+        send_response(job.id, final_text, job.topic)
         q.task_done()  # Mark the job as done
 
 job_queue = queue.Queue()
