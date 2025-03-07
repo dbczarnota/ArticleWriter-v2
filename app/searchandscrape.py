@@ -46,7 +46,7 @@ class Article(BaseModel):
 class SearchAndScrape:
     def __init__(
         self,
-        search_domains: list[str] = ['styl.fm', 'party.pl', 'plejada.pl', 'pudelek.pl'],
+        search_domains: list[str] = [],
         max_results: int = 3,
         days: int = 30,
         model: str = "openai/gpt-4o-mini",
@@ -194,22 +194,53 @@ class SearchAndScrape:
     async def _scrape(self, urls: list[str], description_mapping: dict) -> dict:
         aggregated_results = []
 
-        dispatcher = MemoryAdaptiveDispatcher(
-            memory_threshold_percent=90.0,
-            check_interval=0.5,
-            max_session_permit=50,
-            # monitor=CrawlerMonitor(display_mode="DETAILED")
-        )
+        # dispatcher = MemoryAdaptiveDispatcher(
+        #     memory_threshold_percent=90.0,
+        #     check_interval=0.5,
+        #     max_session_permit=50,
+        #     # monitor=CrawlerMonitor(display_mode="DETAILED")
+        # )
 
-        async with AsyncWebCrawler(config=self.browser_config) as crawler:
-            async for result in await crawler.arun_many(
-                urls=urls,
-                config=self.run_config,
-                dispatcher=dispatcher
-            ):
-                processed = await self._process_result(result, description_mapping)
-                if processed is not None:
-                    aggregated_results.append(processed)
+        crawler = AsyncWebCrawler(config=self.browser_config)
+        await crawler.start()
+
+        try:
+            max_concurrent = 4
+            semaphore = asyncio.Semaphore(max_concurrent)     
+
+            async def process_url(url: str):
+                print(f"process_url: {url}")
+                async with semaphore:
+                    resultRun = await crawler.arun(
+                        url=url,
+                        config=self.run_config,
+                        session_id="session1"
+                    )
+                    if resultRun.success:
+                        print(f"Successfully crawled: {url}")
+                        print(f"{resultRun}")
+                        
+                        processed = await self._process_result(resultRun, description_mapping)
+                        if processed is not None:
+                            aggregated_results.append(processed)
+                    else:
+                        print(f"Failed: {url} - Error: {resultRun.error_message}")
+
+            await asyncio.gather(*[process_url(url) for url in urls])
+            print(f"completed {len(urls)}")
+
+        finally:
+            await crawler.close()
+
+        # async with AsyncWebCrawler(config=self.browser_config) as crawler:
+        #     async for result in await crawler.arun_many(
+        #         urls=urls,
+        #         config=self.run_config,
+        #         dispatcher=dispatcher
+        #     ):
+        #         processed = await self._process_result(result, description_mapping)
+        #         if processed is not None:
+        #             aggregated_results.append(processed)
 
         if self.extraction_mode == "llm":
             self.llm_strategy.show_usage()
