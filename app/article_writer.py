@@ -790,6 +790,10 @@ followup_agent_prompt = """You are given a finished article (referred to as "fin
    - Be interesting enough to link from or to the original article.
    - Offer a fresh perspective or expand on the ideas mentioned.
 
+
+The article:
+{finished_article}
+
 """
 class FollowUp(BaseModel):
     alternative_titles: list[str] = Field(default_factory=list)
@@ -816,7 +820,7 @@ class FollowUpNode(BaseNode):
                 result_type=FollowUp,
             )
             user_prompt = followup_agent_prompt.format(
-                #benchmark_articles=ctx.state.researched_info.article_texts
+                finished_article=ctx.state.finished_article
             )
             result = await followup_agent.run(user_prompt=user_prompt)
             
