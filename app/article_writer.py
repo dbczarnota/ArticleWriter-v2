@@ -152,6 +152,7 @@ class SearchNode(BaseNode):
             )
             result = await research_agent.run(user_prompt=prompt)
             ctx.state.research_plan = result.data
+            ctx.state.research_plan.queries.append(ctx.state.configuration.article_topic)
             save_state(ctx.state)
             print(f'Search queries: {ctx.state.research_plan.queries}')
             return ScrapingNode()
