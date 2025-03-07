@@ -824,7 +824,13 @@ class FollowUpNode(BaseNode):
             )
             result = await followup_agent.run(user_prompt=user_prompt)
             
-            full_result = f'{ctx.state.finished_article}\nAtrernatywne tytuły\n{result.data.alternative_titles}\nTematy do rozważenia\n{result.data.followup_articles}'
+            full_result = (
+                f"{ctx.state.finished_article}\n"
+                f"Atrernatywne tytuły\n"
+                f"{'\n'.join(result.data.alternative_titles)}\n"
+                f"Tematy do rozważenia\n"
+                f"{'\n'.join(result.data.followup_articles)}"
+            )          
             save_state(ctx.state)
             return End(full_result)
         except Exception as e:
