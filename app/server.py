@@ -3,7 +3,7 @@ import httpx
 
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 # Import the ArticleWriter from your pipeline file
 from article_writer import ArticleWriter
@@ -19,19 +19,20 @@ app = FastAPI()
 class ArticleRequest(BaseModel):
     id: str
     topic: str
-    domains: str
+    domains: Optional[str]
     number_of_queries: int = 2
     scraping_model: str = ""
     max_search_results: int = 3
     search_days: int = 30
     extraction_mode: Literal["markdown", "html", "llm"] = "markdown"
 
-def send_response(id, article_text):
+def send_response(id, article_text, topic):
     try:
         webhook_url = "https://hook.eu1.make.com/gs74hirsewkmxbvpp15tpgb78ohl4g28"
         data = {
             "ID": id,
-            "article_text": article_text
+            "article_text": article_text,
+            "topic": topic
         }
         print(f"send response {data}")
         with httpx.Client() as client:
@@ -63,7 +64,10 @@ def worker(q):
             break  # Exit if no more jobs
         print(f"Processing job: {job}")
         
-        domains = job.domains.split(",")
+        if job.domains != None:
+            domains = job.domains.split(",")
+        else:
+            domains = []
 
         final_text = ArticleWriter.write_article(
             article_topic=job.topic,
