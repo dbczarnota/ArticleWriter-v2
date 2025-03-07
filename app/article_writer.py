@@ -134,11 +134,11 @@ research_agent = Agent[None, ResearchPlan](
 @dataclass
 class SearchNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
-            return await asyncio.wait_for(self._run_internal(ctx), 480)
+            return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
-            return End("SearchNode timed out")
+            return End("ERROR: SearchNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
         if not hasattr(ctx.state, "_searchnode_tries"):
@@ -161,7 +161,7 @@ class SearchNode(BaseNode):
                 ctx.state = load_state()
                 return SearchNode()
             else:
-                return End(f"Error in SearchNode after retry: {str(e)}")
+                return End(f"ERROR: Error in SearchNode after retry: {str(e)}")
 
 
 ###############################################################################
@@ -169,11 +169,11 @@ class SearchNode(BaseNode):
 @dataclass
 class ScrapingNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
-            return await asyncio.wait_for(self._run_internal(ctx), 480)
+            return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
-            return End("ScrapingNode timed out")
+            return End("ERROR: ScrapingNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
         if not hasattr(ctx.state, "_scrapingnode_tries"):
@@ -213,7 +213,7 @@ class ScrapingNode(BaseNode):
                 ctx.state = load_state()
                 return ScrapingNode()
             else:
-                return End(f"Error in ScrapingNode after retry: {str(e)}")
+                return End(f"ERROR: Error in ScrapingNode after retry: {str(e)}")
 
 
 ###############################################################################
@@ -276,11 +276,11 @@ parsing_agent = Agent(
 @dataclass
 class ParsingNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> DataExtractionNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
-            return await asyncio.wait_for(self._run_internal(ctx), 480)
+            return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
-            return End("ParsingNode timed out")
+            return End("ERROR: ParsingNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> DataExtractionNode | End:
         if not hasattr(ctx.state, "_parsingnode_tries"):
@@ -329,7 +329,7 @@ class ParsingNode(BaseNode):
                 ctx.state = load_state()
                 return ParsingNode()
             else:
-                return End(f"Error in ParsingNode after retry: {str(e)}")
+                return End(f"ERROR: Error in ParsingNode after retry: {str(e)}")
 
 
 ###############################################################################
@@ -401,11 +401,11 @@ class ResearchedArticle(BaseModel):
 @dataclass
 class DataExtractionNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
-            return await asyncio.wait_for(self._run_internal(ctx), 480)
+            return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
-            return End("DataExtractionNode timed out")
+            return End("ERROR: DataExtractionNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
         if not hasattr(ctx.state, "_dataextractionnode_tries"):
@@ -518,7 +518,7 @@ class DataExtractionNode(BaseNode):
                 ctx.state = load_state()
                 return DataExtractionNode()
             else:
-                return End(f"Error in DataExtractionNode after retry: {str(e)}")
+                return End(f"ERROR: Error in DataExtractionNode after retry: {str(e)}")
 
 
 ###############################################################################
@@ -565,11 +565,11 @@ Write it in the language of the Article Topic, no additional comments are needed
 @dataclass
 class InstructionsNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> WritingNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
-            return await asyncio.wait_for(self._run_internal(ctx), 480)
+            return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
-            return End("InstructionsNode timed out")
+            return End("ERROR: InstructionsNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> WritingNode | End:
         if not hasattr(ctx.state, "_instructionsnode_tries"):
@@ -598,7 +598,7 @@ class InstructionsNode(BaseNode):
                 ctx.state = load_state()
                 return InstructionsNode()
             else:
-                return End(f"Error in InstructionsNode after retry: {str(e)}")
+                return End(f"ERROR: Error in InstructionsNode after retry: {str(e)}")
 
 
 ###############################################################################
@@ -642,11 +642,11 @@ Moreover:
 @dataclass
 class WritingNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> End | ReflectionNode:
-        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
-            return await asyncio.wait_for(self._run_internal(ctx), 480)
+            return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
-            return End("WritingNode timed out")
+            return End("ERROR: WritingNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> End | ReflectionNode:
         if not hasattr(ctx.state, "_writingnode_tries"):
@@ -689,7 +689,7 @@ class WritingNode(BaseNode):
                 ctx.state = load_state()
                 return WritingNode()
             else:
-                return End(f"Error in WritingNode after retry: {str(e)}")
+                return End(f"ERROR: Error in WritingNode after retry: {str(e)}")
 
 
 ###############################################################################
@@ -720,9 +720,9 @@ Your review must:
 @dataclass
 class ReflectionNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> WritingNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (480s) timeout.
+        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
-            return await asyncio.wait_for(self._run_internal(ctx), 480)
+            return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
             return End("ReflectionNode timed out")
 
@@ -811,7 +811,8 @@ async def main():
     state = State(
         configuration=Configuration(
             article_topic='Gibraltar - Królestwo małp i delfinów na krańcu Europy. Lądowanie dostarcza emicji ',
-            domains=['podroze.onet.pl','turystyka.wp.pl','top.pl','podroze.se.pl','turysci.pl'],
+            # domains=['podroze.onet.pl','turystyka.wp.pl','top.pl','podroze.se.pl','turysci.pl'],
+            domains=[],
             search_days=1500,
             number_of_queries=3,
             max_search_results=4,
