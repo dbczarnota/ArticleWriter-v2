@@ -63,6 +63,7 @@ class State(BaseModel):
     research_plan: ResearchPlan = None
     scraped_pages: list[Dict] = Field(default_factory=list)
     researched_info: ResearchedInfo | None = None
+    finished_article: str = ""
     messages: list[ModelMessage] = Field(default_factory=list)
 
 
@@ -641,14 +642,14 @@ Moreover:
 
 @dataclass
 class WritingNode(BaseNode):
-    async def run(self, ctx: GraphRunContext[State]) -> End | ReflectionNode:
+    async def run(self, ctx: GraphRunContext[State]) -> End | ReflectionNode | FollowUpNode:
         # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
             return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
             return End("ERROR: WritingNode timed out")
 
-    async def _run_internal(self, ctx: GraphRunContext[State]) -> End | ReflectionNode:
+    async def _run_internal(self, ctx: GraphRunContext[State]) -> End | ReflectionNode | FollowUpNode:
         if not hasattr(ctx.state, "_writingnode_tries"):
             ctx.state._writingnode_tries = 0
         try:
@@ -675,9 +676,11 @@ class WritingNode(BaseNode):
             ctx.state.messages = result.all_messages()
 
             if ctx.state.reflection_round > 0:
+                ctx.state.finished_article = result.data
                 save_state(ctx.state)
                 print(f"return End {result.data}")
-                return End(result.data)
+                return FollowUpNode()
+                # return End(result.data)
             else:
                 save_state(ctx.state)
                 print("go to ReflectionNode")
@@ -753,7 +756,81 @@ class ReflectionNode(BaseNode):
                 ctx.state = load_state()
                 return ReflectionNode()
             else:
-                return End(f"Error in ReflectionNode after retry: {str(e)}")
+                return End(f"ERROR: Error in ReflectionNode after retry: {str(e)}")
+
+###############################################################################
+############################## Follow up Node ##############################
+followup_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+
+followup_agent_prompt = """You are given a finished article (referred to as "finished_article"). Please analyze it thoroughly and perform the following steps:
+
+1. Propose 10 clickbait-style alternative titles that capture attention. Each title should:
+   - Highlight at least one unique or intriguing detail from the article.
+   - Pose some form of puzzle, mystery, or question to entice readers.
+   - Differ from each other in style, tone, or focus.
+    
+    You can find examples of good titles for various articles—use their style and structure for inspiration:
+    #####
+    Imię słowiańskiej bogini powoli się odradza. Ma ciekawe znaczenie i nosi je już 47 Polek
+    W PRL-u wszyscy się nimi zajadali. Zrobisz je szybko i za grosze
+    To warzywo jest kopalnią witamin. Jednak Polacy kręcą na nie nosem
+    Najtańsza odżywka do storczyka. Wystarczy odrobina, by utonął w kwiatach
+    Tu poczujesz się jak w alpejskim kurorcie. Raj nie tylko dla narciarzy, organizm będzie ci wdzięczny
+    Nowe egzotyczne połączenie z polskiego lotniska. Turyści już szykują kapelusze i kremy z filtrem
+    Wcale nie bombki. Tuż za granicą Polski na choince wieszają coś innego, aż zapierają dech w piersi
+    Nigdy nie dodawaj tego składnika do sałatki greckiej. Grecy poczują się urażeni
+    Nie Bułgaria i nie Turcja. Oto 3 pomysły na tanie wakacje samolotem
+    Baśniowa kraina tuż przy polskiej granicy – to jedynie 3,5 godziny jazdy z Krakowa
+    Było symbolem Malty. 8 lat temu runęło do morza
+    Zakwitły już nad Bałtykiem. Są piękne, ale śmiertelnie niebezpieczne
+    Jak nie robić zdjęć w podróży. Takie zachowanie to naruszenie zasad
+    #####
+    
+2. Suggest 5 new article topics that relate—directly or loosely—to the content of the "finished_article." Each topic should:
+   - Be interesting enough to link from or to the original article.
+   - Offer a fresh perspective or expand on the ideas mentioned.
+
+"""
+class FollowUp(BaseModel):
+    alternative_titles: list[str] = Field(default_factory=list)
+    followup_articles: list[str] = Field(default_factory=list)
+
+
+
+@dataclass
+class FollowUpNode(BaseNode):
+    async def run(self, ctx: GraphRunContext[State]) -> End:
+        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
+        try:
+            return await asyncio.wait_for(self._run_internal(ctx), 600)
+        except asyncio.TimeoutError:
+            return End("ReflectionNode timed out")
+
+    async def _run_internal(self, ctx: GraphRunContext[State]) -> WritingNode | End:
+        if not hasattr(ctx.state, "_followupnode_tries"):
+            ctx.state._followupnode_tries = 0
+        try:
+            ctx.state = load_state()
+            followup_agent = Agent(
+                model=followup_model,
+                result_type=FollowUp,
+            )
+            user_prompt = followup_agent_prompt.format(
+                #benchmark_articles=ctx.state.researched_info.article_texts
+            )
+            result = await followup_agent.run(user_prompt=user_prompt)
+            
+            full_result = f'{ctx.state.finished_article}\nAtrernatywne tytuły\n{result.data.alternative_titles}\nTematy do rozważenia\n{result.data.followup_articles}'
+            save_state(ctx.state)
+            return End(full_result)
+        except Exception as e:
+            if ctx.state._followupnode_tries < 1:
+                ctx.state._followupnode_tries += 1
+                print("Retrying FollowUpNode after error...")
+                ctx.state = load_state()
+                return ReflectionNode()
+            else:
+                return End(f"ERROR: Error in FollowUpNode after retry: {str(e)}")
 
 
 ###############################################################################
@@ -806,11 +883,11 @@ async def main():
     graph = Graph(nodes=(
         SearchNode, ScrapingNode, ParsingNode,
         DataExtractionNode, InstructionsNode,
-        WritingNode, ReflectionNode
+        WritingNode, ReflectionNode, FollowUpNode
     ))
     state = State(
         configuration=Configuration(
-            article_topic='Gibraltar - Królestwo małp i delfinów na krańcu Europy. Lądowanie dostarcza emicji ',
+            article_topic='​Podróże literackie – śladami słynnych pisarzy i poetów',
             # domains=['podroze.onet.pl','turystyka.wp.pl','top.pl','podroze.se.pl','turysci.pl'],
             domains=[],
             search_days=1500,
