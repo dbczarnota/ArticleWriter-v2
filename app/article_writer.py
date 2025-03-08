@@ -65,7 +65,14 @@ class State(BaseModel):
     researched_info: ResearchedInfo | None = None
     finished_article: str = ""
     messages: list[ModelMessage] = Field(default_factory=list)
-
+    searchnode_tries: int = 0
+    scrapingnode_tries: int = 0
+    parsingnode_tries: int = 0
+    dataextractionnode_tries: int = 0
+    instructionsnode_tries: int = 0
+    writingnode_tries: int = 0
+    reflectionnode_tries: int = 0
+    followupnode_tries: int = 0
 
 ###############################################################################
 # Helper functions
@@ -142,8 +149,6 @@ class SearchNode(BaseNode):
             return End("ERROR: SearchNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
-        if not hasattr(ctx.state, "_searchnode_tries"):
-            ctx.state._searchnode_tries = 0
         try:
             prompt = research_agent_prompt.format(
                 current_date=current_date,
@@ -157,8 +162,9 @@ class SearchNode(BaseNode):
             print(f'Search queries: {ctx.state.research_plan.queries}')
             return ScrapingNode()
         except Exception as e:
-            if ctx.state._searchnode_tries < 1:
-                ctx.state._searchnode_tries += 1
+            if ctx.state.searchnode_tries < 1:
+                ctx.state.searchnode_tries += 1
+                save_state(ctx.state)
                 print("Retrying SearchNode after error...")
                 ctx.state = load_state()
                 return SearchNode()
@@ -178,8 +184,6 @@ class ScrapingNode(BaseNode):
             return End("ERROR: ScrapingNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
-        if not hasattr(ctx.state, "_scrapingnode_tries"):
-            ctx.state._scrapingnode_tries = 0
         try:
             ctx.state = load_state()
 
@@ -209,8 +213,9 @@ class ScrapingNode(BaseNode):
             save_state(ctx.state)
             return ParsingNode()
         except Exception as e:
-            if ctx.state._scrapingnode_tries < 1:
-                ctx.state._scrapingnode_tries += 1
+            if ctx.state.scrapingnode_tries < 1:
+                ctx.state.scrapingnode_tries += 1
+                save_state(ctx.state)
                 print("Retrying ScrapingNode after error...")
                 ctx.state = load_state()
                 return ScrapingNode()
@@ -285,8 +290,6 @@ class ParsingNode(BaseNode):
             return End("ERROR: ParsingNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> DataExtractionNode | End:
-        if not hasattr(ctx.state, "_parsingnode_tries"):
-            ctx.state._parsingnode_tries = 0
         try:
             ctx.state = load_state()
             enc = tiktoken.get_encoding("cl100k_base")
@@ -325,8 +328,9 @@ class ParsingNode(BaseNode):
             save_state(ctx.state)
             return DataExtractionNode()
         except Exception as e:
-            if ctx.state._parsingnode_tries < 1:
-                ctx.state._parsingnode_tries += 1
+            if ctx.state.parsingnode_tries < 1:
+                ctx.state.parsingnode_tries += 1
+                save_state(ctx.state)
                 print("Retrying ParsingNode after error...")
                 ctx.state = load_state()
                 return ParsingNode()
@@ -410,8 +414,6 @@ class DataExtractionNode(BaseNode):
             return End("ERROR: DataExtractionNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
-        if not hasattr(ctx.state, "_dataextractionnode_tries"):
-            ctx.state._dataextractionnode_tries = 0
         try:
             ctx.state = load_state()
 
@@ -514,8 +516,9 @@ class DataExtractionNode(BaseNode):
             save_state(ctx.state)
             return InstructionsNode()
         except Exception as e:
-            if ctx.state._dataextractionnode_tries < 1:
-                ctx.state._dataextractionnode_tries += 1
+            if ctx.state.dataextractionnode_tries < 1:
+                ctx.state.dataextractionnode_tries += 1
+                save_state(ctx.state)
                 print("Retrying DataExtractionNode after error...")
                 ctx.state = load_state()
                 return DataExtractionNode()
@@ -574,8 +577,6 @@ class InstructionsNode(BaseNode):
             return End("ERROR: InstructionsNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> WritingNode | End:
-        if not hasattr(ctx.state, "_instructionsnode_tries"):
-            ctx.state._instructionsnode_tries = 0
         try:
             ctx.state = load_state()
 
@@ -594,8 +595,9 @@ class InstructionsNode(BaseNode):
             save_state(ctx.state)
             return WritingNode()
         except Exception as e:
-            if ctx.state._instructionsnode_tries < 1:
-                ctx.state._instructionsnode_tries += 1
+            if ctx.state.instructionsnode_tries < 1:
+                ctx.state.instructionsnode_tries += 1
+                save_state(ctx.state)
                 print("Retrying InstructionsNode after error...")
                 ctx.state = load_state()
                 return InstructionsNode()
@@ -651,8 +653,6 @@ class WritingNode(BaseNode):
             return End("ERROR: WritingNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> End | ReflectionNode | FollowUpNode:
-        if not hasattr(ctx.state, "_writingnode_tries"):
-            ctx.state._writingnode_tries = 0
         try:
             ctx.state = load_state()
             writing_agent = Agent[None, str](
@@ -687,8 +687,9 @@ class WritingNode(BaseNode):
                 print("go to ReflectionNode")
                 return ReflectionNode()
         except Exception as e:
-            if ctx.state._writingnode_tries < 1:
-                ctx.state._writingnode_tries += 1
+            if ctx.state.writingnode_tries < 1:
+                ctx.state.writingnode_tries += 1
+                save_state(ctx.state)
                 print("Retrying WritingNode after error...")
                 ctx.state = load_state()
                 return WritingNode()
@@ -731,8 +732,6 @@ class ReflectionNode(BaseNode):
             return End("ReflectionNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> WritingNode | End:
-        if not hasattr(ctx.state, "_reflectionnode_tries"):
-            ctx.state._reflectionnode_tries = 0
         try:
             ctx.state = load_state()
             reflection_agent = Agent(
@@ -751,8 +750,9 @@ class ReflectionNode(BaseNode):
             save_state(ctx.state)
             return WritingNode()
         except Exception as e:
-            if ctx.state._reflectionnode_tries < 1:
-                ctx.state._reflectionnode_tries += 1
+            if ctx.state.reflectionnode_tries < 1:
+                ctx.state.reflectionnode_tries += 1
+                save_state(ctx.state)
                 print("Retrying ReflectionNode after error...")
                 ctx.state = load_state()
                 return ReflectionNode()
@@ -812,8 +812,6 @@ class FollowUpNode(BaseNode):
             return End("ReflectionNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> WritingNode | End:
-        if not hasattr(ctx.state, "_followupnode_tries"):
-            ctx.state._followupnode_tries = 0
         try:
             ctx.state = load_state()
             followup_agent = Agent(
@@ -845,8 +843,9 @@ class FollowUpNode(BaseNode):
             save_state(ctx.state)
             return End(full_result)
         except Exception as e:
-            if ctx.state._followupnode_tries < 1:
-                ctx.state._followupnode_tries += 1
+            if ctx.state.followupnode_tries < 1:
+                ctx.state.followupnode_tries += 1
+                save_state(ctx.state)
                 print("Retrying FollowUpNode after error...")
                 ctx.state = load_state()
                 return ReflectionNode()
