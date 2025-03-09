@@ -27,11 +27,13 @@ current_date = current_date_today = date.today()
 class Configuration(BaseModel):
     article_topic: str = ""
     domains: list[str] = Field(default_factory=list)
+    urls: list[str] = Field(default_factory=list)  # <-- new field
     number_of_queries: int = 2
     scraping_model: str = ""
     max_search_results: int = 3
     search_days: int = 30
     extraction_mode: Literal["markdown", "html", "llm"] = "markdown"
+
 
 
 class ResearchPlan(BaseModel):
@@ -206,6 +208,9 @@ class ScrapingNode(BaseNode):
             for urls, desc_map in search_results:
                 unique_urls.update(urls)
                 combined_descriptions.update(desc_map)
+            
+            # Add the user-provided URLs to the set of URLs to be scraped
+            unique_urls.update(ctx.state.configuration.urls)
             unique_urls = list(unique_urls)
 
             scrape_result = await scraper.scrape_urls(unique_urls, description_mapping=combined_descriptions)
@@ -861,21 +866,19 @@ class ArticleWriter:
     def write_article(
         article_topic: str,
         domains: List[str],
+        urls: List[str] = None,  # <-- new parameter
         number_of_queries: int = 3,
         scraping_model: str = "",
         max_search_results: int = 4,
         search_days: int = 500,
         extraction_mode: Literal["markdown", "html", "llm"] = "markdown",
     ) -> str:
-        """
-        Runs the entire article-writing process asynchronously.
-        Returns the final article text as a string.
-        """
         async def _run_graph():
             state = State(
                 configuration=Configuration(
                     article_topic=article_topic,
                     domains=domains,
+                    urls=urls or [],  # <-- assign to config
                     number_of_queries=number_of_queries,
                     scraping_model=scraping_model,
                     max_search_results=max_search_results,
@@ -889,34 +892,26 @@ class ArticleWriter:
                 WritingNode, ReflectionNode, FollowUpNode
             ))
             response = await graph.run(SearchNode(), state=state)
-            print(f"_run_graph {response}")
             return response.output
 
         final_article = asyncio.run(_run_graph())
         return final_article
 
 
+
 ###############################################################################
 # Main
 ###############################################################################
-async def main():
-    graph = Graph(nodes=(
-        SearchNode, ScrapingNode, ParsingNode,
-        DataExtractionNode, InstructionsNode,
-        WritingNode, ReflectionNode, FollowUpNode,
-    ))
-    state = State(
-        configuration=Configuration(
-            article_topic='​Podróże literackie – śladami słynnych pisarzy i poetów',
-            # domains=['podroze.onet.pl','turystyka.wp.pl','top.pl','podroze.se.pl','turysci.pl'],
-            domains=[],
-            search_days=1500,
-            number_of_queries=3,
-            max_search_results=4,
-        )
-    )
-    response = await graph.run(SearchNode(), state=state)
-    # print(f'FINAL RESPONSE: {response.output}')
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    article = ArticleWriter.write_article(
+        article_topic="Podróże literackie – śladami słynnych pisarzy i poetów",
+        domains=["podroze.onet.pl", "turystyka.wp.pl"],  # example domains
+        urls=[],       # example URLs
+        number_of_queries=3,
+        scraping_model="",        # specify your scraping model if needed
+        max_search_results=4,
+        search_days=1500,
+        extraction_mode="markdown",
+    )
+    print(article)
+
