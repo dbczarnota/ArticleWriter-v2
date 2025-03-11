@@ -839,6 +839,7 @@ class FollowUpNode(BaseNode):
             <article>
                 {ctx.state.finished_article}
             </article>
+            <hr style="margin: 20px 0; border: 0; height: 1px; background: #ccc;" />
             <section>
                 <h2>Atrernatywne tytuły</h2>
                 <ul>
@@ -857,7 +858,15 @@ class FollowUpNode(BaseNode):
                     {''.join(f'<li>{source}</li>' for source in ctx.state.sources)}
                 </ul>
             </section>
+            <section>
+                <h2>Fakty z wyciągnięte z artykułów źródłowych</h2>
+                <ul>
+                    {''.join(f'<li>{fact}</li>' for fact in (ctx.state.researched_info.facts if ctx.state.researched_info and ctx.state.researched_info.facts else [])) or '<li>No facts available.</li>'}
+                </ul>
+            </section>
             """
+
+
  
             save_state(ctx.state)
             return End(full_result)
