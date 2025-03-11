@@ -19,6 +19,7 @@ app = FastAPI()
 class ArticleRequest(BaseModel):
     id: str
     topic: str
+    urls: Optional[str]
     domains: Optional[str]
     number_of_queries: int = 2
     scraping_model: str = ""
@@ -65,13 +66,19 @@ def worker(q):
         print(f"Processing job: {job}")
         
         if job.domains != None:
-            domains = job.domains.split(",")
+            domains = job.domains.split("|")
         else:
             domains = []
+
+        if job.urls != None:
+            urls = job.urls.split("|")
+        else:
+            urls = []
 
         final_text = ArticleWriter.write_article(
             article_topic=job.topic,
             domains=domains,
+            urls=urls,
             number_of_queries=job.number_of_queries,
             scraping_model=job.scraping_model,
             max_search_results=job.max_search_results,
