@@ -660,13 +660,14 @@ class WritingNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> End | ReflectionNode | FollowUpNode:
         # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
-            return await asyncio.wait_for(self._run_internal(ctx), 600)
+            return await asyncio.wait_for(self._run_internal(ctx), 900)
         except asyncio.TimeoutError:
             return End("ERROR: WritingNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> End | ReflectionNode | FollowUpNode:
         try:
             ctx.state = load_state()
+            print(f'WRITING ROUND: {ctx.state.reflection_round}')
             writing_agent = Agent[None, str](
                 model=writing_model,
                 result_type=str,
