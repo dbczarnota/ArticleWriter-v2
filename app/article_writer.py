@@ -66,6 +66,7 @@ class State(BaseModel):
     scraped_pages: list[Dict] = Field(default_factory=list)
     researched_info: ResearchedInfo | None = None
     finished_article: str = ""
+    sources: list[str] = Field(default_factory=list)
     messages: list[ModelMessage] = Field(default_factory=list)
     searchnode_tries: int = 0
     scrapingnode_tries: int = 0
@@ -506,7 +507,13 @@ class DataExtractionNode(BaseNode):
                     combined_quotes.extend(article['quotes'])
                 if article.get('keywords'):
                     combined_keywords.extend(article['keywords'])
-
+                # Extract the URL and add it to the state's sources list
+                url = article.get('url')
+                if url and url not in ctx.state.sources:
+                    ctx.state.sources.append(url)
+                    
+                    
+                    
             if not combined_facts:
                 return End("No facts found in filtered articles. Cannot proceed.")
 
@@ -844,7 +851,14 @@ class FollowUpNode(BaseNode):
                     {''.join(f'<li>{topic}</li>' for topic in result.data.followup_articles)}
                 </ul>
             </section>
-            """ 
+            <section>
+                <h2>Źródła</h2>
+                <ul>
+                    {''.join(f'<li>{source}</li>' for source in ctx.state.sources)}
+                </ul>
+            </section>
+            """
+ 
             save_state(ctx.state)
             return End(full_result)
         except Exception as e:
