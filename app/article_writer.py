@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai.messages import ModelMessage
 from pydantic_graph import BaseNode, End, Graph, GraphRunContext
 from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.providers.openai import OpenAIProvider
+# from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai import Agent
 from dataclasses import dataclass
 import tiktoken
@@ -109,7 +109,8 @@ def load_state(filename: str = "state.json") -> State:
 # Nodes
 ###############################################################################
 ############################### Search Node ###################################
-search_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+search_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
+# search_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 research_agent_prompt = """You are a research assistant supporting an article writer. 
 Your role is to create a well-structured, high-level plan for a short web article based on the provided topic.
@@ -191,7 +192,8 @@ class SearchNode(BaseNode):
 
 ###############################################################################
 ################################ LlmKnowledge Node ################################
-llmknowledge_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+llmknowledge_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
+# llmknowledge_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 llmknowledge_agent_prompt = """
 You are a meticulous research assistant providing verified and sourced facts to support an article.
