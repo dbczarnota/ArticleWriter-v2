@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai.messages import ModelMessage
 from pydantic_graph import BaseNode, End, Graph, GraphRunContext
 from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai import Agent
 from dataclasses import dataclass
 import tiktoken
@@ -33,6 +34,7 @@ class Configuration(BaseModel):
     max_search_results: int = 3
     search_days: int = 30
     extraction_mode: Literal["markdown", "html", "llm"] = "markdown"
+    provide_llm_facts: Literal["yes", "no"] = "yes",
 
 
 
@@ -40,7 +42,7 @@ class ResearchPlan(BaseModel):
     queries: list[str] = Field(default_factory=list)
     plan: str = ""
     keywords: list[str] = Field(default_factory=list)
-    possible_titles: list[str] = Field(default_factory=list)
+
 
 
 class Quote(BaseModel):
@@ -50,10 +52,17 @@ class Quote(BaseModel):
 
 
 class ResearchedInfo(BaseModel):
-    quotes: list[Quote] | None
-    facts: list[str] | None
-    keywords: list[str] | None
-    article_texts: str | None
+    quotes: list[Quote] | None = None
+    facts: list[str] | None = None
+    keywords: list[str] | None = None
+    article_texts: str | None = None
+    facts_from_llm: list[FactFromLlm] | None  = None
+    facts_from_articles: list[str] | None = None
+
+
+class FactFromLlm(BaseModel):
+    fact_llm: str | None
+    source: str | None
 
 
 class State(BaseModel):
@@ -64,7 +73,7 @@ class State(BaseModel):
     reflection_prompt: str = ""
     research_plan: ResearchPlan = None
     scraped_pages: list[Dict] = Field(default_factory=list)
-    researched_info: ResearchedInfo | None = None
+    researched_info: ResearchedInfo = ResearchedInfo()
     finished_article: str = ""
     sources: list[str] = Field(default_factory=list)
     messages: list[ModelMessage] = Field(default_factory=list)
@@ -76,6 +85,7 @@ class State(BaseModel):
     writingnode_tries: int = 0
     reflectionnode_tries: int = 0
     followupnode_tries: int = 0
+    llmknowledgenode_tries: int = 0
 
 ###############################################################################
 # Helper functions
@@ -99,7 +109,7 @@ def load_state(filename: str = "state.json") -> State:
 # Nodes
 ###############################################################################
 ############################### Search Node ###################################
-search_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
+search_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 research_agent_prompt = """You are a research assistant supporting an article writer. 
 Your role is to create a well-structured, high-level plan for a short web article based on the provided topic.
@@ -144,14 +154,15 @@ research_agent = Agent[None, ResearchPlan](
 
 @dataclass
 class SearchNode(BaseNode):
-    async def run(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
+    async def run(self, ctx: GraphRunContext[State]) -> ScrapingNode | LlmKnowledgeNode | End:
         # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
+            print("Running SearchNode...")
             return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
             return End("ERROR: SearchNode timed out")
 
-    async def _run_internal(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
+    async def _run_internal(self, ctx: GraphRunContext[State]) -> ScrapingNode | LlmKnowledgeNode | End:
         try:
             prompt = research_agent_prompt.format(
                 current_date=current_date,
@@ -163,18 +174,83 @@ class SearchNode(BaseNode):
             ctx.state.research_plan.queries.append(ctx.state.configuration.article_topic)
             save_state(ctx.state)
             print(f'Search queries: {ctx.state.research_plan.queries}')
-            return ScrapingNode()
+            if ctx.state.configuration.provide_llm_facts == "yes":
+                return LlmKnowledgeNode()
+            else:
+                return ScrapingNode()
+
         except Exception as e:
             if ctx.state.searchnode_tries < 1:
                 ctx.state.searchnode_tries += 1
                 save_state(ctx.state)
-                print("Retrying SearchNode after error...")
+                print(f"Retrying SearchNode after error... {str(e)}")
                 ctx.state = load_state()
                 return SearchNode()
             else:
                 return End(f"ERROR: Error in SearchNode after retry: {str(e)}")
 
+###############################################################################
+################################ LlmKnowledge Node ################################
+llmknowledge_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
+llmknowledge_agent_prompt = """
+You are a meticulous research assistant providing verified and sourced facts to support an article.
+
+### Article Information:
+- General Topic: {article_topic}
+
+- Research Queries: {search_queries}
+
+### Guidelines:
+- Provide ONLY verified facts.
+- Ensure all information is CURRENT (consider today's date: {current_date}).
+- NEVER guess or create facts if uncertain. If solid information is unavailable, explicitly state "No verified information found."
+- Provide a credible and direct source for every fact you provide (domain or citation).
+
+
+Your accuracy and clarity are essential. Prioritize factual correctness over quantity, but give everything that is relevant and can be used to write the article.
+"""
+llmknowledge_agent = Agent(
+    model=llmknowledge_model,
+    result_type=List[FactFromLlm]
+)
+
+@dataclass
+class LlmKnowledgeNode(BaseNode):
+    async def run(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
+        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
+        try:
+            print("Running LlmKnowledgeNode...")
+            return await asyncio.wait_for(self._run_internal(ctx), 600)
+        except asyncio.TimeoutError:
+            return End("ERROR: LlmKnowledgeNode timed out")
+    async def _run_internal(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
+        try:            
+            ctx.state = load_state()
+            prompt = llmknowledge_agent_prompt.format(
+                article_topic=ctx.state.configuration.article_topic,
+                initial_plan=ctx.state.research_plan.plan,
+                search_queries=ctx.state.research_plan.queries,
+                current_date=current_date
+            )
+            print(f'llmknowledge_agent_prompt: {prompt}')
+            result = await llmknowledge_agent.run(user_prompt=prompt)
+            print(f'result.data: {result.data}')
+            ctx.state.researched_info.facts_from_llm = result.data
+            print(f'facts_from_llm: {ctx.state.researched_info.facts_from_llm}')
+            save_state(ctx.state)
+            
+            return ScrapingNode()
+        except Exception as e:  
+            if ctx.state.llmknowledgenode_tries < 1:
+                ctx.state.llmknowledgenode_tries += 1
+                save_state(ctx.state)
+                print(f"Retrying LlmKnowledgeNode after error... {str(e)}")
+                ctx.state = load_state()
+                return LlmKnowledgeNode()
+            else:
+                return End(f"ERROR: Error in LlmKnowledgeNode after retry: {str(e)}")
+            
 ###############################################################################
 ################################ Scraping Node ################################
 @dataclass
@@ -182,6 +258,7 @@ class ScrapingNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
         # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
+            print("Running ScrapingNode...")
             return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
             return End("ERROR: ScrapingNode timed out")
@@ -291,6 +368,7 @@ class ParsingNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> DataExtractionNode | End:
         # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
+            print("Running ParsingNode...")
             return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
             return End("ERROR: ParsingNode timed out")
@@ -415,6 +493,7 @@ class DataExtractionNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
         # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
+            print("Running DataExtractionNode...")
             return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
             return End("ERROR: DataExtractionNode timed out")
@@ -490,19 +569,33 @@ class DataExtractionNode(BaseNode):
                 if res is not None
                 and res.get('webpage_type') == "article"
                 and res.get('relevant') == "yes"
-                and ((pub_date := parse_pub_date(res.get('publication_date'))) is not None and pub_date >= cutoff_date)
+                and (
+                    res.get('url') in ctx.state.configuration.urls or
+                    ((pub_date := parse_pub_date(res.get('publication_date'))) is not None and pub_date >= cutoff_date)
+                )
             ]
+
 
             if not articles:
                 return End("All articles filtered out or none match criteria.")
 
-            combined_facts = []
+            # 1) Extract existing facts_from_llm. (We keep the original structure, i.e. list[FactFromLlm].)
+            existing_facts_from_llm = ctx.state.researched_info.facts_from_llm or []
+
+            # 2) Build a simple list of fact strings from LLM facts so you can merge them with any new article facts.
+            llm_fact_strings = [
+                fact.fact_llm for fact in existing_facts_from_llm
+                if fact.fact_llm is not None
+            ]
+
+            # 3) Accumulate new article facts and other items from the scraped pages.
+            facts_from_articles = []
             combined_quotes = []
             combined_keywords = []
 
             for article in articles:
                 if article.get('facts'):
-                    combined_facts.extend(article['facts'])
+                    facts_from_articles.extend(article['facts'])
                 if article.get('quotes'):
                     combined_quotes.extend(article['quotes'])
                 if article.get('keywords'):
@@ -511,18 +604,23 @@ class DataExtractionNode(BaseNode):
                 url = article.get('url')
                 if url and url not in ctx.state.sources:
                     ctx.state.sources.append(url)
-                    
-                    
-                    
-            if not combined_facts:
-                return End("No facts found in filtered articles. Cannot proceed.")
 
+            # 4) Combine old LLM facts (as strings) with new article facts for the .facts field.
+            combined_facts = llm_fact_strings + facts_from_articles
+            
+            if not combined_facts:
+                return End("No facts found in filtered articles. Cannot proceed.")\
+
+            # 5) Finally, build a new ResearchedInfo object without overwriting facts_from_llm.
             combined_info = ResearchedInfo(
                 quotes=combined_quotes if combined_quotes else None,
                 facts=combined_facts,
+                facts_from_articles=facts_from_articles,
+                facts_from_llm=existing_facts_from_llm,  # <-- Preserve old LLM facts
                 keywords=combined_keywords,
                 article_texts="\n".join(article['formated_article_short'] for article in articles)
             )
+
             ctx.state.researched_info = combined_info
 
             save_state(ctx.state)
@@ -584,6 +682,7 @@ class InstructionsNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> WritingNode | End:
         # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
+            print("Running InstructionsNode...")
             return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
             return End("ERROR: InstructionsNode timed out")
@@ -660,6 +759,7 @@ class WritingNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> End | ReflectionNode | FollowUpNode:
         # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
+            print("Running WritingNode...")
             return await asyncio.wait_for(self._run_internal(ctx), 900)
         except asyncio.TimeoutError:
             return End("ERROR: WritingNode timed out")
@@ -716,7 +816,7 @@ reflection_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
 
 reflection_agent_prompt = """You are an **Editor-in-Chief**. Your task is to **review the article** written by the editor agent and provide **detailed, relevant, and actionable feedback**. Your output must consist solely of a structured AI prompt for a writing agent—do not include any additional commentary or explanations. The entire feedback must be written in the same language as the revised article.
 
-Your review must:
+###Your review must:
 - **Identify issues and provide clear instructions on what to improve and how.**
 - **Be based on your previous instructions**
 - **Take high-quality benchmark articles into account** - use them to compare and score revised article against them as well as to co suggest enhancements
@@ -731,6 +831,9 @@ Your review must:
 - **Focus on providing precise, detailed instructions that are easy to implement.**
 - **Remind not to include publication date in the final article**
 
+### Article Rating
+- **A the end always rate the article as 2/5. Demand 5/5**
+
 ### High-quality Benchmark Articles:
 {benchmark_articles}
 """
@@ -740,6 +843,7 @@ class ReflectionNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> WritingNode | End:
         # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
+            print("Running ReflectionNode...")
             return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
             return End("ReflectionNode timed out")
@@ -820,9 +924,10 @@ class FollowUpNode(BaseNode):
     async def run(self, ctx: GraphRunContext[State]) -> End:
         # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
         try:
+            print("Running FollowUpNode...")
             return await asyncio.wait_for(self._run_internal(ctx), 600)
         except asyncio.TimeoutError:
-            return End("ReflectionNode timed out")
+            return End("FollowUpNode timed out")
 
     async def _run_internal(self, ctx: GraphRunContext[State]) -> WritingNode | End:
         try:
@@ -836,13 +941,15 @@ class FollowUpNode(BaseNode):
             )
             result = await followup_agent.run(user_prompt=user_prompt)
             
+            
+            print(f'LLM FACTS: {ctx.state.researched_info.facts_from_llm}')
             full_result = f"""
             <article>
                 {ctx.state.finished_article}
             </article>
             <hr style="margin: 20px 0; border: 0; height: 1px; background: #ccc;" />
             <section>
-                <h2>Atrernatywne tytuły</h2>
+                <h2>Alternatywne tytuły</h2>
                 <ul>
                     {''.join(f'<li>{title}</li>' for title in result.data.alternative_titles)}
                 </ul>
@@ -860,12 +967,26 @@ class FollowUpNode(BaseNode):
                 </ul>
             </section>
             <section>
-                <h2>Fakty z wyciągnięte z artykułów źródłowych</h2>
+                <h2>Cytaty</h2>
                 <ul>
-                    {''.join(f'<li>{fact}</li>' for fact in (ctx.state.researched_info.facts if ctx.state.researched_info and ctx.state.researched_info.facts else [])) or '<li>No facts available.</li>'}
+                    {''.join(f'<li>{quote.text} - {quote.speaker} (Źródło: {quote.source})</li>' for quote in (ctx.state.researched_info.quotes or [])) or '<li>No quotes available.</li>'}
+                </ul>
+            </section>
+            <section>
+                <h2>Fakty z artykułów źródłowych</h2>
+                <ul>
+                    {''.join(f'<li>{fact}</li>' for fact in (ctx.state.researched_info.facts_from_articles or [])) or '<li>No facts available.</li>'}
+                </ul>
+            </section>
+            <section>
+                <h2>LLM Fakty i ich źródła</h2>
+                <ul>
+                    {''.join(f'<li>{fact.fact_llm} (Źródło: {fact.source})</li>' for fact in (ctx.state.researched_info.facts_from_llm or [])) or '<li>No LLM facts available.</li>'}
                 </ul>
             </section>
             """
+
+
 
 
  
@@ -895,6 +1016,7 @@ class ArticleWriter:
         scraping_model: str = "",
         max_search_results: int = 4,
         search_days: int = 500,
+        provide_llm_facts: Literal["yes", "no"] = "yes",
         extraction_mode: Literal["markdown", "html", "llm"] = "markdown",
     ) -> str:
         async def _run_graph():
@@ -908,12 +1030,14 @@ class ArticleWriter:
                     max_search_results=max_search_results,
                     search_days=search_days,
                     extraction_mode=extraction_mode,
+                    provide_llm_facts=provide_llm_facts,
+
                 )
             )
             graph = Graph(nodes=(
                 SearchNode, ScrapingNode, ParsingNode,
                 DataExtractionNode, InstructionsNode,
-                WritingNode, ReflectionNode, FollowUpNode
+                WritingNode, ReflectionNode, FollowUpNode, LlmKnowledgeNode
             ))
             response = await graph.run(SearchNode(), state=state)
             return response.output
@@ -928,14 +1052,15 @@ class ArticleWriter:
 ###############################################################################
 if __name__ == "__main__":
     article = ArticleWriter.write_article(
-        article_topic="Podróże literackie – śladami słynnych pisarzy i poetów",
-        domains=["podroze.onet.pl", "turystyka.wp.pl"],  # example domains
-        urls=[],       # example URLs
-        number_of_queries=3,
+        article_topic="Paula i Michał z 'Love Never Lies 3' wypowiadają się o kolegach z programu",
+        domains=[],  # example domains
+        urls=['https://party.pl/tv-show/paula-i-michal-z-love-never-lies-gorzko-o-uczestnikach-tak-nie-robia-prawdziwe-osoby-tylko-falszywe-po-emisji-w-niedziele/'],       # example URLs
+        number_of_queries=1,
         scraping_model="",        # specify your scraping model if needed
-        max_search_results=4,
-        search_days=1500,
+        max_search_results=2,
+        search_days=10,
         extraction_mode="markdown",
+        provide_llm_facts="yes"
     )
     print(article)
 
