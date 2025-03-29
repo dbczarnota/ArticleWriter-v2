@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from pydantic_ai.messages import ModelMessage
 from pydantic_graph import BaseNode, End, Graph, GraphRunContext
 from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai import Agent
 from dataclasses import dataclass
 import tiktoken
@@ -88,8 +89,8 @@ def load_state(filename: str = "state.json") -> State:
 # Nodes
 ###############################################################################
 ############################### Search Node ###################################
-search_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
-
+search_model = OpenAIModel('gpt-4o', provider=OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+                           
 research_agent_prompt = """You are a research assistant supporting an article writer. 
 Your role is to create a well-structured, high-level plan for a short web article based on the provided topic.
 
@@ -218,7 +219,7 @@ class ScrapingNode(BaseNode):
 
 ###############################################################################
 ################################ Parsing Node #################################
-parsing_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+parsing_model = OpenAIModel('o3-mini', provider=OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 class ParsedArticle(BaseModel):
     webpage_type: Literal['article', 'other']
@@ -334,7 +335,7 @@ class ParsingNode(BaseNode):
 
 ###############################################################################
 ############################# DataExtraction Node #############################
-data_extraction_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+data_extraction_model = OpenAIModel('o3-mini', provider=OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 data_extraction_agent_prompt = """
 Your task is to analyze text and determine whether it is an **article** or another type of page (e.g., main page, category page, tag page, etc.), then extract key information.
@@ -523,7 +524,7 @@ class DataExtractionNode(BaseNode):
 
 ###############################################################################
 ############################## Instructions Node ##############################
-instructions_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+instructions_model = OpenAIModel('o3-mini', provider=OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 instructions_agent_prompt = """
 You are an **Editor-in-Chief**. Your task is to provide detailed, structured instructions for a journalist to write a **high-quality web article**.
@@ -605,8 +606,10 @@ class InstructionsNode(BaseNode):
 ################################ Writing Node #################################
 writing_model = OpenAIModel(
     model_name='deepseek/deepseek-r1',
-    base_url='https://openrouter.ai/api/v1',
-    api_key=os.getenv('OPENROUTER_API_KEY'),
+     provider=OpenAIProvider(
+        base_url='https://openrouter.ai/api/v1',
+        api_key=os.getenv('OPENROUTER_API_KEY'),
+    ),
 )
 
 writing_agent_prompt = """You are an **editor for a web magazine**. Your task is to write a **high-quality web article** on the following topic:
@@ -694,7 +697,7 @@ class WritingNode(BaseNode):
 
 ###############################################################################
 ############################### Reflection Node ###############################
-reflection_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+reflection_model = OpenAIModel('o3-mini', provider=OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 reflection_agent_prompt = """You are an **Editor-in-Chief**. Your task is to **review the article** written by the editor agent and provide **detailed, relevant, and actionable feedback**. Your output must consist solely of a structured AI prompt for a writing agent—do not include any additional commentary or explanations. The entire feedback must be written in the same language as the revised article.
 
