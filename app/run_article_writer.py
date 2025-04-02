@@ -6,7 +6,7 @@ final_text = ArticleWriter.write_article(
     number_of_queries=2,
     scraping_model="",
     max_search_results=4,
-    search_days=14,
+    search_days=60,
     extraction_mode="markdown",
 )
 print("FINAL ARTICLE:", final_text)

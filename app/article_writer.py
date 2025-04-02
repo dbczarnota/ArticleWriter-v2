@@ -2,12 +2,16 @@ from __future__ import annotations
 import asyncio
 import os
 import re
-from typing import List, Literal, Optional, Dict
+from typing import List, Literal, Optional, Dict, Type
 from pydantic import BaseModel, Field
 from pydantic_ai.messages import ModelMessage
 from pydantic_graph import BaseNode, End, Graph, GraphRunContext
 from pydantic_ai.models.openai import OpenAIModel
-# from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.models.fallback import FallbackModel
+from pydantic_ai.models.gemini import GeminiModel
+from pydantic_ai.providers.google_gla import GoogleGLAProvider
+from pydantic_ai.exceptions import FallbackExceptionGroup, ModelHTTPError
+from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai import Agent
 from dataclasses import dataclass
 import tiktoken
@@ -17,10 +21,96 @@ from searchandscrape import SearchAndScrape
 from rich import print
 from dotenv import load_dotenv
 from datetime import date, datetime, timedelta
+import abc
+from html import escape
+
 
 logger = logging.getLogger(__name__)
 load_dotenv()
 current_date = current_date_today = date.today()
+
+###############################################################################
+# Error handling class template
+###############################################################################
+class ResilientNode(BaseNode, abc.ABC):
+    """
+    A base node class that handles common execution logic like
+    timeouts, retries, and error logging.
+    """
+    # --- Node specific configuration (must be set in subclasses) ---
+    # Example: retry_counter_attr = "searchnode_tries"
+    retry_counter_attr: str = ""
+    # Example: max_retries = 1
+    max_retries: int = 1
+    # Example: timeout_seconds = 600
+    timeout_seconds: int = 600 # Default timeout
+
+    @abc.abstractmethod
+    async def _execute(self, ctx: GraphRunContext[State]) -> BaseNode | End:
+        """
+        The core logic specific to the node.
+        Subclasses MUST implement this method.
+        It should return the next node instance, an End state,
+        a node Type (to instantiate), or None if handled internally.
+        """
+        pass
+
+    async def run(self, ctx: GraphRunContext[State]) -> BaseNode | End:
+        """
+        Runs the node's core logic (_execute) with timeout, retry,
+        and error handling.
+        """
+        if not self.retry_counter_attr:
+            raise NotImplementedError(
+                f"Node {self.__class__.__name__} must define 'retry_counter_attr'"
+            )
+
+        node_name = self.__class__.__name__
+        # No need to load state here usually, ctx should be up-to-date
+
+        try:
+            logger.info(f"Running {node_name}...")
+            # Wrap the specific logic execution with a timeout
+            result = await asyncio.wait_for(
+                self._execute(ctx), # Call the subclass's specific logic
+                timeout=self.timeout_seconds
+            )
+            # Reset retry counter on success if desired (optional)
+            # setattr(ctx.state, self.retry_counter_attr, 0)
+            # save_state(ctx.state) # Save state after successful run? Optional.
+            logger.info(f"{node_name} completed successfully.")
+            return result # Return the next node or End
+
+        except asyncio.TimeoutError:
+            error_message = f"{node_name} timed out after {self.timeout_seconds} seconds"
+            logger.error(error_message)
+            # Fall through to the general exception handling for retry logic
+
+        except Exception as e:
+            error_message = f"Error in {node_name}: {str(e)}"
+            logger.exception(f"Caught exception in {node_name}") # Logs traceback
+            # Fall through to the general exception handling
+
+        # --- Common Error/Retry Handling ---
+        current_retries = getattr(ctx.state, self.retry_counter_attr, 0)
+        ctx.state.add_error(node_name, error_message) # Log the error to state
+
+        if current_retries < self.max_retries:
+            # Increment retry counter
+            setattr(ctx.state, self.retry_counter_attr, current_retries + 1)
+            save_state(ctx.state) # Save state after incrementing counter and adding error
+            logger.warning(f"Retrying {node_name} (Attempt {current_retries + 1}/{self.max_retries})...")
+            # Reload state before retry might be safer if _execute could corrupt it
+            # ctx.state = load_state() # Optional: reload state
+            return self() # Return instance of the current node to retry
+        else:
+            final_error_msg = f"ERROR: {node_name} failed after {self.max_retries + 1} attempts. Last error: {error_message}"
+            logger.error(final_error_msg)
+            # Ensure state is saved with the final error logged
+            save_state(ctx.state)
+            return End(final_error_msg)
+
+
 
 ###############################################################################
 # State definition
@@ -86,7 +176,14 @@ class State(BaseModel):
     reflectionnode_tries: int = 0
     followupnode_tries: int = 0
     llmknowledgenode_tries: int = 0
-
+    errors: List[Dict[str, str]] = Field(default_factory=list, description="List of errors encountered during the graph run.")
+    
+    # --- Optional: Add helper to add errors ---
+    def add_error(self, node_name: str, error_message: str):
+        self.errors.append({"node": node_name, "error": error_message})
+        
+        
+        
 ###############################################################################
 # Helper functions
 ###############################################################################
@@ -109,8 +206,8 @@ def load_state(filename: str = "state.json") -> State:
 # Nodes
 ###############################################################################
 ############################### Search Node ###################################
-search_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
-# search_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+# search_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
+search_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 research_agent_prompt = """You are a research assistant supporting an article writer. 
 Your role is to create a well-structured, high-level plan for a short web article based on the provided topic.
@@ -154,46 +251,49 @@ research_agent = Agent[None, ResearchPlan](
 )
 
 @dataclass
-class SearchNode(BaseNode):
-    async def run(self, ctx: GraphRunContext[State]) -> ScrapingNode | LlmKnowledgeNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
-        try:
-            print("Running SearchNode...")
-            return await asyncio.wait_for(self._run_internal(ctx), 600)
-        except asyncio.TimeoutError:
-            return End("ERROR: SearchNode timed out")
+class SearchNode(ResilientNode):
+    # --- Configure ResilientNode ---
+    retry_counter_attr: str = "searchnode_tries"
+    max_retries: int = 1 # Or configure as needed
+    timeout_seconds: int = 600 # Specific timeout for this node
 
-    async def _run_internal(self, ctx: GraphRunContext[State]) -> ScrapingNode | LlmKnowledgeNode | End:
-        try:
-            prompt = research_agent_prompt.format(
-                current_date=current_date,
-                article_topic=ctx.state.configuration.article_topic,
-                number_of_queries=ctx.state.configuration.number_of_queries
-            )
-            result = await research_agent.run(user_prompt=prompt)
-            ctx.state.research_plan = result.data
-            ctx.state.research_plan.queries.append(ctx.state.configuration.article_topic)
-            save_state(ctx.state)
-            print(f'Search queries: {ctx.state.research_plan.queries}')
-            if ctx.state.configuration.provide_llm_facts == "yes":
-                return LlmKnowledgeNode()
-            else:
-                return ScrapingNode()
+    async def _execute(self, ctx: GraphRunContext[State]) -> ScrapingNode | LlmKnowledgeNode | End:
+        """
+        Generates the research plan and queries based on the article topic.
+        """
+        # Core logic previously in _run_internal, without try/except/retry/timeout
+        logger.info("Executing SearchNode logic...") # Use logger
 
-        except Exception as e:
-            if ctx.state.searchnode_tries < 1:
-                ctx.state.searchnode_tries += 1
-                save_state(ctx.state)
-                print(f"Retrying SearchNode after error... {str(e)}")
-                ctx.state = load_state()
-                return SearchNode()
-            else:
-                return End(f"ERROR: Error in SearchNode after retry: {str(e)}")
+        # No need to load_state here, ctx is passed by the runner
+
+        prompt = research_agent_prompt.format(
+            current_date=current_date, # Assuming current_date is accessible
+            article_topic=ctx.state.configuration.article_topic,
+            number_of_queries=ctx.state.configuration.number_of_queries
+        )
+        result = await research_agent.run(user_prompt=prompt) # research_agent needs to be accessible
+
+        # Update state
+        ctx.state.research_plan = result.data
+        ctx.state.research_plan.queries.append(ctx.state.configuration.article_topic)
+
+        # Save state *only if crucial* before moving to the next node.
+        # The base class saves on error/retry. Saving here ensures the research_plan
+        # is persisted even if the *next* node fails immediately. Good practice.
+        save_state(ctx.state)
+
+        logger.info(f'Search queries generated: {ctx.state.research_plan.queries}')
+
+        # Return the TYPE of the next node
+        if ctx.state.configuration.provide_llm_facts == "yes":
+            return LlmKnowledgeNode() 
+        else:
+            return ScrapingNode() 
 
 ###############################################################################
 ################################ LlmKnowledge Node ################################
-llmknowledge_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
-# llmknowledge_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+# llmknowledge_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
+llmknowledge_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 llmknowledge_agent_prompt = """
 You are a meticulous research assistant providing verified and sourced facts to support an article.
@@ -218,99 +318,123 @@ llmknowledge_agent = Agent(
 )
 
 @dataclass
-class LlmKnowledgeNode(BaseNode):
-    async def run(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
-        try:
-            print("Running LlmKnowledgeNode...")
-            return await asyncio.wait_for(self._run_internal(ctx), 600)
-        except asyncio.TimeoutError:
-            return End("ERROR: LlmKnowledgeNode timed out")
-    async def _run_internal(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
-        try:            
-            ctx.state = load_state()
-            prompt = llmknowledge_agent_prompt.format(
-                article_topic=ctx.state.configuration.article_topic,
-                initial_plan=ctx.state.research_plan.plan,
-                search_queries=ctx.state.research_plan.queries,
-                current_date=current_date
-            )
-            print(f'llmknowledge_agent_prompt: {prompt}')
-            result = await llmknowledge_agent.run(user_prompt=prompt)
-            print(f'result.data: {result.data}')
-            ctx.state.researched_info.facts_from_llm = result.data
-            print(f'facts_from_llm: {ctx.state.researched_info.facts_from_llm}')
-            save_state(ctx.state)
-            
-            return ScrapingNode()
-        except Exception as e:  
-            if ctx.state.llmknowledgenode_tries < 1:
-                ctx.state.llmknowledgenode_tries += 1
-                save_state(ctx.state)
-                print(f"Retrying LlmKnowledgeNode after error... {str(e)}")
-                ctx.state = load_state()
-                return LlmKnowledgeNode()
-            else:
-                return End(f"ERROR: Error in LlmKnowledgeNode after retry: {str(e)}")
+class LlmKnowledgeNode(ResilientNode):
+    # --- Configure ResilientNode ---
+    retry_counter_attr: str = "llmknowledgenode_tries"
+    max_retries: int = 1
+    timeout_seconds: int = 600
+
+    # --- Corrected signature ---
+    async def _execute(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
+        """
+        Retrieves and stores facts directly from the LLM based on the research plan.
+        """
+        logger.info("Executing LlmKnowledgeNode logic...")
+
+        # Don't usually need load_state() here, ctx is current.
+        # ctx.state = load_state() # Remove unless specifically needed before execution
+
+        prompt = llmknowledge_agent_prompt.format(
+            article_topic=ctx.state.configuration.article_topic,
+            initial_plan=ctx.state.research_plan.plan, # Assuming plan is populated
+            search_queries=ctx.state.research_plan.queries,
+            current_date=current_date # Assuming current_date is accessible
+        )
+        logger.debug(f'LlmKnowledgeNode prompt: {prompt}') # Use debug/info as appropriate
+
+        # Ensure llmknowledge_agent is accessible
+        result = await llmknowledge_agent.run(user_prompt=prompt)
+        logger.debug(f'LlmKnowledgeNode result.data: {result.data}')
+
+        # Update state
+        ctx.state.researched_info.facts_from_llm = result.data
+        logger.info(f'LLM facts retrieved: {len(ctx.state.researched_info.facts_from_llm)} items.')
+
+        # Save state on success before moving on
+        save_state(ctx.state)
+
+        # Return INSTANCE of the next node
+        return ScrapingNode()
             
 ###############################################################################
 ################################ Scraping Node ################################
 @dataclass
-class ScrapingNode(BaseNode):
-    async def run(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
-        try:
-            print("Running ScrapingNode...")
-            return await asyncio.wait_for(self._run_internal(ctx), 600)
-        except asyncio.TimeoutError:
-            return End("ERROR: ScrapingNode timed out")
+class ScrapingNode(ResilientNode):
+    # --- Configure ResilientNode ---
+    retry_counter_attr: str = "scrapingnode_tries"
+    max_retries: int = 1
+    # Potentially longer timeout for scraping multiple sites? Adjust as needed.
+    timeout_seconds: int = 720 # Example: 12 minutes
 
-    async def _run_internal(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
-        try:
-            ctx.state = load_state()
+    # --- Corrected signature ---
+    async def _execute(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
+        """
+        Searches for relevant URLs using generated queries and scrapes their content.
+        """
+        logger.info("Executing ScrapingNode logic...")
+        # ctx.state = load_state() # Generally not needed here
 
-            scraper = SearchAndScrape(
-                search_domains=ctx.state.configuration.domains,
-                max_results=ctx.state.configuration.max_search_results,
-                days=ctx.state.configuration.search_days,
-                model=ctx.state.configuration.scraping_model,
-                extraction_mode="markdown"
-            )
+        # Initialize scraper
+        scraper = SearchAndScrape(
+            search_domains=ctx.state.configuration.domains,
+            max_results=ctx.state.configuration.max_search_results,
+            days=ctx.state.configuration.search_days,
+            model=ctx.state.configuration.scraping_model,
+            # Ensure extraction_mode is set correctly if needed by SearchAndScrape init
+            extraction_mode=ctx.state.configuration.extraction_mode
+        )
 
-            search_tasks = [
-                asyncio.create_task(asyncio.to_thread(scraper.search_urls, query))
-                for query in ctx.state.research_plan.queries
-            ]
-            search_results = await asyncio.gather(*search_tasks)
+        # Define search tasks using asyncio.to_thread for potentially blocking calls
+        search_tasks = [
+            asyncio.create_task(asyncio.to_thread(scraper.search_urls, query))
+            for query in ctx.state.research_plan.queries
+        ]
+        # Gather search results
+        search_results = await asyncio.gather(*search_tasks)
 
-            unique_urls = set()
-            combined_descriptions = {}
-            for urls, desc_map in search_results:
-                unique_urls.update(urls)
+        # Process search results to get unique URLs and descriptions
+        unique_urls = set()
+        combined_descriptions = {}
+        for urls, desc_map in search_results:
+            if urls: # Check if urls list is not None or empty
+               unique_urls.update(urls)
+            if desc_map: # Check if desc_map is not None or empty
                 combined_descriptions.update(desc_map)
-            
-            # Add the user-provided URLs to the set of URLs to be scraped
-            unique_urls.update(ctx.state.configuration.urls)
-            unique_urls = list(unique_urls)
 
-            scrape_result = await scraper.scrape_urls(unique_urls, description_mapping=combined_descriptions)
-            ctx.state.scraped_pages = scrape_result["aggregated_results"]
-            save_state(ctx.state)
+        # Add manually provided URLs
+        unique_urls.update(ctx.state.configuration.urls)
+        # Convert set to list for scraping function
+        urls_to_scrape = list(unique_urls)
+
+        if not urls_to_scrape:
+            logger.warning("No unique URLs found or provided to scrape. Moving to ParsingNode.")
+            # We can proceed to ParsingNode which should handle empty input gracefully,
+            # or decide to end here if scraping is essential. Let's proceed for now.
+            # Optionally save state if needed even with no scraping.
+            # save_state(ctx.state)
             return ParsingNode()
-        except Exception as e:
-            if ctx.state.scrapingnode_tries < 1:
-                ctx.state.scrapingnode_tries += 1
-                save_state(ctx.state)
-                print("Retrying ScrapingNode after error...")
-                ctx.state = load_state()
-                return ScrapingNode()
-            else:
-                return End(f"ERROR: Error in ScrapingNode after retry: {str(e)}")
+
+        logger.info(f"Scraping {len(urls_to_scrape)} unique URLs...")
+
+        # Scrape the identified URLs
+        # Assuming scrape_urls is async; if not, wrap in asyncio.to_thread
+        scrape_result = await scraper.scrape_urls(urls_to_scrape, description_mapping=combined_descriptions)
+
+        # Update state with scraped pages
+        ctx.state.scraped_pages = scrape_result.get("aggregated_results", []) # Use .get for safety
+        logger.info(f"Scraping complete. Found {len(ctx.state.scraped_pages)} pages.")
+
+        # Save state on successful completion
+        save_state(ctx.state)
+
+        # Return INSTANCE of the next node
+        return ParsingNode()
 
 
 ###############################################################################
 ################################ Parsing Node #################################
-parsing_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+# parsing_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+parsing_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 class ParsedArticle(BaseModel):
     webpage_type: Literal['article', 'other']
@@ -366,67 +490,98 @@ parsing_agent = Agent(
 )
 
 @dataclass
-class ParsingNode(BaseNode):
-    async def run(self, ctx: GraphRunContext[State]) -> DataExtractionNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
-        try:
-            print("Running ParsingNode...")
-            return await asyncio.wait_for(self._run_internal(ctx), 600)
-        except asyncio.TimeoutError:
-            return End("ERROR: ParsingNode timed out")
+class ParsingNode(ResilientNode):
+    # --- Configure ResilientNode ---
+    retry_counter_attr: str = "parsingnode_tries"
+    max_retries: int = 1
+    # Parsing can be CPU/LLM intensive, adjust timeout if needed
+    timeout_seconds: int = 720 # Example: 12 minutes
 
-    async def _run_internal(self, ctx: GraphRunContext[State]) -> DataExtractionNode | End:
-        try:
-            ctx.state = load_state()
-            enc = tiktoken.get_encoding("cl100k_base")
-            MAX_TOKENS = 100_000
+    # --- Corrected signature ---
+    async def _execute(self, ctx: GraphRunContext[State]) -> DataExtractionNode | End:
+        """
+        Parses the raw HTML of scraped pages to extract article text,
+        handling token limits and individual page errors.
+        """
+        logger.info("Executing ParsingNode logic...")
+        # ctx.state = load_state() # Generally not needed here
 
-            original_pages = list(ctx.state.scraped_pages)
-            tasks = []
+        enc = tiktoken.get_encoding("cl100k_base")
+        MAX_TOKENS = 100_000 # Consider making this configurable
 
-            async def process_page(page: dict) -> Optional[str]:
-                try:
-                    article_body = page.get("article_body", "")
-                    tokens = enc.encode(article_body)
-                    token_count = len(tokens)
-                    if token_count > MAX_TOKENS:
-                        logger.warning(
-                            f"Article from {page.get('url')} has {token_count} tokens, exceeding {MAX_TOKENS}. Truncating."
-                        )
-                        tokens = tokens[:MAX_TOKENS]
-                        article_body = enc.decode(tokens)
-
-                    prompt = parsing_agent_prompt.format(html=article_body)
-                    result = await parsing_agent.run(user_prompt=prompt)
-                    page['webpage_type'] = result.data.webpage_type
-                    page['parsed_article'] = result.data.parsed_article
-                    return result.data.parsed_article
-                except Exception as error:
-                    print(f"Error processing page {page.get('url', 'unknown')}: {error}")
-                    if page in ctx.state.scraped_pages:
-                        ctx.state.scraped_pages.remove(page)
-                    return None
-
-            for page in original_pages:
-                tasks.append(process_page(page))
-
-            await asyncio.gather(*tasks)
-            save_state(ctx.state)
+        # Work on a copy or be careful if modifying ctx.state.scraped_pages directly
+        # Let's update pages in place, assuming process_page modifies the dict
+        pages_to_process = ctx.state.scraped_pages
+        if not pages_to_process:
+            logger.warning("No scraped pages found to parse. Proceeding.")
+            # save_state(ctx.state) # Optional save if state could have changed
             return DataExtractionNode()
-        except Exception as e:
-            if ctx.state.parsingnode_tries < 1:
-                ctx.state.parsingnode_tries += 1
-                save_state(ctx.state)
-                print("Retrying ParsingNode after error...")
-                ctx.state = load_state()
-                return ParsingNode()
-            else:
-                return End(f"ERROR: Error in ParsingNode after retry: {str(e)}")
+
+        tasks = []
+        processed_pages = [] # Collect successfully processed pages if needed separately
+                             # Or just rely on modifications within the original list items
+
+        async def process_page(page: dict):
+            """Inner function to process a single page."""
+            page_url = page.get('url', 'unknown URL')
+            try:
+                article_body = page.get("article_body", "")
+                if not article_body:
+                    logger.warning(f"No article_body found for {page_url}. Skipping parsing.")
+                    page['webpage_type'] = 'other' # Mark as other if no body
+                    page['parsed_article'] = None
+                    return # Don't proceed further for this page
+
+                tokens = enc.encode(article_body)
+                token_count = len(tokens)
+
+                if token_count > MAX_TOKENS:
+                    logger.warning(
+                        f"Article from {page_url} has {token_count} tokens, exceeding {MAX_TOKENS}. Truncating."
+                    )
+                    tokens = tokens[:MAX_TOKENS]
+                    article_body = enc.decode(tokens)
+                    page["article_body_truncated"] = True # Mark if truncated
+
+                prompt = parsing_agent_prompt.format(html=article_body)
+                # Ensure parsing_agent is accessible
+                result = await parsing_agent.run(user_prompt=prompt)
+
+                # Update the page dictionary directly
+                page['webpage_type'] = result.data.webpage_type
+                page['parsed_article'] = result.data.parsed_article
+                logger.debug(f"Successfully parsed {page_url} as {result.data.webpage_type}")
+
+            except Exception as error:
+                # Log error specific to this page, but don't fail the whole node
+                logger.error(f"Error processing page {page_url}: {error}", exc_info=True)
+                # Mark page as failed or set default values
+                page['webpage_type'] = 'other' # Or a specific error type?
+                page['parsed_article'] = None
+                page['parsing_error'] = str(error)
+                # We are modifying the page dict in place, so no need to remove from list
+
+        # Create tasks for processing pages
+        for page in pages_to_process:
+            tasks.append(process_page(page)) # Pass the dictionary
+
+        # Run all parsing tasks concurrently
+        await asyncio.gather(*tasks)
+
+        logger.info(f"Parsing finished for {len(pages_to_process)} pages.")
+
+        # State is modified in-place within the page dictionaries inside ctx.state.scraped_pages
+        # Save the updated state
+        save_state(ctx.state)
+
+        # Proceed to the next node
+        return DataExtractionNode()
 
 
 ###############################################################################
 ############################# DataExtraction Node #############################
-data_extraction_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+# data_extraction_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+data_extraction_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 data_extraction_agent_prompt = """
 Your task is to analyze text and determine whether it is an **article** or another type of page (e.g., main page, category page, tag page, etc.), then extract key information.
@@ -490,157 +645,269 @@ class ResearchedArticle(BaseModel):
     quotes: Optional[List[Quote]]
     keywords: Optional[List[str]]
 
-@dataclass
-class DataExtractionNode(BaseNode):
-    async def run(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
-        try:
-            print("Running DataExtractionNode...")
-            return await asyncio.wait_for(self._run_internal(ctx), 600)
-        except asyncio.TimeoutError:
-            return End("ERROR: DataExtractionNode timed out")
+@dataclass # Keep if you have specific fields later, otherwise optional
+class DataExtractionNode(ResilientNode):
+    # --- Configure ResilientNode ---
+    retry_counter_attr: str = "dataextractionnode_tries"
+    max_retries: int = 1
+    # Data extraction might involve many LLM calls, adjust timeout
+    timeout_seconds: int = 900 # Example: 15 minutes
 
-    async def _run_internal(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
-        try:
-            ctx.state = load_state()
+    # --- Corrected signature ---
+    async def _execute(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
+        """
+        Extracts structured information (facts, quotes, keywords) from parsed articles,
+        filters relevant and recent articles, and aggregates the data. Logs filtering decisions.
+        """
+        logger.info("Executing DataExtractionNode logic...")
 
-            data_extraction_agent = Agent(
-                model=data_extraction_model,
-                result_type=ResearchedArticle,
-                retries=2
-            )
+        # Initialize the agent within the execution if not already done globally/passed
+        # This ensures it uses the latest model/config if state changes matter
+        data_extraction_agent = Agent(
+            model=data_extraction_model, # Ensure data_extraction_model is accessible
+            result_type=ResearchedArticle,
+            retries=2 # Agent-level retries
+        )
 
-            async def process_page(page: dict) -> Optional[ResearchedArticle]:
-                try:
-                    url = page["url"]
-                    description = page.get("description", "No description available")
-                    parsed_article = page.get("parsed_article", "")
-                    title_match = re.search(r"<h1.*?>(.*?)</h1>", parsed_article, re.IGNORECASE)
-                    title = title_match.group(1).strip() if title_match else "Title not found"
-                    article_text = re.sub(r"<h1.*?>.*?</h1>", "", parsed_article, flags=re.IGNORECASE).strip()
+        # Filter pages that have actual parsed content to process
+        pages_to_process = [
+            page for page in ctx.state.scraped_pages
+            if page and page.get('parsed_article') # Ensure page exists and has content
+        ]
 
-                    formated_article = article_snippet.format(
-                        url=url, title=title, description=description, article_text=article_text
-                    )
-                    page['formated_article'] = formated_article
+        if not pages_to_process:
+            logger.warning("No pages with parsed content found to extract data from. Proceeding.")
+            return InstructionsNode()
 
-                    formated_article_short = article_snippet_short.format(
-                        title=title, article_text=article_text
-                    )
-                    page['formated_article_short'] = formated_article_short
+        tasks = []
 
-                    prompt = data_extraction_agent_prompt.format(
-                        text=formated_article,
-                        topic=ctx.state.configuration.article_topic
-                    )
-                    print(f'formatted_article: {formated_article}')
-                    researched_article = await data_extraction_agent.run(user_prompt=prompt)
-                    print(f'researched_article: {researched_article.data}')
+        async def process_page(page: dict):
+            """Inner function to extract data from a single parsed page."""
+            page_url = page.get('url', 'unknown URL')
+            try:
+                parsed_article = page.get("parsed_article", "") # Already checked if exists
 
-                    page['webpage_type'] = researched_article.data.webpage_type
-                    page['relevant'] = researched_article.data.relevant
-                    page['facts'] = researched_article.data.facts
-                    page['quotes'] = researched_article.data.quotes
-                    page['keywords'] = researched_article.data.keywords
-                    page['publication_date'] = researched_article.data.publication_date
+                # Improved title extraction (handles multiline titles better)
+                title_match = re.search(r"<h1.*?>(.*?)</h1>", parsed_article, re.IGNORECASE | re.DOTALL)
+                title = title_match.group(1).strip() if title_match else page.get('title', "Title not found")
 
-                    return researched_article.data
-                except Exception as error:
-                    print(f"Error processing page {page.get('url', 'unknown')}: {error}")
-                    if page in ctx.state.scraped_pages:
-                        ctx.state.scraped_pages.remove(page)
-                    return None
+                # Clean article text (remove H1 tag and its content)
+                article_text_no_h1 = re.sub(r"<h1.*?>.*?</h1>", "", parsed_article, flags=re.IGNORECASE | re.DOTALL).strip()
 
-            tasks = [process_page(page) for page in ctx.state.scraped_pages]
-            await asyncio.gather(*tasks)
-
-            x_days = ctx.state.configuration.search_days
-            cutoff_date = datetime.now().date() - timedelta(days=x_days)
-            print(f'cutoff_date: {cutoff_date}')
-
-            def parse_pub_date(pub_date):
-                if isinstance(pub_date, str):
-                    return datetime.strptime(pub_date, "%d.%m.%Y").date()
-                elif isinstance(pub_date, date):
-                    return pub_date
-                else:
-                    return None
-
-            articles = [
-                res for res in ctx.state.scraped_pages
-                if res is not None
-                and res.get('webpage_type') == "article"
-                and res.get('relevant') == "yes"
-                and (
-                    res.get('url') in ctx.state.configuration.urls or
-                    ((pub_date := parse_pub_date(res.get('publication_date'))) is not None and pub_date >= cutoff_date)
+                # Prepare formatted snippets for potential use/debugging
+                page['formated_article'] = article_snippet.format(
+                    url=page_url,
+                    title=title,
+                    description=page.get("description", "No description available"),
+                    article_text=article_text_no_h1
                 )
-            ]
+                page['formated_article_short'] = article_snippet_short.format(
+                    title=title,
+                    article_text=article_text_no_h1
+                )
+
+                # Create prompt for data extraction agent
+                prompt = data_extraction_agent_prompt.format(
+                    text=page['formated_article'], # Provide full context
+                    topic=ctx.state.configuration.article_topic
+                )
+                logger.debug(f"Data extraction prompt for {page_url}: {prompt[:300]}...") # Log snippet
+
+                # Run the agent
+                researched_article_result = await data_extraction_agent.run(user_prompt=prompt)
+                logger.debug(f"Data extraction result for {page_url}: {researched_article_result.data}")
+
+                # Update the page dictionary in-place with extracted data
+                if researched_article_result and researched_article_result.data:
+                    data = researched_article_result.data
+                    page['webpage_type'] = data.webpage_type
+                    page['relevant'] = data.relevant
+                    page['facts'] = data.facts
+                    # Ensure quotes are stored as dicts if the agent returns Pydantic models
+                    page['quotes'] = [q.model_dump() for q in data.quotes] if data.quotes else []
+                    page['keywords'] = data.keywords
+                    page['publication_date'] = data.publication_date
+                else:
+                     raise ValueError("Data extraction agent returned empty result.")
 
 
-            if not articles:
-                return End("All articles filtered out or none match criteria.")
+            except Exception as error:
+                logger.error(f"Error extracting data from page {page_url}: {error}", exc_info=True)
+                # Mark page with error, ensure default fields exist for filtering
+                page['extraction_error'] = str(error)
+                page.setdefault('webpage_type', 'other')
+                page.setdefault('relevant', 'no')
+                page.setdefault('publication_date', None)
+                page.setdefault('facts', [])
+                page.setdefault('quotes', [])
+                page.setdefault('keywords', [])
 
-            # 1) Extract existing facts_from_llm. (We keep the original structure, i.e. list[FactFromLlm].)
-            existing_facts_from_llm = ctx.state.researched_info.facts_from_llm or []
 
-            # 2) Build a simple list of fact strings from LLM facts so you can merge them with any new article facts.
-            llm_fact_strings = [
-                fact.fact_llm for fact in existing_facts_from_llm
-                if fact.fact_llm is not None
-            ]
+        # Create and run tasks for all pages needing processing
+        for page in pages_to_process:
+            tasks.append(process_page(page))
+        await asyncio.gather(*tasks)
+        logger.info(f"Data extraction finished processing {len(pages_to_process)} pages.")
 
-            # 3) Accumulate new article facts and other items from the scraped pages.
-            facts_from_articles = []
-            combined_quotes = []
-            combined_keywords = []
 
-            for article in articles:
-                if article.get('facts'):
-                    facts_from_articles.extend(article['facts'])
-                if article.get('quotes'):
-                    combined_quotes.extend(article['quotes'])
-                if article.get('keywords'):
-                    combined_keywords.extend(article['keywords'])
-                # Extract the URL and add it to the state's sources list
-                url = article.get('url')
-                if url and url not in ctx.state.sources:
-                    ctx.state.sources.append(url)
+        # --- Filtering and Aggregation Logic ---
+        logger.info("Filtering and aggregating extracted data...")
+        x_days = ctx.state.configuration.search_days
+        cutoff_date = datetime.now().date() - timedelta(days=x_days)
+        logger.info(f'Filtering articles published on or after: {cutoff_date} (or manually specified URLs)')
 
-            # 4) Combine old LLM facts (as strings) with new article facts for the .facts field.
-            combined_facts = llm_fact_strings + facts_from_articles
-            
-            if not combined_facts:
-                return End("No facts found in filtered articles. Cannot proceed.")\
+        def parse_pub_date(pub_date):
+            """Safely parse publication date from string or date object."""
+            if isinstance(pub_date, date):
+                return pub_date
+            if isinstance(pub_date, str):
+                for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d"): # Add more formats if needed
+                    try:
+                        return datetime.strptime(pub_date, fmt).date()
+                    except ValueError:
+                        pass # Try next format
+            logger.debug(f"Could not parse date: {pub_date}")
+            return None # Return None if not date, string, or unparseable string
 
-            # 5) Finally, build a new ResearchedInfo object without overwriting facts_from_llm.
-            combined_info = ResearchedInfo(
-                quotes=combined_quotes if combined_quotes else None,
-                facts=combined_facts,
-                facts_from_articles=facts_from_articles,
-                facts_from_llm=existing_facts_from_llm,  # <-- Preserve old LLM facts
-                keywords=combined_keywords,
-                article_texts="\n".join(article['formated_article_short'] for article in articles)
+        # Filtering loop with detailed logging
+        articles = []
+        logger.info(f"Starting filter process on {len(ctx.state.scraped_pages)} total pages.")
+        manual_urls = set(ctx.state.configuration.urls or []) # Ensure it's a set
+
+        for page in ctx.state.scraped_pages:
+            page_url = page.get('url', 'unknown URL')
+            log_prefix = f"Filtering '{page_url}':"
+            filter_reason = "Included" # Default assumption
+
+            if page is None:
+                logger.debug(f"{log_prefix} Skipping None page object.")
+                continue # Should ideally not happen if input is clean
+
+            if err_msg := page.get('extraction_error'):
+                logger.info(f"{log_prefix} Excluded - Extraction error: {err_msg}")
+                filter_reason = f"Extraction error: {err_msg}"
+                page['filter_reason'] = filter_reason # Store reason
+                continue
+
+            page_type = page.get('webpage_type')
+            if page_type != "article":
+                logger.info(f"{log_prefix} Excluded - Not classified as 'article' (Type: {page_type}).")
+                filter_reason = f"Not classified as 'article' (Type: {page_type})"
+                page['filter_reason'] = filter_reason # Store reason
+                continue
+
+            relevance = page.get('relevant')
+            if relevance != "yes":
+                logger.info(f"{log_prefix} Excluded - Not marked as 'relevant' (Relevance: {relevance}).")
+                filter_reason = f"Not marked as 'relevant' (Relevance: {relevance})"
+                page['filter_reason'] = filter_reason # Store reason
+                continue
+
+            # Date Check Logic
+            is_manual_url = page_url in manual_urls
+            publication_date_obj = parse_pub_date(page.get('publication_date'))
+            pub_date_str = page.get('publication_date', 'N/A')
+
+            if not is_manual_url:
+                if publication_date_obj is None:
+                    logger.info(f"{log_prefix} Excluded - Could not parse publication date ('{pub_date_str}') and not a manual URL.")
+                    filter_reason = f"Could not parse publication date ('{pub_date_str}')"
+                    page['filter_reason'] = filter_reason # Store reason
+                    continue
+                if publication_date_obj < cutoff_date:
+                    logger.info(f"{log_prefix} Excluded - Publication date {publication_date_obj} is older than cutoff {cutoff_date} and not a manual URL.")
+                    filter_reason = f"Publication date {publication_date_obj} older than cutoff {cutoff_date}"
+                    page['filter_reason'] = filter_reason # Store reason
+                    continue
+
+            # If all checks passed
+            logger.debug(f"{log_prefix} Included.")
+            page['filter_reason'] = filter_reason # Explicitly mark as included
+            articles.append(page) # Add to the list of articles to aggregate from
+
+
+        logger.info(f"Found {len(articles)} relevant articles after filtering.")
+
+        # Handle case where no articles meet criteria
+        if not articles:
+            logger.warning("No relevant articles found after filtering. Proceeding to InstructionsNode with only LLM facts (if any).")
+            # Keep LLM facts, clear others. Keep original manual URLs in sources.
+            llm_facts_preserved = ctx.state.researched_info.facts_from_llm or []
+            llm_fact_strings = [f.fact_llm for f in llm_facts_preserved if f.fact_llm]
+            ctx.state.researched_info = ResearchedInfo(
+                 facts=llm_fact_strings, # Combined facts = only LLM facts
+                 facts_from_articles=[],
+                 facts_from_llm=llm_facts_preserved, # Preserve original LLM fact objects
+                 quotes=[],
+                 keywords=[],
+                 article_texts=""
             )
-
-            ctx.state.researched_info = combined_info
-
+            # Preserve only the original manual URLs in the sources list
+            ctx.state.sources = list(manual_urls)
             save_state(ctx.state)
             return InstructionsNode()
-        except Exception as e:
-            if ctx.state.dataextractionnode_tries < 1:
-                ctx.state.dataextractionnode_tries += 1
-                save_state(ctx.state)
-                print("Retrying DataExtractionNode after error...")
-                ctx.state = load_state()
-                return DataExtractionNode()
-            else:
-                return End(f"ERROR: Error in DataExtractionNode after retry: {str(e)}")
+
+
+        # --- Aggregate Data from Filtered Articles ---
+        existing_facts_from_llm = ctx.state.researched_info.facts_from_llm or []
+        llm_fact_strings = [fact.fact_llm for fact in existing_facts_from_llm if fact.fact_llm]
+
+        facts_from_articles = []
+        combined_quotes_data = [] # Store raw quote data first
+        combined_keywords = set()
+        article_sources = set(manual_urls) # Start with manual URLs
+        article_texts_snippets = []
+
+        for article in articles:
+            # Extend lists, ensuring data exists and has the correct type
+            if facts := article.get('facts'):
+                 if isinstance(facts, list): facts_from_articles.extend(facts)
+            if quotes_data := article.get('quotes'):
+                 if isinstance(quotes_data, list): combined_quotes_data.extend(quotes_data)
+            if keywords := article.get('keywords'):
+                 if isinstance(keywords, list): combined_keywords.update(keywords)
+            if url := article.get('url'): article_sources.add(url)
+            if snippet := article.get('formated_article_short'): article_texts_snippets.append(snippet)
+
+        # Convert quote data to Quote objects safely
+        combined_quotes = []
+        for q_data in combined_quotes_data:
+             if isinstance(q_data, dict):
+                 try:
+                     combined_quotes.append(Quote(**q_data))
+                 except Exception as e:
+                     logger.warning(f"Could not create Quote object from data: {q_data}. Error: {e}")
+             elif isinstance(q_data, Quote): # If already Quote objects
+                 combined_quotes.append(q_data)
+
+
+        combined_facts = llm_fact_strings + facts_from_articles
+        if not combined_facts:
+            logger.warning("No facts found (LLM or Article) after filtering. Proceeding, but article quality may suffer.")
+            # Even if no facts, proceed. Writer node might handle this.
+
+        # Update state with combined info
+        ctx.state.researched_info.quotes = combined_quotes if combined_quotes else None
+        ctx.state.researched_info.facts = combined_facts # Combined list
+        ctx.state.researched_info.facts_from_articles = facts_from_articles # Explicitly track article facts
+        # ctx.state.researched_info.facts_from_llm remains unchanged from start of node
+        ctx.state.researched_info.keywords = list(combined_keywords)
+        ctx.state.researched_info.article_texts = "\n\n==============================\n\n".join(article_texts_snippets) # Add separator
+        ctx.state.sources = list(article_sources) # Final list of sources
+
+        logger.info(f"Aggregated data: {len(combined_facts)} facts, {len(combined_quotes)} quotes, {len(ctx.state.sources)} sources.")
+
+        # Save the final aggregated state
+        save_state(ctx.state)
+
+        # Proceed to the next node
+        return InstructionsNode()
 
 
 ###############################################################################
 ############################## Instructions Node ##############################
-instructions_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+# instructions_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+instructions_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 instructions_agent_prompt = """
 You are an **Editor-in-Chief**. Your task is to provide detailed, structured instructions for a journalist to write a **high-quality web article**.
@@ -680,51 +947,80 @@ Write it in the language of the Article Topic, no additional comments are needed
 """
 
 @dataclass
-class InstructionsNode(BaseNode):
-    async def run(self, ctx: GraphRunContext[State]) -> WritingNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
-        try:
-            print("Running InstructionsNode...")
-            return await asyncio.wait_for(self._run_internal(ctx), 600)
-        except asyncio.TimeoutError:
-            return End("ERROR: InstructionsNode timed out")
+class InstructionsNode(ResilientNode):
+    # --- Configure ResilientNode ---
+    retry_counter_attr: str = "instructionsnode_tries"
+    max_retries: int = 1
+    timeout_seconds: int = 600 # Adjust if needed
 
-    async def _run_internal(self, ctx: GraphRunContext[State]) -> WritingNode | End:
-        try:
-            ctx.state = load_state()
+    # --- Corrected signature ---
+    async def _execute(self, ctx: GraphRunContext[State]) -> WritingNode | End:
+        """
+        Generates detailed writing instructions for the journalist agent
+        based on the research plan, topic, and reference article snippets.
+        """
+        logger.info("Executing InstructionsNode logic...")
+        # ctx.state = load_state() # Generally not needed
 
-            user_prompt = instructions_agent_prompt.format(
-                article_texts=ctx.state.researched_info.article_texts,
-                plan=ctx.state.research_plan.plan,
-                topic=ctx.state.configuration.article_topic
-            )
-            instructions_agent = Agent(
-                model=instructions_model,
-                result_type=str,
-                retries=2
-            )
-            result = await instructions_agent.run(user_prompt=user_prompt)
-            ctx.state.instructions = result.data
-            save_state(ctx.state)
-            return WritingNode()
-        except Exception as e:
-            if ctx.state.instructionsnode_tries < 1:
-                ctx.state.instructionsnode_tries += 1
-                save_state(ctx.state)
-                print("Retrying InstructionsNode after error...")
-                ctx.state = load_state()
-                return InstructionsNode()
-            else:
-                return End(f"ERROR: Error in InstructionsNode after retry: {str(e)}")
+        # Prepare the prompt, handle potentially empty fields gracefully
+        article_texts = ctx.state.researched_info.article_texts or "No reference articles available."
+        research_plan = ctx.state.research_plan.plan or "No initial plan provided."
+        topic = ctx.state.configuration.article_topic
+
+        # Check if essential info is missing (optional, could rely on prompt/LLM)
+        if not topic:
+            logger.error("Article topic is missing in configuration. Cannot generate instructions.")
+            # Option 1: End the graph
+            return End("ERROR: Article topic is required for InstructionsNode.")
+            # Option 2: Try to proceed (LLM might handle it, but quality loss likely)
+            # logger.warning("Article topic missing, instructions quality might be low.")
+
+        user_prompt = instructions_agent_prompt.format(
+            article_texts=article_texts,
+            plan=research_plan,
+            topic=topic
+        )
+        logger.debug(f"InstructionsNode prompt: {user_prompt[:300]}...")
+
+        # Ensure instructions_agent is initialized/accessible
+        # If agent needs specific config, initialize here
+        instructions_agent = Agent(
+            model=instructions_model, # Ensure instructions_model is accessible
+            result_type=str,
+            retries=2 # Agent-level retries
+        )
+
+        # Run the agent
+        result = await instructions_agent.run(user_prompt=user_prompt)
+
+        if not result or not result.data:
+             # Handle case where agent returns no instructions
+             logger.error("Instructions agent returned no data.")
+             return End("ERROR: Failed to generate writing instructions.")
+
+        # Update state
+        ctx.state.instructions = result.data
+        logger.info("Successfully generated writing instructions.")
+
+        # Save state on success
+        save_state(ctx.state)
+
+        # Proceed to the next node
+        return WritingNode()
 
 
 ###############################################################################
 ################################ Writing Node #################################
-writing_model = OpenAIModel(
-    model_name='deepseek/deepseek-r1',
+# writing_model = OpenAIModel(
+#     model_name='deepseek/deepseek-r1',
+#     base_url='https://openrouter.ai/api/v1',
+#     api_key=os.getenv('OPENROUTER_API_KEY'),
+# )
+provider = OpenAIProvider(
     base_url='https://openrouter.ai/api/v1',
-    api_key=os.getenv('OPENROUTER_API_KEY'),
-)
+    api_key=os.getenv('OPENROUTER_API_KEY'),)
+
+writing_model = OpenAIModel('deepseek/deepseek-r1', provider = provider)
 
 writing_agent_prompt = """You are an **editor for a web magazine**. Your task is to write a **high-quality web article** on the following topic:
 
@@ -757,64 +1053,108 @@ Moreover:
 """
 
 @dataclass
-class WritingNode(BaseNode):
-    async def run(self, ctx: GraphRunContext[State]) -> End | ReflectionNode | FollowUpNode:
-        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
-        try:
-            print("Running WritingNode...")
-            return await asyncio.wait_for(self._run_internal(ctx), 900)
-        except asyncio.TimeoutError:
-            return End("ERROR: WritingNode timed out")
+class WritingNode(ResilientNode):
+    # --- Configure ResilientNode ---
+    retry_counter_attr: str = "writingnode_tries"
+    max_retries: int = 1 # Retries for a single *invocation* of writing
+    # Writing can take time, especially with large models/complex instructions
+    timeout_seconds: int = 900 # Example: 15 minutes
 
-    async def _run_internal(self, ctx: GraphRunContext[State]) -> End | ReflectionNode | FollowUpNode:
-        try:
-            ctx.state = load_state()
-            print(f'WRITING ROUND: {ctx.state.reflection_round}')
-            writing_agent = Agent[None, str](
-                model=writing_model,
-                result_type=str,
-                retries=2
+    # --- Corrected signature (matches original logic) ---
+    async def _execute(self, ctx: GraphRunContext[State]) -> ReflectionNode | FollowUpNode | End:
+        """
+        Writes or revises the article based on instructions or reflection feedback.
+        Manages the reflection loop state.
+        """
+        logger.info(f"Executing WritingNode logic (Round: {ctx.state.reflection_round})...")
+        # ctx.state = load_state() # Generally not needed
+
+        # Ensure writing_agent is initialized/accessible
+        # Use the specific writing model configuration
+        writing_agent = Agent[None, str](
+            model=writing_model, # Ensure writing_model is accessible
+            result_type=str,
+            retries=2 # Agent-level retries
+        )
+
+        # Determine the correct prompt based on the reflection round
+        if ctx.state.reflection_round == 0:
+            # Initial writing round
+            # Prepare prompt, handling potentially missing data
+            facts_str = "\n - ".join(ctx.state.researched_info.facts or ["No facts available."])
+            keywords_str = ", ".join(ctx.state.researched_info.keywords or ["N/A"])
+            quotes_list = ctx.state.researched_info.quotes or []
+            quotes_str = "\n".join([f'"{q.text}" - {q.speaker} (Source: {q.source or "N/A"})' for q in quotes_list]) \
+                         if quotes_list else "No quotes available."
+
+            if not ctx.state.instructions:
+                logger.error("Writing instructions are missing. Cannot proceed with writing.")
+                return End("ERROR: Writing instructions are required for WritingNode.")
+
+            user_prompt = writing_agent_prompt.format(
+                topic=ctx.state.configuration.article_topic,
+                facts=facts_str,
+                keywords=keywords_str,
+                quotes=quotes_str,
+                instructions=ctx.state.instructions,
+                current_date=ctx.state.current_date # Ensure current_date accessible
             )
-            if ctx.state.reflection_round == 0:
-                user_prompt = writing_agent_prompt.format(
-                    topic=ctx.state.configuration.article_topic,
-                    facts=ctx.state.researched_info.facts,
-                    keywords=ctx.state.researched_info.keywords,
-                    quotes=ctx.state.researched_info.quotes,
-                    instructions=ctx.state.instructions,
-                    current_date=ctx.state.current_date
-                )
-            else:
-                user_prompt = ctx.state.reflection_prompt
+            logger.info("Using initial writing prompt.")
+        else:
+            # Reflection round
+            if not ctx.state.reflection_prompt:
+                 logger.error(f"Reflection prompt is missing for round {ctx.state.reflection_round}. Cannot revise.")
+                 return End(f"ERROR: Reflection prompt missing for round {ctx.state.reflection_round}.")
 
-            print(f'WRITER PROMPT (Round: {ctx.state.reflection_round}): {user_prompt}')
-            result = await writing_agent.run(user_prompt=user_prompt, message_history=ctx.state.messages)
-            ctx.state.messages = result.all_messages()
+            user_prompt = ctx.state.reflection_prompt
+            logger.info(f"Using reflection prompt for round {ctx.state.reflection_round}.")
 
-            if ctx.state.reflection_round > 0:
-                ctx.state.finished_article = result.data
-                save_state(ctx.state)
-                print(f"return End {result.data}")
-                return FollowUpNode()
-                # return End(result.data)
-            else:
-                save_state(ctx.state)
-                print("go to ReflectionNode")
-                return ReflectionNode()
-        except Exception as e:
-            if ctx.state.writingnode_tries < 1:
-                ctx.state.writingnode_tries += 1
-                save_state(ctx.state)
-                print("Retrying WritingNode after error...")
-                ctx.state = load_state()
-                return WritingNode()
-            else:
-                return End(f"ERROR: Error in WritingNode after retry: {str(e)}")
+        logger.debug(f"Writer prompt (Round {ctx.state.reflection_round}): {user_prompt[:300]}...")
+
+        # Run the agent, passing the current message history
+        try:
+            result = await writing_agent.run(
+                user_prompt=user_prompt,
+                message_history=ctx.state.messages # Pass existing history
+            )
+        except Exception as agent_error:
+            # If the agent call *itself* fails critically after its internal retries
+            logger.exception(f"Writing agent failed during round {ctx.state.reflection_round}.")
+            # Allow ResilientNode's retry logic to handle this attempt
+            raise agent_error # Re-raise the exception for ResilientNode to catch
+
+        if not result or not result.data:
+            logger.error(f"Writing agent returned no data in round {ctx.state.reflection_round}.")
+            # Allow ResilientNode's retry logic to handle this attempt
+            # We might want to raise an error here to trigger the retry,
+            # otherwise the graph might proceed incorrectly.
+            raise ValueError(f"Writing agent returned empty result in round {ctx.state.reflection_round}.")
+
+
+        # Update message history ALWAYS after a successful agent call
+        ctx.state.messages = result.all_messages()
+
+        # Determine next step based on reflection round
+        if ctx.state.reflection_round > 0:
+            # This was the revision round based on reflection
+            ctx.state.finished_article = result.data
+            logger.info(f"Article revision complete (Round {ctx.state.reflection_round}). Proceeding to FollowUpNode.")
+            # Save state including the finished article and final message history
+            save_state(ctx.state)
+            return FollowUpNode()
+        else:
+            # This was the first writing round
+            # Article is in result.data, but not yet final. Stored in messages.
+            logger.info("Initial article draft complete. Proceeding to ReflectionNode.")
+            # Save state including the updated message history (contains the draft)
+            save_state(ctx.state)
+            return ReflectionNode()
 
 
 ###############################################################################
 ############################### Reflection Node ###############################
-reflection_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+# reflection_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+reflection_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 reflection_agent_prompt = """You are an **Editor-in-Chief**. Your task is to **review the article** written by the editor agent and provide **detailed, relevant, and actionable feedback**. Your output must consist solely of a structured AI prompt for a writing agent—do not include any additional commentary or explanations. The entire feedback must be written in the same language as the revised article.
 
@@ -841,46 +1181,84 @@ reflection_agent_prompt = """You are an **Editor-in-Chief**. Your task is to **r
 """
 
 @dataclass
-class ReflectionNode(BaseNode):
-    async def run(self, ctx: GraphRunContext[State]) -> WritingNode | End:
-        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
-        try:
-            print("Running ReflectionNode...")
-            return await asyncio.wait_for(self._run_internal(ctx), 600)
-        except asyncio.TimeoutError:
-            return End("ReflectionNode timed out")
+class ReflectionNode(ResilientNode):
+    # --- Configure ResilientNode ---
+    retry_counter_attr: str = "reflectionnode_tries"
+    max_retries: int = 1
+    timeout_seconds: int = 600 # Adjust if needed
 
-    async def _run_internal(self, ctx: GraphRunContext[State]) -> WritingNode | End:
+    # --- Corrected signature ---
+    async def _execute(self, ctx: GraphRunContext[State]) -> WritingNode | End:
+        """
+        Analyzes the draft article (from message history) against instructions
+        and benchmarks, generating feedback (reflection prompt) for the next writing round.
+        """
+        logger.info("Executing ReflectionNode logic...")
+        # ctx.state = load_state() # Generally not needed
+
+        # Ensure reflection_agent is initialized/accessible
+        reflection_agent = Agent(
+            model=reflection_model, # Ensure reflection_model is accessible
+            result_type=str,
+            # Add retries if the agent supports it and it's desired
+            # retries=1
+        )
+
+        # Prepare the prompt using benchmark articles
+        benchmark_articles = ctx.state.researched_info.article_texts or "No benchmark articles available."
+        user_prompt = reflection_agent_prompt.format(
+            benchmark_articles=benchmark_articles
+        )
+        logger.debug(f"ReflectionNode prompt: {user_prompt[:300]}...")
+
+        # Crucially, run the agent with the message history which contains the draft
+        if not ctx.state.messages:
+             logger.error("Message history is empty. Cannot perform reflection.")
+             # This indicates a likely logic error earlier in the graph.
+             return End("ERROR: Cannot run ReflectionNode with empty message history.")
+
         try:
-            ctx.state = load_state()
-            reflection_agent = Agent(
-                model=reflection_model,
-                result_type=str,
+            result = await reflection_agent.run(
+                user_prompt=user_prompt,
+                message_history=ctx.state.messages # Pass history including the draft
             )
-            user_prompt = reflection_agent_prompt.format(
-                benchmark_articles=ctx.state.researched_info.article_texts
-            )
-            result = await reflection_agent.run(user_prompt=user_prompt, message_history=ctx.state.messages)
-            ctx.state.reflection_prompt = (
-                f'Follow these instructions to improve your article:\n {result.data}'
-                f'\n Use these arricles below as a benchmark and additional inspiration:\n {ctx.state.researched_info.article_texts}'
-            )
-            ctx.state.reflection_round += 1
-            save_state(ctx.state)
-            return WritingNode()
-        except Exception as e:
-            if ctx.state.reflectionnode_tries < 1:
-                ctx.state.reflectionnode_tries += 1
-                save_state(ctx.state)
-                print("Retrying ReflectionNode after error...")
-                ctx.state = load_state()
-                return ReflectionNode()
-            else:
-                return End(f"ERROR: Error in ReflectionNode after retry: {str(e)}")
+        except Exception as agent_error:
+            logger.exception("Reflection agent failed.")
+            # Allow ResilientNode's retry logic to handle this attempt
+            raise agent_error # Re-raise
+
+        if not result or not result.data:
+            logger.error("Reflection agent returned no data.")
+            # Trigger retry by raising an error
+            raise ValueError("Reflection agent returned empty result.")
+
+        # Construct the feedback prompt for the next WritingNode execution
+        feedback = result.data
+        # Add benchmark articles to the feedback prompt for the writer's reference
+        full_reflection_prompt = (
+            f'Follow these instructions to improve your article:\n{feedback}\n\n'
+            f'--- Benchmark Articles for Reference ---\n'
+            f'{benchmark_articles}'
+        )
+
+        # Update state
+        ctx.state.reflection_prompt = full_reflection_prompt
+        ctx.state.reflection_round += 1 # Increment the round counter
+        # Note: We don't update ctx.state.messages here, as reflection doesn't add to the core conversation history.
+        # If you *wanted* the reflection feedback included in history, you'd append ModelMessages here.
+
+        logger.info(f"Reflection complete. Generated feedback prompt for round {ctx.state.reflection_round}.")
+
+        # Save state with the new reflection_prompt and incremented round
+        save_state(ctx.state)
+
+        # Proceed back to WritingNode for revision
+        return WritingNode()
 
 ###############################################################################
 ############################## Follow up Node ##############################
-followup_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+# followup_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
+followup_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 followup_agent_prompt = """You are given a finished article (referred to as "finished_article"). Please analyze it thoroughly and perform the following steps:
 
@@ -922,87 +1300,194 @@ class FollowUp(BaseModel):
 
 
 @dataclass
-class FollowUpNode(BaseNode):
-    async def run(self, ctx: GraphRunContext[State]) -> End:
-        # We wrap the original logic in a separate method and apply an 8-minute (600s) timeout.
-        try:
-            print("Running FollowUpNode...")
-            return await asyncio.wait_for(self._run_internal(ctx), 600)
-        except asyncio.TimeoutError:
-            return End("FollowUpNode timed out")
+class FollowUpNode(ResilientNode):
+    # --- Configure ResilientNode ---
+    retry_counter_attr: str = "followupnode_tries"
+    max_retries: int = 1
+    timeout_seconds: int = 600 # Adjust if needed
 
-    async def _run_internal(self, ctx: GraphRunContext[State]) -> WritingNode | End:
-        try:
-            ctx.state = load_state()
-            followup_agent = Agent(
-                model=followup_model,
-                result_type=FollowUp,
-            )
-            user_prompt = followup_agent_prompt.format(
-                finished_article=ctx.state.finished_article
-            )
-            result = await followup_agent.run(user_prompt=user_prompt)
-            
-            
-            print(f'LLM FACTS: {ctx.state.researched_info.facts_from_llm}')
-            full_result = f"""
-            <article>
-                {ctx.state.finished_article}
-            </article>
-            <hr style="margin: 20px 0; border: 0; height: 1px; background: #ccc;" />
-            <section>
-                <h2>Alternatywne tytuły</h2>
-                <ul>
-                    {''.join(f'<li>{title}</li>' for title in result.data.alternative_titles)}
-                </ul>
-            </section>
-            <section>
-                <h2>Tematy do rozważenia</h2>
-                <ul>
-                    {''.join(f'<li>{topic}</li>' for topic in result.data.followup_articles)}
-                </ul>
-            </section>
-            <section>
-                <h2>Źródła</h2>
-                <ul>
-                    {''.join(f'<li>{source}</li>' for source in ctx.state.sources)}
-                </ul>
-            </section>
-            <section>
-                <h2>Cytaty</h2>
-                <ul>
-                    {''.join(f'<li>{quote.text} - {quote.speaker} (Źródło: {quote.source})</li>' for quote in (ctx.state.researched_info.quotes or [])) or '<li>No quotes available.</li>'}
-                </ul>
-            </section>
-            <section>
-                <h2>Fakty z artykułów źródłowych</h2>
-                <ul>
-                    {''.join(f'<li>{fact}</li>' for fact in (ctx.state.researched_info.facts_from_articles or [])) or '<li>No facts available.</li>'}
-                </ul>
-            </section>
-            <section>
-                <h2>LLM Fakty i ich źródła</h2>
-                <ul>
-                    {''.join(f'<li>{fact.fact_llm} (Źródło: {fact.source})</li>' for fact in (ctx.state.researched_info.facts_from_llm or [])) or '<li>No LLM facts available.</li>'}
-                </ul>
-            </section>
-            """
+    # --- Corrected signature ---
+    async def _execute(self, ctx: GraphRunContext[State]) -> End:
+        """
+        Generates alternative titles and follow-up article ideas based on the
+        finished article. Formats the final output including metadata and errors.
+        """
+        logger.info("Executing FollowUpNode logic...")
+        # ctx.state = load_state() # Generally not needed
 
-
-
-
- 
+        if not ctx.state.finished_article:
+            logger.error("Finished article is missing in state. Cannot generate follow-up content.")
+            # Add error to state before ending
+            ctx.state.add_error("FollowUpNode", "Finished article missing in state.")
             save_state(ctx.state)
-            return End(full_result)
-        except Exception as e:
-            if ctx.state.followupnode_tries < 1:
-                ctx.state.followupnode_tries += 1
-                save_state(ctx.state)
-                print("Retrying FollowUpNode after error...")
-                ctx.state = load_state()
-                return ReflectionNode()
-            else:
-                return End(f"ERROR: Error in FollowUpNode after retry: {str(e)}")
+            # Return End with an error message including collected errors
+            error_report = self._generate_error_report(ctx.state.errors)
+            return End(f"ERROR: Finished article missing.\n{error_report}")
+
+        # Ensure followup_agent is initialized/accessible
+        followup_agent = Agent(
+            model=followup_model, # Ensure followup_model is accessible
+            result_type=FollowUp, # Ensure FollowUp model is defined
+            # Add retries if needed
+        )
+
+        user_prompt = followup_agent_prompt.format(
+            finished_article=ctx.state.finished_article
+        )
+        logger.debug(f"FollowUpNode prompt: {user_prompt[:300]}...")
+
+        try:
+            result = await followup_agent.run(user_prompt=user_prompt)
+            follow_up_data = result.data if result else None
+        except Exception as agent_error:
+            logger.exception("Follow-up agent failed.")
+            # Allow ResilientNode's retry logic to handle this attempt
+            raise agent_error # Re-raise
+
+        if not follow_up_data:
+            logger.warning("Follow-up agent returned no data. Proceeding without suggestions.")
+            # Initialize with empty lists if agent failed or returned nothing
+            follow_up_data = FollowUp(alternative_titles=[], followup_articles=[])
+            # Optionally add this as a non-fatal error to the report
+            ctx.state.add_error("FollowUpNode", "Follow-up agent returned no suggestions.")
+
+
+        # --- Construct the final HTML Output ---
+        logger.info("Constructing final HTML output...")
+
+        article_html = f"<article>\n{ctx.state.finished_article}\n</article>"
+        titles_html = self._generate_list_html("Alternatywne tytuły", follow_up_data.alternative_titles)
+        topics_html = self._generate_list_html("Tematy do rozważenia", follow_up_data.followup_articles)
+        # --- NEW sources HTML call ---
+        sources_html = self._generate_detailed_sources_html(
+            "Źródła i Status Przetwarzania",
+            ctx.state.scraped_pages # Pass all scraped pages
+        )
+        quotes_html = self._generate_quotes_html(ctx.state.researched_info.quotes)
+        article_facts_html = self._generate_list_html("Fakty z artykułów źródłowych", ctx.state.researched_info.facts_from_articles)
+        llm_facts_html = self._generate_llm_facts_html(ctx.state.researched_info.facts_from_llm)
+        error_report_html = self._generate_error_report_html(ctx.state.errors)
+
+        full_result = f"""<!DOCTYPE html>
+<html>
+<head>
+<title>Article Result</title>
+<meta charset="UTF-8">
+<style>
+  /* ... (styles remain the same) ... */
+  .source-item {{ margin-bottom: 8px; }}
+  .source-url {{ font-weight: bold; }}
+  .source-status {{ font-style: italic; margin-left: 10px; }}
+  .status-included {{ color: green; }}
+  .status-excluded {{ color: orange; }}
+  .status-error {{ color: red; }} /* For extraction errors */
+</style>
+</head>
+<body>
+{article_html}
+{error_report_html}
+{titles_html}
+{topics_html}
+{sources_html} /* <-- Updated sources section */
+{quotes_html}
+{article_facts_html}
+{llm_facts_html}
+</body>
+</html>
+"""
+        save_state(ctx.state)
+        logger.info("FollowUpNode complete. Returning final output.")
+        return End(full_result)
+
+    # --- Helper methods for HTML generation ---
+
+    def _generate_list_html(self, title: str, items: Optional[List[str]]) -> str:
+        """Generates HTML for a simple list section."""
+        if not items:
+            content = "<ul><li>No items available.</li></ul>"
+        else:
+            list_items = "".join(f"<li>{escape(item)}</li>" for item in items)
+            content = f"<ul>{list_items}</ul>"
+        return f"<section><h2>{escape(title)}</h2>{content}</section>"
+
+    def _generate_quotes_html(self, quotes: Optional[List[Quote]]) -> str:
+        """Generates HTML for the quotes section."""
+        title = "Cytaty"
+        if not quotes:
+            content = "<ul><li>No quotes available.</li></ul>"
+        else:
+            list_items = "".join(
+                f"<li>{escape(q.text or 'N/A')} - {escape(q.speaker or 'Unknown')} (Źródło: {escape(q.source or 'N/A')})</li>"
+                for q in quotes
+            )
+            content = f"<ul>{list_items}</ul>"
+        return f"<section><h2>{escape(title)}</h2>{content}</section>"
+
+    def _generate_llm_facts_html(self, llm_facts: Optional[List[FactFromLlm]]) -> str:
+        """Generates HTML for the LLM facts section."""
+        title = "LLM Fakty i ich źródła"
+        if not llm_facts:
+            content = "<ul><li>No LLM facts available.</li></ul>"
+        else:
+            list_items = "".join(
+                f"<li>{escape(f.fact_llm or 'N/A')} (Źródło: {escape(f.source or 'N/A')})</li>"
+                for f in llm_facts
+            )
+            content = f"<ul>{list_items}</ul>"
+        return f"<section><h2>{escape(title)}</h2>{content}</section>"
+
+    def _generate_error_report_html(self, errors: List[Dict[str, str]]) -> str:
+        """Generates an HTML section reporting errors logged during the run."""
+        if not errors:
+            return "" # Return empty string if no errors
+
+        title = "Execution Errors Report"
+        list_items = "".join(
+            f"<li><strong>{escape(err.get('node', 'Unknown Node'))}:</strong> {escape(err.get('error', 'Unknown Error'))}</li>"
+            for err in errors
+        )
+        content = f"<ul>{list_items}</ul>"
+        # Add specific class for styling
+        return f"<section class='error-report'><h2>{escape(title)}</h2>{content}</section>"
+
+    def _generate_error_report(self, errors: List[Dict[str, str]]) -> str:
+        """Generates a plain text error report."""
+        if not errors:
+            return "No errors reported."
+        report = "--- Execution Errors ---\n"
+        for err in errors:
+             report += f"- Node: {err.get('node', 'Unknown Node')}, Error: {err.get('error', 'Unknown Error')}\n"
+        return report
+
+    def _generate_detailed_sources_html(self, title: str, all_pages: List[Dict]) -> str:
+        """Generates HTML for sources, showing status and filter reason."""
+        if not all_pages:
+            content = "<ul><li>No sources were processed.</li></ul>"
+        else:
+            list_items = ""
+            for page in sorted(all_pages, key=lambda p: p.get('url', '')): # Sort by URL
+                url = page.get('url', 'N/A')
+                reason = page.get('filter_reason', 'Status unknown') # Get reason stored by DataExtractionNode
+                status_class = "status-excluded" # Default style
+                status_text = f"Excluded ({escape(reason)})"
+
+                if reason == "Included":
+                    status_class = "status-included"
+                    status_text = "Included in final article"
+                elif "error" in reason.lower():
+                     status_class = "status-error"
+                     # status_text remains "Excluded ({reason})" which contains error details
+
+                list_items += (
+                    f"<li class='source-item'>"
+                    f"<span class='source-url'>{escape(url)}</span>"
+                    f" - <span class='source-status {status_class}'>{status_text}</span>"
+                    f"</li>"
+                )
+
+            content = f"<ul>{list_items}</ul>"
+
+        return f"<section><h2>{escape(title)}</h2>{content}</section>"
 
 
 ###############################################################################
