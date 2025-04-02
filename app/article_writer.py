@@ -35,21 +35,18 @@ current_date = current_date_today = date.today()
 class ResilientNode(BaseNode, abc.ABC):
     """
     A base node class that handles common execution logic like
-    timeouts, retries, and error logging.
+    timeouts, retries, and error logging, designed to work with FallbackModel.
     """
-    # --- Node specific configuration (must be set in subclasses) ---
-    # Example: retry_counter_attr = "searchnode_tries"
     retry_counter_attr: str = ""
-    # Example: max_retries = 1
     max_retries: int = 1
-    # Example: timeout_seconds = 600
-    timeout_seconds: int = 600 # Default timeout
+    timeout_seconds: int = 600
 
     @abc.abstractmethod
     async def _execute(self, ctx: GraphRunContext[State]) -> BaseNode | End:
         """
         The core logic specific to the node.
-        Subclasses MUST implement this method.
+        Subclasses MUST implement this method. It should instantiate
+        a FallbackModel and use it within an Agent.
         It should return the next node instance, an End state,
         a node Type (to instantiate), or None if handled internally.
         """
@@ -58,7 +55,7 @@ class ResilientNode(BaseNode, abc.ABC):
     async def run(self, ctx: GraphRunContext[State]) -> BaseNode | End:
         """
         Runs the node's core logic (_execute) with timeout, retry,
-        and error handling.
+        and enhanced error handling for FallbackModel.
         """
         if not self.retry_counter_attr:
             raise NotImplementedError(
@@ -66,49 +63,176 @@ class ResilientNode(BaseNode, abc.ABC):
             )
 
         node_name = self.__class__.__name__
-        # No need to load state here usually, ctx should be up-to-date
+        current_retries = getattr(ctx.state, self.retry_counter_attr, 0)
+        error_message = "Node execution failed" # Default error message
 
         try:
-            logger.info(f"Running {node_name}...")
+            logger.info(f"Running {node_name} (Attempt {current_retries + 1}/{self.max_retries + 1})...")
             # Wrap the specific logic execution with a timeout
             result = await asyncio.wait_for(
-                self._execute(ctx), # Call the subclass's specific logic
+                self._execute(ctx), # This now uses FallbackModel internally
                 timeout=self.timeout_seconds
             )
-            # Reset retry counter on success if desired (optional)
+            # Optional: Reset retry counter on success
             # setattr(ctx.state, self.retry_counter_attr, 0)
-            # save_state(ctx.state) # Save state after successful run? Optional.
+            # save_state(ctx.state)
             logger.info(f"{node_name} completed successfully.")
             return result # Return the next node or End
 
         except asyncio.TimeoutError:
-            error_message = f"{node_name} timed out after {self.timeout_seconds} seconds"
+            error_message = f"{node_name} timed out after {self.timeout_seconds} seconds on attempt {current_retries + 1}"
             logger.error(error_message)
-            # Fall through to the general exception handling for retry logic
+            # Fall through to retry logic
+
+        except FallbackExceptionGroup as feg:
+            error_message = f"{node_name} failed on attempt {current_retries + 1}: All fallback models exhausted."
+            logger.error(error_message)
+            # Log details about each model's failure
+            for i, exc in enumerate(feg.exceptions):
+                model_name_info = f"Model {i+1}"
+                # Attempt to get model name if available in the exception context
+                if hasattr(exc, '__cause__') and hasattr(exc.__cause__, 'model_name'):
+                     model_name_info = f"Model {i+1} ({exc.__cause__.model_name})" # Might need adjustment based on actual exception structure
+                elif hasattr(exc, 'model_name'):
+                     model_name_info = f"Model {i+1} ({exc.model_name})"
+
+                logger.error(f"  - {model_name_info}: {type(exc).__name__}: {exc}")
+            # You could potentially add more details from feg.exceptions to the main error_message
+            # error_message += f" Errors: {[str(e) for e in feg.exceptions]}" # Example
+             # Fall through to retry logic
+
+        except ValueError as ve: # Catch specific errors like "No usable models"
+            error_message = f"Configuration or setup error in {node_name} on attempt {current_retries + 1}: {str(ve)}"
+            logger.error(error_message, exc_info=True) # Log traceback for value errors
+             # Fall through to retry logic
 
         except Exception as e:
-            error_message = f"Error in {node_name}: {str(e)}"
-            logger.exception(f"Caught exception in {node_name}") # Logs traceback
-            # Fall through to the general exception handling
+            error_message = f"Unexpected error in {node_name} on attempt {current_retries + 1}: {type(e).__name__}: {str(e)}"
+            logger.exception(f"Caught unexpected exception in {node_name}") # Logs traceback
+            # Fall through to retry logic
 
         # --- Common Error/Retry Handling ---
-        current_retries = getattr(ctx.state, self.retry_counter_attr, 0)
-        ctx.state.add_error(node_name, error_message) # Log the error to state
+        ctx.state.add_error(node_name, error_message) # Log the specific error to state
 
         if current_retries < self.max_retries:
-            # Increment retry counter
             setattr(ctx.state, self.retry_counter_attr, current_retries + 1)
             save_state(ctx.state) # Save state after incrementing counter and adding error
-            logger.warning(f"Retrying {node_name} (Attempt {current_retries + 1}/{self.max_retries})...")
-            # Reload state before retry might be safer if _execute could corrupt it
-            # ctx.state = load_state() # Optional: reload state
+            logger.warning(f"Retrying {node_name} (Attempt {current_retries + 2}/{self.max_retries + 1})...")
             return self() # Return instance of the current node to retry
         else:
-            final_error_msg = f"ERROR: {node_name} failed after {self.max_retries + 1} attempts. Last error: {error_message}"
+            final_error_msg = f"ERROR: {node_name} failed permanently after {self.max_retries + 1} attempts. Last error: {error_message}"
             logger.error(final_error_msg)
             # Ensure state is saved with the final error logged
             save_state(ctx.state)
-            return End(final_error_msg)
+            # Append detailed error report from state to the End message
+            error_report = self._generate_error_report(ctx.state.errors) # Assuming helper exists or add it
+            return End(f"{final_error_msg}\n\nError Log:\n{error_report}")
+
+    # Helper method to generate error report (similar to FollowUpNode)
+    def _generate_error_report(self, errors: List[Dict[str, str]]) -> str:
+        """Generates a plain text error report."""
+        if not errors:
+            return "No errors reported during execution."
+        report = ""
+        for err in errors:
+             report += f"- Node: {escape(err.get('node', 'Unknown Node'))}, Error: {escape(err.get('error', 'Unknown Error'))}\n"
+        return report
+    
+###############################################################################
+# Centralized Model Initialization
+###############################################################################
+print("--- Initializing LLM Models ---")
+
+# --- Google Gemini Models ---
+gemini_provider = None
+gemini_api_key = os.getenv('GEMINI_API_KEY')
+if gemini_api_key:
+    try:
+        gemini_provider = GoogleGLAProvider(api_key=gemini_api_key)
+        print("--- Google GLA Provider initialized successfully. ---")
+    except Exception as e:
+        print(f"--- WARNING: Failed to initialize Google GLA Provider: {e} ---")
+        print("--- Check if GEMINI_API_KEY is set and correct. Gemini models will not be available. ---")
+else:
+    print("--- WARNING: GEMINI_API_KEY not found. Skipping Google Gemini model initialization. ---")
+
+# Initialize Gemini Model 1: gemini-2.0-flash
+gemini_20_model = None # Keep variable name generic
+gemini_20_model_name = 'gemini-2.0-flash' # *** USER SPECIFIED NAME ***
+if gemini_provider:
+    try:
+        gemini_20_model = GeminiModel(gemini_20_model_name, provider=gemini_provider)
+        print(f"--- Google Gemini ({gemini_20_model_name}) initialized successfully. ---")
+    except Exception as e:
+        print(f"--- WARNING: Failed to initialize Google Gemini ({gemini_20_model_name}): {e} ---")
+        print(f"--- Check if the model name '{gemini_20_model_name}' is valid and accessible with your API key. ---")
+
+# Initialize Gemini Model 2: gemini-2.5-pro-exp-03-25
+gemini_25_model = None # Keep variable name generic
+gemini_25_model_name = 'gemini-2.5-pro-exp-03-25' # *** USER SPECIFIED NAME ***
+if gemini_provider:
+    try:
+        gemini_25_model = GeminiModel(gemini_25_model_name, provider=gemini_provider)
+        print(f"--- Google Gemini ({gemini_25_model_name}) initialized successfully. ---")
+    except Exception as e:
+        print(f"--- WARNING: Failed to initialize Google Gemini ({gemini_25_model_name}): {e} ---")
+        print(f"--- Check if the model name '{gemini_25_model_name}' is valid and accessible (it might be experimental/restricted). ---")
+
+# --- OpenAI Models ---
+openai_provider = None
+openai_api_key = os.getenv('OPENAI_API_KEY')
+if openai_api_key:
+    try:
+        openai_provider = OpenAIProvider(api_key=openai_api_key)
+        print("--- OpenAI Provider initialized successfully. ---")
+    except Exception as e:
+        print(f"--- WARNING: Failed to initialize OpenAI Provider: {e} ---")
+        print("--- Check if OPENAI_API_KEY is set and correct. OpenAI models will not be available. ---")
+else:
+    print("--- WARNING: OPENAI_API_KEY not found. Skipping OpenAI model initialization. ---")
+
+# Initialize OpenAI Model 1 (gpt-4o)
+openai_gpt_4o_model = None
+if openai_provider:
+    try:
+        openai_gpt_4o_model = OpenAIModel('gpt-4o', provider=openai_provider)
+        print("--- OpenAIModel (gpt-4o) initialized successfully. ---")
+    except Exception as e:
+        print(f"--- WARNING: Failed to instantiate OpenAIModel (gpt-4o): {e} ---")
+
+# Initialize OpenAI Model 2: o3-mini
+openai_o3_mini_model_name = 'o3-mini' # *** USER SPECIFIED NAME ***
+openai_o3_mini_model = None
+if openai_provider:
+    try:
+        openai_o3_mini_model = OpenAIModel(openai_o3_mini_model_name, provider=openai_provider)
+        print(f"--- OpenAIModel ({openai_o3_mini_model_name}) initialized successfully. ---")
+    except Exception as e:
+        print(f"--- WARNING: Failed to instantiate OpenAIModel ({openai_o3_mini_model_name}): {e} ---")
+        print(f"--- Check if '{openai_o3_mini_model_name}' is a valid model name for your OpenAI endpoint (could be custom/Azure). ---")
+
+
+# --- OpenRouter Model (Deepseek) ---
+openrouter_deepseek_model = None
+openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
+if openrouter_api_key:
+    try:
+        openrouter_provider = OpenAIProvider(
+            base_url='https://openrouter.ai/api/v1',
+            api_key=openrouter_api_key,
+        )
+        deepseek_model_name = 'deepseek/deepseek-r1' # Keep as is unless user specifies otherwise
+        openrouter_deepseek_model = OpenAIModel(deepseek_model_name, provider=openrouter_provider)
+        print(f"--- OpenRouter Model ({deepseek_model_name}) initialized successfully via OpenAI Interface. ---")
+    except Exception as e:
+        print(f"--- WARNING: Failed to initialize OpenRouter Model ({deepseek_model_name}): {e} ---")
+        print("--- Check OPENROUTER_API_KEY and model name. ---")
+else:
+    print("--- WARNING: OPENROUTER_API_KEY not found. Skipping OpenRouter model initialization. ---")
+
+
+print("--- Model Initialization Complete ---")
+
 
 
 
@@ -206,8 +330,8 @@ def load_state(filename: str = "state.json") -> State:
 # Nodes
 ###############################################################################
 ############################### Search Node ###################################
-# search_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
-search_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+# # search_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
+# search_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 research_agent_prompt = """You are a research assistant supporting an article writer. 
 Your role is to create a well-structured, high-level plan for a short web article based on the provided topic.
@@ -245,55 +369,78 @@ Your response should follow this structure:
 ### All output must always be in the language of the article topic.
 """
 
-research_agent = Agent[None, ResearchPlan](
-    model=search_model,
-    result_type=ResearchPlan,
-)
+# research_agent = Agent[None, ResearchPlan](
+#     model=search_model,
+#     result_type=ResearchPlan,
+# )
 
 @dataclass
 class SearchNode(ResilientNode):
     # --- Configure ResilientNode ---
     retry_counter_attr: str = "searchnode_tries"
-    max_retries: int = 1 # Or configure as needed
-    timeout_seconds: int = 600 # Specific timeout for this node
+    max_retries: int = 1
+    timeout_seconds: int = 600
 
     async def _execute(self, ctx: GraphRunContext[State]) -> ScrapingNode | LlmKnowledgeNode | End:
         """
-        Generates the research plan and queries based on the article topic.
+        Generates the research plan and queries based on the article topic,
+        using a fallback model strategy.
         """
-        # Core logic previously in _run_internal, without try/except/retry/timeout
-        logger.info("Executing SearchNode logic...") # Use logger
+        node_name = self.__class__.__name__
+        logger.info(f"Executing {node_name} logic...")
 
-        # No need to load_state here, ctx is passed by the runner
+        # --- Model Selection with Fallback ---
+        preferred_model = openai_gpt_4o_model
+        fallback_primary = gemini_20_model
 
+        potential_models = [preferred_model, fallback_primary]
+        available_models = [model for model in potential_models if model is not None]
+
+        if not available_models:
+            raise ValueError(f"ERROR: Could not instantiate ANY models for {node_name}. Check API keys/availability.")
+
+        model_names = [m.model_name for m in available_models]
+        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
+        node_fallback_model = FallbackModel(*available_models)
+
+        # --- Instantiate Agent within _execute ---
+        research_agent = Agent[None, ResearchPlan](
+            model=node_fallback_model,
+            result_type=ResearchPlan,
+            # retries=1 # Optional
+        )
+
+        # --- Core Logic ---
         prompt = research_agent_prompt.format(
-            current_date=current_date, # Assuming current_date is accessible
+            current_date=ctx.state.current_date,
             article_topic=ctx.state.configuration.article_topic,
             number_of_queries=ctx.state.configuration.number_of_queries
         )
-        result = await research_agent.run(user_prompt=prompt) # research_agent needs to be accessible
+        result = await research_agent.run(user_prompt=prompt)
 
-        # Update state
+        if not result or not result.data:
+             raise ValueError(f"{node_name} agent run did not return valid data after attempting models.")
+
+        # --- Update State ---
         ctx.state.research_plan = result.data
         ctx.state.research_plan.queries.append(ctx.state.configuration.article_topic)
-
-        # Save state *only if crucial* before moving to the next node.
-        # The base class saves on error/retry. Saving here ensures the research_plan
-        # is persisted even if the *next* node fails immediately. Good practice.
         save_state(ctx.state)
-
         logger.info(f'Search queries generated: {ctx.state.research_plan.queries}')
 
-        # Return the TYPE of the next node
+        # --- Return Next Node INSTANCE --- <--- CORRECTED
         if ctx.state.configuration.provide_llm_facts == "yes":
-            return LlmKnowledgeNode() 
+            # Return an INSTANCE of the next node
+            logger.info(f"Transitioning from {node_name} to LlmKnowledgeNode")
+            return LlmKnowledgeNode() # Instantiate
         else:
-            return ScrapingNode() 
+            # Return an INSTANCE of the next node
+            logger.info(f"Transitioning from {node_name} to ScrapingNode")
+            return ScrapingNode() # Instantiate
 
 ###############################################################################
 ################################ LlmKnowledge Node ################################
 # llmknowledge_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
-llmknowledge_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+# llmknowledge_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 llmknowledge_agent_prompt = """
 You are a meticulous research assistant providing verified and sourced facts to support an article.
@@ -312,10 +459,10 @@ You are a meticulous research assistant providing verified and sourced facts to 
 
 Your accuracy and clarity are essential. Prioritize factual correctness over quantity, but give everything that is relevant and can be used to write the article.
 """
-llmknowledge_agent = Agent(
-    model=llmknowledge_model,
-    result_type=List[FactFromLlm]
-)
+# llmknowledge_agent = Agent(
+#     model=llmknowledge_model,
+#     result_type=List[FactFromLlm]
+# )
 
 @dataclass
 class LlmKnowledgeNode(ResilientNode):
@@ -324,37 +471,72 @@ class LlmKnowledgeNode(ResilientNode):
     max_retries: int = 1
     timeout_seconds: int = 600
 
-    # --- Corrected signature ---
     async def _execute(self, ctx: GraphRunContext[State]) -> ScrapingNode | End:
         """
-        Retrieves and stores facts directly from the LLM based on the research plan.
+        Retrieves and stores facts directly from the LLM based on the research plan,
+        using a fallback model strategy.
         """
-        logger.info("Executing LlmKnowledgeNode logic...")
+        node_name = self.__class__.__name__
+        logger.info(f"Executing {node_name} logic...")
 
-        # Don't usually need load_state() here, ctx is current.
-        # ctx.state = load_state() # Remove unless specifically needed before execution
+        # --- Model Selection with Fallback ---
+        # Access centrally initialized models
+        # Preferred model for this node: OpenAI GPT-4o
+        preferred_model = openai_gpt_4o_model # From central initialization
+        fallback_primary = gemini_20_model     # From central initialization
 
-        prompt = llmknowledge_agent_prompt.format(
-            article_topic=ctx.state.configuration.article_topic,
-            initial_plan=ctx.state.research_plan.plan, # Assuming plan is populated
-            search_queries=ctx.state.research_plan.queries,
-            current_date=current_date # Assuming current_date is accessible
+        potential_models = [fallback_primary, preferred_model] # Order: Fallback first, then preferred
+        available_models = [model for model in potential_models if model is not None]
+
+        if not available_models:
+            raise ValueError(f"ERROR: Could not instantiate ANY models for {node_name}. Check API keys/availability.")
+
+        model_names = [m.model_name for m in available_models]
+        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
+        node_fallback_model = FallbackModel(*available_models)
+
+        # --- Instantiate Agent within _execute ---
+        # Use the FallbackModel instance for the agent
+        llmknowledge_agent = Agent( # Agent variable is local to _execute
+            model=node_fallback_model,
+            result_type=List[FactFromLlm] # Ensure FactFromLlm is imported/defined
+            # retries=1 # Optional agent-level retries
         )
-        logger.debug(f'LlmKnowledgeNode prompt: {prompt}') # Use debug/info as appropriate
 
-        # Ensure llmknowledge_agent is accessible
+        # --- Core Logic ---
+        # Ensure research_plan is not None before accessing attributes
+        if ctx.state.research_plan is None:
+            logger.error(f"Cannot execute {node_name}: research_plan is missing in state.")
+            # Decide how to handle: raise error, or return End? Raising error lets ResilientNode handle retry/fail.
+            raise ValueError(f"Cannot execute {node_name}: research_plan is missing.")
+
+        prompt = llmknowledge_agent_prompt.format( # Ensure llmknowledge_agent_prompt is accessible
+            article_topic=ctx.state.configuration.article_topic,
+            # Use .get() with default for potentially missing plan parts, or check existence
+            initial_plan=getattr(ctx.state.research_plan, 'plan', "No plan available"),
+            search_queries=getattr(ctx.state.research_plan, 'queries', []),
+            current_date=ctx.state.current_date # Use state's date
+        )
+        logger.debug(f'{node_name} prompt: {prompt[:300]}...')
+
+        # Agent run uses the fallback sequence
         result = await llmknowledge_agent.run(user_prompt=prompt)
-        logger.debug(f'LlmKnowledgeNode result.data: {result.data}')
 
-        # Update state
+        # Check result validity
+        if result is None or result.data is None: # Check for None data specifically
+             # result.data could be an empty list [], which is valid, so check for None
+             raise ValueError(f"{node_name} agent run did not return valid data after attempting models.")
+
+        # --- Update State ---
         ctx.state.researched_info.facts_from_llm = result.data
         logger.info(f'LLM facts retrieved: {len(ctx.state.researched_info.facts_from_llm)} items.')
 
-        # Save state on success before moving on
+        # Save state
         save_state(ctx.state)
 
-        # Return INSTANCE of the next node
-        return ScrapingNode()
+        # --- Return Next Node INSTANCE ---
+        logger.info(f"Transitioning from {node_name} to ScrapingNode")
+        return ScrapingNode() # Instantiate
             
 ###############################################################################
 ################################ Scraping Node ################################
@@ -434,7 +616,7 @@ class ScrapingNode(ResilientNode):
 ###############################################################################
 ################################ Parsing Node #################################
 # parsing_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
-parsing_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+# parsing_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 class ParsedArticle(BaseModel):
     webpage_type: Literal['article', 'other']
@@ -483,99 +665,135 @@ The following HTML content should be parsed:
 {html}
 """
 
-parsing_agent = Agent(
-    model=parsing_model,
-    result_type=ParsedArticle,
-    retries=2
-)
+# parsing_agent = Agent(
+#     model=parsing_model,
+#     result_type=ParsedArticle,
+#     retries=2
+# )
 
 @dataclass
 class ParsingNode(ResilientNode):
     # --- Configure ResilientNode ---
     retry_counter_attr: str = "parsingnode_tries"
     max_retries: int = 1
-    # Parsing can be CPU/LLM intensive, adjust timeout if needed
-    timeout_seconds: int = 720 # Example: 12 minutes
+    timeout_seconds: int = 720 # 12 minutes
 
-    # --- Corrected signature ---
     async def _execute(self, ctx: GraphRunContext[State]) -> DataExtractionNode | End:
         """
         Parses the raw HTML of scraped pages to extract article text,
-        handling token limits and individual page errors.
+        handling token limits and using a fallback model strategy for each page.
         """
-        logger.info("Executing ParsingNode logic...")
-        # ctx.state = load_state() # Generally not needed here
+        node_name = self.__class__.__name__
+        logger.info(f"Executing {node_name} logic...")
 
         enc = tiktoken.get_encoding("cl100k_base")
-        MAX_TOKENS = 100_000 # Consider making this configurable
+        MAX_TOKENS = 100_000
 
-        # Work on a copy or be careful if modifying ctx.state.scraped_pages directly
-        # Let's update pages in place, assuming process_page modifies the dict
         pages_to_process = ctx.state.scraped_pages
         if not pages_to_process:
             logger.warning("No scraped pages found to parse. Proceeding.")
-            # save_state(ctx.state) # Optional save if state could have changed
-            return DataExtractionNode()
+            return DataExtractionNode() # Instantiate
 
         tasks = []
-        processed_pages = [] # Collect successfully processed pages if needed separately
-                             # Or just rely on modifications within the original list items
 
         async def process_page(page: dict):
-            """Inner function to process a single page."""
+            """Inner function to process a single page using FallbackModel."""
             page_url = page.get('url', 'unknown URL')
+            page_node_log_prefix = f"{node_name} - Page {page_url}:"
+
             try:
                 article_body = page.get("article_body", "")
                 if not article_body:
-                    logger.warning(f"No article_body found for {page_url}. Skipping parsing.")
-                    page['webpage_type'] = 'other' # Mark as other if no body
+                    logger.warning(f"{page_node_log_prefix} No article_body found. Skipping parsing.")
+                    page['webpage_type'] = 'other'
                     page['parsed_article'] = None
-                    return # Don't proceed further for this page
+                    return
+
+                # --- Model Selection & Agent Instantiation (Inside process_page) ---
+                # Preferred model: o3-mini (mapped to openai_o3_mini_model)
+                preferred_model = openai_o3_mini_model # From central initialization
+                fallback_primary = gemini_20_model     # From central initialization
+
+                potential_models = [fallback_primary, preferred_model]
+                available_models = [model for model in potential_models if model is not None]
+
+                if not available_models:
+                    # Raise error to be caught by the outer try/except in this function
+                    raise ValueError(f"ERROR: Could not instantiate ANY models for parsing. Check API keys.")
+
+                model_names = [m.model_name for m in available_models]
+                # Log model usage per page if needed (can be verbose)
+                # logger.debug(f"{page_node_log_prefix} Using FallbackModel with: {model_names}")
+                page_fallback_model = FallbackModel(*available_models)
+
+                parsing_agent = Agent( # Agent is local to this page processing task
+                    model=page_fallback_model,
+                    result_type=ParsedArticle, # Ensure ParsedArticle is defined/imported
+                    retries=1 # Optional: Agent retries *before* falling back
+                )
+                # --------------------------------------------------------------
 
                 tokens = enc.encode(article_body)
                 token_count = len(tokens)
 
                 if token_count > MAX_TOKENS:
                     logger.warning(
-                        f"Article from {page_url} has {token_count} tokens, exceeding {MAX_TOKENS}. Truncating."
+                        f"{page_node_log_prefix} Article has {token_count} tokens, exceeding {MAX_TOKENS}. Truncating."
                     )
                     tokens = tokens[:MAX_TOKENS]
                     article_body = enc.decode(tokens)
-                    page["article_body_truncated"] = True # Mark if truncated
+                    page["article_body_truncated"] = True
 
-                prompt = parsing_agent_prompt.format(html=article_body)
-                # Ensure parsing_agent is accessible
+                prompt = parsing_agent_prompt.format(html=article_body) # Ensure prompt is accessible
+
+                # Run agent - it will use the fallback sequence
                 result = await parsing_agent.run(user_prompt=prompt)
+
+                if result is None or result.data is None:
+                     raise ValueError("Parsing agent run did not return valid data after attempting models.")
 
                 # Update the page dictionary directly
                 page['webpage_type'] = result.data.webpage_type
                 page['parsed_article'] = result.data.parsed_article
-                logger.debug(f"Successfully parsed {page_url} as {result.data.webpage_type}")
+                logger.debug(f"{page_node_log_prefix} Successfully parsed as {result.data.webpage_type}")
+
+            except FallbackExceptionGroup as feg:
+                # Catch fallback errors specific to this page
+                error_message = f"All fallback models failed for page {page_url}."
+                logger.error(f"{page_node_log_prefix} {error_message}")
+                for i, exc in enumerate(feg.exceptions):
+                     # Log details without crashing the whole node
+                     logger.error(f"  - Model {i+1}: {type(exc).__name__}: {exc}")
+                page['webpage_type'] = 'other'
+                page['parsed_article'] = None
+                page['parsing_error'] = error_message # Store specific error
 
             except Exception as error:
-                # Log error specific to this page, but don't fail the whole node
-                logger.error(f"Error processing page {page_url}: {error}", exc_info=True)
-                # Mark page as failed or set default values
-                page['webpage_type'] = 'other' # Or a specific error type?
+                # Catch other errors for this page (incl. ValueError from model check)
+                logger.error(f"{page_node_log_prefix} Error processing: {error}", exc_info=True)
+                page['webpage_type'] = 'other'
                 page['parsed_article'] = None
                 page['parsing_error'] = str(error)
-                # We are modifying the page dict in place, so no need to remove from list
 
         # Create tasks for processing pages
         for page in pages_to_process:
-            tasks.append(process_page(page)) # Pass the dictionary
+            tasks.append(process_page(page))
 
         # Run all parsing tasks concurrently
         await asyncio.gather(*tasks)
 
-        logger.info(f"Parsing finished for {len(pages_to_process)} pages.")
+        # Filter out pages that failed parsing before saving state? Optional.
+        # Currently, failed pages are marked with 'parsing_error'.
+        successful_parses = sum(1 for p in pages_to_process if 'parsing_error' not in p and p.get('parsed_article') is not None)
+        failed_parses = len(pages_to_process) - successful_parses
+        logger.info(f"Parsing finished for {len(pages_to_process)} pages. Successful: {successful_parses}, Failed: {failed_parses}.")
 
-        # State is modified in-place within the page dictionaries inside ctx.state.scraped_pages
-        # Save the updated state
+        # Save the updated state (including pages with errors)
         save_state(ctx.state)
 
         # Proceed to the next node
-        return DataExtractionNode()
+        logger.info(f"Transitioning from {node_name} to DataExtractionNode")
+        return DataExtractionNode() # Instantiate
 
 
 ###############################################################################
@@ -645,56 +863,93 @@ class ResearchedArticle(BaseModel):
     quotes: Optional[List[Quote]]
     keywords: Optional[List[str]]
 
-@dataclass # Keep if you have specific fields later, otherwise optional
+@dataclass
 class DataExtractionNode(ResilientNode):
     # --- Configure ResilientNode ---
     retry_counter_attr: str = "dataextractionnode_tries"
     max_retries: int = 1
-    # Data extraction might involve many LLM calls, adjust timeout
-    timeout_seconds: int = 900 # Example: 15 minutes
+    timeout_seconds: int = 900 # 15 minutes
 
-    # --- Corrected signature ---
     async def _execute(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
         """
-        Extracts structured information (facts, quotes, keywords) from parsed articles,
-        filters relevant and recent articles, and aggregates the data. Logs filtering decisions.
+        Extracts structured information from parsed articles using a fallback
+        model strategy for each relevant page, filters, and aggregates data.
         """
-        logger.info("Executing DataExtractionNode logic...")
+        node_name = self.__class__.__name__
+        logger.info(f"Executing {node_name} logic...")
 
-        # Initialize the agent within the execution if not already done globally/passed
-        # This ensures it uses the latest model/config if state changes matter
-        data_extraction_agent = Agent(
-            model=data_extraction_model, # Ensure data_extraction_model is accessible
-            result_type=ResearchedArticle,
-            retries=2 # Agent-level retries
-        )
-
-        # Filter pages that have actual parsed content to process
+        # Filter pages with actual parsed content first, excluding those with parsing errors
         pages_to_process = [
             page for page in ctx.state.scraped_pages
-            if page and page.get('parsed_article') # Ensure page exists and has content
+            if page and page.get('parsed_article') and not page.get('parsing_error')
         ]
 
         if not pages_to_process:
-            logger.warning("No pages with parsed content found to extract data from. Proceeding.")
-            return InstructionsNode()
+            logger.warning(f"{node_name}: No successfully parsed pages found to extract data from.")
+             # Check if LLM facts exist and proceed accordingly
+            if not ctx.state.researched_info.facts_from_llm:
+                 logger.error(f"{node_name}: No parsed pages AND no LLM facts found. Ending run.")
+                 ctx.state.add_error(node_name, "No content (parsed pages or LLM facts) available for processing.")
+                 save_state(ctx.state)
+                 error_report = self._generate_error_report(ctx.state.errors) # Use helper from ResilientNode
+                 return End(f"ERROR: No content available.\n\nError Log:\n{error_report}")
+            else:
+                logger.info(f"{node_name}: Proceeding with only LLM facts.")
+                # Keep LLM facts, clear others. Keep original manual URLs in sources.
+                llm_facts_preserved = ctx.state.researched_info.facts_from_llm or []
+                llm_fact_strings = [f.fact_llm for f in llm_facts_preserved if f.fact_llm]
+                manual_urls = set(ctx.state.configuration.urls or []) # Ensure it's a set
+                ctx.state.researched_info = ResearchedInfo(
+                     facts=llm_fact_strings, # Combined facts = only LLM facts
+                     facts_from_articles=[],
+                     facts_from_llm=llm_facts_preserved, # Preserve original LLM fact objects
+                     quotes=[],
+                     keywords=[],
+                     article_texts=""
+                )
+                ctx.state.sources = list(manual_urls) # Preserve only the original manual URLs
+                save_state(ctx.state)
+                logger.info(f"Transitioning from {node_name} to InstructionsNode (only LLM facts)")
+                return InstructionsNode() # Instantiate
 
         tasks = []
 
         async def process_page(page: dict):
-            """Inner function to extract data from a single parsed page."""
+            """Inner function to extract data from a single parsed page using FallbackModel."""
             page_url = page.get('url', 'unknown URL')
-            try:
-                parsed_article = page.get("parsed_article", "") # Already checked if exists
+            page_node_log_prefix = f"{node_name} - Page {page_url}:"
 
-                # Improved title extraction (handles multiline titles better)
+            try:
+                parsed_article = page.get("parsed_article", "") # Already checked if exists and not parsing_error
+
+                # --- Model Selection & Agent Instantiation (Inside process_page) ---
+                # Preferred model: o3-mini (mapped to openai_o3_mini_model if available)
+                preferred_model = openai_o3_mini_model # From central initialization
+                fallback_primary = gemini_20_model     # From central initialization
+
+                potential_models = [fallback_primary, preferred_model]
+                available_models = [model for model in potential_models if model is not None]
+
+                if not available_models:
+                    raise ValueError(f"ERROR: Could not instantiate ANY models for data extraction.")
+
+                model_names = [m.model_name for m in available_models]
+                # logger.debug(f"{page_node_log_prefix} Using FallbackModel with: {model_names}")
+                page_fallback_model = FallbackModel(*available_models)
+
+                data_extraction_agent = Agent( # Agent local to this task
+                    model=page_fallback_model,
+                    result_type=ResearchedArticle,
+                    retries=1 # Optional agent retries before fallback
+                )
+                # --------------------------------------------------------------
+
+                # Extract title and clean text
                 title_match = re.search(r"<h1.*?>(.*?)</h1>", parsed_article, re.IGNORECASE | re.DOTALL)
                 title = title_match.group(1).strip() if title_match else page.get('title', "Title not found")
-
-                # Clean article text (remove H1 tag and its content)
                 article_text_no_h1 = re.sub(r"<h1.*?>.*?</h1>", "", parsed_article, flags=re.IGNORECASE | re.DOTALL).strip()
 
-                # Prepare formatted snippets for potential use/debugging
+                # *** CORRECTED .format() calls ***
                 page['formated_article'] = article_snippet.format(
                     url=page_url,
                     title=title,
@@ -706,35 +961,36 @@ class DataExtractionNode(ResilientNode):
                     article_text=article_text_no_h1
                 )
 
-                # Create prompt for data extraction agent
+                # Create prompt
                 prompt = data_extraction_agent_prompt.format(
-                    text=page['formated_article'], # Provide full context
+                    text=page['formated_article'],
                     topic=ctx.state.configuration.article_topic
                 )
-                logger.debug(f"Data extraction prompt for {page_url}: {prompt[:300]}...") # Log snippet
+                # logger.debug(f"{page_node_log_prefix} Data extraction prompt snippet: {prompt[:200]}...")
 
-                # Run the agent
+                # Run agent - uses fallback
                 researched_article_result = await data_extraction_agent.run(user_prompt=prompt)
-                logger.debug(f"Data extraction result for {page_url}: {researched_article_result.data}")
 
-                # Update the page dictionary in-place with extracted data
-                if researched_article_result and researched_article_result.data:
-                    data = researched_article_result.data
-                    page['webpage_type'] = data.webpage_type
-                    page['relevant'] = data.relevant
-                    page['facts'] = data.facts
-                    # Ensure quotes are stored as dicts if the agent returns Pydantic models
-                    page['quotes'] = [q.model_dump() for q in data.quotes] if data.quotes else []
-                    page['keywords'] = data.keywords
-                    page['publication_date'] = data.publication_date
-                else:
-                     raise ValueError("Data extraction agent returned empty result.")
+                if researched_article_result is None or researched_article_result.data is None:
+                     raise ValueError("Data extraction agent run did not return valid data after attempting models.")
 
+                # Update page dictionary with extracted data
+                data = researched_article_result.data
+                page['webpage_type'] = data.webpage_type
+                page['relevant'] = data.relevant
+                page['facts'] = data.facts
+                page['quotes'] = [q.model_dump() for q in data.quotes] if data.quotes else []
+                page['keywords'] = data.keywords
+                page['publication_date'] = data.publication_date # Agent should return date object or parsable string
+                logger.debug(f"{page_node_log_prefix} Successfully extracted data.")
 
-            except Exception as error:
-                logger.error(f"Error extracting data from page {page_url}: {error}", exc_info=True)
-                # Mark page with error, ensure default fields exist for filtering
-                page['extraction_error'] = str(error)
+            except FallbackExceptionGroup as feg:
+                error_message = f"All fallback models failed for data extraction on page {page_url}."
+                logger.error(f"{page_node_log_prefix} {error_message}")
+                for i, exc in enumerate(feg.exceptions):
+                     logger.error(f"  - Model {i+1}: {type(exc).__name__}: {exc}")
+                page['extraction_error'] = error_message # Mark specific error
+                # Set defaults so filtering logic doesn't crash
                 page.setdefault('webpage_type', 'other')
                 page.setdefault('relevant', 'no')
                 page.setdefault('publication_date', None)
@@ -743,12 +999,26 @@ class DataExtractionNode(ResilientNode):
                 page.setdefault('keywords', [])
 
 
-        # Create and run tasks for all pages needing processing
+            except Exception as error:
+                # Catch other errors during extraction for this page
+                logger.error(f"{page_node_log_prefix} Error extracting data: {error}", exc_info=True)
+                page['extraction_error'] = str(error)
+                # Set defaults
+                page.setdefault('webpage_type', 'other')
+                page.setdefault('relevant', 'no')
+                page.setdefault('publication_date', None)
+                page.setdefault('facts', [])
+                page.setdefault('quotes', [])
+                page.setdefault('keywords', [])
+
+        # Create and run tasks
         for page in pages_to_process:
             tasks.append(process_page(page))
         await asyncio.gather(*tasks)
-        logger.info(f"Data extraction finished processing {len(pages_to_process)} pages.")
 
+        successful_extractions = sum(1 for p in pages_to_process if 'extraction_error' not in p)
+        failed_extractions = len(pages_to_process) - successful_extractions
+        logger.info(f"Data extraction finished processing {len(pages_to_process)} pages. Successful: {successful_extractions}, Failed: {failed_extractions}.")
 
         # --- Filtering and Aggregation Logic ---
         logger.info("Filtering and aggregating extracted data...")
@@ -758,21 +1028,17 @@ class DataExtractionNode(ResilientNode):
 
         def parse_pub_date(pub_date):
             """Safely parse publication date from string or date object."""
-            if isinstance(pub_date, date):
-                return pub_date
+            if isinstance(pub_date, date): return pub_date
             if isinstance(pub_date, str):
-                for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d"): # Add more formats if needed
-                    try:
-                        return datetime.strptime(pub_date, fmt).date()
-                    except ValueError:
-                        pass # Try next format
+                for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d"):
+                    try: return datetime.strptime(pub_date, fmt).date()
+                    except ValueError: pass
             logger.debug(f"Could not parse date: {pub_date}")
-            return None # Return None if not date, string, or unparseable string
+            return None
 
-        # Filtering loop with detailed logging
         articles = []
-        logger.info(f"Starting filter process on {len(ctx.state.scraped_pages)} total pages.")
-        manual_urls = set(ctx.state.configuration.urls or []) # Ensure it's a set
+        logger.info(f"Starting filter process on {len(ctx.state.scraped_pages)} total pages (including failures).")
+        manual_urls = set(ctx.state.configuration.urls or [])
 
         for page in ctx.state.scraped_pages:
             page_url = page.get('url', 'unknown URL')
@@ -781,43 +1047,52 @@ class DataExtractionNode(ResilientNode):
 
             if page is None:
                 logger.debug(f"{log_prefix} Skipping None page object.")
-                continue # Should ideally not happen if input is clean
-
-            if err_msg := page.get('extraction_error'):
-                logger.info(f"{log_prefix} Excluded - Extraction error: {err_msg}")
-                filter_reason = f"Extraction error: {err_msg}"
-                page['filter_reason'] = filter_reason # Store reason
                 continue
 
+            # Check for parsing error FIRST
+            if parse_err_msg := page.get('parsing_error'):
+                 logger.info(f"{log_prefix} Excluded - Parsing error: {parse_err_msg}")
+                 filter_reason = f"Parsing error: {escape(parse_err_msg)}" # Escape for safety
+                 page['filter_reason'] = filter_reason
+                 continue
+
+            # Then check for extraction error
+            if extract_err_msg := page.get('extraction_error'):
+                logger.info(f"{log_prefix} Excluded - Extraction error: {extract_err_msg}")
+                filter_reason = f"Extraction error: {escape(extract_err_msg)}" # Escape for safety
+                page['filter_reason'] = filter_reason
+                continue
+
+            # --- Continue with original filtering logic ---
             page_type = page.get('webpage_type')
             if page_type != "article":
                 logger.info(f"{log_prefix} Excluded - Not classified as 'article' (Type: {page_type}).")
-                filter_reason = f"Not classified as 'article' (Type: {page_type})"
-                page['filter_reason'] = filter_reason # Store reason
+                filter_reason = f"Not classified as 'article' (Type: {escape(str(page_type))})"
+                page['filter_reason'] = filter_reason
                 continue
 
             relevance = page.get('relevant')
             if relevance != "yes":
                 logger.info(f"{log_prefix} Excluded - Not marked as 'relevant' (Relevance: {relevance}).")
-                filter_reason = f"Not marked as 'relevant' (Relevance: {relevance})"
-                page['filter_reason'] = filter_reason # Store reason
+                filter_reason = f"Not marked as 'relevant' (Relevance: {escape(str(relevance))})"
+                page['filter_reason'] = filter_reason
                 continue
 
             # Date Check Logic
             is_manual_url = page_url in manual_urls
             publication_date_obj = parse_pub_date(page.get('publication_date'))
-            pub_date_str = page.get('publication_date', 'N/A')
+            pub_date_str = page.get('publication_date', 'N/A') # Get original value for logging
 
             if not is_manual_url:
                 if publication_date_obj is None:
                     logger.info(f"{log_prefix} Excluded - Could not parse publication date ('{pub_date_str}') and not a manual URL.")
-                    filter_reason = f"Could not parse publication date ('{pub_date_str}')"
-                    page['filter_reason'] = filter_reason # Store reason
+                    filter_reason = f"Could not parse publication date ('{escape(str(pub_date_str))}')"
+                    page['filter_reason'] = filter_reason
                     continue
                 if publication_date_obj < cutoff_date:
                     logger.info(f"{log_prefix} Excluded - Publication date {publication_date_obj} is older than cutoff {cutoff_date} and not a manual URL.")
                     filter_reason = f"Publication date {publication_date_obj} older than cutoff {cutoff_date}"
-                    page['filter_reason'] = filter_reason # Store reason
+                    page['filter_reason'] = filter_reason
                     continue
 
             # If all checks passed
@@ -826,26 +1101,23 @@ class DataExtractionNode(ResilientNode):
             articles.append(page) # Add to the list of articles to aggregate from
 
 
-        logger.info(f"Found {len(articles)} relevant articles after filtering.")
-
-        # Handle case where no articles meet criteria
+        # --- Handle case where no articles meet criteria ---
         if not articles:
             logger.warning("No relevant articles found after filtering. Proceeding to InstructionsNode with only LLM facts (if any).")
-            # Keep LLM facts, clear others. Keep original manual URLs in sources.
             llm_facts_preserved = ctx.state.researched_info.facts_from_llm or []
             llm_fact_strings = [f.fact_llm for f in llm_facts_preserved if f.fact_llm]
             ctx.state.researched_info = ResearchedInfo(
-                 facts=llm_fact_strings, # Combined facts = only LLM facts
+                 facts=llm_fact_strings,
                  facts_from_articles=[],
-                 facts_from_llm=llm_facts_preserved, # Preserve original LLM fact objects
+                 facts_from_llm=llm_facts_preserved,
                  quotes=[],
                  keywords=[],
                  article_texts=""
             )
-            # Preserve only the original manual URLs in the sources list
-            ctx.state.sources = list(manual_urls)
+            ctx.state.sources = list(manual_urls) # Keep only manual URLs if no articles used
             save_state(ctx.state)
-            return InstructionsNode()
+            logger.info(f"Transitioning from {node_name} to InstructionsNode (no relevant articles found)")
+            return InstructionsNode() # Instantiate
 
 
         # --- Aggregate Data from Filtered Articles ---
@@ -853,47 +1125,39 @@ class DataExtractionNode(ResilientNode):
         llm_fact_strings = [fact.fact_llm for fact in existing_facts_from_llm if fact.fact_llm]
 
         facts_from_articles = []
-        combined_quotes_data = [] # Store raw quote data first
+        combined_quotes_data = []
         combined_keywords = set()
         article_sources = set(manual_urls) # Start with manual URLs
         article_texts_snippets = []
 
         for article in articles:
-            # Extend lists, ensuring data exists and has the correct type
             if facts := article.get('facts'):
                  if isinstance(facts, list): facts_from_articles.extend(facts)
             if quotes_data := article.get('quotes'):
                  if isinstance(quotes_data, list): combined_quotes_data.extend(quotes_data)
             if keywords := article.get('keywords'):
                  if isinstance(keywords, list): combined_keywords.update(keywords)
-            if url := article.get('url'): article_sources.add(url)
+            if url := article.get('url'): article_sources.add(url) # Add URL of used article
             if snippet := article.get('formated_article_short'): article_texts_snippets.append(snippet)
 
-        # Convert quote data to Quote objects safely
         combined_quotes = []
         for q_data in combined_quotes_data:
              if isinstance(q_data, dict):
-                 try:
-                     combined_quotes.append(Quote(**q_data))
-                 except Exception as e:
-                     logger.warning(f"Could not create Quote object from data: {q_data}. Error: {e}")
-             elif isinstance(q_data, Quote): # If already Quote objects
-                 combined_quotes.append(q_data)
-
+                 try: combined_quotes.append(Quote(**q_data))
+                 except Exception as e: logger.warning(f"Could not create Quote object from data: {q_data}. Error: {e}")
+             elif isinstance(q_data, Quote): combined_quotes.append(q_data)
 
         combined_facts = llm_fact_strings + facts_from_articles
         if not combined_facts:
             logger.warning("No facts found (LLM or Article) after filtering. Proceeding, but article quality may suffer.")
-            # Even if no facts, proceed. Writer node might handle this.
 
         # Update state with combined info
         ctx.state.researched_info.quotes = combined_quotes if combined_quotes else None
-        ctx.state.researched_info.facts = combined_facts # Combined list
-        ctx.state.researched_info.facts_from_articles = facts_from_articles # Explicitly track article facts
-        # ctx.state.researched_info.facts_from_llm remains unchanged from start of node
+        ctx.state.researched_info.facts = combined_facts
+        ctx.state.researched_info.facts_from_articles = facts_from_articles
         ctx.state.researched_info.keywords = list(combined_keywords)
-        ctx.state.researched_info.article_texts = "\n\n==============================\n\n".join(article_texts_snippets) # Add separator
-        ctx.state.sources = list(article_sources) # Final list of sources
+        ctx.state.researched_info.article_texts = "\n\n==============================\n\n".join(article_texts_snippets)
+        ctx.state.sources = sorted(list(article_sources)) # Final list of sources, sorted
 
         logger.info(f"Aggregated data: {len(combined_facts)} facts, {len(combined_quotes)} quotes, {len(ctx.state.sources)} sources.")
 
@@ -901,13 +1165,14 @@ class DataExtractionNode(ResilientNode):
         save_state(ctx.state)
 
         # Proceed to the next node
-        return InstructionsNode()
+        logger.info(f"Transitioning from {node_name} to InstructionsNode")
+        return InstructionsNode() # Instantiate
 
 
 ###############################################################################
 ############################## Instructions Node ##############################
 # instructions_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
-instructions_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+# instructions_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 instructions_agent_prompt = """
 You are an **Editor-in-Chief**. Your task is to provide detailed, structured instructions for a journalist to write a **high-quality web article**.
@@ -951,62 +1216,70 @@ class InstructionsNode(ResilientNode):
     # --- Configure ResilientNode ---
     retry_counter_attr: str = "instructionsnode_tries"
     max_retries: int = 1
-    timeout_seconds: int = 600 # Adjust if needed
+    timeout_seconds: int = 600
 
-    # --- Corrected signature ---
     async def _execute(self, ctx: GraphRunContext[State]) -> WritingNode | End:
         """
-        Generates detailed writing instructions for the journalist agent
-        based on the research plan, topic, and reference article snippets.
+        Generates detailed writing instructions using a fallback model strategy.
         """
-        logger.info("Executing InstructionsNode logic...")
-        # ctx.state = load_state() # Generally not needed
+        node_name = self.__class__.__name__
+        logger.info(f"Executing {node_name} logic...")
 
-        # Prepare the prompt, handle potentially empty fields gracefully
+        # --- Model Selection with Fallback ---
+        # Preferred model: o3-mini (mapped to openai_o3_mini_model)
+        preferred_model = openai_o3_mini_model # From central initialization
+        fallback_primary = gemini_20_model     # From central initialization
+
+        potential_models = [fallback_primary, preferred_model]
+        available_models = [model for model in potential_models if model is not None]
+
+        if not available_models:
+            raise ValueError(f"ERROR: Could not instantiate ANY models for {node_name}. Check API keys/availability.")
+
+        model_names = [m.model_name for m in available_models]
+        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
+        node_fallback_model = FallbackModel(*available_models)
+
+        # --- Instantiate Agent within _execute ---
+        instructions_agent = Agent( # Agent local to this execution
+            model=node_fallback_model,
+            result_type=str, # Expecting plain string instructions
+            retries=1 # Optional agent retries before fallback
+        )
+        # --------------------------------------------------------------
+
+        # --- Core Logic ---
         article_texts = ctx.state.researched_info.article_texts or "No reference articles available."
-        research_plan = ctx.state.research_plan.plan or "No initial plan provided."
+        research_plan = ctx.state.research_plan.plan if ctx.state.research_plan else "No initial plan provided."
         topic = ctx.state.configuration.article_topic
 
-        # Check if essential info is missing (optional, could rely on prompt/LLM)
         if not topic:
-            logger.error("Article topic is missing in configuration. Cannot generate instructions.")
-            # Option 1: End the graph
-            return End("ERROR: Article topic is required for InstructionsNode.")
-            # Option 2: Try to proceed (LLM might handle it, but quality loss likely)
-            # logger.warning("Article topic missing, instructions quality might be low.")
+            # This error will be caught by ResilientNode.run
+            raise ValueError(f"{node_name}: Article topic is missing in configuration.")
 
-        user_prompt = instructions_agent_prompt.format(
+        user_prompt = instructions_agent_prompt.format( # Ensure prompt is accessible
             article_texts=article_texts,
             plan=research_plan,
             topic=topic
         )
-        logger.debug(f"InstructionsNode prompt: {user_prompt[:300]}...")
+        # logger.debug(f"{node_name} prompt snippet: {user_prompt[:300]}...")
 
-        # Ensure instructions_agent is initialized/accessible
-        # If agent needs specific config, initialize here
-        instructions_agent = Agent(
-            model=instructions_model, # Ensure instructions_model is accessible
-            result_type=str,
-            retries=2 # Agent-level retries
-        )
-
-        # Run the agent
+        # Run agent - uses fallback
         result = await instructions_agent.run(user_prompt=user_prompt)
 
-        if not result or not result.data:
-             # Handle case where agent returns no instructions
-             logger.error("Instructions agent returned no data.")
-             return End("ERROR: Failed to generate writing instructions.")
+        if result is None or not result.data: # Check for None or empty string
+             raise ValueError(f"{node_name} agent run did not return valid data (instructions) after attempting models.")
 
-        # Update state
+        # --- Update State ---
         ctx.state.instructions = result.data
         logger.info("Successfully generated writing instructions.")
 
-        # Save state on success
+        # Save state
         save_state(ctx.state)
 
-        # Proceed to the next node
-        return WritingNode()
+        # --- Return Next Node INSTANCE ---
+        logger.info(f"Transitioning from {node_name} to WritingNode")
+        return WritingNode() # Instantiate
 
 
 ###############################################################################
@@ -1016,11 +1289,11 @@ class InstructionsNode(ResilientNode):
 #     base_url='https://openrouter.ai/api/v1',
 #     api_key=os.getenv('OPENROUTER_API_KEY'),
 # )
-provider = OpenAIProvider(
-    base_url='https://openrouter.ai/api/v1',
-    api_key=os.getenv('OPENROUTER_API_KEY'),)
+# provider = OpenAIProvider(
+#     base_url='https://openrouter.ai/api/v1',
+#     api_key=os.getenv('OPENROUTER_API_KEY'),)
 
-writing_model = OpenAIModel('deepseek/deepseek-r1', provider = provider)
+# writing_model = OpenAIModel('deepseek/deepseek-r1', provider = provider)
 
 writing_agent_prompt = """You are an **editor for a web magazine**. Your task is to write a **high-quality web article** on the following topic:
 
@@ -1056,105 +1329,123 @@ Moreover:
 class WritingNode(ResilientNode):
     # --- Configure ResilientNode ---
     retry_counter_attr: str = "writingnode_tries"
-    max_retries: int = 1 # Retries for a single *invocation* of writing
-    # Writing can take time, especially with large models/complex instructions
-    timeout_seconds: int = 900 # Example: 15 minutes
+    max_retries: int = 1
+    timeout_seconds: int = 900 # 15 minutes
 
-    # --- Corrected signature (matches original logic) ---
     async def _execute(self, ctx: GraphRunContext[State]) -> ReflectionNode | FollowUpNode | End:
         """
-        Writes or revises the article based on instructions or reflection feedback.
+        Writes or revises the article using a fallback model strategy.
         Manages the reflection loop state.
         """
-        logger.info(f"Executing WritingNode logic (Round: {ctx.state.reflection_round})...")
-        # ctx.state = load_state() # Generally not needed
+        node_name = self.__class__.__name__
+        logger.info(f"Executing {node_name} logic (Round: {ctx.state.reflection_round})...")
 
-        # Ensure writing_agent is initialized/accessible
-        # Use the specific writing model configuration
-        writing_agent = Agent[None, str](
-            model=writing_model, # Ensure writing_model is accessible
-            result_type=str,
-            retries=2 # Agent-level retries
+        # --- Model Selection with Fallback ---
+        # Preferred model: OpenRouter Deepseek
+        preferred_model = openrouter_deepseek_model # From central initialization
+        fallback_primary = gemini_20_model          # From central initialization
+        # Optional: Add another fallback like GPT-4o if Deepseek fails?
+        # fallback_secondary = openai_gpt_4o_model
+
+        potential_models = [gemini_25_model, fallback_primary, preferred_model] # Order: Gemini, Deepseek
+        # Example with secondary fallback:
+        # potential_models = [fallback_primary, preferred_model, fallback_secondary]
+        available_models = [model for model in potential_models if model is not None]
+
+        if not available_models:
+            raise ValueError(f"ERROR: Could not instantiate ANY models for {node_name}. Check API keys/availability.")
+
+        model_names = [m.model_name for m in available_models]
+        logger.info(f"--- Using FallbackModel for {node_name} (Round {ctx.state.reflection_round}) with models: {model_names} ---")
+        node_fallback_model = FallbackModel(*available_models)
+
+        # --- Instantiate Agent within _execute ---
+        writing_agent = Agent[None, str]( # Agent local to this execution
+            model=node_fallback_model,
+            result_type=str, # Expecting the article as a string
+            retries=1 # Optional agent retries before fallback
         )
+        # --------------------------------------------------------------
 
-        # Determine the correct prompt based on the reflection round
+        # --- Determine Prompt ---
         if ctx.state.reflection_round == 0:
             # Initial writing round
-            # Prepare prompt, handling potentially missing data
-            facts_str = "\n - ".join(ctx.state.researched_info.facts or ["No facts available."])
-            keywords_str = ", ".join(ctx.state.researched_info.keywords or ["N/A"])
+            facts_list = ctx.state.researched_info.facts or []
+            facts_str = "\n - ".join(facts_list) if facts_list else "No facts available."
+            keywords_list = ctx.state.researched_info.keywords or []
+            keywords_str = ", ".join(keywords_list) if keywords_list else "N/A"
             quotes_list = ctx.state.researched_info.quotes or []
-            quotes_str = "\n".join([f'"{q.text}" - {q.speaker} (Source: {q.source or "N/A"})' for q in quotes_list]) \
+            quotes_str = "\n".join([f'"{escape(q.text or "")}" - {escape(q.speaker or "Unknown")} (Source: {escape(q.source or "N/A")})' for q in quotes_list]) \
                          if quotes_list else "No quotes available."
 
             if not ctx.state.instructions:
-                logger.error("Writing instructions are missing. Cannot proceed with writing.")
-                return End("ERROR: Writing instructions are required for WritingNode.")
+                raise ValueError(f"{node_name}: Writing instructions are missing for initial draft.")
 
-            user_prompt = writing_agent_prompt.format(
+            user_prompt = writing_agent_prompt.format( # Ensure prompt is accessible
                 topic=ctx.state.configuration.article_topic,
                 facts=facts_str,
                 keywords=keywords_str,
                 quotes=quotes_str,
                 instructions=ctx.state.instructions,
-                current_date=ctx.state.current_date # Ensure current_date accessible
+                current_date=ctx.state.current_date
             )
             logger.info("Using initial writing prompt.")
         else:
             # Reflection round
             if not ctx.state.reflection_prompt:
-                 logger.error(f"Reflection prompt is missing for round {ctx.state.reflection_round}. Cannot revise.")
-                 return End(f"ERROR: Reflection prompt missing for round {ctx.state.reflection_round}.")
+                 raise ValueError(f"{node_name}: Reflection prompt is missing for round {ctx.state.reflection_round}.")
 
             user_prompt = ctx.state.reflection_prompt
             logger.info(f"Using reflection prompt for round {ctx.state.reflection_round}.")
 
-        logger.debug(f"Writer prompt (Round {ctx.state.reflection_round}): {user_prompt[:300]}...")
+        # logger.debug(f"Writer prompt (Round {ctx.state.reflection_round}) snippet: {user_prompt[:300]}...")
 
-        # Run the agent, passing the current message history
+        # --- Run Agent ---
+        # Run the agent, passing the current message history if it exists
+        # The agent will use the fallback model sequence
         try:
             result = await writing_agent.run(
                 user_prompt=user_prompt,
-                message_history=ctx.state.messages # Pass existing history
+                # Pass message history only if it's not empty, otherwise default might be used
+                message_history=ctx.state.messages if ctx.state.messages else None
             )
+        except FallbackExceptionGroup as feg:
+             # Re-raise to be caught by ResilientNode's run method
+             logger.error(f"{node_name} failed: All fallback models exhausted during agent run.")
+             raise feg
         except Exception as agent_error:
-            # If the agent call *itself* fails critically after its internal retries
-            logger.exception(f"Writing agent failed during round {ctx.state.reflection_round}.")
-            # Allow ResilientNode's retry logic to handle this attempt
-            raise agent_error # Re-raise the exception for ResilientNode to catch
+            # Catch other potential agent errors and re-raise for ResilientNode
+            logger.error(f"{node_name} agent run failed: {agent_error}", exc_info=True)
+            raise agent_error
 
-        if not result or not result.data:
-            logger.error(f"Writing agent returned no data in round {ctx.state.reflection_round}.")
-            # Allow ResilientNode's retry logic to handle this attempt
-            # We might want to raise an error here to trigger the retry,
-            # otherwise the graph might proceed incorrectly.
-            raise ValueError(f"Writing agent returned empty result in round {ctx.state.reflection_round}.")
+        if result is None or not result.data: # Check for None or empty string result
+            raise ValueError(f"{node_name} agent run did not return valid data (article) after attempting models.")
 
-
+        # --- Update State ---
         # Update message history ALWAYS after a successful agent call
         ctx.state.messages = result.all_messages()
 
-        # Determine next step based on reflection round
+        # --- Determine Next Step ---
         if ctx.state.reflection_round > 0:
             # This was the revision round based on reflection
-            ctx.state.finished_article = result.data
+            ctx.state.finished_article = result.data # Store final article
             logger.info(f"Article revision complete (Round {ctx.state.reflection_round}). Proceeding to FollowUpNode.")
-            # Save state including the finished article and final message history
-            save_state(ctx.state)
-            return FollowUpNode()
+            save_state(ctx.state) # Save state including the finished article
+            logger.info(f"Transitioning from {node_name} to FollowUpNode")
+            return FollowUpNode() # Instantiate
         else:
             # This was the first writing round
-            # Article is in result.data, but not yet final. Stored in messages.
+            # Draft is in result.data (and messages). Don't set finished_article yet.
             logger.info("Initial article draft complete. Proceeding to ReflectionNode.")
-            # Save state including the updated message history (contains the draft)
-            save_state(ctx.state)
-            return ReflectionNode()
+            save_state(ctx.state) # Save state including the updated message history
+            logger.info(f"Transitioning from {node_name} to ReflectionNode")
+            return ReflectionNode() # Instantiate
 
 
 ###############################################################################
 ############################### Reflection Node ###############################
 # reflection_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
-reflection_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+# reflection_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 reflection_agent_prompt = """You are an **Editor-in-Chief**. Your task is to **review the article** written by the editor agent and provide **detailed, relevant, and actionable feedback**. Your output must consist solely of a structured AI prompt for a writing agent—do not include any additional commentary or explanations. The entire feedback must be written in the same language as the revised article.
 
@@ -1185,75 +1476,91 @@ class ReflectionNode(ResilientNode):
     # --- Configure ResilientNode ---
     retry_counter_attr: str = "reflectionnode_tries"
     max_retries: int = 1
-    timeout_seconds: int = 600 # Adjust if needed
+    timeout_seconds: int = 600
 
-    # --- Corrected signature ---
     async def _execute(self, ctx: GraphRunContext[State]) -> WritingNode | End:
         """
-        Analyzes the draft article (from message history) against instructions
-        and benchmarks, generating feedback (reflection prompt) for the next writing round.
+        Analyzes the draft article, generates feedback using a fallback model strategy,
+        and prepares the prompt for the next writing round.
         """
-        logger.info("Executing ReflectionNode logic...")
-        # ctx.state = load_state() # Generally not needed
+        node_name = self.__class__.__name__
+        logger.info(f"Executing {node_name} logic...")
 
-        # Ensure reflection_agent is initialized/accessible
-        reflection_agent = Agent(
-            model=reflection_model, # Ensure reflection_model is accessible
-            result_type=str,
-            # Add retries if the agent supports it and it's desired
-            # retries=1
+        # --- Model Selection with Fallback ---
+        # Preferred model: o3-mini (mapped to openai_o3_mini_model)
+        preferred_model = openai_o3_mini_model # From central initialization
+        fallback_primary = gemini_20_model     # From central initialization
+
+        potential_models = [gemini_25_model, fallback_primary, preferred_model]
+        available_models = [model for model in potential_models if model is not None]
+
+        if not available_models:
+            raise ValueError(f"ERROR: Could not instantiate ANY models for {node_name}. Check API keys/availability.")
+
+        model_names = [m.model_name for m in available_models]
+        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
+        node_fallback_model = FallbackModel(*available_models)
+
+        # --- Instantiate Agent within _execute ---
+        reflection_agent = Agent( # Agent local to this execution
+            model=node_fallback_model,
+            result_type=str, # Expecting feedback string
+            retries=1 # Optional agent retries before fallback
         )
+        # --------------------------------------------------------------
 
-        # Prepare the prompt using benchmark articles
+        # --- Prepare Prompt ---
         benchmark_articles = ctx.state.researched_info.article_texts or "No benchmark articles available."
-        user_prompt = reflection_agent_prompt.format(
+        user_prompt = reflection_agent_prompt.format( # Ensure prompt is accessible
             benchmark_articles=benchmark_articles
         )
-        logger.debug(f"ReflectionNode prompt: {user_prompt[:300]}...")
+        # logger.debug(f"{node_name} prompt snippet: {user_prompt[:300]}...")
 
+        # --- Run Agent ---
         # Crucially, run the agent with the message history which contains the draft
         if not ctx.state.messages:
-             logger.error("Message history is empty. Cannot perform reflection.")
              # This indicates a likely logic error earlier in the graph.
-             return End("ERROR: Cannot run ReflectionNode with empty message history.")
+             raise ValueError(f"{node_name}: Message history is empty. Cannot perform reflection.")
 
         try:
             result = await reflection_agent.run(
                 user_prompt=user_prompt,
                 message_history=ctx.state.messages # Pass history including the draft
             )
+        except FallbackExceptionGroup as feg:
+             # Re-raise for ResilientNode
+             logger.error(f"{node_name} failed: All fallback models exhausted during agent run.")
+             raise feg
         except Exception as agent_error:
-            logger.exception("Reflection agent failed.")
-            # Allow ResilientNode's retry logic to handle this attempt
-            raise agent_error # Re-raise
+            # Re-raise other agent errors for ResilientNode
+            logger.error(f"{node_name} agent run failed: {agent_error}", exc_info=True)
+            raise agent_error
 
-        if not result or not result.data:
-            logger.error("Reflection agent returned no data.")
-            # Trigger retry by raising an error
-            raise ValueError("Reflection agent returned empty result.")
 
-        # Construct the feedback prompt for the next WritingNode execution
+        if result is None or not result.data: # Check for None or empty feedback
+            raise ValueError(f"{node_name} agent run did not return valid data (feedback) after attempting models.")
+
+        # --- Process Result & Update State ---
         feedback = result.data
-        # Add benchmark articles to the feedback prompt for the writer's reference
+        # Construct the full feedback prompt for the next WritingNode execution
         full_reflection_prompt = (
             f'Follow these instructions to improve your article:\n{feedback}\n\n'
             f'--- Benchmark Articles for Reference ---\n'
             f'{benchmark_articles}'
         )
 
-        # Update state
         ctx.state.reflection_prompt = full_reflection_prompt
         ctx.state.reflection_round += 1 # Increment the round counter
-        # Note: We don't update ctx.state.messages here, as reflection doesn't add to the core conversation history.
-        # If you *wanted* the reflection feedback included in history, you'd append ModelMessages here.
+        # Don't update ctx.state.messages here unless you want reflection in history
 
         logger.info(f"Reflection complete. Generated feedback prompt for round {ctx.state.reflection_round}.")
 
-        # Save state with the new reflection_prompt and incremented round
+        # Save state
         save_state(ctx.state)
 
-        # Proceed back to WritingNode for revision
-        return WritingNode()
+        # --- Return Next Node INSTANCE ---
+        logger.info(f"Transitioning from {node_name} back to WritingNode")
+        return WritingNode() # Instantiate for revision round
 
 ###############################################################################
 ############################## Follow up Node ##############################
@@ -1304,69 +1611,100 @@ class FollowUpNode(ResilientNode):
     # --- Configure ResilientNode ---
     retry_counter_attr: str = "followupnode_tries"
     max_retries: int = 1
-    timeout_seconds: int = 600 # Adjust if needed
+    timeout_seconds: int = 600
 
-    # --- Corrected signature ---
     async def _execute(self, ctx: GraphRunContext[State]) -> End:
         """
-        Generates alternative titles and follow-up article ideas based on the
-        finished article. Formats the final output including metadata and errors.
+        Generates follow-up content using a fallback model strategy and
+        formats the final output.
         """
-        logger.info("Executing FollowUpNode logic...")
-        # ctx.state = load_state() # Generally not needed
+        node_name = self.__class__.__name__
+        logger.info(f"Executing {node_name} logic...")
 
         if not ctx.state.finished_article:
-            logger.error("Finished article is missing in state. Cannot generate follow-up content.")
-            # Add error to state before ending
-            ctx.state.add_error("FollowUpNode", "Finished article missing in state.")
+            error_msg = f"{node_name}: Finished article is missing in state. Cannot generate follow-up content."
+            logger.error(error_msg)
+            ctx.state.add_error(node_name, "Finished article missing in state.")
             save_state(ctx.state)
-            # Return End with an error message including collected errors
-            error_report = self._generate_error_report(ctx.state.errors)
-            return End(f"ERROR: Finished article missing.\n{error_report}")
+            error_report = self._generate_error_report(ctx.state.errors) # Use helper from ResilientNode
+            return End(f"ERROR: Finished article missing.\n\nError Log:\n{error_report}")
 
-        # Ensure followup_agent is initialized/accessible
-        followup_agent = Agent(
-            model=followup_model, # Ensure followup_model is accessible
-            result_type=FollowUp, # Ensure FollowUp model is defined
-            # Add retries if needed
-        )
+        # --- Model Selection with Fallback ---
+        # Preferred model: o3-mini (mapped to openai_o3_mini_model)
+        preferred_model = openai_o3_mini_model # From central initialization
+        fallback_primary = gemini_20_model     # From central initialization
 
-        user_prompt = followup_agent_prompt.format(
-            finished_article=ctx.state.finished_article
-        )
-        logger.debug(f"FollowUpNode prompt: {user_prompt[:300]}...")
+        potential_models = [fallback_primary, preferred_model]
+        available_models = [model for model in potential_models if model is not None]
 
-        try:
-            result = await followup_agent.run(user_prompt=user_prompt)
-            follow_up_data = result.data if result else None
-        except Exception as agent_error:
-            logger.exception("Follow-up agent failed.")
-            # Allow ResilientNode's retry logic to handle this attempt
-            raise agent_error # Re-raise
-
-        if not follow_up_data:
-            logger.warning("Follow-up agent returned no data. Proceeding without suggestions.")
-            # Initialize with empty lists if agent failed or returned nothing
+        if not available_models:
+            # Log error but proceed to generate output without suggestions
+            logger.error(f"ERROR: Could not instantiate ANY models for {node_name}. Proceeding without follow-up suggestions.")
+            ctx.state.add_error(node_name, "No models available for follow-up generation.")
             follow_up_data = FollowUp(alternative_titles=[], followup_articles=[])
-            # Optionally add this as a non-fatal error to the report
-            ctx.state.add_error("FollowUpNode", "Follow-up agent returned no suggestions.")
+            # Skip agent instantiation and run, jump to HTML generation
+        else:
+            # --- Instantiate Agent within _execute ---
+            model_names = [m.model_name for m in available_models]
+            logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
+            node_fallback_model = FallbackModel(*available_models)
+
+            followup_agent = Agent( # Agent local to this execution
+                model=node_fallback_model,
+                result_type=FollowUp, # Ensure FollowUp model is defined/imported
+                retries=1 # Optional agent retries before fallback
+            )
+            # --------------------------------------------------------------
+
+            # --- Prepare Prompt ---
+            user_prompt = followup_agent_prompt.format( # Ensure prompt is accessible
+                finished_article=ctx.state.finished_article
+            )
+            # logger.debug(f"{node_name} prompt snippet: {user_prompt[:300]}...")
+
+            # --- Run Agent ---
+            try:
+                result = await followup_agent.run(user_prompt=user_prompt)
+                # Handle case where agent runs but returns None or no data
+                if result is None or result.data is None:
+                     logger.warning(f"{node_name} agent run succeeded but returned no data. Proceeding without suggestions.")
+                     follow_up_data = FollowUp(alternative_titles=[], followup_articles=[])
+                     ctx.state.add_error(node_name, "Follow-up agent returned no suggestions (result was None or empty).")
+                else:
+                     follow_up_data = result.data
+
+            except FallbackExceptionGroup as feg:
+                # Log the error, add to state, but proceed without follow-up suggestions
+                error_message = f"All fallback models failed for follow-up generation."
+                logger.error(f"{node_name}: {error_message}")
+                ctx.state.add_error(node_name, error_message)
+                for i, exc in enumerate(feg.exceptions):
+                    logger.error(f"  - Model {i+1}: {type(exc).__name__}: {exc}")
+                follow_up_data = FollowUp(alternative_titles=[], followup_articles=[]) # Default to empty
+
+            except Exception as agent_error:
+                # Log other agent errors, add to state, proceed without suggestions
+                error_message = f"Unexpected error during follow-up agent run: {agent_error}"
+                logger.error(f"{node_name}: {error_message}", exc_info=True)
+                ctx.state.add_error(node_name, error_message)
+                follow_up_data = FollowUp(alternative_titles=[], followup_articles=[]) # Default to empty
 
 
         # --- Construct the final HTML Output ---
+        # (This part remains the same, using follow_up_data which is now guaranteed to exist)
         logger.info("Constructing final HTML output...")
 
-        article_html = f"<article>\n{ctx.state.finished_article}\n</article>"
+        article_html = f"<article>\n{escape(ctx.state.finished_article)}\n</article>" # Escape article content
         titles_html = self._generate_list_html("Alternatywne tytuły", follow_up_data.alternative_titles)
         topics_html = self._generate_list_html("Tematy do rozważenia", follow_up_data.followup_articles)
-        # --- NEW sources HTML call ---
         sources_html = self._generate_detailed_sources_html(
             "Źródła i Status Przetwarzania",
-            ctx.state.scraped_pages # Pass all scraped pages
+            ctx.state.scraped_pages
         )
         quotes_html = self._generate_quotes_html(ctx.state.researched_info.quotes)
         article_facts_html = self._generate_list_html("Fakty z artykułów źródłowych", ctx.state.researched_info.facts_from_articles)
         llm_facts_html = self._generate_llm_facts_html(ctx.state.researched_info.facts_from_llm)
-        error_report_html = self._generate_error_report_html(ctx.state.errors)
+        error_report_html = self._generate_error_report_html(ctx.state.errors) # Use helper
 
         full_result = f"""<!DOCTYPE html>
 <html>
@@ -1374,13 +1712,24 @@ class FollowUpNode(ResilientNode):
 <title>Article Result</title>
 <meta charset="UTF-8">
 <style>
-  /* ... (styles remain the same) ... */
+  body {{ font-family: sans-serif; margin: 20px; }}
+  article {{ border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; background-color: #f9f9f9; }}
+  section {{ margin-bottom: 20px; border: 1px solid #eee; padding: 0 15px 15px 15px; }}
+  h1, h2 {{ color: #333; }}
+  h1 {{ border-bottom: 2px solid #ccc; padding-bottom: 5px; }}
+  h2 {{ border-bottom: 1px solid #eee; padding-bottom: 3px; }}
+  ul {{ list-style-type: disc; margin-left: 20px; }}
+  li {{ margin-bottom: 5px; }}
+  blockquote {{ border-left: 3px solid #ccc; padding-left: 10px; margin-left: 0; font-style: italic; color: #555; }}
+  strong {{ font-weight: bold; }}
   .source-item {{ margin-bottom: 8px; }}
   .source-url {{ font-weight: bold; }}
-  .source-status {{ font-style: italic; margin-left: 10px; }}
-  .status-included {{ color: green; }}
-  .status-excluded {{ color: orange; }}
-  .status-error {{ color: red; }} /* For extraction errors */
+  .source-status {{ font-style: italic; margin-left: 10px; padding: 2px 5px; border-radius: 3px; }}
+  .status-included {{ color: #2a8a2a; background-color: #e9f5e9; }}
+  .status-excluded {{ color: #b95000; background-color: #fff8e1; }}
+  .status-error {{ color: #c00; background-color: #fdecea; }} /* For extraction/parsing errors */
+  .error-report {{ border-color: #d32f2f; background-color: #ffebee; }} /* Style error report section */
+  .error-report h2 {{ color: #c00; }}
 </style>
 </head>
 <body>
@@ -1388,18 +1737,24 @@ class FollowUpNode(ResilientNode):
 {error_report_html}
 {titles_html}
 {topics_html}
-{sources_html} /* <-- Updated sources section */
+{sources_html}
 {quotes_html}
 {article_facts_html}
 {llm_facts_html}
 </body>
 </html>
 """
+        # Save final state including any errors added in this node
         save_state(ctx.state)
         logger.info("FollowUpNode complete. Returning final output.")
+        # This node always ends the graph
         return End(full_result)
 
+
     # --- Helper methods for HTML generation ---
+    # (Keep these helpers as they were: _generate_list_html, _generate_quotes_html,
+    #  _generate_llm_facts_html, _generate_error_report_html, _generate_detailed_sources_html)
+    # Make sure _generate_error_report is also defined if used in initial check
 
     def _generate_list_html(self, title: str, items: Optional[List[str]]) -> str:
         """Generates HTML for a simple list section."""
@@ -1438,25 +1793,22 @@ class FollowUpNode(ResilientNode):
 
     def _generate_error_report_html(self, errors: List[Dict[str, str]]) -> str:
         """Generates an HTML section reporting errors logged during the run."""
-        if not errors:
-            return "" # Return empty string if no errors
-
+        if not errors: return ""
         title = "Execution Errors Report"
         list_items = "".join(
             f"<li><strong>{escape(err.get('node', 'Unknown Node'))}:</strong> {escape(err.get('error', 'Unknown Error'))}</li>"
             for err in errors
         )
         content = f"<ul>{list_items}</ul>"
-        # Add specific class for styling
         return f"<section class='error-report'><h2>{escape(title)}</h2>{content}</section>"
 
     def _generate_error_report(self, errors: List[Dict[str, str]]) -> str:
         """Generates a plain text error report."""
-        if not errors:
-            return "No errors reported."
-        report = "--- Execution Errors ---\n"
+        # Ensure this helper is present if needed by the error check at the start
+        if not errors: return "No errors reported."
+        report = ""
         for err in errors:
-             report += f"- Node: {err.get('node', 'Unknown Node')}, Error: {err.get('error', 'Unknown Error')}\n"
+             report += f"- Node: {escape(err.get('node', 'Unknown Node'))}, Error: {escape(err.get('error', 'Unknown Error'))}\n"
         return report
 
     def _generate_detailed_sources_html(self, title: str, all_pages: List[Dict]) -> str:
@@ -1465,9 +1817,12 @@ class FollowUpNode(ResilientNode):
             content = "<ul><li>No sources were processed.</li></ul>"
         else:
             list_items = ""
-            for page in sorted(all_pages, key=lambda p: p.get('url', '')): # Sort by URL
+            # Sort by URL for consistent output
+            for page in sorted(all_pages, key=lambda p: p.get('url', '') if p else ''):
+                if not page: continue # Skip None pages if they somehow exist
+
                 url = page.get('url', 'N/A')
-                reason = page.get('filter_reason', 'Status unknown') # Get reason stored by DataExtractionNode
+                reason = page.get('filter_reason', 'Status unknown')
                 status_class = "status-excluded" # Default style
                 status_text = f"Excluded ({escape(reason)})"
 
@@ -1476,7 +1831,7 @@ class FollowUpNode(ResilientNode):
                     status_text = "Included in final article"
                 elif "error" in reason.lower():
                      status_class = "status-error"
-                     # status_text remains "Excluded ({reason})" which contains error details
+                     # status_text already contains escaped error details
 
                 list_items += (
                     f"<li class='source-item'>"
@@ -1486,7 +1841,6 @@ class FollowUpNode(ResilientNode):
                 )
 
             content = f"<ul>{list_items}</ul>"
-
         return f"<section><h2>{escape(title)}</h2>{content}</section>"
 
 
