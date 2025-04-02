@@ -443,21 +443,20 @@ class SearchNode(ResilientNode):
 # llmknowledge_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 llmknowledge_agent_prompt = """
-You are a meticulous research assistant providing verified and sourced facts to support an article.
+You are a meticulous research assistant providing facts to support an article.
 
 ### Article Information:
 - General Topic: {article_topic}
-
 - Research Queries: {search_queries}
 
 ### Guidelines:
-- Provide ONLY verified facts.
+- Provide verified facts.
 - Ensure all information is CURRENT (consider today's date: {current_date}).
-- NEVER guess or create facts if uncertain. If solid information is unavailable, explicitly state "No verified information found."
-- Provide a credible and direct source for every fact you provide (domain or citation).
+- If solid information is unavailable, explicitly state "No verified information found."
+- Provide a credible facts you provide (domain or citation).
 
 
-Your accuracy and clarity are essential. Prioritize factual correctness over quantity, but give everything that is relevant and can be used to write the article.
+Your accuracy and clarity are essential. Give everything that is relevant and can be used to write the article.
 """
 # llmknowledge_agent = Agent(
 #     model=llmknowledge_model,
@@ -1320,6 +1319,7 @@ Moreover:
   - `<strong>` for emphasis
   - `<blockquote>` for quotes
 - You always need `<h1>`, article lead, at least 2 `<h2>`
+- Return the result using regular HTML tags, not encoded entities (<h1>, not &lt;h1&gt;),
 - Keep **paragraphs between 3-5 sentences** for readability.
 - Keep in mind current date: {current_date}
 - Return **only the article**—**no additional comments** or explanations are necessary.
@@ -1463,6 +1463,7 @@ reflection_agent_prompt = """You are an **Editor-in-Chief**. Your task is to **r
 - **If certain elements are missing, instruct the agent on what should be added and why, using examples inspired by benchmark articles.**
 - **Focus on providing precise, detailed instructions that are easy to implement.**
 - **Remind not to include publication date in the final article**
+- **Remind to return the result using regular HTML tags, not encoded entities** (<h1>, not &lt;h1&gt;)
 
 ### Article Rating
 - **A the end always rate the article as 2/5. Demand 5/5**
@@ -1694,7 +1695,7 @@ class FollowUpNode(ResilientNode):
         # (This part remains the same, using follow_up_data which is now guaranteed to exist)
         logger.info("Constructing final HTML output...")
 
-        article_html = f"<article>\n{escape(ctx.state.finished_article)}\n</article>" # Escape article content
+        article_html = f"<article>\n{ctx.state.finished_article}\n</article>" 
         titles_html = self._generate_list_html("Alternatywne tytuły", follow_up_data.alternative_titles)
         topics_html = self._generate_list_html("Tematy do rozważenia", follow_up_data.followup_articles)
         sources_html = self._generate_detailed_sources_html(
