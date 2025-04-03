@@ -1358,7 +1358,7 @@ class WritingNode(ResilientNode):
         # Optional: Add another fallback like GPT-4o if Deepseek fails?
         # fallback_secondary = openai_gpt_4o_model
 
-        potential_models = [preferred_model, gemini_25_model, fallback_primary] # Order: Gemini, Deepseek
+        potential_models = [gemini_25_model, preferred_model, fallback_primary] # Order: Gemini, Deepseek
         # Example with secondary fallback:
         # potential_models = [fallback_primary, preferred_model, fallback_secondary]
         available_models = [model for model in potential_models if model is not None]
