@@ -1319,6 +1319,7 @@ Incorporate these **important keywords** for SEO (where appropriate):
 
 Moreover:
 - **Do not make up facts**—use only the provided information.
+- **Infuse your writing with wit, charm, and humor**
 - Use **simple HTML tags** for formatting:
   - `<h1>` for the main title
   - `<h2>` for subheadings
