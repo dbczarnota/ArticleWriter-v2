@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 from datetime import date, datetime, timedelta
 import abc
 from html import escape
-
+from example_articles import example_articles
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -1190,9 +1190,10 @@ You are an **Editor-in-Chief**. Your task is to provide detailed, structured ins
 - The instructions should focus **only on text** (no images, polls, quizzes, embeds, meta descriptions, or link placements).
 - The article should **align with the style and format** of similar articles from the provided references.
 
-### Reference Articles:
-Analyze these existing articles carefully. The new article should be **similar in tone, structure, and format**:
-{article_texts}
+### Style and structure:
+These are example, published articles from your web magazine covering different topics. The **style, tone, format, structure and length** of the new article should be similar:
+{example_articles}
+
 
 ### Article Topic:
 The article will be about:
@@ -1202,6 +1203,10 @@ The article will be about:
 The following plan was proposed for the article:
 {plan}
 - You **do not need to strictly follow the plan**, but use it as guidance.
+
+### Reference Articles:
+These are articles on the similar topic written by our competitors. Make sure your journalist will make a better job:
+{article_texts}
 
 ### Output Format:
 Write the instructions as a **prompt** for an AI writing agent, ensuring clarity, specificity, and completeness. **No additional comments are needed**—just the structured prompt itself.
@@ -1259,7 +1264,8 @@ class InstructionsNode(ResilientNode):
         user_prompt = instructions_agent_prompt.format( # Ensure prompt is accessible
             article_texts=article_texts,
             plan=research_plan,
-            topic=topic
+            topic=topic,
+            example_articles=example_articles
         )
         # logger.debug(f"{node_name} prompt snippet: {user_prompt[:300]}...")
 
@@ -1318,11 +1324,15 @@ Moreover:
   - `<h2>` for subheadings
   - `<strong>` for emphasis
   - `<blockquote>` for quotes
+- Do not use any other formatting (e.g. markdown) but html tags(e.g. <strong>Strong</strong>, not **Strong**)
 - You always need `<h1>`, article lead, at least 2 `<h2>`
-- Return the result using regular HTML tags, not encoded entities (<h1>, not &lt;h1&gt;),
 - Keep **paragraphs between 3-5 sentences** for readability.
 - Keep in mind current date: {current_date}
 - Return **only the article**—**no additional comments** or explanations are necessary.
+
+These are example, published articles from your web magazine covering different topics. The **style, tone, format, structure and length** of the new article should be similar:
+{example_articles}
+
 """
 
 @dataclass
@@ -1387,7 +1397,8 @@ class WritingNode(ResilientNode):
                 keywords=keywords_str,
                 quotes=quotes_str,
                 instructions=ctx.state.instructions,
-                current_date=ctx.state.current_date
+                current_date=ctx.state.current_date,
+                example_articles=example_articles      
             )
             logger.info("Using initial writing prompt.")
         else:
@@ -1463,12 +1474,17 @@ reflection_agent_prompt = """You are an **Editor-in-Chief**. Your task is to **r
 - **If certain elements are missing, instruct the agent on what should be added and why, using examples inspired by benchmark articles.**
 - **Focus on providing precise, detailed instructions that are easy to implement.**
 - **Remind not to include publication date in the final article**
-- **Remind to return the result using regular HTML tags, not encoded entities** (<h1>, not &lt;h1&gt;)
+
 
 ### Article Rating
 - **A the end always rate the article as 2/5. Demand 5/5**
 
-### High-quality Benchmark Articles:
+### Style and structure:
+These are example, published articles from your web magazine covering different topics. The **style, tone, format, structure and length** of the new article should be similar:
+{example_articles}
+
+### Reference Articles:
+These are articles on the similar topic written by our competitors. Make sure your journalist will make a better job:
 {benchmark_articles}
 """
 
@@ -1512,8 +1528,9 @@ class ReflectionNode(ResilientNode):
 
         # --- Prepare Prompt ---
         benchmark_articles = ctx.state.researched_info.article_texts or "No benchmark articles available."
-        user_prompt = reflection_agent_prompt.format( # Ensure prompt is accessible
-            benchmark_articles=benchmark_articles
+        user_prompt = reflection_agent_prompt.format( 
+            benchmark_articles=benchmark_articles,
+            example_articles=example_articles 
         )
         # logger.debug(f"{node_name} prompt snippet: {user_prompt[:300]}...")
 
@@ -1566,7 +1583,7 @@ class ReflectionNode(ResilientNode):
 ###############################################################################
 ############################## Follow up Node ##############################
 # followup_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
-followup_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+# followup_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 followup_agent_prompt = """You are given a finished article (referred to as "finished_article"). Please analyze it thoroughly and perform the following steps:
 
