@@ -169,7 +169,7 @@ if gemini_provider:
 
 # Initialize Gemini Model 2: gemini-2.5-pro-exp-03-25
 gemini_25_model = None # Keep variable name generic
-gemini_25_model_name = 'gemini-2.5-pro-exp-03-25' # *** USER SPECIFIED NAME ***
+gemini_25_model_name = 'gemini-2.5-pro-preview-05-06' # *** USER SPECIFIED NAME ***
 if gemini_provider:
     try:
         gemini_25_model = GeminiModel(gemini_25_model_name, provider=gemini_provider)
