@@ -611,8 +611,7 @@ class ScrapingNode(ResilientNode):
 
 ###############################################################################
 ################################ Parsing Node #################################
-# parsing_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
-# parsing_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+
 
 class ParsedArticle(BaseModel):
     webpage_type: Literal['article', 'other']
@@ -781,8 +780,8 @@ class ParsingNode(ResilientNode):
 
 ###############################################################################
 ############################# DataExtraction Node #############################
-# data_extraction_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
-data_extraction_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+
+
 
 data_extraction_agent_prompt = """
 Your task is to analyze text and determine whether it is an **article** or another type of page (e.g., main page, category page, tag page, etc.), then extract key information.
@@ -841,7 +840,7 @@ ARTICLE TEXT:
 class ResearchedArticle(BaseModel):
     webpage_type: Literal['article', 'other']
     relevant: Literal['yes', 'no']
-    publication_date: date
+    publication_date: Optional[date]
     facts: Optional[List[str]]
     quotes: Optional[List[Quote]]
     keywords: Optional[List[str]]
@@ -1143,8 +1142,7 @@ class DataExtractionNode(ResilientNode):
 
 ###############################################################################
 ############################## Instructions Node ##############################
-# instructions_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
-# instructions_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+
 
 instructions_agent_prompt = """
 You are an **Editor-in-Chief**. Your task is to provide detailed, structured instructions for a journalist to write a **high-quality web article**.
@@ -1251,16 +1249,6 @@ class InstructionsNode(ResilientNode):
 
 ###############################################################################
 ################################ Writing Node #################################
-# writing_model = OpenAIModel(
-#     model_name='deepseek/deepseek-r1',
-#     base_url='https://openrouter.ai/api/v1',
-#     api_key=os.getenv('OPENROUTER_API_KEY'),
-# )
-# provider = OpenAIProvider(
-#     base_url='https://openrouter.ai/api/v1',
-#     api_key=os.getenv('OPENROUTER_API_KEY'),)
-
-# writing_model = OpenAIModel('deepseek/deepseek-r1', provider = provider)
 
 writing_agent_prompt = """You are an **editor for a web magazine**. Your task is to write a **high-quality web article** on the following topic:
 
@@ -1403,8 +1391,7 @@ class WritingNode(ResilientNode):
 
 ###############################################################################
 ############################### Reflection Node ###############################
-# reflection_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
-# reflection_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+
 
 reflection_agent_prompt = """You are an **Editor-in-Chief**. Your task is to **review the article** written by the editor agent and provide **detailed, relevant, and actionable feedback**. Your output must consist solely of a structured AI prompt for a writing agent—do not include any additional commentary or explanations. The entire feedback must be written in the same language as the revised article.
 
@@ -1519,8 +1506,7 @@ class ReflectionNode(ResilientNode):
 
 ###############################################################################
 ############################## Follow up Node ##############################
-# followup_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
-# followup_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+
 
 followup_agent_prompt = """You are given a finished article (referred to as "finished_article"). Please analyze it thoroughly and perform the following steps:
 
@@ -1832,13 +1818,13 @@ class ArticleWriter:
 ###############################################################################
 if __name__ == "__main__":
     article = ArticleWriter.write_article(
-        article_topic="Paula i Michał z 'Love Never Lies 3' wypowiadają się o kolegach z programu",
+        article_topic="Smutne wyznanie Kwaśniewskiej o braku dzieci. Jej słowa obiegły całą Polskę",
         domains=[],  # example domains
-        urls=['https://party.pl/tv-show/paula-i-michal-z-love-never-lies-gorzko-o-uczestnikach-tak-nie-robia-prawdziwe-osoby-tylko-falszywe-po-emisji-w-niedziele/'],       # example URLs
-        number_of_queries=1,
+        urls=['https://goniec.pl/smutne-wyznanie-kwasniewskiej-o-braku-dzieci-jej-slowa-obiegly-cala-polske-os-wbc-100625'],       # example URLs
+        number_of_queries=3,
         scraping_model="",        # specify your scraping model if needed
-        max_search_results=2,
-        search_days=10,
+        max_search_results=3,
+        search_days=20,
         extraction_mode="markdown",
         provide_llm_facts="yes"
     )
