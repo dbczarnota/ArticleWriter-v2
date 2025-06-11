@@ -218,7 +218,7 @@ class SearchAndScrape:
                     )
                     if resultRun.success:
                         print(f"Successfully crawled: {url}")
-                        print(f"{resultRun}")
+                        # print(f"{resultRun}")
                         
                         processed = await self._process_result(resultRun, description_mapping)
                         if processed is not None:
