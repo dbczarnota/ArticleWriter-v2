@@ -24,6 +24,8 @@ from datetime import date, datetime, timedelta
 import abc
 from html import escape
 from example_articles import example_articles
+from llm_models import setup_fallback_model
+
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -138,100 +140,117 @@ class ResilientNode(BaseNode, abc.ABC):
              report += f"- Node: {escape(err.get('node', 'Unknown Node'))}, Error: {escape(err.get('error', 'Unknown Error'))}\n"
         return report
     
-###############################################################################
-# Centralized Model Initialization
-###############################################################################
-print("--- Initializing LLM Models ---")
+# ###############################################################################
+# # Centralized Model Initialization
+# ###############################################################################
+# print("--- Initializing LLM Models ---")
 
-# --- Google Gemini Models ---
-gemini_provider = None
-gemini_api_key = os.getenv('GEMINI_API_KEY')
-if gemini_api_key:
-    try:
-        gemini_provider = GoogleGLAProvider(api_key=gemini_api_key)
-        print("--- Google GLA Provider initialized successfully. ---")
-    except Exception as e:
-        print(f"--- WARNING: Failed to initialize Google GLA Provider: {e} ---")
-        print("--- Check if GEMINI_API_KEY is set and correct. Gemini models will not be available. ---")
-else:
-    print("--- WARNING: GEMINI_API_KEY not found. Skipping Google Gemini model initialization. ---")
+# # --- Google Gemini Models ---
+# gemini_provider = None
+# gemini_api_key = os.getenv('GEMINI_API_KEY')
+# if gemini_api_key:
+#     try:
+#         gemini_provider = GoogleGLAProvider(api_key=gemini_api_key)
+#         print("--- Google GLA Provider initialized successfully. ---")
+#     except Exception as e:
+#         print(f"--- WARNING: Failed to initialize Google GLA Provider: {e} ---")
+#         print("--- Check if GEMINI_API_KEY is set and correct. Gemini models will not be available. ---")
+# else:
+#     print("--- WARNING: GEMINI_API_KEY not found. Skipping Google Gemini model initialization. ---")
 
-# Initialize Gemini Model 1: gemini-2.0-flash
-gemini_20_model = None # Keep variable name generic
-gemini_20_model_name = 'gemini-2.0-flash' # *** USER SPECIFIED NAME ***
-if gemini_provider:
-    try:
-        gemini_20_model = GeminiModel(gemini_20_model_name, provider=gemini_provider)
-        print(f"--- Google Gemini ({gemini_20_model_name}) initialized successfully. ---")
-    except Exception as e:
-        print(f"--- WARNING: Failed to initialize Google Gemini ({gemini_20_model_name}): {e} ---")
-        print(f"--- Check if the model name '{gemini_20_model_name}' is valid and accessible with your API key. ---")
+# # Initialize Gemini Model 1: gemini-2.0-flash
+# gemini_20_model = None # Keep variable name generic
+# gemini_20_model_name = 'gemini-2.0-flash' # *** USER SPECIFIED NAME ***
+# if gemini_provider:
+#     try:
+#         gemini_20_model = GeminiModel(gemini_20_model_name, provider=gemini_provider)
+#         print(f"--- Google Gemini ({gemini_20_model_name}) initialized successfully. ---")
+#     except Exception as e:
+#         print(f"--- WARNING: Failed to initialize Google Gemini ({gemini_20_model_name}): {e} ---")
+#         print(f"--- Check if the model name '{gemini_20_model_name}' is valid and accessible with your API key. ---")
 
-# Initialize Gemini Model 2: gemini-2.5-pro-exp-03-25
-gemini_25_model = None # Keep variable name generic
-gemini_25_model_name = 'gemini-2.5-pro-preview-05-06' # *** USER SPECIFIED NAME ***
-if gemini_provider:
-    try:
-        gemini_25_model = GeminiModel(gemini_25_model_name, provider=gemini_provider)
-        print(f"--- Google Gemini ({gemini_25_model_name}) initialized successfully. ---")
-    except Exception as e:
-        print(f"--- WARNING: Failed to initialize Google Gemini ({gemini_25_model_name}): {e} ---")
-        print(f"--- Check if the model name '{gemini_25_model_name}' is valid and accessible (it might be experimental/restricted). ---")
+# # Initialize Gemini Model 2: gemini-2.5-pro-exp-03-25
+# gemini_25_model = None # Keep variable name generic
+# gemini_25_model_name = 'gemini-2.5-pro-preview-05-06' # *** USER SPECIFIED NAME ***
+# if gemini_provider:
+#     try:
+#         gemini_25_model = GeminiModel(gemini_25_model_name, provider=gemini_provider)
+#         print(f"--- Google Gemini ({gemini_25_model_name}) initialized successfully. ---")
+#     except Exception as e:
+#         print(f"--- WARNING: Failed to initialize Google Gemini ({gemini_25_model_name}): {e} ---")
+#         print(f"--- Check if the model name '{gemini_25_model_name}' is valid and accessible (it might be experimental/restricted). ---")
 
-# --- OpenAI Models ---
-openai_provider = None
-openai_api_key = os.getenv('OPENAI_API_KEY')
-if openai_api_key:
-    try:
-        openai_provider = OpenAIProvider(api_key=openai_api_key)
-        print("--- OpenAI Provider initialized successfully. ---")
-    except Exception as e:
-        print(f"--- WARNING: Failed to initialize OpenAI Provider: {e} ---")
-        print("--- Check if OPENAI_API_KEY is set and correct. OpenAI models will not be available. ---")
-else:
-    print("--- WARNING: OPENAI_API_KEY not found. Skipping OpenAI model initialization. ---")
+# # --- OpenAI Models ---
+# openai_provider = None
+# openai_api_key = os.getenv('OPENAI_API_KEY')
+# if openai_api_key:
+#     try:
+#         openai_provider = OpenAIProvider(api_key=openai_api_key)
+#         print("--- OpenAI Provider initialized successfully. ---")
+#     except Exception as e:
+#         print(f"--- WARNING: Failed to initialize OpenAI Provider: {e} ---")
+#         print("--- Check if OPENAI_API_KEY is set and correct. OpenAI models will not be available. ---")
+# else:
+#     print("--- WARNING: OPENAI_API_KEY not found. Skipping OpenAI model initialization. ---")
 
-# Initialize OpenAI Model 1 (gpt-4o)
-openai_gpt_4o_model = None
-if openai_provider:
-    try:
-        openai_gpt_4o_model = OpenAIModel('gpt-4o', provider=openai_provider)
-        print("--- OpenAIModel (gpt-4o) initialized successfully. ---")
-    except Exception as e:
-        print(f"--- WARNING: Failed to instantiate OpenAIModel (gpt-4o): {e} ---")
+# # Initialize OpenAI Model 1 (gpt-4o)
+# openai_gpt_4o_model = None
+# if openai_provider:
+#     try:
+#         openai_gpt_4o_model = OpenAIModel('gpt-4o', provider=openai_provider)
+#         print("--- OpenAIModel (gpt-4o) initialized successfully. ---")
+#     except Exception as e:
+#         print(f"--- WARNING: Failed to instantiate OpenAIModel (gpt-4o): {e} ---")
 
-# Initialize OpenAI Model 2: o3-mini
-openai_o3_mini_model_name = 'o3-mini' # *** USER SPECIFIED NAME ***
-openai_o3_mini_model = None
-if openai_provider:
-    try:
-        openai_o3_mini_model = OpenAIModel(openai_o3_mini_model_name, provider=openai_provider)
-        print(f"--- OpenAIModel ({openai_o3_mini_model_name}) initialized successfully. ---")
-    except Exception as e:
-        print(f"--- WARNING: Failed to instantiate OpenAIModel ({openai_o3_mini_model_name}): {e} ---")
-        print(f"--- Check if '{openai_o3_mini_model_name}' is a valid model name for your OpenAI endpoint (could be custom/Azure). ---")
-
-
-# --- OpenRouter Model (Deepseek) ---
-openrouter_deepseek_model = None
-openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
-if openrouter_api_key:
-    try:
-        openrouter_provider = OpenAIProvider(
-            base_url='https://openrouter.ai/api/v1',
-            api_key=openrouter_api_key,
-        )
-        deepseek_model_name = 'deepseek/deepseek-r1' # Keep as is unless user specifies otherwise
-        openrouter_deepseek_model = OpenAIModel(deepseek_model_name, provider=openrouter_provider)
-        print(f"--- OpenRouter Model ({deepseek_model_name}) initialized successfully via OpenAI Interface. ---")
-    except Exception as e:
-        print(f"--- WARNING: Failed to initialize OpenRouter Model ({deepseek_model_name}): {e} ---")
-        print("--- Check OPENROUTER_API_KEY and model name. ---")
-else:
-    print("--- WARNING: OPENROUTER_API_KEY not found. Skipping OpenRouter model initialization. ---")
+# # Initialize OpenAI Model 2: o3-mini
+# openai_o3_mini_model_name = 'o3-mini' # *** USER SPECIFIED NAME ***
+# openai_o3_mini_model = None
+# if openai_provider:
+#     try:
+#         openai_o3_mini_model = OpenAIModel(openai_o3_mini_model_name, provider=openai_provider)
+#         print(f"--- OpenAIModel ({openai_o3_mini_model_name}) initialized successfully. ---")
+#     except Exception as e:
+#         print(f"--- WARNING: Failed to instantiate OpenAIModel ({openai_o3_mini_model_name}): {e} ---")
+#         print(f"--- Check if '{openai_o3_mini_model_name}' is a valid model name for your OpenAI endpoint (could be custom/Azure). ---")
 
 
-print("--- Model Initialization Complete ---")
+# # --- OpenRouter Model (Deepseek) ---
+# openrouter_deepseek_model = None
+# openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
+# if openrouter_api_key:
+#     try:
+#         openrouter_provider = OpenAIProvider(
+#             base_url='https://openrouter.ai/api/v1',
+#             api_key=openrouter_api_key,
+#         )
+#         deepseek_model_name = 'deepseek/deepseek-r1' # Keep as is unless user specifies otherwise
+#         openrouter_deepseek_model = OpenAIModel(deepseek_model_name, provider=openrouter_provider)
+#         print(f"--- OpenRouter Model ({deepseek_model_name}) initialized successfully via OpenAI Interface. ---")
+#     except Exception as e:
+#         print(f"--- WARNING: Failed to initialize OpenRouter Model ({deepseek_model_name}): {e} ---")
+#         print("--- Check OPENROUTER_API_KEY and model name. ---")
+# else:
+#     print("--- WARNING: OPENROUTER_API_KEY not found. Skipping OpenRouter model initialization. ---")
+
+# # --- OpenRouter Model (Deepseek) ---
+# openrouter_qwen_model = None
+# openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
+# if openrouter_api_key:
+#     try:
+#         openrouter_provider = OpenAIProvider(
+#             base_url='https://openrouter.ai/api/v1',
+#             api_key=openrouter_api_key,
+#         )
+#         qwen_model_name = 'qwen/qwen3-235b-a22b' # Keep as is unless user specifies otherwise
+#         openrouter_qwen_model = OpenAIModel(qwen_model_name, provider=openrouter_provider)
+#         print(f"--- OpenRouter Model ({qwen_model_name}) initialized successfully via OpenAI Interface. ---")
+#     except Exception as e:
+#         print(f"--- WARNING: Failed to initialize OpenRouter Model ({deepseek_model_name}): {e} ---")
+#         print("--- Check OPENROUTER_API_KEY and model name. ---")
+# else:
+#     print("--- WARNING: OPENROUTER_API_KEY not found. Skipping OpenRouter model initialization. ---")
+
+# print("--- Model Initialization Complete ---")
 
 
 
@@ -388,20 +407,9 @@ class SearchNode(ResilientNode):
         """
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
-
-        # --- Model Selection with Fallback ---
-        preferred_model = openai_gpt_4o_model
-        fallback_primary = gemini_20_model
-
-        potential_models = [preferred_model, fallback_primary]
-        available_models = [model for model in potential_models if model is not None]
-
-        if not available_models:
-            raise ValueError(f"ERROR: Could not instantiate ANY models for {node_name}. Check API keys/availability.")
-
-        model_names = [m.model_name for m in available_models]
+        model_names = ["gpt-4.1-mini", "gemini-2.5-flash-preview-04-17"]
         logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = FallbackModel(*available_models)
+        node_fallback_model = setup_fallback_model(model_names)
 
         # --- Instantiate Agent within _execute ---
         research_agent = Agent[None, ResearchPlan](
@@ -478,21 +486,10 @@ class LlmKnowledgeNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
 
-        # --- Model Selection with Fallback ---
-        # Access centrally initialized models
-        # Preferred model for this node: OpenAI GPT-4o
-        preferred_model = openai_gpt_4o_model # From central initialization
-        fallback_primary = gemini_20_model     # From central initialization
-
-        potential_models = [fallback_primary, preferred_model] # Order: Fallback first, then preferred
-        available_models = [model for model in potential_models if model is not None]
-
-        if not available_models:
-            raise ValueError(f"ERROR: Could not instantiate ANY models for {node_name}. Check API keys/availability.")
-
-        model_names = [m.model_name for m in available_models]
+        model_names = ["gpt-4.1-mini", "gemini-2.5-flash-preview-04-17"]
         logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = FallbackModel(*available_models)
+        node_fallback_model = setup_fallback_model(model_names)
+
 
         # --- Instantiate Agent within _execute ---
         # Use the FallbackModel instance for the agent
@@ -708,25 +705,12 @@ class ParsingNode(ResilientNode):
                     page['parsed_article'] = None
                     return
 
-                # --- Model Selection & Agent Instantiation (Inside process_page) ---
-                # Preferred model: o3-mini (mapped to openai_o3_mini_model)
-                preferred_model = openai_o3_mini_model # From central initialization
-                fallback_primary = gemini_20_model     # From central initialization
-
-                potential_models = [fallback_primary, preferred_model]
-                available_models = [model for model in potential_models if model is not None]
-
-                if not available_models:
-                    # Raise error to be caught by the outer try/except in this function
-                    raise ValueError(f"ERROR: Could not instantiate ANY models for parsing. Check API keys.")
-
-                model_names = [m.model_name for m in available_models]
-                # Log model usage per page if needed (can be verbose)
-                # logger.debug(f"{page_node_log_prefix} Using FallbackModel with: {model_names}")
-                page_fallback_model = FallbackModel(*available_models)
+                model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
+                logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
+                node_fallback_model = setup_fallback_model(model_names)
 
                 parsing_agent = Agent( # Agent is local to this page processing task
-                    model=page_fallback_model,
+                    model=node_fallback_model,
                     result_type=ParsedArticle, # Ensure ParsedArticle is defined/imported
                     retries=1 # Optional: Agent retries *before* falling back
                 )
@@ -921,23 +905,12 @@ class DataExtractionNode(ResilientNode):
             try:
                 parsed_article = page.get("parsed_article", "") # Already checked if exists and not parsing_error
 
-                # --- Model Selection & Agent Instantiation (Inside process_page) ---
-                # Preferred model: o3-mini (mapped to openai_o3_mini_model if available)
-                preferred_model = openai_o3_mini_model # From central initialization
-                fallback_primary = gemini_20_model     # From central initialization
-
-                potential_models = [fallback_primary, preferred_model]
-                available_models = [model for model in potential_models if model is not None]
-
-                if not available_models:
-                    raise ValueError(f"ERROR: Could not instantiate ANY models for data extraction.")
-
-                model_names = [m.model_name for m in available_models]
-                # logger.debug(f"{page_node_log_prefix} Using FallbackModel with: {model_names}")
-                page_fallback_model = FallbackModel(*available_models)
+                model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
+                logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
+                node_fallback_model = setup_fallback_model(model_names)
 
                 data_extraction_agent = Agent( # Agent local to this task
-                    model=page_fallback_model,
+                    model=node_fallback_model,
                     result_type=ResearchedArticle,
                     retries=1 # Optional agent retries before fallback
                 )
@@ -1229,20 +1202,9 @@ class InstructionsNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
 
-        # --- Model Selection with Fallback ---
-        # Preferred model: o3-mini (mapped to openai_o3_mini_model)
-        preferred_model = openai_o3_mini_model # From central initialization
-        fallback_primary = gemini_20_model     # From central initialization
-
-        potential_models = [fallback_primary, preferred_model]
-        available_models = [model for model in potential_models if model is not None]
-
-        if not available_models:
-            raise ValueError(f"ERROR: Could not instantiate ANY models for {node_name}. Check API keys/availability.")
-
-        model_names = [m.model_name for m in available_models]
+        model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
         logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = FallbackModel(*available_models)
+        node_fallback_model = setup_fallback_model(model_names)
 
         # --- Instantiate Agent within _execute ---
         instructions_agent = Agent( # Agent local to this execution
@@ -1351,24 +1313,9 @@ class WritingNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic (Round: {ctx.state.reflection_round})...")
 
-        # --- Model Selection with Fallback ---
-        # Preferred model: OpenRouter Deepseek
-        preferred_model = openrouter_deepseek_model # From central initialization
-        fallback_primary = gemini_20_model          # From central initialization
-        # Optional: Add another fallback like GPT-4o if Deepseek fails?
-        # fallback_secondary = openai_gpt_4o_model
-
-        potential_models = [gemini_25_model, preferred_model, fallback_primary] # Order: Gemini, Deepseek
-        # Example with secondary fallback:
-        # potential_models = [fallback_primary, preferred_model, fallback_secondary]
-        available_models = [model for model in potential_models if model is not None]
-
-        if not available_models:
-            raise ValueError(f"ERROR: Could not instantiate ANY models for {node_name}. Check API keys/availability.")
-
-        model_names = [m.model_name for m in available_models]
-        logger.info(f"--- Using FallbackModel for {node_name} (Round {ctx.state.reflection_round}) with models: {model_names} ---")
-        node_fallback_model = FallbackModel(*available_models)
+        model_names = ["gemini-2.5-pro-preview-05-06", "deepseek/deepseek-r1", "gpt-4.1"]
+        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
+        node_fallback_model = setup_fallback_model(model_names)
 
         # --- Instantiate Agent within _execute ---
         writing_agent = Agent[None, str]( # Agent local to this execution
@@ -1504,20 +1451,9 @@ class ReflectionNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
 
-        # --- Model Selection with Fallback ---
-        # Preferred model: o3-mini (mapped to openai_o3_mini_model)
-        preferred_model = openai_o3_mini_model # From central initialization
-        fallback_primary = gemini_20_model     # From central initialization
-
-        potential_models = [gemini_25_model, fallback_primary, preferred_model]
-        available_models = [model for model in potential_models if model is not None]
-
-        if not available_models:
-            raise ValueError(f"ERROR: Could not instantiate ANY models for {node_name}. Check API keys/availability.")
-
-        model_names = [m.model_name for m in available_models]
+        model_names = ["gemini-2.5-pro-preview-05-06", "gpt-4.1"]
         logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = FallbackModel(*available_models)
+        node_fallback_model = setup_fallback_model(model_names)
 
         # --- Instantiate Agent within _execute ---
         reflection_agent = Agent( # Agent local to this execution
@@ -1648,65 +1584,49 @@ class FollowUpNode(ResilientNode):
             error_report = self._generate_error_report(ctx.state.errors) # Use helper from ResilientNode
             return End(f"ERROR: Finished article missing.\n\nError Log:\n{error_report}")
 
-        # --- Model Selection with Fallback ---
-        # Preferred model: o3-mini (mapped to openai_o3_mini_model)
-        preferred_model = openai_o3_mini_model # From central initialization
-        fallback_primary = gemini_20_model     # From central initialization
+        model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
+        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
+        node_fallback_model = setup_fallback_model(model_names)
 
-        potential_models = [fallback_primary, preferred_model]
-        available_models = [model for model in potential_models if model is not None]
+        followup_agent = Agent( # Agent local to this execution
+            model=node_fallback_model,
+            result_type=FollowUp, # Ensure FollowUp model is defined/imported
+            retries=1 # Optional agent retries before fallback
+        )
+        # --------------------------------------------------------------
 
-        if not available_models:
-            # Log error but proceed to generate output without suggestions
-            logger.error(f"ERROR: Could not instantiate ANY models for {node_name}. Proceeding without follow-up suggestions.")
-            ctx.state.add_error(node_name, "No models available for follow-up generation.")
-            follow_up_data = FollowUp(alternative_titles=[], followup_articles=[])
-            # Skip agent instantiation and run, jump to HTML generation
-        else:
-            # --- Instantiate Agent within _execute ---
-            model_names = [m.model_name for m in available_models]
-            logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-            node_fallback_model = FallbackModel(*available_models)
+        # --- Prepare Prompt ---
+        user_prompt = followup_agent_prompt.format( # Ensure prompt is accessible
+            finished_article=ctx.state.finished_article
+        )
+        # logger.debug(f"{node_name} prompt snippet: {user_prompt[:300]}...")
 
-            followup_agent = Agent( # Agent local to this execution
-                model=node_fallback_model,
-                result_type=FollowUp, # Ensure FollowUp model is defined/imported
-                retries=1 # Optional agent retries before fallback
-            )
-            # --------------------------------------------------------------
+        # --- Run Agent ---
+        try:
+            result = await followup_agent.run(user_prompt=user_prompt)
+            # Handle case where agent runs but returns None or no data
+            if result is None or result.data is None:
+                    logger.warning(f"{node_name} agent run succeeded but returned no data. Proceeding without suggestions.")
+                    follow_up_data = FollowUp(alternative_titles=[], followup_articles=[])
+                    ctx.state.add_error(node_name, "Follow-up agent returned no suggestions (result was None or empty).")
+            else:
+                    follow_up_data = result.data
 
-            # --- Prepare Prompt ---
-            user_prompt = followup_agent_prompt.format( # Ensure prompt is accessible
-                finished_article=ctx.state.finished_article
-            )
-            # logger.debug(f"{node_name} prompt snippet: {user_prompt[:300]}...")
+        except FallbackExceptionGroup as feg:
+            # Log the error, add to state, but proceed without follow-up suggestions
+            error_message = f"All fallback models failed for follow-up generation."
+            logger.error(f"{node_name}: {error_message}")
+            ctx.state.add_error(node_name, error_message)
+            for i, exc in enumerate(feg.exceptions):
+                logger.error(f"  - Model {i+1}: {type(exc).__name__}: {exc}")
+            follow_up_data = FollowUp(alternative_titles=[], followup_articles=[]) # Default to empty
 
-            # --- Run Agent ---
-            try:
-                result = await followup_agent.run(user_prompt=user_prompt)
-                # Handle case where agent runs but returns None or no data
-                if result is None or result.data is None:
-                     logger.warning(f"{node_name} agent run succeeded but returned no data. Proceeding without suggestions.")
-                     follow_up_data = FollowUp(alternative_titles=[], followup_articles=[])
-                     ctx.state.add_error(node_name, "Follow-up agent returned no suggestions (result was None or empty).")
-                else:
-                     follow_up_data = result.data
-
-            except FallbackExceptionGroup as feg:
-                # Log the error, add to state, but proceed without follow-up suggestions
-                error_message = f"All fallback models failed for follow-up generation."
-                logger.error(f"{node_name}: {error_message}")
-                ctx.state.add_error(node_name, error_message)
-                for i, exc in enumerate(feg.exceptions):
-                    logger.error(f"  - Model {i+1}: {type(exc).__name__}: {exc}")
-                follow_up_data = FollowUp(alternative_titles=[], followup_articles=[]) # Default to empty
-
-            except Exception as agent_error:
-                # Log other agent errors, add to state, proceed without suggestions
-                error_message = f"Unexpected error during follow-up agent run: {agent_error}"
-                logger.error(f"{node_name}: {error_message}", exc_info=True)
-                ctx.state.add_error(node_name, error_message)
-                follow_up_data = FollowUp(alternative_titles=[], followup_articles=[]) # Default to empty
+        except Exception as agent_error:
+            # Log other agent errors, add to state, proceed without suggestions
+            error_message = f"Unexpected error during follow-up agent run: {agent_error}"
+            logger.error(f"{node_name}: {error_message}", exc_info=True)
+            ctx.state.add_error(node_name, error_message)
+            follow_up_data = FollowUp(alternative_titles=[], followup_articles=[]) # Default to empty
 
 
         # --- Construct the final HTML Output ---
