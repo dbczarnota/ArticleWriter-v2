@@ -20,7 +20,9 @@ from typing import List, Literal, Optional
 from searchandscrape import SearchAndScrape
 from rich import print
 from dotenv import load_dotenv
-from datetime import date, datetime, timedelta
+# from datetime import date, datetime, timedelta
+from pydantic import field_validator # For Pydantic v2
+from datetime import datetime, timedelta, date as date_type # alias date to avoid conflict
 import abc
 from html import escape
 from example_articles import example_articles
@@ -29,7 +31,7 @@ from llm_models import setup_fallback_model
 
 logger = logging.getLogger(__name__)
 load_dotenv()
-current_date = current_date_today = date.today()
+current_date = current_date_today = date_type.today()
 
 ###############################################################################
 # Error handling class template
@@ -143,114 +145,7 @@ class ResilientNode(BaseNode, abc.ABC):
 # ###############################################################################
 # # Centralized Model Initialization
 # ###############################################################################
-# print("--- Initializing LLM Models ---")
 
-# # --- Google Gemini Models ---
-# gemini_provider = None
-# gemini_api_key = os.getenv('GEMINI_API_KEY')
-# if gemini_api_key:
-#     try:
-#         gemini_provider = GoogleGLAProvider(api_key=gemini_api_key)
-#         print("--- Google GLA Provider initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize Google GLA Provider: {e} ---")
-#         print("--- Check if GEMINI_API_KEY is set and correct. Gemini models will not be available. ---")
-# else:
-#     print("--- WARNING: GEMINI_API_KEY not found. Skipping Google Gemini model initialization. ---")
-
-# # Initialize Gemini Model 1: gemini-2.0-flash
-# gemini_20_model = None # Keep variable name generic
-# gemini_20_model_name = 'gemini-2.0-flash' # *** USER SPECIFIED NAME ***
-# if gemini_provider:
-#     try:
-#         gemini_20_model = GeminiModel(gemini_20_model_name, provider=gemini_provider)
-#         print(f"--- Google Gemini ({gemini_20_model_name}) initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize Google Gemini ({gemini_20_model_name}): {e} ---")
-#         print(f"--- Check if the model name '{gemini_20_model_name}' is valid and accessible with your API key. ---")
-
-# # Initialize Gemini Model 2: gemini-2.5-pro-exp-03-25
-# gemini_25_model = None # Keep variable name generic
-# gemini_25_model_name = 'gemini-2.5-pro-preview-05-06' # *** USER SPECIFIED NAME ***
-# if gemini_provider:
-#     try:
-#         gemini_25_model = GeminiModel(gemini_25_model_name, provider=gemini_provider)
-#         print(f"--- Google Gemini ({gemini_25_model_name}) initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize Google Gemini ({gemini_25_model_name}): {e} ---")
-#         print(f"--- Check if the model name '{gemini_25_model_name}' is valid and accessible (it might be experimental/restricted). ---")
-
-# # --- OpenAI Models ---
-# openai_provider = None
-# openai_api_key = os.getenv('OPENAI_API_KEY')
-# if openai_api_key:
-#     try:
-#         openai_provider = OpenAIProvider(api_key=openai_api_key)
-#         print("--- OpenAI Provider initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize OpenAI Provider: {e} ---")
-#         print("--- Check if OPENAI_API_KEY is set and correct. OpenAI models will not be available. ---")
-# else:
-#     print("--- WARNING: OPENAI_API_KEY not found. Skipping OpenAI model initialization. ---")
-
-# # Initialize OpenAI Model 1 (gpt-4o)
-# openai_gpt_4o_model = None
-# if openai_provider:
-#     try:
-#         openai_gpt_4o_model = OpenAIModel('gpt-4o', provider=openai_provider)
-#         print("--- OpenAIModel (gpt-4o) initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to instantiate OpenAIModel (gpt-4o): {e} ---")
-
-# # Initialize OpenAI Model 2: o3-mini
-# openai_o3_mini_model_name = 'o3-mini' # *** USER SPECIFIED NAME ***
-# openai_o3_mini_model = None
-# if openai_provider:
-#     try:
-#         openai_o3_mini_model = OpenAIModel(openai_o3_mini_model_name, provider=openai_provider)
-#         print(f"--- OpenAIModel ({openai_o3_mini_model_name}) initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to instantiate OpenAIModel ({openai_o3_mini_model_name}): {e} ---")
-#         print(f"--- Check if '{openai_o3_mini_model_name}' is a valid model name for your OpenAI endpoint (could be custom/Azure). ---")
-
-
-# # --- OpenRouter Model (Deepseek) ---
-# openrouter_deepseek_model = None
-# openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
-# if openrouter_api_key:
-#     try:
-#         openrouter_provider = OpenAIProvider(
-#             base_url='https://openrouter.ai/api/v1',
-#             api_key=openrouter_api_key,
-#         )
-#         deepseek_model_name = 'deepseek/deepseek-r1' # Keep as is unless user specifies otherwise
-#         openrouter_deepseek_model = OpenAIModel(deepseek_model_name, provider=openrouter_provider)
-#         print(f"--- OpenRouter Model ({deepseek_model_name}) initialized successfully via OpenAI Interface. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize OpenRouter Model ({deepseek_model_name}): {e} ---")
-#         print("--- Check OPENROUTER_API_KEY and model name. ---")
-# else:
-#     print("--- WARNING: OPENROUTER_API_KEY not found. Skipping OpenRouter model initialization. ---")
-
-# # --- OpenRouter Model (Deepseek) ---
-# openrouter_qwen_model = None
-# openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
-# if openrouter_api_key:
-#     try:
-#         openrouter_provider = OpenAIProvider(
-#             base_url='https://openrouter.ai/api/v1',
-#             api_key=openrouter_api_key,
-#         )
-#         qwen_model_name = 'qwen/qwen3-235b-a22b' # Keep as is unless user specifies otherwise
-#         openrouter_qwen_model = OpenAIModel(qwen_model_name, provider=openrouter_provider)
-#         print(f"--- OpenRouter Model ({qwen_model_name}) initialized successfully via OpenAI Interface. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize OpenRouter Model ({deepseek_model_name}): {e} ---")
-#         print("--- Check OPENROUTER_API_KEY and model name. ---")
-# else:
-#     print("--- WARNING: OPENROUTER_API_KEY not found. Skipping OpenRouter model initialization. ---")
-
-# print("--- Model Initialization Complete ---")
 
 
 
@@ -299,7 +194,7 @@ class FactFromLlm(BaseModel):
 
 
 class State(BaseModel):
-    current_date: date = current_date
+    current_date: date_type = current_date
     configuration: Configuration
     reflection_round: int = 0
     instructions: str = ""
@@ -349,8 +244,7 @@ def load_state(filename: str = "state.json") -> State:
 # Nodes
 ###############################################################################
 ############################### Search Node ###################################
-# # search_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
-# search_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+
 
 research_agent_prompt = """You are a research assistant supporting an article writer. 
 Your role is to create a well-structured, high-level plan for a short web article based on the provided topic.
@@ -840,10 +734,45 @@ ARTICLE TEXT:
 class ResearchedArticle(BaseModel):
     webpage_type: Literal['article', 'other']
     relevant: Literal['yes', 'no']
-    publication_date: Optional[date]
+    publication_date: date_type
     facts: Optional[List[str]]
     quotes: Optional[List[Quote]]
     keywords: Optional[List[str]]
+    
+    
+    @field_validator('publication_date', mode='before')
+    @classmethod
+    def parse_publication_date(cls, value):
+        if value is None:
+            # If the field were Optional[date], we might return None.
+            # Since it's 'date', a value is expected.
+            # If LLM *can* return null/None for this, the field should be Optional.
+            # For now, if LLM is guaranteed to provide a date string, this path might not be hit often.
+            # However, if it does send an explicit null, Pydantic might complain earlier
+            # or this validator needs to handle it by raising ValueError or returning a default if appropriate.
+            # Given the error is about format, let's assume a string or date object is usually passed.
+            raise ValueError("Publication date cannot be None") # Or handle as per desired logic for None
+
+        if isinstance(value, date_type):
+            return value
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, str):
+            try:
+                # Attempt to parse ISO format string, including those with 'T' and time
+                dt_obj = datetime.fromisoformat(value.replace('Z', '+00:00')) # Handles 'Z' for UTC
+                return dt_obj.date()
+            except ValueError:
+                # Fallback for simple "YYYY-MM-DD" or other common formats
+                for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d"): # Add other formats if LLM uses them
+                    try:
+                        return datetime.strptime(value, fmt).date()
+                    except ValueError:
+                        continue
+                raise ValueError(f"Invalid date format: {value}. Expected ISO format or YYYY-MM-DD.")
+        raise TypeError(f"Invalid type for date: {type(value)}. Expected str, date, or datetime.")
+
+
 
 @dataclass
 class DataExtractionNode(ResilientNode):
@@ -999,7 +928,7 @@ class DataExtractionNode(ResilientNode):
 
         def parse_pub_date(pub_date):
             """Safely parse publication date from string or date object."""
-            if isinstance(pub_date, date): return pub_date
+            if isinstance(pub_date, date_type): return pub_date
             if isinstance(pub_date, str):
                 for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d"):
                     try: return datetime.strptime(pub_date, fmt).date()
