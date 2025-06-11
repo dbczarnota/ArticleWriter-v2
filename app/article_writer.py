@@ -7,10 +7,12 @@ from pydantic import BaseModel, Field
 from pydantic_ai.messages import ModelMessage
 from pydantic_graph import BaseNode, End, Graph, GraphRunContext
 from pydantic_ai.models.openai import OpenAIModel
+
 from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.gemini import GeminiModel
 from pydantic_ai.providers.google_gla import GoogleGLAProvider
 from pydantic_ai.exceptions import FallbackExceptionGroup, ModelHTTPError
+
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai import Agent
 from dataclasses import dataclass
@@ -244,6 +246,8 @@ def load_state(filename: str = "state.json") -> State:
 # Nodes
 ###############################################################################
 ############################### Search Node ###################################
+
+
 
 
 research_agent_prompt = """You are a research assistant supporting an article writer. 
