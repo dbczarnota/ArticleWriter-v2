@@ -141,7 +141,7 @@ def setup_fallback_model(models: Optional[List[str]] = None): # New signature
             logger.warning(f"Failed to initialize Ollama Provider: {e}", exc_info=True)
 
     else:
-        logger.info("Openrouter Provider not required by requested models.")
+        logger.info("Ollama Provider not required by requested models.")
 
     # --- Define a Mapping of Model Initializers ---
     # The key is the requested model name; the value is a lambda returning the model instance.

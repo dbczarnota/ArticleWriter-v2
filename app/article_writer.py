@@ -147,10 +147,45 @@ class ResilientNode(BaseNode, abc.ABC):
 # ###############################################################################
 # # Centralized Model Initialization
 # ###############################################################################
+#SearchNode
+model_names = ["gpt-4.1-mini", "gemini-2.5-flash-preview-04-17"]
+logger.info(f"--- Using FallbackModel for SearchNode with models: {model_names} ---")
+search_node_fallback_model = setup_fallback_model(model_names)
 
+#LlmKnowledgeNode
+model_names = ["gpt-4.1-mini", "gemini-2.5-flash-preview-04-17"]
+logger.info(f"--- Using FallbackModel for LlmKnowledgeNode with models: {model_names} ---")
+llmknowledge_node_fallback_model = setup_fallback_model(model_names)
 
+#ParsingNode
+model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
+logger.info(f"--- Using FallbackModel for ParsingNode with models: {model_names} ---")
+parsing_node_fallback_model = setup_fallback_model(model_names)
 
+#DataExtractionNode
+model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
+logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model_names} ---")
+dataextraction_node_fallback_model = setup_fallback_model(model_names)
 
+#InstructionsNode
+model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
+logger.info(f"--- Using FallbackModel for InstructionsNode with models: {model_names} ---")
+instructions_node_fallback_model = setup_fallback_model(model_names)
+
+#WritingNode
+model_names = ["gemini-2.5-pro-preview-05-06", "deepseek/deepseek-r1", "gpt-4.1"]
+logger.info(f"--- Using FallbackModel for WritingNode with models: {model_names} ---")
+writing_node_fallback_model = setup_fallback_model(model_names)
+
+#ReflectionNode
+model_names = ["gemini-2.5-pro-preview-05-06", "gpt-4.1"]
+logger.info(f"--- Using FallbackModel for ReflectionNode with models: {model_names} ---")
+reflection_node_fallback_model = setup_fallback_model(model_names)
+
+#FollowUpNode
+model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
+logger.info(f"--- Using FallbackModel for FollowUpNode with models: {model_names} ---")
+followUp_node_fallback_model = setup_fallback_model(model_names)
 
 ###############################################################################
 # State definition
@@ -286,10 +321,7 @@ Your response should follow this structure:
 ### All output must always be in the language of the article topic.
 """
 
-# research_agent = Agent[None, ResearchPlan](
-#     model=search_model,
-#     result_type=ResearchPlan,
-# )
+
 
 @dataclass
 class SearchNode(ResilientNode):
@@ -305,13 +337,11 @@ class SearchNode(ResilientNode):
         """
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
-        model_names = ["gpt-4.1-mini", "gemini-2.5-flash-preview-04-17"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
+
 
         # --- Instantiate Agent within _execute ---
         research_agent = Agent[None, ResearchPlan](
-            model=node_fallback_model,
+            model=search_node_fallback_model,
             result_type=ResearchPlan,
             # retries=1 # Optional
         )
@@ -345,8 +375,6 @@ class SearchNode(ResilientNode):
 
 ###############################################################################
 ################################ LlmKnowledge Node ################################
-# llmknowledge_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
-# llmknowledge_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 llmknowledge_agent_prompt = """
 You are a meticulous research assistant providing facts to support an article.
@@ -364,10 +392,7 @@ You are a meticulous research assistant providing facts to support an article.
 
 Your accuracy and clarity are essential. Give everything that is relevant and can be used to write the article.
 """
-# llmknowledge_agent = Agent(
-#     model=llmknowledge_model,
-#     result_type=List[FactFromLlm]
-# )
+
 
 @dataclass
 class LlmKnowledgeNode(ResilientNode):
@@ -384,15 +409,13 @@ class LlmKnowledgeNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
 
-        model_names = ["gpt-4.1-mini", "gemini-2.5-flash-preview-04-17"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
+
 
 
         # --- Instantiate Agent within _execute ---
         # Use the FallbackModel instance for the agent
         llmknowledge_agent = Agent( # Agent variable is local to _execute
-            model=node_fallback_model,
+            model=llmknowledge_node_fallback_model,
             result_type=List[FactFromLlm] # Ensure FactFromLlm is imported/defined
             # retries=1 # Optional agent-level retries
         )
@@ -558,11 +581,6 @@ The following HTML content should be parsed:
 {html}
 """
 
-# parsing_agent = Agent(
-#     model=parsing_model,
-#     result_type=ParsedArticle,
-#     retries=2
-# )
 
 @dataclass
 class ParsingNode(ResilientNode):
@@ -602,12 +620,8 @@ class ParsingNode(ResilientNode):
                     page['parsed_article'] = None
                     return
 
-                model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
-                logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-                node_fallback_model = setup_fallback_model(model_names)
-
                 parsing_agent = Agent( # Agent is local to this page processing task
-                    model=node_fallback_model,
+                    model=parsing_node_fallback_model,
                     result_type=ParsedArticle, # Ensure ParsedArticle is defined/imported
                     retries=1 # Optional: Agent retries *before* falling back
                 )
@@ -837,12 +851,9 @@ class DataExtractionNode(ResilientNode):
             try:
                 parsed_article = page.get("parsed_article", "") # Already checked if exists and not parsing_error
 
-                model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
-                logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-                node_fallback_model = setup_fallback_model(model_names)
 
                 data_extraction_agent = Agent( # Agent local to this task
-                    model=node_fallback_model,
+                    model=dataextraction_node_fallback_model,
                     result_type=ResearchedArticle,
                     retries=1 # Optional agent retries before fallback
                 )
@@ -1133,13 +1144,10 @@ class InstructionsNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
 
-        model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
 
         # --- Instantiate Agent within _execute ---
         instructions_agent = Agent( # Agent local to this execution
-            model=node_fallback_model,
+            model=instructions_node_fallback_model,
             result_type=str, # Expecting plain string instructions
             retries=1 # Optional agent retries before fallback
         )
@@ -1234,13 +1242,10 @@ class WritingNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic (Round: {ctx.state.reflection_round})...")
 
-        model_names = ["gemini-2.5-pro-preview-05-06", "deepseek/deepseek-r1", "gpt-4.1"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
 
         # --- Instantiate Agent within _execute ---
         writing_agent = Agent[None, str]( # Agent local to this execution
-            model=node_fallback_model,
+            model=writing_node_fallback_model,
             result_type=str, # Expecting the article as a string
             retries=1 # Optional agent retries before fallback
         )
@@ -1371,13 +1376,9 @@ class ReflectionNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
 
-        model_names = ["gemini-2.5-pro-preview-05-06", "gpt-4.1"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
-
         # --- Instantiate Agent within _execute ---
         reflection_agent = Agent( # Agent local to this execution
-            model=node_fallback_model,
+            model=reflection_node_fallback_model,
             result_type=str, # Expecting feedback string
             retries=1 # Optional agent retries before fallback
         )
@@ -1503,12 +1504,8 @@ class FollowUpNode(ResilientNode):
             error_report = self._generate_error_report(ctx.state.errors) # Use helper from ResilientNode
             return End(f"ERROR: Finished article missing.\n\nError Log:\n{error_report}")
 
-        model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
-
         followup_agent = Agent( # Agent local to this execution
-            model=node_fallback_model,
+            model=followUp_node_fallback_model,
             result_type=FollowUp, # Ensure FollowUp model is defined/imported
             retries=1 # Optional agent retries before fallback
         )
