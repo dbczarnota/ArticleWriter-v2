@@ -168,22 +168,22 @@ logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model
 dataextraction_node_fallback_model = setup_fallback_model(model_names)
 
 #InstructionsNode
-model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
+model_names = ["gemini-2.5-pro-preview-06-05", "o3-mini", "gemini-2.5-flash-preview-04-17"]
 logger.info(f"--- Using FallbackModel for InstructionsNode with models: {model_names} ---")
 instructions_node_fallback_model = setup_fallback_model(model_names)
 
 #WritingNode
-model_names = ["gemini-2.5-pro-preview-05-06", "deepseek/deepseek-r1", "gpt-4.1"]
+model_names = ["gemini-2.5-pro-preview-06-05", "gpt-4.1"]
 logger.info(f"--- Using FallbackModel for WritingNode with models: {model_names} ---")
 writing_node_fallback_model = setup_fallback_model(model_names)
 
 #ReflectionNode
-model_names = ["gemini-2.5-pro-preview-05-06", "gpt-4.1"]
+model_names = ["gemini-2.5-pro-preview-06-05", "gpt-4.1"]
 logger.info(f"--- Using FallbackModel for ReflectionNode with models: {model_names} ---")
 reflection_node_fallback_model = setup_fallback_model(model_names)
 
 #FollowUpNode
-model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
+model_names = ["gemini-2.5-pro-preview-06-05", "o3-mini", "gemini-2.5-flash-preview-04-17"]
 logger.info(f"--- Using FallbackModel for FollowUpNode with models: {model_names} ---")
 followUp_node_fallback_model = setup_fallback_model(model_names)
 
@@ -1708,11 +1708,11 @@ class ArticleWriter:
         article_topic: str,
         domains: List[str],
         urls: List[str] = None,  # <-- new parameter
-        number_of_queries: int = 3,
+        number_of_queries: int = 2,
         scraping_model: str = "",
         max_search_results: int = 4,
         search_days: int = 500,
-        provide_llm_facts: Literal["yes", "no"] = "yes",
+        provide_llm_facts: Literal["yes", "no"] = "no",
         extraction_mode: Literal["markdown", "html", "llm"] = "markdown",
     ) -> str:
         async def _run_graph():
@@ -1748,15 +1748,15 @@ class ArticleWriter:
 ###############################################################################
 if __name__ == "__main__":
     article = ArticleWriter.write_article(
-        article_topic="Smutne wyznanie Kwaśniewskiej o braku dzieci. Jej słowa obiegły całą Polskę",
+        article_topic="Uznański-Wiśniewski zadzwonił do żony z kosmosu.",
         domains=[],  # example domains
-        urls=['https://goniec.pl/smutne-wyznanie-kwasniewskiej-o-braku-dzieci-jej-slowa-obiegly-cala-polske-os-wbc-100625'],       # example URLs
-        number_of_queries=3,
+        urls=['https://goniec.pl/uznanski-wisniewski-zadzwonil-do-zony-z-kosmosu-przekazal-jej-wazna-wiadomosc-do-polakow-kg-wbc-260625'],       # example URLs
+        number_of_queries=2,
         scraping_model="",        # specify your scraping model if needed
-        max_search_results=3,
-        search_days=20,
+        max_search_results=4,
+        search_days=10,
         extraction_mode="markdown",
-        provide_llm_facts="yes"
+        provide_llm_facts="no"
     )
     print(article)
 

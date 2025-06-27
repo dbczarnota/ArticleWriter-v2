@@ -1,4 +1,4 @@
-example_articles = """
+example_articles2 = """
 -----Example Article 1-----
 <h1>Mur Chiński, Tadź Mahal, Angkor Wat: co łączy te 3 miejsca?</h1>
 <strong>Co łączy mur obronny ciągnący się przez tysiące kilometrów z grobowcem zbudowanym z miłości? Pozornie nic, a jednak oba te miejsca opowiadają historię Azji zapisaną na liście światowego dziedzictwa UNESCO. To kontynent skrajności, gdzie monumentalna siła spotyka się z intymnym uczuciem, a prastara duchowość przeplata się z cudami inżynierii. Azjatyckie skarby UNESCO to nie tylko zabytki – to lustra odbijające złożoność ludzkich dążeń.</strong>
@@ -71,5 +71,128 @@ Egipt to kraj pełen mistycyzmu i wierzeń. Na bazarach możemy kupić <strong>r
 <h2>Skóry i wyroby z zagrożonych gatunków</h2>
 Niektóre sklepy oferują turystom <strong>torby, paski i buty wykonane ze skór egzotycznych zwierząt</strong>. Choć mogą wyglądać luksusowo, ich zakup to ryzyko. Niektóre z nich mogą pochodzić z zagrożonych gatunków, a przewożenie takich pamiątek przez granicę może skutkować konfiskatą, mandatem, a nawet problemami prawnymi. <strong>Przed zakupem warto upewnić się, że dany produkt jest legalny</strong>.
 
+
+"""
+
+
+example_articles = """
+-----Example Article 1-----
+<h1>Nowe wyniki plebiscytu. To jednak Rafał wygrał</h1>
+<strong>Wydawać by się mogło, że wszystko jest przesądzone i to Karol Nawrocki zostanie zwycięzcą wyborów prezydenckich. A jednak nie wszystko jest jeszcze jasne i z całą pewnością należy powiedzieć, że Rafał Trzaskowski i Karol Nawrocki nie zdobyli tyle głosów, ile oficjalnie stwierdzono.</strong>
+<h2>Nieprawidłowości w liczeniu głosów</h2>
+Wybory prezydenckie zostały rozstrzygnięte w drugiej turze i zwyciężył w nich Karol Nawrocki - tak by się mogło powszechnie wydawać. A jednak sytuacja nie jest do końca taka pewna. W całym kraju należy odnotować tysiące protestów, więc nawet prawicowi publicyści tacy jak Jan Rokita zauważają, że skala zgłoszeń jest naprawdę imponująca.
+
+Trudno orzec jednak, czy liczba źle przeliczonych głosów jest na tyle wysoka, że miałaby wpływ na rzeczywisty wynik wyborów. To może się okazać wkrótce. Wiadomo jednak, że na pewno ani <a href="https://styl.fm/tagi/rafal-trzaskowski" target="_blank" rel="noopener">Rafał Trzaskowski</a>, ani <strong>Karol Nawrocki </strong>nie otrzymali dokładnie tyle głosów, ile wpisano w protokole. Jeśli jednak okaże się, że liczba nieprawidłowo przeliczonych głosów nie jest wysoka, Sąd Najwyższy uzna, że skala nieprawidłowości nie miała wpływu na wynik wyborów.
+
+
+<h2>Rafał Trzaskowski wygrał w kilku komisjach</h2>
+Po ponownym przeliczeniu głosów w niektórych komisjach, okazało się, że błędnie głosy Trzaskowskiego przypisano Nawrockiemu. Dziwne jest to, że za każdym razem to Trzaskowski był poszkodowany.
+
+Do takiej sytuacji doszło w komisji wyborczej nr 13 w Mińsku Mazowieckim i w Gdańsku, w których to jednak <strong>Rafał Trzaskowski</strong>, a nie<strong> Karol Nawrocki</strong> znacząco wygrał. Trzaskowski został też znacząco poszkodowany w Kamiennej Górze, gdzie część głosów także niesłusznie przypisano Nawrockiego. To oznacza, że bez dwóch zdań w tych miejscach to <strong>Rafał Trzaskowski</strong> był zwycięzcą.
+
+Warto przyjrzeć się dokładnym wynikom:
+<ul>
+ 	<li>W komisji nr 13 w Mińsku Mazowieckim przy ulicy Okólnej 14 miał wygrać Nawrocki z wynikiem 611 głosów, a Trzaskowski miał otrzymać 363 głosy. Okazało się, że zwycięzcą został jednak Trzaskowski, który otrzymał 611 głosy, a Nawrocki otrzymał 363 głosy.</li>
+ 	<li>W komisji wyborczej nr 17 w Gdańsku przy ulicy Kępnej 38 doszło do podobnej sytuacji. Pierwotnie Nawrocki dostał 585 głosów, a Trzaskowski 346. Okazało się, że wynik jest odwrotny.</li>
+ 	<li>W Kamiennej Górze Nawrocki miał otrzymać 368 głosy, a Trzaskowski 338. Ostatecznie okazało się, że Nawrocki dostał 278, a Trzaskowski 428 głosów.</li>
+</ul>
+
+-----Example Article 2-----
+<h1>Sygnał ostrzegawczy dla Donka. Jest źle</h1>
+<strong>Rząd Donalda Tuska ma olbrzymie problemy, ponieważ kandydat Koalicji Obywatelskiej przegrał wybory prezydenckie, a ponadto poparcie dla strony rządowej jest niskie. Przeanalizowaliśmy dokładnie średnie sondażowe z ostatnich 30 dni i jasno z nich wynika, że nawet jeśli koalicja wystartowałaby z jednej listy, to nie udałoby jej się osiągnąć większości parlamentarnej. Krótko mówiąc, jest źle.</strong>
+<h2>Średnie poparcie dla partii politycznych</h2>
+Średnie sondażowe pozwalają wnioskować o rzeczywisty poparciu dla poszczególnych partii. Są one znacznie bardziej precyzyjnie niż pojedyncze sondaże, ponieważ bazują na znacznie większych danych. Postanowiliśmy przeanalizować ostatnie średnie sondażowe, z których jasno wynika, że gdyby wybory odbyły się w kolejną niedzielę, to:
+<ul>
+ 	<li>zwycięzcą okazałaby się Koalicja Obywatelska, która ma 30,6 proc. poparcia.</li>
+ 	<li>Prawo i Sprawiedliwość, które notuje 30 proc., zajmuje drugą pozycję.</li>
+ 	<li>Podium uzupełnia Konfederacja ze średnim poparciem 14,3 proc. i wyraźnym trendem wzrostowym.</li>
+ 	<li>Kolejna jest Lewica, która ma 6,1 proc.</li>
+ 	<li>Tyle samo poparcia zdobywa także Trzecia Droga, czyli 6,1 proc. To oznacza, że startując samodzielnie, nie przekracza progu wyborczego dla koalicji.</li>
+ 	<li>Zaskoczeniem jest rosnące poparcie dla RAZEM, które notuje już 4,5 proc. i zbliża się do progu wyborczego.</li>
+</ul>
+
+<h2>Koalicja rządząca musiałaby oddać władzę PiS-owi i Konfederacji</h2>
+Warto zwrócić uwagę, że przeliczyliśmy poparcie na mandaty i wnioski są jasne, startując osobno KO i Lewica mają łącznie 194 mandaty, a PiS i Konfederacja aż 266. W przypadku gdy natomiast KO i pozostałe partie koalicyjne zdecydowały się na jedną listą, ten rezultat byłby lepszy. W takiej konfiguracji Koalicja rządząca notowałaby 228 mandatów, a PiS i Konfederacja 232. Warto przypomnieć, że rządzą te partie, które przekroczą 230 mandatów.
+
+Poniżej pokazujemy najzabawniejsze memy o Donaldzie Tusku.
+
+-----Example Article 3-----
+<h1>Marcin Rogacewicz się wygadał, że urlopował z Agnieszką Kaczorowską. Wszystko przez upojne wideo z basenu</h1>
+<strong>Wydaje się, że to już przesądzone, że Agnieszka Kaczorowska i Marcin Rogacewicz spędzili urlop na Ibizie razem. Aktor się właśnie wygadał, bo zamieścił wideo z basenu.</strong>
+<h2>Marcin Rogacewicz i Agnieszka Kaczorowska spędzili razem wakacje na Ibizie</h2>
+Agnieszka Kaczorowska ostatnio spędziła <strong>upojne wakacje na Ibizie</strong>, na którą pojechała bez swoich córek, które w tym tygodniu zostały pod opieką taty i wciąż jeszcze męża Agnieszki Kaczorowskiej, Macieja Peli.
+
+Wkrótce portal Pudelek.pl odkrył, że Agnieszka Kaczorowska na Ibizie odpoczywa w towarzystwie Marcina Rogacewicza, przystojnego aktora, z którym jest widywana od jakiegoś czasu. A przynajmniej takie informacje zdradził informator portalu.
+<blockquote>Agnieszka i Marcin spędzają razem czas w jednym z lepszych i nowszych hoteli na wyspie. Niespecjalnie zależy im na tym, by kryć się tam ze swoim uczuciem</blockquote>
+- donosił.
+
+Mimo takich doniesień <strong>Agnieszka Kaczorowska i Marcin Rogacewicz</strong> uparcie milczeli w tej sprawie i oficjalnie nie potwierdzali, czy ich życiowe ścieżki faktycznie się przecięły.
+<h2>Marcin Rogacewicz się wygadał, że urlopował z Agnieszką Kaczorowską. Upojne wideo z basenu</h2>
+Wydaje się jednak, że w środę 25 czerwca coś w tej kwestii drgnęło. Właśnie tego dnia <strong>Marcin Rogacewicz</strong> zamieścił na swoim profilu na Instagramie <strong>wideo, do którego pozuje w basenie</strong>.
+<blockquote>Przede mną pracowite lato #lubięto</blockquote>
+- podpisał.
+
+Aktor wideo, na którym pręży się w basenie, uzupełnił muzyką z filmu "Casino Royale" o przygodach Jamesa Bonda.
+
+Czujni fani od razu odkryli, że<strong> Agnieszka Kaczorowska</strong> zamieściła zdjęcia z tego samego basenu, w tym samym hotelu na Ibizie.
+<blockquote>Kaczorowska też ma w tym samym miejscu fotki</blockquote>
+- napisała jedna z fanek.
+
+Rzeczywiście ujęcia i kadry się zgadzały. Agnieszka Kaczorowska niedawno zamieściła na Instagramie zdjęcie, na którym siedziała prawdopodobnie w tym samym basenie, a w tle widać nawet ten sam statek.
+
+Co ciekawe, Marcin Rogacewicz odpowiedzial na ten komentarz, dodając jakże wymowną emotikonkę przerażenia. Aktor co prawda nie potwierdził, ale też nie zaprzeczył, co w tym przypadku jest wymowne.
+
+Niezależnie od wszystkiego, życzymy parze wszystkiego dobrego. Musimy przyznać, że Agnieszka Kaczorowska na wakacjach prezentowała się obłędnie, a Marcin Rogacewicz miał na co popatrzeć.
+
+-----Example Article 4-----
+<h1>Doda przerywa milczenie. Tuż przed urodzinami usłyszała druzgocącą diagnozę. "Równo pół roku temu dostałam diagnozę"</h1>
+<strong>Doda — ikona polskiego show-biznesu, która od lat zachwyca pewnością siebie, właśnie ujawniła coś, co do dziś trzymała w tajemnicy. Tylko jej najbliżsi wiedzieli, przez co przechodziła przez ostatnie pół roku.</strong>
+<h2>Doda przerywa milczenie. Tuż przed urodzinami usłyszała druzgocącą diagnozę</h2>
+Doda za pośrednictwem Instagrama przekazała szokującą wiadomość. Pół roku temu usłyszała druzgocącą diagnozę. W długiej rolce pokazała, jak zmagała się z chorobą. Wszystko zaczęło się w lutym, tuż przed jej 41. urodzinami.
+
+To właśnie wtedy lekarze przekazali jej informację, której nikt nie chce usłyszeć — czerniak złośliwy, jeden z najbardziej agresywnych nowotworów skóry. Przyczyna choroby była dla Dody jasna. Przez co najmniej 8 lat każdego dnia na 20 minut chodziła na solarium.
+
+I choć przez ostatnie pół roku <strong>Doda</strong> błyszczała na ściankach, występowała na wielkich scenach i zachwycała formą, przez te sześć miesięcy w ciszy przechodziła przez istne piekło. O chorobie poinformowała tylko swoich rodziców.
+<blockquote>Równo pół roku temu dostałam diagnozę czerniaka złośliwego i zaczęła się moja podróż do zdrowia, którą dziś mogę Wam w końcu pokazać. Mnie się udało, ale mnóstwo osób, które mijałam na korytarzach szpitala przez ostatnie miesiące, nie miało tyle szczęścia co ja.</blockquote>
+
+<script async src="//www.instagram.com/embed.js"></script>
+<h2>Doda zachorowała na raka skóry. Wygrała z chorobą</h2>
+Na nagraniu widzimy urywki codzienności Dody, w których opowiada, z czym obecnie mierzy się w chorobie. Jeden z najbardziej poruszających fragmentów dotyczy śmierci.
+<blockquote>Jakbym miała umrzeć teraz, to w ogóle nie miałabym poczucia lęku i niespełnienia. Że coś jeszcze muszę zrobić, że coś mnie jeszcze czeka. Taka jestem pełna we wszystkich swoich marzeniach, pragnieniach, celach, które sobie postawiłam. Właściwie jedyne czego nie poczułam, to tej prawdziwej miłości [...] Teraz się cieszę, go gdybym kogoś naprawdę pokochała, albo ktoś mnie, to byłaby tragedia. Nie umiałabym się z nim pożegnać.</blockquote>
+
+Tuż przed festiwalem w Opolu <strong>Doda</strong> dostała najpiękniejszy prezent, o jakim tylko mogła marzyć. Okazało się, że wygrała z chorobą. Teraz chce uświadamiać ludzi o niebezpieczeństwach związanych z korzystaniem z solarium i o tym, jak ważna jest profilaktyka.
+<blockquote>Obiecałam sobie, że jak wyjdę z tego, zrobię wszystko, żeby ludziom uświadomić, jak ważna jest profilaktyka w badaniu skóry oraz kategoryczne unikanie solarium i ograniczanie opalania na słońcu jak „skwarka”. Pamiętajcie o filtrach mineralnych i dbajcie o siebie.</blockquote>
+
+-----Example Article 5-----
+<h1>Zenon Martyniuk dziś świętuje urodziny. Ten przystojniak wcale nie wygląda na swój wiek [dużo zdjęć]</h1>
+<strong>Zenon Martyniuk dokładnie dziś świętuje urodziny i wciąż zachwyca formą, której mógłby pozazdrościć mu niejeden młodszy kolega. Król disco polo nie tylko nie zwalnia tempa, ale z roku na rok wygląda coraz lepiej. Aż trudno uwierzyć, że ten przystojniak ma już tyle wiosen na karku.</strong>
+<h2>Zenon Martyniuk dziś świętuje urodziny</h2>
+Dokładnie dziś, 23 czerwca 2025 roku, Zenon Martyniuk — uwielbiany przez miliony Polaków król disco polo ma powody do świętowania. Są bowiem jego urodziny. Aż trudno uwierzyć w to, ile ma już lat, bo patrząc na jego młodzieńczy wygląd i energię sceniczną, można by pomyśleć, że dopiero co skończył czterdziestkę. Czas zdecydowanie działa na jego korzyść.
+
+<strong>Zenon Martyniuk</strong> przyszedł na świat 23 czerwca 1969 roku, a więc dokładnie dziś świętuje swoje 56. urodziny. Dziś nie sposób wyobrazić sobie świata disco polo bez jego hitów. "Przez twe oczy zielone" czy "Życie to są chwile" zna chyba każdy Polak i nawet jeśli oficjalnie wcale nie słucha takiej muzyki, to nogi same rwą się do tańca.
+
+Ale nie samą muzyką Zenon żyje. Od lat jest wiernym mężem Danuty Martyniuk i ojcem Daniela Martyniuka. 6 lat temu po raz pierwszy został dziadkiem Laury, a w czerwcu doczekał się wnuczka Floriana. Aż ciężko w to uwierzyć, że ten pełen wigoru wokalista o młodzieńczym uśmiechu i bujnej fryzurze ma już dwoje wnucząt, a fanki wciąż wzdychają na jego widok.
+
+<h2>Zenon Martyniuk wcale nie wygląda na swój wiek</h2>
+<strong>Zenon Martyniuk</strong> wygląda jak młody bóg, choć w przeciwieństwie do swoich kolegów z branży unika majstrowania przy twarzy. W 2022 roku zdecydował się poprawić urodę poprzez pozbycie się diastemy, czyli charakterystycznej szpary między jedynkami. Dodatkowo mocno wybielił zęby.
+
+Nie bez znaczenia jest też fakt, że <strong>Zenon Martyniuk r</strong>aczej stroni od skandali i celebryckiego zgiełku. Choć jego syn nie raz dostarczał tematów mediom, sam Martyniuk pozostaje oazą spokoju. Być może to jego przepis na młodzieńczy wygląd.
+
+Z okazji urodzin składamy najserdeczniejsze życzenia.
+
+-----Example Article 6-----
+<h1>Sara Boruc pokazała 15-letnią córkę i 6-letniego syna. Amelia to urodzona modelka, a Noah łamacz serc</h1>
+<strong>Sara Boruc pochwaliła się w sieci zdjęciami swoich dzieci. Amelia i Noah to owoc jej miłości z Arturem Borucem. Trzeba przyznać, że dzieci rosną jak na drożdżach i są bardzo podobni do znanych rodziców.</strong>
+<h2>Dzieci Sary Boruc i Artura Boruca</h2>
+Sara Boruc jest w związku małżeńskim z Arturem Borucem od lipca 2014 roku. Para wzięła romantyczny ślub w Grecji i towarzyszyły im najbliższe osoby. Owocem ich miłości jest dwójka pociech. Amelia przyszła na świat w 2010 roku, z kolei dziewięć lat później na świecie pojawił się Noah.
+
+A teraz Sara Boruc pochwaliła się zdjęciami swoich pociech. Amelia ma już 16 lat i jest piękną blondynką z błękitnymi rzęsami i długimi rzęsami. A Noah, jej brat, również wygląda jak aniołek, ma długie blond włosy i delikatne rysy twarzy. Dzieci są idealną mieszanką znanych rodziców.
+
+<h2>Fani są zachwyceni najnowszymi kadrami. Ktoś pisze: "Piękna z pani kobieta"</h2>
+A fani w komentarzach komplementują nie tylko dzieci Boruców, ale również piękną Sarę, która ma nietuzinkową urodę. Pod postem czytamy:
+<blockquote>Piękna z pani kobieta. Na dodatek z dobrym sercem. Zawsze będę podziwiać.</blockquote>
+<blockquote>Wygląda pani rewelacyjnie.</blockquote>
+<blockquote>Dzieci odziedziczyły urodę po rodzicach. Wszyscy wyglądacie cudownie.</blockquote>
+A poniżej przedstawiamy jeszcze więcej kadrów, które opublikowała <strong>Sara Boruc</strong>. Dzieci są doskonałą mieszanką znanych rodziców.
 
 """

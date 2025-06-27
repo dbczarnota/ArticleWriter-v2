@@ -1,3 +1,5 @@
+#WERSJA Z DNIA 21.06.2025
+
 import os
 from dotenv import load_dotenv
 from typing import List, Optional
@@ -17,14 +19,29 @@ load_dotenv()
 
 
 
-def setup_fallback_model(models: Optional[List[str]] = None): # New signature
+def setup_fallback_model(
+    models: Optional[List[str]] = None,
+    openai_api_key: Optional[str] = None,
+    gemini_api_key: Optional[str] = None,
+    groq_api_key: Optional[str] = None,
+    openrouter_api_key: Optional[str] = None,
+    ollama_base_url: Optional[str] = None,
+):
     """
     Initialize fallback LLM model based on a list of model names.
     Providers are only initialized if at least one requested model comes from them.
     If `models` is None or an empty list, uses default internal models.
     
+    API keys and base URLs can be passed directly. If not, they are sourced
+    from environment variables or hardcoded defaults.
+
     Args:
         models (Optional[List[str]]): List of strings representing the desired model names.
+        openai_api_key (Optional[str]): OpenAI API key.
+        gemini_api_key (Optional[str]): Google Gemini API key.
+        groq_api_key (Optional[str]): Groq API key.
+        openrouter_api_key (Optional[str]): OpenRouter API key.
+        ollama_base_url (Optional[str]): Base URL for Ollama service.
 
     Returns:
         FallbackModel instance if any models were initialized successfully,
@@ -43,7 +60,7 @@ def setup_fallback_model(models: Optional[List[str]] = None): # New signature
 
     # Define which models depend on which provider.
     openai_models = {"gpt-4o-mini", "o3-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"}
-    gemini_models = {"gemini-2.5-flash-preview-04-17", "gemini-2.0-flash", "gemini-2.5-pro-preview-05-06", "gemma-3-27b-it"}
+    gemini_models = {"gemini-2.5-flash-preview-04-17", "gemini-2.0-flash", "gemini-2.5-pro-preview-05-06", "gemma-3-27b-it", "gemini-2.5-pro-preview-06-05"}
     groq_models   = {"meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4-maverick-17b-128e-instruct"}
     openrouter_models = {"google/gemma-3-27b-it", "qwen/qwen-vl-plus", "deepseek/deepseek-r1"}
     ollama_models = {"ollama/gemma3:4b", "ollama/gemma3:27b"}
@@ -62,45 +79,45 @@ def setup_fallback_model(models: Optional[List[str]] = None): # New signature
     # OpenAI Provider
     openai_provider = None
     if need_openai:
-        openai_api_key = os.getenv('OPENAI_API_KEY')
-        if openai_api_key:
+        effective_openai_api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
+        if effective_openai_api_key:
             try:
-                openai_provider = OpenAIProvider(api_key=openai_api_key)
+                openai_provider = OpenAIProvider(api_key=effective_openai_api_key)
                 logger.info("OpenAI Provider initialized successfully.")
             except Exception as e:
                 logger.warning(f"Failed to initialize OpenAI Provider: {e}", exc_info=True)
         else:
-            logger.warning("OPENAI_API_KEY not found. Skipping OpenAI provider initialization.")
+            logger.warning("OPENAI_API_KEY not found in args or env. Skipping OpenAI provider initialization.")
     else:
         logger.info("OpenAI Provider not required by requested models.")
 
     # Gemini Provider (Google GLA)
     gemini_provider = None
     if need_gemini:
-        gemini_api_key = os.getenv('GEMINI_API_KEY')
-        if gemini_api_key:
+        effective_gemini_api_key = gemini_api_key or os.getenv('GEMINI_API_KEY')
+        if effective_gemini_api_key:
             try:
-                gemini_provider = GoogleGLAProvider(api_key=gemini_api_key)
+                gemini_provider = GoogleGLAProvider(api_key=effective_gemini_api_key)
                 logger.info("Google GLA Provider initialized successfully.")
             except Exception as e:
                 logger.warning(f"Failed to initialize Google GLA Provider: {e}", exc_info=True)
         else:
-            logger.warning("GEMINI_API_KEY not found. Skipping Gemini provider initialization.")
+            logger.warning("GEMINI_API_KEY not found in args or env. Skipping Gemini provider initialization.")
     else:
         logger.info("Gemini Provider not required by requested models.")
 
     # Groq Provider
     groq_provider = None
     if need_groq:
-        groq_api_key = os.getenv('GROQ_API_KEY')
-        if groq_api_key:
+        effective_groq_api_key = groq_api_key or os.getenv('GROQ_API_KEY')
+        if effective_groq_api_key:
             try:
-                groq_provider = GroqProvider(api_key=groq_api_key)
+                groq_provider = GroqProvider(api_key=effective_groq_api_key)
                 logger.info("Groq Provider initialized successfully.")
             except Exception as e:
                 logger.warning(f"Failed to initialize Groq Provider: {e}", exc_info=True)
         else:
-            logger.warning("GROQ_API_KEY not found. Skipping Groq provider initialization.")
+            logger.warning("GROQ_API_KEY not found in args or env. Skipping Groq provider initialization.")
     else:
         logger.info("Groq Provider not required by requested models.")
         
@@ -108,14 +125,14 @@ def setup_fallback_model(models: Optional[List[str]] = None): # New signature
     # Openrouter Provider
     openrouter_provider = None
     if need_openrouter:
-        openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
-        if openrouter_api_key:
+        effective_openrouter_api_key = openrouter_api_key or os.getenv('OPENROUTER_API_KEY')
+        if effective_openrouter_api_key:
             try:
                 custom_http_client = AsyncClient(timeout=30)
                 openrouter_provider = OpenAIProvider(
                 # base_url='https://openrouter.ai/api/v1',
                 base_url="https://openrouter.ai/api/v1/chat/completions",
-                api_key=openrouter_api_key,
+                api_key=effective_openrouter_api_key,
                 http_client=custom_http_client
                 )
                 
@@ -123,7 +140,7 @@ def setup_fallback_model(models: Optional[List[str]] = None): # New signature
             except Exception as e:
                 logger.warning(f"Failed to initialize Openrouter Provider: {e}", exc_info=True)
         else:
-            logger.warning("OPENROUTER_API_KEY not found. Skipping Openrouter provider initialization.")
+            logger.warning("OPENROUTER_API_KEY not found in args or env. Skipping Openrouter provider initialization.")
     else:
         logger.info("Openrouter Provider not required by requested models.")
     
@@ -131,9 +148,11 @@ def setup_fallback_model(models: Optional[List[str]] = None): # New signature
     # Ollama Provider - set up on runpod
     ollama_provider = None
     if need_ollama:
+        # Prioritize passed base_url, then fallback to hardcoded default
+        effective_ollama_base_url = ollama_base_url or 'https://z8dc1gdrcy9i17.proxy.runpod.net/v1'
         try:
             ollama_provider = OpenAIProvider(
-            base_url='https://z8dc1gdrcy9i17.proxy.runpod.net/v1',
+            base_url=effective_ollama_base_url,
             )
             
             logger.info("Ollama Provider initialized successfully.")
@@ -144,30 +163,33 @@ def setup_fallback_model(models: Optional[List[str]] = None): # New signature
         logger.info("Ollama Provider not required by requested models.")
 
     # --- Define a Mapping of Model Initializers ---
-    # The key is the requested model name; the value is a lambda returning the model instance.
-    model_initializers = {
-        # OpenAI Models
-        "gpt-4o-mini": lambda: OpenAIModel("gpt-4o-mini", provider=openai_provider) if openai_provider else None,
-        "gpt-4.1-mini": lambda: OpenAIModel("gpt-4.1-mini", provider=openai_provider) if openai_provider else None,
-        "o3-mini": lambda: OpenAIModel("o3-mini", provider=openai_provider) if openai_provider else None,
-        "gpt-4o": lambda: OpenAIModel("gpt-4o", provider=openai_provider) if openai_provider else None,
-        "gpt-4.1": lambda: OpenAIModel("gpt-4.1", provider=openai_provider) if openai_provider else None,
-        # Gemini Models
-        "gemini-2.0-flash": lambda: GeminiModel("gemini-2.0-flash", provider=gemini_provider) if gemini_provider else None,
-        "gemini-2.5-flash-preview-04-17": lambda: GeminiModel("gemini-2.5-flash-preview-04-17", provider=gemini_provider) if gemini_provider else None,
-        "gemini-2.5-pro-preview-05-06": lambda: GeminiModel("gemini-2.5-pro-preview-05-06", provider=gemini_provider) if gemini_provider else None,
-        "gemma-3-27b-it": lambda: GeminiModel("gemma-3-27b-it", provider=gemini_provider) if gemini_provider else None,
-        # Groq Models
-        "meta-llama/llama-4-scout-17b-16e-instruct": lambda: GroqModel("meta-llama/llama-4-scout-17b-16e-instruct", provider=groq_provider) if groq_provider else None,
-        "meta-llama/llama-4-maverick-17b-128e-instruct": lambda: GroqModel("meta-llama/llama-4-maverick-17b-128e-instruct", provider=groq_provider) if groq_provider else None,
-        # Openrouter Models
-        "google/gemma-3-27b-it": lambda: OpenAIModel("google/gemma-3-27b-it", provider=openrouter_provider) if openrouter_provider else None,
-        "qwen/qwen-vl-plus": lambda: OpenAIModel("qwen/qwen-vl-plus", provider=openrouter_provider) if openrouter_provider else None,
-        "deepseek/deepseek-r1": lambda: OpenAIModel("deepseek/deepseek-r1", provider=openrouter_provider) if openrouter_provider else None,
-        # Ollama Models
-        "ollama/gemma3:4b": lambda: OpenAIModel("gemma3:4b", provider=ollama_provider) if ollama_provider else None,
-        "ollama/gemma3:27b": lambda: OpenAIModel("gemma3:27b", provider=ollama_provider) if ollama_provider else None,
-    }
+    # This section programmatically builds the initializers to reduce code duplication.
+    model_initializers = {}
+
+    # Group model definitions by provider to simplify initialization.
+    # Structure: (provider_instance, ModelClass, set_of_model_name_strings)
+    model_definition_groups = [
+        (openai_provider, OpenAIModel, openai_models),
+        (gemini_provider, GeminiModel, gemini_models),
+        (groq_provider, GroqModel, groq_models),
+        (openrouter_provider, OpenAIModel, openrouter_models),
+        (ollama_provider, OpenAIModel, ollama_models),
+    ]
+
+    for provider, model_class, model_names in model_definition_groups:
+        for model_name in model_names:
+            # The model name passed to the constructor might differ from the key.
+            # e.g., for Ollama, the key is 'ollama/gemma3:4b' but the model needs 'gemma3:4b'.
+            model_name_for_constructor = model_name
+            if provider is ollama_provider and model_name.startswith("ollama/"):
+                model_name_for_constructor = model_name.split('/', 1)[1]
+
+            # Use default arguments in the lambda to capture current loop values.
+            # This lambda structure correctly mirrors the original '... if provider else None' logic.
+            model_initializers[model_name] = (
+                lambda m_name=model_name_for_constructor, m_class=model_class, p=provider:
+                    m_class(m_name, provider=p) if p else None
+            )
 
     # --- Initialize Only the Requested Models ---
     available_models = []
