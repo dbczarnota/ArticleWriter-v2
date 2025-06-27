@@ -555,7 +555,7 @@ If these conditions **are not met**, classify the content as `"other"` and retur
 
 ### Step 2: Extract the Article Text  
 If the content is classified as an **article**, extract and preserve:  
-- **Publication date** (if present).  
+- **Publication date** (if present).  For the reference today's date is {current_date}
 - **Article title** (if present).  
 - **Article lead** (the introductory section setting up the topic).  
 - **Headings** (`<h2>`, `<h3>`, `<h4>`) to maintain structure.  
@@ -638,7 +638,7 @@ class ParsingNode(ResilientNode):
                     article_body = enc.decode(tokens)
                     page["article_body_truncated"] = True
 
-                prompt = parsing_agent_prompt.format(html=article_body) # Ensure prompt is accessible
+                prompt = parsing_agent_prompt.format(html=article_body, current_date=ctx.state.current_date,) # Ensure prompt is accessible
 
                 # Run agent - it will use the fallback sequence
                 result = await parsing_agent.run(user_prompt=prompt)
