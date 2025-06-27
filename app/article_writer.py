@@ -124,7 +124,7 @@ class ResilientNode(BaseNode, abc.ABC):
             setattr(ctx.state, self.retry_counter_attr, current_retries + 1)
             save_state(ctx.state) # Save state after incrementing counter and adding error
             logger.warning(f"Retrying {node_name} (Attempt {current_retries + 2}/{self.max_retries + 1})...")
-            return self() # Return instance of the current node to retry
+            return self.__class__()
         else:
             final_error_msg = f"ERROR: {node_name} failed permanently after {self.max_retries + 1} attempts. Last error: {error_message}"
             logger.error(final_error_msg)
@@ -502,8 +502,8 @@ class ScrapingNode(ResilientNode):
 
         # Add manually provided URLs
         unique_urls.update(ctx.state.configuration.urls)
-        # Convert set to list for scraping function
-        urls_to_scrape = list(unique_urls)
+        # Convert set to list for scraping, filtering out any empty or None URLs
+        urls_to_scrape = [url for url in unique_urls if url]
 
         if not urls_to_scrape:
             logger.warning("No unique URLs found or provided to scrape. Moving to ParsingNode.")
@@ -1748,9 +1748,9 @@ class ArticleWriter:
 ###############################################################################
 if __name__ == "__main__":
     article = ArticleWriter.write_article(
-        article_topic="Uznański-Wiśniewski zadzwonił do żony z kosmosu.",
+        article_topic="Potwierdziły się doniesienia ws. syna Nawrockiej. Prawda wyszła na jaw",
         domains=[],  # example domains
-        urls=['https://goniec.pl/uznanski-wisniewski-zadzwonil-do-zony-z-kosmosu-przekazal-jej-wazna-wiadomosc-do-polakow-kg-wbc-260625'],       # example URLs
+        urls=['https://www.pomponik.pl/plotki/news-potwierdzily-sie-doniesienia-ws-syna-nawrockiej-prawda-wyszl,nId,7989757'],       # example URLs
         number_of_queries=2,
         scraping_model="",        # specify your scraping model if needed
         max_search_results=4,
