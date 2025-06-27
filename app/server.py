@@ -26,7 +26,7 @@ class ArticleRequest(BaseModel):
     max_search_results: int = 3
     search_days: int = 30
     extraction_mode: Literal["markdown", "html", "llm"] = "markdown"
-    provide_llm_facts: Literal["yes", "no"] = "yes"  # <-- new parameter added
+    provide_llm_facts: Literal["yes", "no"] = "no"  # <-- new parameter added
 
 
 def send_response(id, article_text, topic):
