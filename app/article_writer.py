@@ -598,7 +598,7 @@ class ParsingNode(ResilientNode):
         logger.info(f"Executing {node_name} logic...")
 
         enc = tiktoken.get_encoding("cl100k_base")
-        MAX_TOKENS = 100_000
+        MAX_TOKENS = 150_000
 
         pages_to_process = ctx.state.scraped_pages
         if not pages_to_process:
