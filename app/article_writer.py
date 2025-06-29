@@ -815,56 +815,50 @@ class DataExtractionNode(ResilientNode):
 
         if not pages_to_process:
             logger.warning(f"{node_name}: No successfully parsed pages found to extract data from.")
-             # Check if LLM facts exist and proceed accordingly
             if not ctx.state.researched_info.facts_from_llm:
                  logger.error(f"{node_name}: No parsed pages AND no LLM facts found. Ending run.")
                  ctx.state.add_error(node_name, "No content (parsed pages or LLM facts) available for processing.")
                  save_state(ctx.state)
-                 error_report = self._generate_error_report(ctx.state.errors) # Use helper from ResilientNode
-                 return End(f"ERROR: No content available.\n\nError Log:\n{error_report}")
+                 error_report = self._generate_error_report(ctx.state.errors)
+                 return End(f"ERROR: No content available to write an article.\n\nError Log:\n{error_report}")
             else:
                 logger.info(f"{node_name}: Proceeding with only LLM facts.")
-                # Keep LLM facts, clear others. Keep original manual URLs in sources.
                 llm_facts_preserved = ctx.state.researched_info.facts_from_llm or []
                 llm_fact_strings = [f.fact_llm for f in llm_facts_preserved if f.fact_llm]
-                manual_urls = set(ctx.state.configuration.urls or []) # Ensure it's a set
+                manual_urls = set(ctx.state.configuration.urls or [])
                 ctx.state.researched_info = ResearchedInfo(
-                     facts=llm_fact_strings, # Combined facts = only LLM facts
+                     facts=llm_fact_strings,
                      facts_from_articles=[],
-                     facts_from_llm=llm_facts_preserved, # Preserve original LLM fact objects
+                     facts_from_llm=llm_facts_preserved,
                      quotes=[],
                      keywords=[],
                      article_texts=""
                 )
-                ctx.state.sources = list(manual_urls) # Preserve only the original manual URLs
+                ctx.state.sources = list(manual_urls)
                 save_state(ctx.state)
                 logger.info(f"Transitioning from {node_name} to InstructionsNode (only LLM facts)")
-                return InstructionsNode() # Instantiate
+                return InstructionsNode()
 
         tasks = []
 
         async def process_page(page: dict):
-            """Inner function to extract data from a single parsed page using FallbackModel."""
+            # ... (the process_page inner function remains unchanged)
             page_url = page.get('url', 'unknown URL')
             page_node_log_prefix = f"{node_name} - Page {page_url}:"
 
             try:
-                parsed_article = page.get("parsed_article", "") # Already checked if exists and not parsing_error
+                parsed_article = page.get("parsed_article", "")
 
-
-                data_extraction_agent = Agent( # Agent local to this task
+                data_extraction_agent = Agent(
                     model=dataextraction_node_fallback_model,
                     result_type=ResearchedArticle,
-                    retries=1 # Optional agent retries before fallback
+                    retries=1
                 )
-                # --------------------------------------------------------------
 
-                # Extract title and clean text
                 title_match = re.search(r"<h1.*?>(.*?)</h1>", parsed_article, re.IGNORECASE | re.DOTALL)
                 title = title_match.group(1).strip() if title_match else page.get('title', "Title not found")
                 article_text_no_h1 = re.sub(r"<h1.*?>.*?</h1>", "", parsed_article, flags=re.IGNORECASE | re.DOTALL).strip()
 
-                # *** CORRECTED .format() calls ***
                 page['formated_article'] = article_snippet.format(
                     url=page_url,
                     title=title,
@@ -875,28 +869,22 @@ class DataExtractionNode(ResilientNode):
                     title=title,
                     article_text=article_text_no_h1
                 )
-
-                # Create prompt
                 prompt = data_extraction_agent_prompt.format(
                     text=page['formated_article'],
                     topic=ctx.state.configuration.article_topic
                 )
-                # logger.debug(f"{page_node_log_prefix} Data extraction prompt snippet: {prompt[:200]}...")
-
-                # Run agent - uses fallback
                 researched_article_result = await data_extraction_agent.run(user_prompt=prompt)
 
                 if researched_article_result is None or researched_article_result.data is None:
                      raise ValueError("Data extraction agent run did not return valid data after attempting models.")
 
-                # Update page dictionary with extracted data
                 data = researched_article_result.data
                 page['webpage_type'] = data.webpage_type
                 page['relevant'] = data.relevant
                 page['facts'] = data.facts
                 page['quotes'] = [q.model_dump() for q in data.quotes] if data.quotes else []
                 page['keywords'] = data.keywords
-                page['publication_date'] = data.publication_date # Agent should return date object or parsable string
+                page['publication_date'] = data.publication_date
                 logger.debug(f"{page_node_log_prefix} Successfully extracted data.")
 
             except FallbackExceptionGroup as feg:
@@ -904,21 +892,17 @@ class DataExtractionNode(ResilientNode):
                 logger.error(f"{page_node_log_prefix} {error_message}")
                 for i, exc in enumerate(feg.exceptions):
                      logger.error(f"  - Model {i+1}: {type(exc).__name__}: {exc}")
-                page['extraction_error'] = error_message # Mark specific error
-                # Set defaults so filtering logic doesn't crash
+                page['extraction_error'] = error_message
                 page.setdefault('webpage_type', 'other')
                 page.setdefault('relevant', 'no')
                 page.setdefault('publication_date', None)
                 page.setdefault('facts', [])
                 page.setdefault('quotes', [])
                 page.setdefault('keywords', [])
-
 
             except Exception as error:
-                # Catch other errors during extraction for this page
                 logger.error(f"{page_node_log_prefix} Error extracting data: {error}", exc_info=True)
                 page['extraction_error'] = str(error)
-                # Set defaults
                 page.setdefault('webpage_type', 'other')
                 page.setdefault('relevant', 'no')
                 page.setdefault('publication_date', None)
@@ -926,7 +910,6 @@ class DataExtractionNode(ResilientNode):
                 page.setdefault('quotes', [])
                 page.setdefault('keywords', [])
 
-        # Create and run tasks
         for page in pages_to_process:
             tasks.append(process_page(page))
         await asyncio.gather(*tasks)
@@ -942,7 +925,6 @@ class DataExtractionNode(ResilientNode):
         logger.info(f'Filtering articles published on or after: {cutoff_date} (or manually specified URLs)')
 
         def parse_pub_date(pub_date):
-            """Safely parse publication date from string or date object."""
             if isinstance(pub_date, date_type): return pub_date
             if isinstance(pub_date, str):
                 for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d"):
@@ -958,27 +940,33 @@ class DataExtractionNode(ResilientNode):
         for page in ctx.state.scraped_pages:
             page_url = page.get('url', 'unknown URL')
             log_prefix = f"Filtering '{page_url}':"
-            filter_reason = "Included" # Default assumption
-
+            filter_reason = "Included"
+            
             if page is None:
                 logger.debug(f"{log_prefix} Skipping None page object.")
                 continue
 
-            # Check for parsing error FIRST
             if parse_err_msg := page.get('parsing_error'):
                  logger.info(f"{log_prefix} Excluded - Parsing error: {parse_err_msg}")
-                 filter_reason = f"Parsing error: {escape(parse_err_msg)}" # Escape for safety
-                 page['filter_reason'] = filter_reason
+                 page['filter_reason'] = f"Parsing error: {escape(parse_err_msg)}"
                  continue
 
-            # Then check for extraction error
             if extract_err_msg := page.get('extraction_error'):
                 logger.info(f"{log_prefix} Excluded - Extraction error: {extract_err_msg}")
-                filter_reason = f"Extraction error: {escape(extract_err_msg)}" # Escape for safety
-                page['filter_reason'] = filter_reason
+                page['filter_reason'] = f"Extraction error: {escape(extract_err_msg)}"
                 continue
+            
+            is_manual_url = page_url in manual_urls
 
-            # --- Continue with original filtering logic ---
+            ### FIX 1: Force-include manual URLs, bypassing other checks ###
+            if is_manual_url:
+                logger.info(f"{log_prefix} Force-including as it is a manually provided URL.")
+                filter_reason = "Included (Manual URL)"
+                page['filter_reason'] = filter_reason
+                articles.append(page)
+                continue # Skip all other checks for this manual URL
+
+            # --- These checks now ONLY apply to non-manual URLs ---
             page_type = page.get('webpage_type')
             if page_type != "article":
                 logger.info(f"{log_prefix} Excluded - Not classified as 'article' (Type: {page_type}).")
@@ -993,38 +981,43 @@ class DataExtractionNode(ResilientNode):
                 page['filter_reason'] = filter_reason
                 continue
 
-            # Date Check Logic
-            is_manual_url = page_url in manual_urls
             publication_date_obj = parse_pub_date(page.get('publication_date'))
-            pub_date_str = page.get('publication_date', 'N/A') # Get original value for logging
+            pub_date_str = page.get('publication_date', 'N/A')
 
-            if not is_manual_url:
-                if publication_date_obj is None:
-                    logger.info(f"{log_prefix} Excluded - Could not parse publication date ('{pub_date_str}') and not a manual URL.")
-                    filter_reason = f"Could not parse publication date ('{escape(str(pub_date_str))}')"
-                    page['filter_reason'] = filter_reason
-                    continue
-                if publication_date_obj < cutoff_date:
-                    logger.info(f"{log_prefix} Excluded - Publication date {publication_date_obj} is older than cutoff {cutoff_date} and not a manual URL.")
-                    filter_reason = f"Publication date {publication_date_obj} older than cutoff {cutoff_date}"
-                    page['filter_reason'] = filter_reason
-                    continue
+            if publication_date_obj is None:
+                logger.info(f"{log_prefix} Excluded - Could not parse publication date ('{pub_date_str}').")
+                filter_reason = f"Could not parse publication date ('{escape(str(pub_date_str))}')"
+                page['filter_reason'] = filter_reason
+                continue
+            if publication_date_obj < cutoff_date:
+                logger.info(f"{log_prefix} Excluded - Publication date {publication_date_obj} is older than cutoff {cutoff_date}.")
+                filter_reason = f"Publication date {publication_date_obj} older than cutoff {cutoff_date}"
+                page['filter_reason'] = filter_reason
+                continue
 
-            # If all checks passed
+            # If all checks passed for a non-manual URL
             logger.debug(f"{log_prefix} Included.")
-            page['filter_reason'] = filter_reason # Explicitly mark as included
-            articles.append(page) # Add to the list of articles to aggregate from
+            page['filter_reason'] = filter_reason
+            articles.append(page)
 
-
-        # --- Handle case where no articles meet criteria ---
+        ### FIX 2: Check for ANY available facts before proceeding. ###
+        llm_facts_available = ctx.state.researched_info.facts_from_llm or []
+        if not articles and not llm_facts_available:
+            error_message = "No relevant articles were found after filtering and no LLM facts are available. Cannot write an article without source material."
+            logger.error(f"{node_name}: {error_message}")
+            ctx.state.add_error(node_name, error_message)
+            save_state(ctx.state)
+            error_report = self._generate_error_report(ctx.state.errors)
+            return End(f"ERROR: Process stopped. No content available to write an article.\n\nError Log:\n{error_report}")
+        
+        # This handles the case where there are no articles, but there ARE LLM facts.
         if not articles:
-            logger.warning("No relevant articles found after filtering. Proceeding to InstructionsNode with only LLM facts (if any).")
-            llm_facts_preserved = ctx.state.researched_info.facts_from_llm or []
-            llm_fact_strings = [f.fact_llm for f in llm_facts_preserved if f.fact_llm]
+            logger.warning("No relevant articles found after filtering. Proceeding to InstructionsNode with only LLM facts.")
+            llm_fact_strings = [f.fact_llm for f in llm_facts_available if f.fact_llm]
             ctx.state.researched_info = ResearchedInfo(
                  facts=llm_fact_strings,
                  facts_from_articles=[],
-                 facts_from_llm=llm_facts_preserved,
+                 facts_from_llm=llm_facts_available,
                  quotes=[],
                  keywords=[],
                  article_texts=""
@@ -1032,10 +1025,11 @@ class DataExtractionNode(ResilientNode):
             ctx.state.sources = list(manual_urls) # Keep only manual URLs if no articles used
             save_state(ctx.state)
             logger.info(f"Transitioning from {node_name} to InstructionsNode (no relevant articles found)")
-            return InstructionsNode() # Instantiate
+            return InstructionsNode()
 
 
         # --- Aggregate Data from Filtered Articles ---
+        # (This section remains largely the same, but now it operates on a correctly filtered list)
         existing_facts_from_llm = ctx.state.researched_info.facts_from_llm or []
         llm_fact_strings = [fact.fact_llm for fact in existing_facts_from_llm if fact.fact_llm]
 
@@ -1066,22 +1060,20 @@ class DataExtractionNode(ResilientNode):
         if not combined_facts:
             logger.warning("No facts found (LLM or Article) after filtering. Proceeding, but article quality may suffer.")
 
-        # Update state with combined info
         ctx.state.researched_info.quotes = combined_quotes if combined_quotes else None
         ctx.state.researched_info.facts = combined_facts
         ctx.state.researched_info.facts_from_articles = facts_from_articles
         ctx.state.researched_info.keywords = list(combined_keywords)
         ctx.state.researched_info.article_texts = "\n\n==============================\n\n".join(article_texts_snippets)
-        ctx.state.sources = sorted(list(article_sources)) # Final list of sources, sorted
+        ctx.state.sources = sorted(list(article_sources))
 
         logger.info(f"Aggregated data: {len(combined_facts)} facts, {len(combined_quotes)} quotes, {len(ctx.state.sources)} sources.")
-
-        # Save the final aggregated state
         save_state(ctx.state)
-
-        # Proceed to the next node
         logger.info(f"Transitioning from {node_name} to InstructionsNode")
-        return InstructionsNode() # Instantiate
+        return InstructionsNode()
+
+
+
 
 
 ###############################################################################
