@@ -1666,19 +1666,30 @@ class FollowUpNode(ResilientNode):
             list_items = ""
             # Sort by URL for consistent output
             for page in sorted(all_pages, key=lambda p: p.get('url', '') if p else ''):
-                if not page: continue # Skip None pages if they somehow exist
+                if not page: continue
 
                 url = page.get('url', 'N/A')
                 reason = page.get('filter_reason', 'Status unknown')
-                status_class = "status-excluded" # Default style
-                status_text = f"Excluded ({escape(reason)})"
+                
+                # ### FIX: Updated logic to correctly classify and display status ###
+                status_class = ""
+                status_text = ""
 
-                if reason == "Included":
-                    status_class = "status-included"
-                    status_text = "Included in final article"
+                # Check for inclusion first (covers manual and regular inclusion)
+                if reason.startswith("Included"):
+                    status_class = "status-included" # Green style
+                    if reason == "Included (Manual URL)":
+                        status_text = "Included (Manually Provided)"
+                    else:
+                        status_text = "Included in final article"
+                # Check for processing errors
                 elif "error" in reason.lower():
-                     status_class = "status-error"
-                     # status_text already contains escaped error details
+                    status_class = "status-error" # Red style
+                    status_text = f"Processing Error ({escape(reason)})"
+                # All other cases are considered excluded
+                else:
+                    status_class = "status-excluded" # Orange/Yellow style
+                    status_text = f"Excluded ({escape(reason)})"
 
                 list_items += (
                     f"<li class='source-item'>"
