@@ -158,12 +158,12 @@ logger.info(f"--- Using FallbackModel for LlmKnowledgeNode with models: {model_n
 llmknowledge_node_fallback_model = setup_fallback_model(model_names)
 
 #ParsingNode
-model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
+model_names = ["gemini-2.5-pro-preview-06-05", "o3-mini", "gemini-2.5-flash-preview-04-17"]
 logger.info(f"--- Using FallbackModel for ParsingNode with models: {model_names} ---")
 parsing_node_fallback_model = setup_fallback_model(model_names)
 
 #DataExtractionNode
-model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
+model_names = ["gemini-2.5-pro-preview-06-05", "o3-mini", "gemini-2.5-flash-preview-04-17"]
 logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model_names} ---")
 dataextraction_node_fallback_model = setup_fallback_model(model_names)
 
