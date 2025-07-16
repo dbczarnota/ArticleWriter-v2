@@ -195,4 +195,47 @@ A fani w komentarzach komplementują nie tylko dzieci Boruców, ale również pi
 <blockquote>Dzieci odziedziczyły urodę po rodzicach. Wszyscy wyglądacie cudownie.</blockquote>
 A poniżej przedstawiamy jeszcze więcej kadrów, które opublikowała <strong>Sara Boruc</strong>. Dzieci są doskonałą mieszanką znanych rodziców.
 
+
+
+-----Example Article 7-----
+<strong>Decyzja prezydenta Andrzeja Dudy o ułaskawieniu Roberta Bąkiewicza, skazanego za napaść na aktywistkę znaną jako "Babcia Kasia", rozpętała prawdziwą polityczną burzę. Błyskawicznie zareagował premier Donald Tusk, nazywając decyzję "skandalem". Na odpowiedź głowy państwa nie trzeba było długo czekać, a ostra wojna na słowa między najważniejszymi politykami w kraju rozgrzała internet do czerwoności.</strong>
+
+<h2>Ułaskawienie za atak na kobietę. O co chodzi w sprawie Bąkiewicza</h2>
+Prezydent <strong>Andrzej Duda</strong> zastosował <strong>prawo łaski</strong> wobec <strong>Roberta Bąkiewicza</strong>, działacza narodowego skazanego prawomocnym wyrokiem za <strong>atak na kobietę</strong>. Chodzi o naruszenie nietykalności cielesnej aktywistki Katarzyny Augustynek, znanej jako <strong>"Babcia Kasia"</strong>, podczas protestów Strajku Kobiet w 2020 roku. Wyrok obejmował rok prac społecznych i 10 tys. zł nawiązki. Decyzja prezydenta jest częściowa – zwalnia Bąkiewicza z prac społecznych, ale nie z obowiązku zapłaty pieniędzy pokrzywdzonej.
+Decyzja prezydenta zapadła w ekspresowym tempie – zaledwie dzień po tym, jak minister sprawiedliwości <strong>Adam Bodnar</strong> cofnął parasol ochronny roztoczony nad Bąkiewiczem przez poprzednią władzę i otworzył drogę do wykonania kary. Jak ujawnił serwis Goniec.pl, Bąkiewicz do tej pory unikał płacenia nawiązki, a komornicy odzyskali zaledwie niewielką część długu. On sam miał kpić, że <strong>"komornik nie musi się napinać"</strong>.
+
+
+<h2>Tusk odpalił, Duda odpowiedział w 40 minut. "Skandal" i... reklama książki</h2>
+Na decyzję prezydenta natychmiast zareagował <strong>Donald Tusk</strong>. Premier nie hamował się w słowach, nazywając ruch głowy państwa "skandalem". Wystarczyło 40 minut, by prezydent odpowiedział na ostry wpis premiera. Obaj politycy użyli dokładnie tych samych słów, co tylko pokazuje skalę konfliktu.
+<blockquote>Ułaskawienie Bąkiewicza przez prezydenta Dudę jest nie tylko skandalem w ludzkim, moralnym wymiarze. Jest też politycznym sygnałem, że cała ta ekipa, razem z Nawrockim, Kaczyńskim i Braunem nie cofnie się przed niczym, byle odzyskać władzę. Czas, aby wszyscy to zrozumieli.</blockquote>
+<strong>Andrzej Duda</strong> błyskawicznie odbił piłeczkę, przy okazji reklamując swoją autobiografię:
+<blockquote>Skandalem w moralnym, ludzkim wymiarze, panie premierze, jest bezprawie, które wprowadza pan od 13 grudnia 2023. Ludzie pokazali panu co o tym sądzą, wybierając Karola Nawrockiego na prezydenta. O pana wyczynach napisałem obszernie w książce "To ja". Będzie co czytać.</blockquote>
+
+<h2>Adam Bodnar nie zostawił na Dudzie suchej nitki. "Godzi w poczucie sprawiedliwości"</h2>
+Oficjalne stanowisko zajął również Minister Sprawiedliwości i Prokurator Generalny, Adam Bodnar. Stwierdził on, że choć prezydent ma konstytucyjne prawo do stosowania łaski, to w tym przypadku jego decyzja jest skandaliczna.
+<blockquote>Uważam jednak, że ułaskawienie R. Bąkiewicza, winnego dokonania bulwersującego przestępstwa — co stwierdziły sądy obu instancji — godzi w społeczne poczucie sprawiedliwości. Jest to kolejny gest Prezydenta pokazujący jego prawdziwą twarz jako osoby, która zamiast stać na straży Konstytucji RP, regularnie podważa jej podstawowe wartości.</blockquote>
+
+<h2>"Hańba!" kontra "obrona prawdy". Żulczyk kpi, a w sieci wrze</h2>
+Decyzja prezydenta wywołała lawinę komentarzy. Sam Robert Bąkiewicz dziękował za "obronę prawdy i sprawiedliwości", a politycy PiS bronili go, argumentując, że "bronił kościołów". Zupełnie inne nastroje panowały po stronie koalicji rządzącej, gdzie padały słowa o "hańbie", "kompromitacji" i "żenującym końcu marnej prezydentury".
+Do sprawy odniósł się pisarz <strong>Jakub Żulczyk</strong>, który w przeszłości był oskarżony o znieważenie prezydenta. Jego komentarz był krótki i prześmiewczy:
+<blockquote>Panie Prezydencie, po co tak wąsko na sam koniec. Szerokim chlebem. Ułaskawienia jeszcze dla Ludwiczka i Jaszczura, a dla Brauna Order Orła Białego.</blockquote>
+Z kolei <strong>Miłosz Motyka</strong> z PSL nazwał decyzję Dudy "aktem politycznym", stwierdzając, że Bąkiewicz mógł liczyć na pomoc, bo jest po prostu <strong>"partyjnym kumplem Andrzeja Dudy"</strong>.
+
+<h2>PAD swoje, a internet wie swoje</h2>
+
+Politycy i eksperci komentują szeroko decyzję Prezydenta, jednak to komentarze zwykłych ludzi (czyli wyborców) najdobitniej pokazują, co sądzi tzw. ulica. A Polacy nie przeierają w słowach i Andrzej Duda zdecydowanie nie śpi ostatnio najlepiej:
+<blockquote>Serio??? Ulaskawiles Bąkiewicza?! Naprawdę? Masz w sobie choć odrobinę wstydu szanowny panie prezydencie?</blockquote>
+<blockquote>Od kiedy w Polsce można bezkarnie spychać ludzi ze schodów?</blockquote>
+<blockquote>Niżej upaść się nie da</blockquote>
+<blockquote>To jest przerażające 😡 jednak trzeba będzie emigrować i to nie wewnętrznie a po prostu zawijać się z tego pislandu id**tów.</blockquote>
+<blockquote>Panie Duda, pan się zeszmacił tylko po to, żeby Bąkiewicz nie musiał zamiatać ulic w ramach kary za atak na staruszkę. Warto było? Ja widzę tylko 1 racjonalne uzasadnienie: że być może już wcześniej pan samego siebie uważał za takie zero, że już panu było i tak wszystko jedno.</blockquote>
+A na koniec komentarz z kategorii tych "ostatecznych":
+<blockquote>Andrzej.. na litość boską...</blockquote>
+
+<h2>Nie tylko Bąkiewicz. Głośne i kontrowersyjne ułaskawienia Andrzeja Dudy</h2>
+To nie pierwszy raz, gdy <strong>prawo łaski</strong> stosowane przez Andrzeja Dudę budzi ogromne emocje. Najgłośniejsza była sprawa ułaskawienia <strong>Mariusza Kamińskiego</strong> i <strong>Macieja Wąsika</strong> w 2015 roku, jeszcze przed uprawomocnieniem się wyroku. Sąd Najwyższy uznał później to działanie za bezprawne, co jednak nie powstrzymało prezydenta przed ponowieniem aktu łaski w 2024 roku.
+Opinia publiczna była również wstrząśnięta, gdy w 2020 roku prezydent ułaskawił mężczyznę skazanego za przestępstwa seksualne wobec własnej córki. Mimo że decyzja zapadła na prośbę samej ofiary, która chciała odbudować relacje z ojcem, wywołała ona falę krytyki i debatę na temat granic prezydenckiego prawa.
+Całą sprawę najmocniej podsumowała jednak sama pokrzywdzona, <strong>"Babcia Kasia"</strong>. W emocjonalnym wpisie zwróciła się bezpośrednio do prezydenta:
+<blockquote>Andrzej Duda! Jesteś najgorszym... (słowo nienadające się do cytowania - przyp. red.), jakiego ziemia nosi. Obyś sczezł!</blockquote>
+
 """
