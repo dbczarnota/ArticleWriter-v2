@@ -60,7 +60,7 @@ def setup_fallback_model(
 
     # Define which models depend on which provider.
     openai_models = {"gpt-4o-mini", "o3-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"}
-    gemini_models = {"gemini-2.5-flash-preview-04-17", "gemini-2.0-flash", "gemini-2.5-pro-preview-05-06", "gemma-3-27b-it", "gemini-2.5-pro-preview-06-05"}
+    gemini_models = {"gemini-2.5-pro", "gemini-2.5-flash-preview-04-17", "gemini-2.0-flash", "gemini-2.5-pro-preview-05-06", "gemma-3-27b-it", "gemini-2.5-pro-preview-06-05"}
     groq_models   = {"meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4-maverick-17b-128e-instruct"}
     openrouter_models = {"google/gemma-3-27b-it", "qwen/qwen-vl-plus", "deepseek/deepseek-r1"}
     ollama_models = {"ollama/gemma3:4b", "ollama/gemma3:27b"}

@@ -163,7 +163,7 @@ logger.info(f"--- Using FallbackModel for ParsingNode with models: {model_names}
 parsing_node_fallback_model = setup_fallback_model(model_names)
 
 #DataExtractionNode
-model_names = ["gemini-2.5-pro-preview-06-05", "o3-mini", "gemini-2.5-flash-preview-04-17"]
+model_names = ["gemini-2.5-pro-preview-06-05",  "o3-mini", "gemini-2.5-flash-preview-04-17"]
 logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model_names} ---")
 dataextraction_node_fallback_model = setup_fallback_model(model_names)
 
@@ -210,14 +210,11 @@ class ResearchPlan(BaseModel):
 
 
 
-class Quote(BaseModel):
-    text: str | None
-    speaker: str | None
-    source: str | None
+
 
 
 class ResearchedInfo(BaseModel):
-    quotes: list[Quote] | None = None
+    quotes: list[dict] | None = None # Old: quotes: list[Quote] | None = None
     facts: list[str] | None = None
     keywords: list[str] | None = None
     article_texts: str | None = None
@@ -748,7 +745,11 @@ ARTICLE TEXT:
 {article_text}
 ==============================
 """
-
+class Quote(BaseModel):
+    text: str | None
+    speaker: str | None
+    source: str | None
+    
 class ResearchedArticle(BaseModel):
     webpage_type: Literal['article', 'other']
     relevant: Literal['yes', 'no']
@@ -882,7 +883,15 @@ class DataExtractionNode(ResilientNode):
                 page['webpage_type'] = data.webpage_type
                 page['relevant'] = data.relevant
                 page['facts'] = data.facts
-                page['quotes'] = [q.model_dump() for q in data.quotes] if data.quotes else []
+                if data.quotes:
+                    page['quotes'] = [q.model_dump() for q in data.quotes]
+                    for quote_dict in page['quotes']:
+                        quote_dict['page_url'] = page_url
+                else:
+                    page['quotes'] = []
+                # This line has been removed as it was overwriting the quotes list
+                # and discarding the 'page_url' that was just added.
+                # page['quotes'] = [q.model_dump() for q in data.quotes] if data.quotes else []
                 page['keywords'] = data.keywords
                 page['publication_date'] = data.publication_date
                 logger.debug(f"{page_node_log_prefix} Successfully extracted data.")
@@ -1049,12 +1058,13 @@ class DataExtractionNode(ResilientNode):
             if url := article.get('url'): article_sources.add(url) # Add URL of used article
             if snippet := article.get('formated_article_short'): article_texts_snippets.append(snippet)
 
-        combined_quotes = []
-        for q_data in combined_quotes_data:
-             if isinstance(q_data, dict):
-                 try: combined_quotes.append(Quote(**q_data))
-                 except Exception as e: logger.warning(f"Could not create Quote object from data: {q_data}. Error: {e}")
-             elif isinstance(q_data, Quote): combined_quotes.append(q_data)
+        # combined_quotes = []
+        # for q_data in combined_quotes_data:
+        #      if isinstance(q_data, dict):
+        #          try: combined_quotes.append(Quote(**q_data))
+        #          except Exception as e: logger.warning(f"Could not create Quote object from data: {q_data}. Error: {e}")
+        #      elif isinstance(q_data, Quote): combined_quotes.append(q_data)
+        combined_quotes = combined_quotes_data
 
         combined_facts = llm_fact_strings + facts_from_articles
         if not combined_facts:
@@ -1251,7 +1261,8 @@ class WritingNode(ResilientNode):
             keywords_list = ctx.state.researched_info.keywords or []
             keywords_str = ", ".join(keywords_list) if keywords_list else "N/A"
             quotes_list = ctx.state.researched_info.quotes or []
-            quotes_str = "\n".join([f'"{escape(q.text or "")}" - {escape(q.speaker or "Unknown")} (Source: {escape(q.source or "N/A")})' for q in quotes_list]) \
+            
+            quotes_str = "\n".join([f'"{escape(q.get("text") or "")}" - {escape(q.get("speaker") or "Unknown")} (Source: {escape(q.get("source") or "N/A")})' for q in quotes_list]) \
                          if quotes_list else "No quotes available."
 
             if not ctx.state.instructions:
@@ -1612,17 +1623,31 @@ class FollowUpNode(ResilientNode):
             content = f"<ul>{list_items}</ul>"
         return f"<section><h2>{escape(title)}</h2>{content}</section>"
 
-    def _generate_quotes_html(self, quotes: Optional[List[Quote]]) -> str:
+    def _generate_quotes_html(self, quotes: Optional[List[dict]]) -> str:
         """Generates HTML for the quotes section."""
         title = "Cytaty"
         if not quotes:
             content = "<ul><li>No quotes available.</li></ul>"
         else:
-            list_items = "".join(
-                f"<li>{escape(q.text or 'N/A')} - {escape(q.speaker or 'Unknown')} (Źródło: {escape(q.source or 'N/A')})</li>"
-                for q in quotes
-            )
-            content = f"<ul>{list_items}</ul>"
+            list_items = []
+            for q in quotes:
+
+                source_parts = []
+                if original_source := q.get('source'):
+                    source_parts.append(escape(original_source))
+                
+                if page_url := q.get('page_url'):
+                    page_link = f'<a href="{escape(page_url)}" target="_blank">znaleziono na stronie</a>'
+                    source_parts.append(page_link)
+
+                source_details = ' / '.join(source_parts) or 'N/A'
+
+                # Use `or` fallback to prevent escaping None values.
+                list_items.append(
+                    f"<li>{escape(q.get('text') or 'N/A')} - {escape(q.get('speaker') or 'Unknown')} (Źródło: {source_details})</li>"
+                )
+
+            content = f"<ul>{''.join(list_items)}</ul>"
         return f"<section><h2>{escape(title)}</h2>{content}</section>"
 
     def _generate_llm_facts_html(self, llm_facts: Optional[List[FactFromLlm]]) -> str:
@@ -1751,12 +1776,12 @@ class ArticleWriter:
 ###############################################################################
 if __name__ == "__main__":
     article = ArticleWriter.write_article(
-        article_topic="Potwierdziły się doniesienia ws. syna Nawrockiej. Prawda wyszła na jaw",
+        article_topic="Politycy żegnają Joannę Kołaczkowską",
         domains=[],  # example domains
-        urls=['https://www.pomponik.pl/plotki/news-potwierdzily-sie-doniesienia-ws-syna-nawrockiej-prawda-wyszl,nId,7989757'],       # example URLs
-        number_of_queries=2,
+        urls=['https://wydarzenia.styl.fm/876257.ludzie-z-wiejskiej-zegnaja-joanne-kolaczkowska-potrafilismy-dzieki-niej-smiac-sie-z-samych-siebie-napisal-donek'],       # example URLs
+        number_of_queries=1,
         scraping_model="",        # specify your scraping model if needed
-        max_search_results=4,
+        max_search_results=1,
         search_days=10,
         extraction_mode="markdown",
         provide_llm_facts="no"
