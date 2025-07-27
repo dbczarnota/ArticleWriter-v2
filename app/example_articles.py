@@ -98,53 +98,6 @@ Warto przyjrzeć się dokładnym wynikom:
 </ul>
 
 -----Example Article 2-----
-<h1>Sygnał ostrzegawczy dla Donka. Jest źle</h1>
-<strong>Rząd Donalda Tuska ma olbrzymie problemy, ponieważ kandydat Koalicji Obywatelskiej przegrał wybory prezydenckie, a ponadto poparcie dla strony rządowej jest niskie. Przeanalizowaliśmy dokładnie średnie sondażowe z ostatnich 30 dni i jasno z nich wynika, że nawet jeśli koalicja wystartowałaby z jednej listy, to nie udałoby jej się osiągnąć większości parlamentarnej. Krótko mówiąc, jest źle.</strong>
-<h2>Średnie poparcie dla partii politycznych</h2>
-Średnie sondażowe pozwalają wnioskować o rzeczywisty poparciu dla poszczególnych partii. Są one znacznie bardziej precyzyjnie niż pojedyncze sondaże, ponieważ bazują na znacznie większych danych. Postanowiliśmy przeanalizować ostatnie średnie sondażowe, z których jasno wynika, że gdyby wybory odbyły się w kolejną niedzielę, to:
-<ul>
- 	<li>zwycięzcą okazałaby się Koalicja Obywatelska, która ma 30,6 proc. poparcia.</li>
- 	<li>Prawo i Sprawiedliwość, które notuje 30 proc., zajmuje drugą pozycję.</li>
- 	<li>Podium uzupełnia Konfederacja ze średnim poparciem 14,3 proc. i wyraźnym trendem wzrostowym.</li>
- 	<li>Kolejna jest Lewica, która ma 6,1 proc.</li>
- 	<li>Tyle samo poparcia zdobywa także Trzecia Droga, czyli 6,1 proc. To oznacza, że startując samodzielnie, nie przekracza progu wyborczego dla koalicji.</li>
- 	<li>Zaskoczeniem jest rosnące poparcie dla RAZEM, które notuje już 4,5 proc. i zbliża się do progu wyborczego.</li>
-</ul>
-
-<h2>Koalicja rządząca musiałaby oddać władzę PiS-owi i Konfederacji</h2>
-Warto zwrócić uwagę, że przeliczyliśmy poparcie na mandaty i wnioski są jasne, startując osobno KO i Lewica mają łącznie 194 mandaty, a PiS i Konfederacja aż 266. W przypadku gdy natomiast KO i pozostałe partie koalicyjne zdecydowały się na jedną listą, ten rezultat byłby lepszy. W takiej konfiguracji Koalicja rządząca notowałaby 228 mandatów, a PiS i Konfederacja 232. Warto przypomnieć, że rządzą te partie, które przekroczą 230 mandatów.
-
-Poniżej pokazujemy najzabawniejsze memy o Donaldzie Tusku.
-
------Example Article 3-----
-<h1>Marcin Rogacewicz się wygadał, że urlopował z Agnieszką Kaczorowską. Wszystko przez upojne wideo z basenu</h1>
-<strong>Wydaje się, że to już przesądzone, że Agnieszka Kaczorowska i Marcin Rogacewicz spędzili urlop na Ibizie razem. Aktor się właśnie wygadał, bo zamieścił wideo z basenu.</strong>
-<h2>Marcin Rogacewicz i Agnieszka Kaczorowska spędzili razem wakacje na Ibizie</h2>
-Agnieszka Kaczorowska ostatnio spędziła <strong>upojne wakacje na Ibizie</strong>, na którą pojechała bez swoich córek, które w tym tygodniu zostały pod opieką taty i wciąż jeszcze męża Agnieszki Kaczorowskiej, Macieja Peli.
-
-Wkrótce portal Pudelek.pl odkrył, że Agnieszka Kaczorowska na Ibizie odpoczywa w towarzystwie Marcina Rogacewicza, przystojnego aktora, z którym jest widywana od jakiegoś czasu. A przynajmniej takie informacje zdradził informator portalu.
-<blockquote>Agnieszka i Marcin spędzają razem czas w jednym z lepszych i nowszych hoteli na wyspie. Niespecjalnie zależy im na tym, by kryć się tam ze swoim uczuciem</blockquote>
-- donosił.
-
-Mimo takich doniesień <strong>Agnieszka Kaczorowska i Marcin Rogacewicz</strong> uparcie milczeli w tej sprawie i oficjalnie nie potwierdzali, czy ich życiowe ścieżki faktycznie się przecięły.
-<h2>Marcin Rogacewicz się wygadał, że urlopował z Agnieszką Kaczorowską. Upojne wideo z basenu</h2>
-Wydaje się jednak, że w środę 25 czerwca coś w tej kwestii drgnęło. Właśnie tego dnia <strong>Marcin Rogacewicz</strong> zamieścił na swoim profilu na Instagramie <strong>wideo, do którego pozuje w basenie</strong>.
-<blockquote>Przede mną pracowite lato #lubięto</blockquote>
-- podpisał.
-
-Aktor wideo, na którym pręży się w basenie, uzupełnił muzyką z filmu "Casino Royale" o przygodach Jamesa Bonda.
-
-Czujni fani od razu odkryli, że<strong> Agnieszka Kaczorowska</strong> zamieściła zdjęcia z tego samego basenu, w tym samym hotelu na Ibizie.
-<blockquote>Kaczorowska też ma w tym samym miejscu fotki</blockquote>
-- napisała jedna z fanek.
-
-Rzeczywiście ujęcia i kadry się zgadzały. Agnieszka Kaczorowska niedawno zamieściła na Instagramie zdjęcie, na którym siedziała prawdopodobnie w tym samym basenie, a w tle widać nawet ten sam statek.
-
-Co ciekawe, Marcin Rogacewicz odpowiedzial na ten komentarz, dodając jakże wymowną emotikonkę przerażenia. Aktor co prawda nie potwierdził, ale też nie zaprzeczył, co w tym przypadku jest wymowne.
-
-Niezależnie od wszystkiego, życzymy parze wszystkiego dobrego. Musimy przyznać, że Agnieszka Kaczorowska na wakacjach prezentowała się obłędnie, a Marcin Rogacewicz miał na co popatrzeć.
-
------Example Article 4-----
 <h1>Doda przerywa milczenie. Tuż przed urodzinami usłyszała druzgocącą diagnozę. "Równo pół roku temu dostałam diagnozę"</h1>
 <strong>Doda — ikona polskiego show-biznesu, która od lat zachwyca pewnością siebie, właśnie ujawniła coś, co do dziś trzymała w tajemnicy. Tylko jej najbliżsi wiedzieli, przez co przechodziła przez ostatnie pół roku.</strong>
 <h2>Doda przerywa milczenie. Tuż przed urodzinami usłyszała druzgocącą diagnozę</h2>
@@ -163,7 +116,7 @@ Na nagraniu widzimy urywki codzienności Dody, w których opowiada, z czym obecn
 Tuż przed festiwalem w Opolu <strong>Doda</strong> dostała najpiękniejszy prezent, o jakim tylko mogła marzyć. Okazało się, że wygrała z chorobą. Teraz chce uświadamiać ludzi o niebezpieczeństwach związanych z korzystaniem z solarium i o tym, jak ważna jest profilaktyka.
 <blockquote>Obiecałam sobie, że jak wyjdę z tego, zrobię wszystko, żeby ludziom uświadomić, jak ważna jest profilaktyka w badaniu skóry oraz kategoryczne unikanie solarium i ograniczanie opalania na słońcu jak „skwarka”. Pamiętajcie o filtrach mineralnych i dbajcie o siebie.</blockquote>
 
------Example Article 5-----
+-----Example Article 3-----
 <h1>Zenon Martyniuk dziś świętuje urodziny. Ten przystojniak wcale nie wygląda na swój wiek [dużo zdjęć]</h1>
 <strong>Zenon Martyniuk dokładnie dziś świętuje urodziny i wciąż zachwyca formą, której mógłby pozazdrościć mu niejeden młodszy kolega. Król disco polo nie tylko nie zwalnia tempa, ale z roku na rok wygląda coraz lepiej. Aż trudno uwierzyć, że ten przystojniak ma już tyle wiosen na karku.</strong>
 <h2>Zenon Martyniuk dziś świętuje urodziny</h2>
@@ -180,7 +133,7 @@ Nie bez znaczenia jest też fakt, że <strong>Zenon Martyniuk r</strong>aczej st
 
 Z okazji urodzin składamy najserdeczniejsze życzenia.
 
------Example Article 6-----
+-----Example Article 4-----
 <h1>Sara Boruc pokazała 15-letnią córkę i 6-letniego syna. Amelia to urodzona modelka, a Noah łamacz serc</h1>
 <strong>Sara Boruc pochwaliła się w sieci zdjęciami swoich dzieci. Amelia i Noah to owoc jej miłości z Arturem Borucem. Trzeba przyznać, że dzieci rosną jak na drożdżach i są bardzo podobni do znanych rodziców.</strong>
 <h2>Dzieci Sary Boruc i Artura Boruca</h2>
@@ -196,8 +149,8 @@ A fani w komentarzach komplementują nie tylko dzieci Boruców, ale również pi
 A poniżej przedstawiamy jeszcze więcej kadrów, które opublikowała <strong>Sara Boruc</strong>. Dzieci są doskonałą mieszanką znanych rodziców.
 
 
-
------Example Article 7-----
+-----Example Article 5-----
+<h1>"To jest skandal!" Miał zamiatać ulice, ale PAD go ułaskawił. Komentarze mówią wszystko o... Dudzie</h1>
 <strong>Decyzja prezydenta Andrzeja Dudy o ułaskawieniu Roberta Bąkiewicza, skazanego za napaść na aktywistkę znaną jako "Babcia Kasia", rozpętała prawdziwą polityczną burzę. Błyskawicznie zareagował premier Donald Tusk, nazywając decyzję "skandalem". Na odpowiedź głowy państwa nie trzeba było długo czekać, a ostra wojna na słowa między najważniejszymi politykami w kraju rozgrzała internet do czerwoności.</strong>
 
 <h2>Ułaskawienie za atak na kobietę. O co chodzi w sprawie Bąkiewicza</h2>
@@ -237,5 +190,37 @@ To nie pierwszy raz, gdy <strong>prawo łaski</strong> stosowane przez Andrzeja 
 Opinia publiczna była również wstrząśnięta, gdy w 2020 roku prezydent ułaskawił mężczyznę skazanego za przestępstwa seksualne wobec własnej córki. Mimo że decyzja zapadła na prośbę samej ofiary, która chciała odbudować relacje z ojcem, wywołała ona falę krytyki i debatę na temat granic prezydenckiego prawa.
 Całą sprawę najmocniej podsumowała jednak sama pokrzywdzona, <strong>"Babcia Kasia"</strong>. W emocjonalnym wpisie zwróciła się bezpośrednio do prezydenta:
 <blockquote>Andrzej Duda! Jesteś najgorszym... (słowo nienadające się do cytowania - przyp. red.), jakiego ziemia nosi. Obyś sczezł!</blockquote>
+
+
+-----Example Article 6-----
+<h1>Jakimowicz publicznie kpi z polskiego astronauty. Lektor z Google'a zgasił go jak peta. "Nie baw się patyczkami do uszu"</h1>
+
+<strong>Podczas gdy cała Polska pękała z dumy po historycznym locie Sławosza Uznańskiego-Wiśniewskiego, Jarosław Jakimowicz postanowił popłynąć pod prąd. Były gwiazdor TVP publicznie zasugerował, że cała polska misja kosmiczna to jedna wielka mistyfikacja nagrana w studiu. Jego absurdalne teorie spiskowe wywołały burzę, a na ziemię sprowadził go Jarosław Juszkiewicz, którego głos zna każdy kierowca w Polsce. To nie było miękkie lądowanie.</strong>
+
+<h2>Jakimowicz odleciał bez rakiety. Twierdzi, że lot w kosmos to "mistyfikacja"</h2>
+W czasie gdy <strong>Sławosz Uznański-Wiśniewski</strong> wykonywał na <strong>Międzynarodowej Stacji Kosmicznej</strong> 13 skomplikowanych eksperymentów, a miliony Polaków śledziły jego historyczny <strong>powrót z kosmosu</strong>, <strong>Jarosław Jakimowicz</strong> w zaciszu domowym przeprowadzał własną "analizę". Z miną eksperta postanowił podzielić się ze światem swoimi "odkryciami" na temat misji <strong>Ax-4</strong>.
+
+Jego argumentacja była porażająca, choć niekoniecznie logiką. Zapewniając, że "nie jest płaskoziemcą", co tylko dodaje komizmu całej sytuacji, celebryta przedstawił swoje dowody na rzekome oszustwo.
+<blockquote>Pomyślcie, jak szybko poleciał, jak wrócił. Popatrzcie, jak się tam leci, jak się wraca. Jest dużo filmików. Ja nie jestem płaskoziemcą. (...) Popatrzcie na transmisje Sławosza w tej rakiecie, czy gdzie on tam jest. Nic tam się nie rusza!</blockquote>
+Wygląda na to, że według Jakimowicza w prawdziwej rakiecie wszystko powinno się trząść jak w starym Polonezie na wybojach.
+
+<h2>Lektor z Google'a nie wytrzymał. Zgasił go jak dziecko</h2>
+Na rewelacje Jakimowicza nie trzeba było długo czekać. <strong>Jarosław Juszkiewicz</strong>, przez lata "głos" nawigacji Google, a prywatnie autor książki "Kosmos — wyznaczam nową trasę" i ambasador Śląskiego Festiwalu Nauki, postanowił zareagować. Zrobił to w sposób, który musiał zaboleć Jakimowicza najbardziej – potraktował go protekcjonalnie, jak dziecko, które zadaje niemądre pytania.
+
+Swoją miażdżącą lekcję zaczął od ironicznej grzeczności.
+<blockquote>Panie Jarosławie, pan najwyraźniej jest ciekawy świata, bo zadaje pan pytania. Co prawda, wyciąga pan daleko idące wnioski, ale pomyślałem sobie, że nie ma złych pytań.</blockquote>
+Potem było już tylko gorzej. Juszkiewicz, zamiast polecać swoją grubą książkę o kosmosie "zapracowanemu człowiekowi", zaproponował lektury na odpowiednim poziomie.
+<blockquote>Znalazłem to na półce syna, cieniutka książeczka — da pan sobie radę »Lot w kosmos«. Jeśli to by było za dużo, to odnośnie grawitacji i tego, jak długo leci się w pozaziemską atmosferę ma do powiedzenia coś Reksio — w bardzo przystępny i zrozumiały sposób. Nie będzie pan musiał zadawać niewygodnych pytań.</blockquote>
+Na koniec zostawił wisienkę na torcie – ostateczną szpilę, która była już czystą złośliwością.
+<blockquote>Przy okazji znalazłem też ciekawą książkę, choć to pewnie nie na temat. Choć też może nie do końca. "Nie baw się patyczkami do uszu, bo możesz się skaleczyć" — "Uwaga, to niebezpieczne".</blockquote>
+
+<h2>"Odleciał bez rakiety". Internet nie miał litości</h2>
+Słowa Jakimowicza i mistrzowska riposta Juszkiewicza stały się natychmiastowym hitem internetu. Sieć zalała fala kpin pod adresem celebryty, a komentujący nie zostawili na nim suchej nitki. "Jakimowicz jest żywym przykładem na to, że można odlecieć w kosmos i bez wsiadania do rakiety" – drwił jeden z internautów. "Chyba pomylił studio TVP z <strong>Międzynarodową Stacją Kosmiczną</strong>" – dodawał inny.
+
+W tym samym czasie, gdy internet kpił z teorii celebryty, prawdziwy bohater, <strong>Sławosz Uznański-Wiśniewski</strong>, lądował na lotnisku w Warszawie. Czekała tam na niego wzruszona żona, Aleksandra, oraz tłum fanów. "Ogromna ulga i wielkie wzruszenie. Jestem szalenie wdzięczna" – mówiła dziennikarzom.
+
+Czekamy na kolejne teorie. Może tym razem o tym, że <strong>Sokół Millennium</strong> to tak naprawdę przerobiony Polonez?
+
+
 
 """
