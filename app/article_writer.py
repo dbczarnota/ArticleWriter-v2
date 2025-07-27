@@ -148,42 +148,42 @@ class ResilientNode(BaseNode, abc.ABC):
 # # Centralized Model Initialization
 # ###############################################################################
 #SearchNode
-model_names = ["gpt-4.1-mini", "gemini-2.5-flash-preview-04-17"]
+model_names = ["gpt-4.1-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for SearchNode with models: {model_names} ---")
 search_node_fallback_model = setup_fallback_model(model_names)
 
 #LlmKnowledgeNode
-model_names = ["gpt-4.1-mini", "gemini-2.5-flash-preview-04-17"]
+model_names = ["gpt-4.1-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for LlmKnowledgeNode with models: {model_names} ---")
 llmknowledge_node_fallback_model = setup_fallback_model(model_names)
 
 #ParsingNode
-model_names = ["gemini-2.5-pro-preview-06-05", "o3-mini", "gemini-2.5-flash-preview-04-17"]
+model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for ParsingNode with models: {model_names} ---")
 parsing_node_fallback_model = setup_fallback_model(model_names)
 
 #DataExtractionNode
-model_names = ["gemini-2.5-pro-preview-06-05",  "o3-mini", "gemini-2.5-flash-preview-04-17"]
+model_names = ["gemini-2.5-pro",  "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model_names} ---")
 dataextraction_node_fallback_model = setup_fallback_model(model_names)
 
 #InstructionsNode
-model_names = ["gemini-2.5-pro-preview-06-05", "o3-mini", "gemini-2.5-flash-preview-04-17"]
+model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for InstructionsNode with models: {model_names} ---")
 instructions_node_fallback_model = setup_fallback_model(model_names)
 
 #WritingNode
-model_names = ["gemini-2.5-pro-preview-06-05", "gpt-4.1"]
+model_names = ["gemini-2.5-pro", "gpt-4.1"]
 logger.info(f"--- Using FallbackModel for WritingNode with models: {model_names} ---")
 writing_node_fallback_model = setup_fallback_model(model_names)
 
 #ReflectionNode
-model_names = ["gemini-2.5-pro-preview-06-05", "gpt-4.1"]
+model_names = ["gemini-2.5-pro", "gpt-4.1"]
 logger.info(f"--- Using FallbackModel for ReflectionNode with models: {model_names} ---")
 reflection_node_fallback_model = setup_fallback_model(model_names)
 
 #FollowUpNode
-model_names = ["gemini-2.5-pro-preview-06-05", "o3-mini", "gemini-2.5-flash-preview-04-17"]
+model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for FollowUpNode with models: {model_names} ---")
 followUp_node_fallback_model = setup_fallback_model(model_names)
 
@@ -200,7 +200,7 @@ class Configuration(BaseModel):
     search_days: int = 30
     extraction_mode: Literal["markdown", "html", "llm"] = "markdown"
     provide_llm_facts: Literal["yes", "no"] = "yes",
-
+    additional_instructions: Optional[str] = None,
 
 
 class ResearchPlan(BaseModel):
@@ -315,6 +315,8 @@ Your response should follow this structure:
 ### Article Topic:
 {article_topic}
 
+{additional_instructions_formatted}
+
 ### All output must always be in the language of the article topic.
 """
 
@@ -342,12 +344,19 @@ class SearchNode(ResilientNode):
             result_type=ResearchPlan,
             # retries=1 # Optional
         )
+        
+        additional_instructions = ctx.state.configuration.additional_instructions
+        if additional_instructions is not None and additional_instructions not in ["None", "none", ""]:
+            additional_instructions_formatted = f"### Additional Instructions and Context:\nThese are additional instructions to follow or context to include while writing the article:\n{additional_instructions}\nThey are very important and must be included."
+        else:
+            additional_instructions_formatted = ""
 
         # --- Core Logic ---
         prompt = research_agent_prompt.format(
             current_date=ctx.state.current_date,
             article_topic=ctx.state.configuration.article_topic,
-            number_of_queries=ctx.state.configuration.number_of_queries
+            number_of_queries=ctx.state.configuration.number_of_queries,
+            additional_instructions_formatted=additional_instructions_formatted,
         )
         result = await research_agent.run(user_prompt=prompt)
 
@@ -1121,6 +1130,8 @@ The following plan was proposed for the article:
 {plan}
 - You **do not need to strictly follow the plan**, but use it as guidance.
 
+{additional_instructions_formatted}
+
 ### Reference Articles:
 These are articles on the similar topic written by our competitors. Make sure your journalist will make a better job:
 {article_texts}
@@ -1159,16 +1170,23 @@ class InstructionsNode(ResilientNode):
         article_texts = ctx.state.researched_info.article_texts or "No reference articles available."
         research_plan = ctx.state.research_plan.plan if ctx.state.research_plan else "No initial plan provided."
         topic = ctx.state.configuration.article_topic
+        additional_instructions = ctx.state.configuration.additional_instructions
 
         if not topic:
             # This error will be caught by ResilientNode.run
             raise ValueError(f"{node_name}: Article topic is missing in configuration.")
-
+        
+        if additional_instructions is not None and additional_instructions not in ["None", "none", ""]:
+            additional_instructions_formatted = f"### Additional Instructions and Context:\nThese are additional instructions to follow or context to include while writing the article:\n{additional_instructions}\nThey are very important and must be included."
+        else:
+            additional_instructions_formatted = ""
+        
         user_prompt = instructions_agent_prompt.format( # Ensure prompt is accessible
             article_texts=article_texts,
             plan=research_plan,
             topic=topic,
-            example_articles=example_articles
+            example_articles=example_articles,
+            additional_instructions_formatted=additional_instructions_formatted,
         )
         # logger.debug(f"{node_name} prompt snippet: {user_prompt[:300]}...")
 
@@ -1454,19 +1472,22 @@ followup_agent_prompt = """You are given a finished article (referred to as "fin
     
     You can find examples of good titles for various articles—use their style and structure for inspiration:
     #####
-    Imię słowiańskiej bogini powoli się odradza. Ma ciekawe znaczenie i nosi je już 47 Polek
-    W PRL-u wszyscy się nimi zajadali. Zrobisz je szybko i za grosze
+    Szokujące sceny na proteście Bąkiewicza, do akcji wkroczyła policja. Szef MSWiA ostro komentuje
+    Mentzen już zaciera ręce. Tak chce przechytrzyć Kaczyńskiego
     To warzywo jest kopalnią witamin. Jednak Polacy kręcą na nie nosem
-    Najtańsza odżywka do storczyka. Wystarczy odrobina, by utonął w kwiatach
-    Tu poczujesz się jak w alpejskim kurorcie. Raj nie tylko dla narciarzy, organizm będzie ci wdzięczny
-    Nowe egzotyczne połączenie z polskiego lotniska. Turyści już szykują kapelusze i kremy z filtrem
-    Wcale nie bombki. Tuż za granicą Polski na choince wieszają coś innego, aż zapierają dech w piersi
+    Niesłychane, co poseł Konfederacji wypalił o Kaczyńskim. Jego słowa obiegły całą Polskę
+    Rzecznik Nawrockiego nie wytrzymał. Wałęsa usłyszał, co o nim myślą
+    Wjechał konno i miał suknię z peleryną. Ten polski ślub przebił wszystko
+    Kto tak naprawdę zapłacił za wesele prezydentówny? Są niepodważalne dowody, które rozwiewają wątpliwości
     Nigdy nie dodawaj tego składnika do sałatki greckiej. Grecy poczują się urażeni
-    Nie Bułgaria i nie Turcja. Oto 3 pomysły na tanie wakacje samolotem
+    Myslovitz przerwał koncert przez... Brauna. Zrobiło się poważnie
     Baśniowa kraina tuż przy polskiej granicy – to jedynie 3,5 godziny jazdy z Krakowa
     Było symbolem Malty. 8 lat temu runęło do morza
+    Skiba nie wytrzymał po słowach Chorosińskiej. Z riposty zrobił się mem
+    Największy lęk Joanny Kołaczkowskiej stał się prawdą. O kancerofobii mówiła głośno od lat
     Zakwitły już nad Bałtykiem. Są piękne, ale śmiertelnie niebezpieczne
     Jak nie robić zdjęć w podróży. Takie zachowanie to naruszenie zasad
+    "To jest skandal!" Miał zamiatać ulice, ale PAD go ułaskawił. Komentarze mówią wszystko o... Dudzie
     #####
     
 2. Suggest 5 new article topics that relate—directly or loosely—to the content of the "finished_article." Each topic should:
@@ -1742,6 +1763,7 @@ class ArticleWriter:
         search_days: int = 500,
         provide_llm_facts: Literal["yes", "no"] = "no",
         extraction_mode: Literal["markdown", "html", "llm"] = "markdown",
+        additional_instructions: Optional[str] = None,
     ) -> str:
         async def _run_graph():
             state = State(
@@ -1755,6 +1777,7 @@ class ArticleWriter:
                     search_days=search_days,
                     extraction_mode=extraction_mode,
                     provide_llm_facts=provide_llm_facts,
+                    additional_instructions = additional_instructions
 
                 )
             )
@@ -1776,15 +1799,16 @@ class ArticleWriter:
 ###############################################################################
 if __name__ == "__main__":
     article = ArticleWriter.write_article(
-        article_topic="Politycy żegnają Joannę Kołaczkowską",
+        article_topic="na festiwalu w koszalinie kabareciarze wyśmiali agatę dudę",
         domains=[],  # example domains
-        urls=['https://wydarzenia.styl.fm/876257.ludzie-z-wiejskiej-zegnaja-joanne-kolaczkowska-potrafilismy-dzieki-niej-smiac-sie-z-samych-siebie-napisal-donek'],       # example URLs
-        number_of_queries=1,
+        urls=['https://www.plotek.pl/plotek/7,154063,32131471,kabareciarze-wysmiali-agate-dude-na-festiwalu-w-koszalinie.html'],       # example URLs
+        number_of_queries=2,
         scraping_model="",        # specify your scraping model if needed
-        max_search_results=1,
-        search_days=10,
+        max_search_results=3,
+        search_days=3,
         extraction_mode="markdown",
-        provide_llm_facts="no"
+        provide_llm_facts="no",
+        additional_instructions = None
     )
     print(article)
 
