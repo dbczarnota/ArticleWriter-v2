@@ -148,42 +148,42 @@ class ResilientNode(BaseNode, abc.ABC):
 # # Centralized Model Initialization
 # ###############################################################################
 #SearchNode
-model_names = ["gpt-4.1-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.0-flash", "gpt-4.1-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for SearchNode with models: {model_names} ---")
 search_node_fallback_model = setup_fallback_model(model_names)
 
 #LlmKnowledgeNode
-model_names = ["gpt-4.1-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.0-flash", "gpt-4.1-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for LlmKnowledgeNode with models: {model_names} ---")
 llmknowledge_node_fallback_model = setup_fallback_model(model_names)
 
 #ParsingNode
-model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for ParsingNode with models: {model_names} ---")
 parsing_node_fallback_model = setup_fallback_model(model_names)
 
 #DataExtractionNode
-model_names = ["gemini-2.5-pro",  "o3-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.0-flash", "gemini-2.5-pro",  "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model_names} ---")
 dataextraction_node_fallback_model = setup_fallback_model(model_names)
 
 #InstructionsNode
-model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for InstructionsNode with models: {model_names} ---")
 instructions_node_fallback_model = setup_fallback_model(model_names)
 
 #WritingNode
-model_names = ["gemini-2.5-pro", "gpt-4.1"]
+model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "gpt-4.1"]
 logger.info(f"--- Using FallbackModel for WritingNode with models: {model_names} ---")
 writing_node_fallback_model = setup_fallback_model(model_names)
 
 #ReflectionNode
-model_names = ["gemini-2.5-pro", "gpt-4.1"]
+model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "gpt-4.1"]
 logger.info(f"--- Using FallbackModel for ReflectionNode with models: {model_names} ---")
 reflection_node_fallback_model = setup_fallback_model(model_names)
 
 #FollowUpNode
-model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for FollowUpNode with models: {model_names} ---")
 followUp_node_fallback_model = setup_fallback_model(model_names)
 
