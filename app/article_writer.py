@@ -168,17 +168,17 @@ logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model
 dataextraction_node_fallback_model = setup_fallback_model(model_names)
 
 #InstructionsNode
-model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for InstructionsNode with models: {model_names} ---")
 instructions_node_fallback_model = setup_fallback_model(model_names)
 
 #WritingNode
-model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "gpt-4.1"]
+model_names = ["gemini-2.5-pro", "gpt-4.1"]
 logger.info(f"--- Using FallbackModel for WritingNode with models: {model_names} ---")
 writing_node_fallback_model = setup_fallback_model(model_names)
 
 #ReflectionNode
-model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "gpt-4.1"]
+model_names = ["gemini-2.5-pro", "gpt-4.1"]
 logger.info(f"--- Using FallbackModel for ReflectionNode with models: {model_names} ---")
 reflection_node_fallback_model = setup_fallback_model(model_names)
 
