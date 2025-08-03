@@ -148,7 +148,7 @@ class ResilientNode(BaseNode, abc.ABC):
 # # Centralized Model Initialization
 # ###############################################################################
 #SearchNode
-model_names = ["gemini-2.0-flash", "gpt-4.1-mini", "gemini-2.0-flash"]
+model_names = ["gpt-4.1-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for SearchNode with models: {model_names} ---")
 search_node_fallback_model = setup_fallback_model(model_names)
 
@@ -163,7 +163,7 @@ logger.info(f"--- Using FallbackModel for ParsingNode with models: {model_names}
 parsing_node_fallback_model = setup_fallback_model(model_names)
 
 #DataExtractionNode
-model_names = ["gemini-2.0-flash", "gemini-2.5-pro",  "o3-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.5-pro",  "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model_names} ---")
 dataextraction_node_fallback_model = setup_fallback_model(model_names)
 
@@ -183,7 +183,7 @@ logger.info(f"--- Using FallbackModel for ReflectionNode with models: {model_nam
 reflection_node_fallback_model = setup_fallback_model(model_names)
 
 #FollowUpNode
-model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for FollowUpNode with models: {model_names} ---")
 followUp_node_fallback_model = setup_fallback_model(model_names)
 
