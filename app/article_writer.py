@@ -22,7 +22,9 @@ from typing import List, Literal, Optional
 from searchandscrape import SearchAndScrape
 from rich import print
 from dotenv import load_dotenv
-from datetime import date, datetime, timedelta
+# from datetime import date, datetime, timedelta
+from pydantic import field_validator # For Pydantic v2
+from datetime import datetime, timedelta, date as date_type # alias date to avoid conflict
 import abc
 from html import escape
 from example_articles import example_articles
@@ -31,7 +33,7 @@ from llm_models import setup_fallback_model
 
 logger = logging.getLogger(__name__)
 load_dotenv()
-current_date = current_date_today = date.today()
+current_date = current_date_today = date_type.today()
 
 ###############################################################################
 # Error handling class template
@@ -122,7 +124,7 @@ class ResilientNode(BaseNode, abc.ABC):
             setattr(ctx.state, self.retry_counter_attr, current_retries + 1)
             save_state(ctx.state) # Save state after incrementing counter and adding error
             logger.warning(f"Retrying {node_name} (Attempt {current_retries + 2}/{self.max_retries + 1})...")
-            return self() # Return instance of the current node to retry
+            return self.__class__()
         else:
             final_error_msg = f"ERROR: {node_name} failed permanently after {self.max_retries + 1} attempts. Last error: {error_message}"
             logger.error(final_error_msg)
@@ -145,117 +147,45 @@ class ResilientNode(BaseNode, abc.ABC):
 # ###############################################################################
 # # Centralized Model Initialization
 # ###############################################################################
-# print("--- Initializing LLM Models ---")
+#SearchNode
+model_names = ["gpt-5-mini", "gpt-4.1-mini", "gemini-2.0-flash"]
+logger.info(f"--- Using FallbackModel for SearchNode with models: {model_names} ---")
+search_node_fallback_model = setup_fallback_model(model_names)
 
-# # --- Google Gemini Models ---
-# gemini_provider = None
-# gemini_api_key = os.getenv('GEMINI_API_KEY')
-# if gemini_api_key:
-#     try:
-#         gemini_provider = GoogleGLAProvider(api_key=gemini_api_key)
-#         print("--- Google GLA Provider initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize Google GLA Provider: {e} ---")
-#         print("--- Check if GEMINI_API_KEY is set and correct. Gemini models will not be available. ---")
-# else:
-#     print("--- WARNING: GEMINI_API_KEY not found. Skipping Google Gemini model initialization. ---")
+#LlmKnowledgeNode
+model_names = ["gpt-5-mini", "gemini-2.0-flash", "gpt-4.1-mini", "gemini-2.0-flash"]
+logger.info(f"--- Using FallbackModel for LlmKnowledgeNode with models: {model_names} ---")
+llmknowledge_node_fallback_model = setup_fallback_model(model_names)
 
-# # Initialize Gemini Model 1: gemini-2.0-flash
-# gemini_20_model = None # Keep variable name generic
-# gemini_20_model_name = 'gemini-2.0-flash' # *** USER SPECIFIED NAME ***
-# if gemini_provider:
-#     try:
-#         gemini_20_model = GeminiModel(gemini_20_model_name, provider=gemini_provider)
-#         print(f"--- Google Gemini ({gemini_20_model_name}) initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize Google Gemini ({gemini_20_model_name}): {e} ---")
-#         print(f"--- Check if the model name '{gemini_20_model_name}' is valid and accessible with your API key. ---")
+#ParsingNode
+model_names = ["gpt-5-mini", "gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
+logger.info(f"--- Using FallbackModel for ParsingNode with models: {model_names} ---")
+parsing_node_fallback_model = setup_fallback_model(model_names)
 
-# # Initialize Gemini Model 2: gemini-2.5-pro-exp-03-25
-# gemini_25_model = None # Keep variable name generic
-# gemini_25_model_name = 'gemini-2.5-pro-preview-05-06' # *** USER SPECIFIED NAME ***
-# if gemini_provider:
-#     try:
-#         gemini_25_model = GeminiModel(gemini_25_model_name, provider=gemini_provider)
-#         print(f"--- Google Gemini ({gemini_25_model_name}) initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize Google Gemini ({gemini_25_model_name}): {e} ---")
-#         print(f"--- Check if the model name '{gemini_25_model_name}' is valid and accessible (it might be experimental/restricted). ---")
+#DataExtractionNode
+model_names = ["gemini-2.5-pro",  "o3-mini", "gemini-2.0-flash"]
+logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model_names} ---")
+dataextraction_node_fallback_model = setup_fallback_model(model_names)
 
-# # --- OpenAI Models ---
-# openai_provider = None
-# openai_api_key = os.getenv('OPENAI_API_KEY')
-# if openai_api_key:
-#     try:
-#         openai_provider = OpenAIProvider(api_key=openai_api_key)
-#         print("--- OpenAI Provider initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize OpenAI Provider: {e} ---")
-#         print("--- Check if OPENAI_API_KEY is set and correct. OpenAI models will not be available. ---")
-# else:
-#     print("--- WARNING: OPENAI_API_KEY not found. Skipping OpenAI model initialization. ---")
+#InstructionsNode
+model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
+logger.info(f"--- Using FallbackModel for InstructionsNode with models: {model_names} ---")
+instructions_node_fallback_model = setup_fallback_model(model_names)
 
-# # Initialize OpenAI Model 1 (gpt-4o)
-# openai_gpt_4o_model = None
-# if openai_provider:
-#     try:
-#         openai_gpt_4o_model = OpenAIModel('gpt-4o', provider=openai_provider)
-#         print("--- OpenAIModel (gpt-4o) initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to instantiate OpenAIModel (gpt-4o): {e} ---")
+#WritingNode
+model_names = ["gemini-2.5-pro", "gpt-4.1"]
+logger.info(f"--- Using FallbackModel for WritingNode with models: {model_names} ---")
+writing_node_fallback_model = setup_fallback_model(model_names)
 
-# # Initialize OpenAI Model 2: o3-mini
-# openai_o3_mini_model_name = 'o3-mini' # *** USER SPECIFIED NAME ***
-# openai_o3_mini_model = None
-# if openai_provider:
-#     try:
-#         openai_o3_mini_model = OpenAIModel(openai_o3_mini_model_name, provider=openai_provider)
-#         print(f"--- OpenAIModel ({openai_o3_mini_model_name}) initialized successfully. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to instantiate OpenAIModel ({openai_o3_mini_model_name}): {e} ---")
-#         print(f"--- Check if '{openai_o3_mini_model_name}' is a valid model name for your OpenAI endpoint (could be custom/Azure). ---")
+#ReflectionNode
+model_names = ["gemini-2.5-pro", "gpt-4.1"]
+logger.info(f"--- Using FallbackModel for ReflectionNode with models: {model_names} ---")
+reflection_node_fallback_model = setup_fallback_model(model_names)
 
-
-# # --- OpenRouter Model (Deepseek) ---
-# openrouter_deepseek_model = None
-# openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
-# if openrouter_api_key:
-#     try:
-#         openrouter_provider = OpenAIProvider(
-#             base_url='https://openrouter.ai/api/v1',
-#             api_key=openrouter_api_key,
-#         )
-#         deepseek_model_name = 'deepseek/deepseek-r1' # Keep as is unless user specifies otherwise
-#         openrouter_deepseek_model = OpenAIModel(deepseek_model_name, provider=openrouter_provider)
-#         print(f"--- OpenRouter Model ({deepseek_model_name}) initialized successfully via OpenAI Interface. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize OpenRouter Model ({deepseek_model_name}): {e} ---")
-#         print("--- Check OPENROUTER_API_KEY and model name. ---")
-# else:
-#     print("--- WARNING: OPENROUTER_API_KEY not found. Skipping OpenRouter model initialization. ---")
-
-# # --- OpenRouter Model (Deepseek) ---
-# openrouter_qwen_model = None
-# openrouter_api_key = os.getenv('OPENROUTER_API_KEY')
-# if openrouter_api_key:
-#     try:
-#         openrouter_provider = OpenAIProvider(
-#             base_url='https://openrouter.ai/api/v1',
-#             api_key=openrouter_api_key,
-#         )
-#         qwen_model_name = 'qwen/qwen3-235b-a22b' # Keep as is unless user specifies otherwise
-#         openrouter_qwen_model = OpenAIModel(qwen_model_name, provider=openrouter_provider)
-#         print(f"--- OpenRouter Model ({qwen_model_name}) initialized successfully via OpenAI Interface. ---")
-#     except Exception as e:
-#         print(f"--- WARNING: Failed to initialize OpenRouter Model ({deepseek_model_name}): {e} ---")
-#         print("--- Check OPENROUTER_API_KEY and model name. ---")
-# else:
-#     print("--- WARNING: OPENROUTER_API_KEY not found. Skipping OpenRouter model initialization. ---")
-
-# print("--- Model Initialization Complete ---")
-
-
-
+#FollowUpNode
+model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
+logger.info(f"--- Using FallbackModel for FollowUpNode with models: {model_names} ---")
+followUp_node_fallback_model = setup_fallback_model(model_names)
 
 ###############################################################################
 # State definition
@@ -270,7 +200,7 @@ class Configuration(BaseModel):
     search_days: int = 30
     extraction_mode: Literal["markdown", "html", "llm"] = "markdown"
     provide_llm_facts: Literal["yes", "no"] = "yes",
-
+    additional_instructions: Optional[str] = None,
 
 
 class ResearchPlan(BaseModel):
@@ -280,14 +210,11 @@ class ResearchPlan(BaseModel):
 
 
 
-class Quote(BaseModel):
-    text: str | None
-    speaker: str | None
-    source: str | None
+
 
 
 class ResearchedInfo(BaseModel):
-    quotes: list[Quote] | None = None
+    quotes: list[dict] | None = None # Old: quotes: list[Quote] | None = None
     facts: list[str] | None = None
     keywords: list[str] | None = None
     article_texts: str | None = None
@@ -301,7 +228,7 @@ class FactFromLlm(BaseModel):
 
 
 class State(BaseModel):
-    current_date: date = current_date
+    current_date: date_type = current_date
     configuration: Configuration
     reflection_round: int = 0
     instructions: str = ""
@@ -352,8 +279,7 @@ def load_state(filename: str = "state.json") -> State:
 ###############################################################################
 ############################### Search Node ###################################
 
-# # search_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
-# search_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+
 
 
 research_agent_prompt = """You are a research assistant supporting an article writer. 
@@ -389,13 +315,12 @@ Your response should follow this structure:
 ### Article Topic:
 {article_topic}
 
+{additional_instructions_formatted}
+
 ### All output must always be in the language of the article topic.
 """
 
-# research_agent = Agent[None, ResearchPlan](
-#     model=search_model,
-#     result_type=ResearchPlan,
-# )
+
 
 @dataclass
 class SearchNode(ResilientNode):
@@ -411,22 +336,27 @@ class SearchNode(ResilientNode):
         """
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
-        model_names = ["gpt-4.1-mini", "gemini-2.5-flash-preview-04-17"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
+
 
         # --- Instantiate Agent within _execute ---
         research_agent = Agent[None, ResearchPlan](
-            model=node_fallback_model,
+            model=search_node_fallback_model,
             result_type=ResearchPlan,
             # retries=1 # Optional
         )
+        
+        additional_instructions = ctx.state.configuration.additional_instructions
+        if additional_instructions is not None and additional_instructions not in ["None", "none", ""]:
+            additional_instructions_formatted = f"### Additional Instructions and Context:\nThese are additional instructions to follow or context to include while writing the article:\n{additional_instructions}\nThey are very important and must be included."
+        else:
+            additional_instructions_formatted = ""
 
         # --- Core Logic ---
         prompt = research_agent_prompt.format(
             current_date=ctx.state.current_date,
             article_topic=ctx.state.configuration.article_topic,
-            number_of_queries=ctx.state.configuration.number_of_queries
+            number_of_queries=ctx.state.configuration.number_of_queries,
+            additional_instructions_formatted=additional_instructions_formatted,
         )
         result = await research_agent.run(user_prompt=prompt)
 
@@ -451,8 +381,6 @@ class SearchNode(ResilientNode):
 
 ###############################################################################
 ################################ LlmKnowledge Node ################################
-# llmknowledge_model = OpenAIModel('gpt-4o', api_key=os.getenv('OPENAI_API_KEY'))
-# llmknowledge_model = OpenAIModel('gpt-4o', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
 
 llmknowledge_agent_prompt = """
 You are a meticulous research assistant providing facts to support an article.
@@ -470,10 +398,7 @@ You are a meticulous research assistant providing facts to support an article.
 
 Your accuracy and clarity are essential. Give everything that is relevant and can be used to write the article.
 """
-# llmknowledge_agent = Agent(
-#     model=llmknowledge_model,
-#     result_type=List[FactFromLlm]
-# )
+
 
 @dataclass
 class LlmKnowledgeNode(ResilientNode):
@@ -490,15 +415,13 @@ class LlmKnowledgeNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
 
-        model_names = ["gpt-4.1-mini", "gemini-2.5-flash-preview-04-17"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
+
 
 
         # --- Instantiate Agent within _execute ---
         # Use the FallbackModel instance for the agent
         llmknowledge_agent = Agent( # Agent variable is local to _execute
-            model=node_fallback_model,
+            model=llmknowledge_node_fallback_model,
             result_type=List[FactFromLlm] # Ensure FactFromLlm is imported/defined
             # retries=1 # Optional agent-level retries
         )
@@ -585,8 +508,8 @@ class ScrapingNode(ResilientNode):
 
         # Add manually provided URLs
         unique_urls.update(ctx.state.configuration.urls)
-        # Convert set to list for scraping function
-        urls_to_scrape = list(unique_urls)
+        # Convert set to list for scraping, filtering out any empty or None URLs
+        urls_to_scrape = [url for url in unique_urls if url]
 
         if not urls_to_scrape:
             logger.warning("No unique URLs found or provided to scrape. Moving to ParsingNode.")
@@ -616,10 +539,6 @@ class ScrapingNode(ResilientNode):
 ###############################################################################
 ################################ Parsing Node #################################
 
-# parsing_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
-# parsing_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
-
-
 
 class ParsedArticle(BaseModel):
     webpage_type: Literal['article', 'other']
@@ -642,7 +561,7 @@ If these conditions **are not met**, classify the content as `"other"` and retur
 
 ### Step 2: Extract the Article Text  
 If the content is classified as an **article**, extract and preserve:  
-- **Publication date** (if present).  
+- **Publication date** (if present).  For the reference today's date is {current_date}
 - **Article title** (if present).  
 - **Article lead** (the introductory section setting up the topic).  
 - **Headings** (`<h2>`, `<h3>`, `<h4>`) to maintain structure.  
@@ -668,11 +587,6 @@ The following HTML content should be parsed:
 {html}
 """
 
-# parsing_agent = Agent(
-#     model=parsing_model,
-#     result_type=ParsedArticle,
-#     retries=2
-# )
 
 @dataclass
 class ParsingNode(ResilientNode):
@@ -690,7 +604,7 @@ class ParsingNode(ResilientNode):
         logger.info(f"Executing {node_name} logic...")
 
         enc = tiktoken.get_encoding("cl100k_base")
-        MAX_TOKENS = 100_000
+        MAX_TOKENS = 150_000
 
         pages_to_process = ctx.state.scraped_pages
         if not pages_to_process:
@@ -712,12 +626,8 @@ class ParsingNode(ResilientNode):
                     page['parsed_article'] = None
                     return
 
-                model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
-                logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-                node_fallback_model = setup_fallback_model(model_names)
-
                 parsing_agent = Agent( # Agent is local to this page processing task
-                    model=node_fallback_model,
+                    model=parsing_node_fallback_model,
                     result_type=ParsedArticle, # Ensure ParsedArticle is defined/imported
                     retries=1 # Optional: Agent retries *before* falling back
                 )
@@ -734,7 +644,7 @@ class ParsingNode(ResilientNode):
                     article_body = enc.decode(tokens)
                     page["article_body_truncated"] = True
 
-                prompt = parsing_agent_prompt.format(html=article_body) # Ensure prompt is accessible
+                prompt = parsing_agent_prompt.format(html=article_body, current_date=ctx.state.current_date,) # Ensure prompt is accessible
 
                 # Run agent - it will use the fallback sequence
                 result = await parsing_agent.run(user_prompt=prompt)
@@ -789,6 +699,8 @@ class ParsingNode(ResilientNode):
 ###############################################################################
 ############################# DataExtraction Node #############################
 
+
+
 data_extraction_agent_prompt = """
 Your task is to analyze text and determine whether it is an **article** or another type of page (e.g., main page, category page, tag page, etc.), then extract key information.
 
@@ -842,14 +754,53 @@ ARTICLE TEXT:
 {article_text}
 ==============================
 """
-
+class Quote(BaseModel):
+    text: str | None
+    speaker: str | None
+    source: str | None
+    
 class ResearchedArticle(BaseModel):
     webpage_type: Literal['article', 'other']
     relevant: Literal['yes', 'no']
-    publication_date: date
+    publication_date: date_type
     facts: Optional[List[str]]
     quotes: Optional[List[Quote]]
     keywords: Optional[List[str]]
+    
+    
+    @field_validator('publication_date', mode='before')
+    @classmethod
+    def parse_publication_date(cls, value):
+        if value is None:
+            # If the field were Optional[date], we might return None.
+            # Since it's 'date', a value is expected.
+            # If LLM *can* return null/None for this, the field should be Optional.
+            # For now, if LLM is guaranteed to provide a date string, this path might not be hit often.
+            # However, if it does send an explicit null, Pydantic might complain earlier
+            # or this validator needs to handle it by raising ValueError or returning a default if appropriate.
+            # Given the error is about format, let's assume a string or date object is usually passed.
+            raise ValueError("Publication date cannot be None") # Or handle as per desired logic for None
+
+        if isinstance(value, date_type):
+            return value
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, str):
+            try:
+                # Attempt to parse ISO format string, including those with 'T' and time
+                dt_obj = datetime.fromisoformat(value.replace('Z', '+00:00')) # Handles 'Z' for UTC
+                return dt_obj.date()
+            except ValueError:
+                # Fallback for simple "YYYY-MM-DD" or other common formats
+                for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d"): # Add other formats if LLM uses them
+                    try:
+                        return datetime.strptime(value, fmt).date()
+                    except ValueError:
+                        continue
+                raise ValueError(f"Invalid date format: {value}. Expected ISO format or YYYY-MM-DD.")
+        raise TypeError(f"Invalid type for date: {type(value)}. Expected str, date, or datetime.")
+
+
 
 @dataclass
 class DataExtractionNode(ResilientNode):
@@ -874,59 +825,50 @@ class DataExtractionNode(ResilientNode):
 
         if not pages_to_process:
             logger.warning(f"{node_name}: No successfully parsed pages found to extract data from.")
-             # Check if LLM facts exist and proceed accordingly
             if not ctx.state.researched_info.facts_from_llm:
                  logger.error(f"{node_name}: No parsed pages AND no LLM facts found. Ending run.")
                  ctx.state.add_error(node_name, "No content (parsed pages or LLM facts) available for processing.")
                  save_state(ctx.state)
-                 error_report = self._generate_error_report(ctx.state.errors) # Use helper from ResilientNode
-                 return End(f"ERROR: No content available.\n\nError Log:\n{error_report}")
+                 error_report = self._generate_error_report(ctx.state.errors)
+                 return End(f"ERROR: No content available to write an article.\n\nError Log:\n{error_report}")
             else:
                 logger.info(f"{node_name}: Proceeding with only LLM facts.")
-                # Keep LLM facts, clear others. Keep original manual URLs in sources.
                 llm_facts_preserved = ctx.state.researched_info.facts_from_llm or []
                 llm_fact_strings = [f.fact_llm for f in llm_facts_preserved if f.fact_llm]
-                manual_urls = set(ctx.state.configuration.urls or []) # Ensure it's a set
+                manual_urls = set(ctx.state.configuration.urls or [])
                 ctx.state.researched_info = ResearchedInfo(
-                     facts=llm_fact_strings, # Combined facts = only LLM facts
+                     facts=llm_fact_strings,
                      facts_from_articles=[],
-                     facts_from_llm=llm_facts_preserved, # Preserve original LLM fact objects
+                     facts_from_llm=llm_facts_preserved,
                      quotes=[],
                      keywords=[],
                      article_texts=""
                 )
-                ctx.state.sources = list(manual_urls) # Preserve only the original manual URLs
+                ctx.state.sources = list(manual_urls)
                 save_state(ctx.state)
                 logger.info(f"Transitioning from {node_name} to InstructionsNode (only LLM facts)")
-                return InstructionsNode() # Instantiate
+                return InstructionsNode()
 
         tasks = []
 
         async def process_page(page: dict):
-            """Inner function to extract data from a single parsed page using FallbackModel."""
+            # ... (the process_page inner function remains unchanged)
             page_url = page.get('url', 'unknown URL')
             page_node_log_prefix = f"{node_name} - Page {page_url}:"
 
             try:
-                parsed_article = page.get("parsed_article", "") # Already checked if exists and not parsing_error
+                parsed_article = page.get("parsed_article", "")
 
-                model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
-                logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-                node_fallback_model = setup_fallback_model(model_names)
-
-                data_extraction_agent = Agent( # Agent local to this task
-                    model=node_fallback_model,
+                data_extraction_agent = Agent(
+                    model=dataextraction_node_fallback_model,
                     result_type=ResearchedArticle,
-                    retries=1 # Optional agent retries before fallback
+                    retries=1
                 )
-                # --------------------------------------------------------------
 
-                # Extract title and clean text
                 title_match = re.search(r"<h1.*?>(.*?)</h1>", parsed_article, re.IGNORECASE | re.DOTALL)
                 title = title_match.group(1).strip() if title_match else page.get('title', "Title not found")
                 article_text_no_h1 = re.sub(r"<h1.*?>.*?</h1>", "", parsed_article, flags=re.IGNORECASE | re.DOTALL).strip()
 
-                # *** CORRECTED .format() calls ***
                 page['formated_article'] = article_snippet.format(
                     url=page_url,
                     title=title,
@@ -937,28 +879,30 @@ class DataExtractionNode(ResilientNode):
                     title=title,
                     article_text=article_text_no_h1
                 )
-
-                # Create prompt
                 prompt = data_extraction_agent_prompt.format(
                     text=page['formated_article'],
                     topic=ctx.state.configuration.article_topic
                 )
-                # logger.debug(f"{page_node_log_prefix} Data extraction prompt snippet: {prompt[:200]}...")
-
-                # Run agent - uses fallback
                 researched_article_result = await data_extraction_agent.run(user_prompt=prompt)
 
                 if researched_article_result is None or researched_article_result.data is None:
                      raise ValueError("Data extraction agent run did not return valid data after attempting models.")
 
-                # Update page dictionary with extracted data
                 data = researched_article_result.data
                 page['webpage_type'] = data.webpage_type
                 page['relevant'] = data.relevant
                 page['facts'] = data.facts
-                page['quotes'] = [q.model_dump() for q in data.quotes] if data.quotes else []
+                if data.quotes:
+                    page['quotes'] = [q.model_dump() for q in data.quotes]
+                    for quote_dict in page['quotes']:
+                        quote_dict['page_url'] = page_url
+                else:
+                    page['quotes'] = []
+                # This line has been removed as it was overwriting the quotes list
+                # and discarding the 'page_url' that was just added.
+                # page['quotes'] = [q.model_dump() for q in data.quotes] if data.quotes else []
                 page['keywords'] = data.keywords
-                page['publication_date'] = data.publication_date # Agent should return date object or parsable string
+                page['publication_date'] = data.publication_date
                 logger.debug(f"{page_node_log_prefix} Successfully extracted data.")
 
             except FallbackExceptionGroup as feg:
@@ -966,21 +910,17 @@ class DataExtractionNode(ResilientNode):
                 logger.error(f"{page_node_log_prefix} {error_message}")
                 for i, exc in enumerate(feg.exceptions):
                      logger.error(f"  - Model {i+1}: {type(exc).__name__}: {exc}")
-                page['extraction_error'] = error_message # Mark specific error
-                # Set defaults so filtering logic doesn't crash
+                page['extraction_error'] = error_message
                 page.setdefault('webpage_type', 'other')
                 page.setdefault('relevant', 'no')
                 page.setdefault('publication_date', None)
                 page.setdefault('facts', [])
                 page.setdefault('quotes', [])
                 page.setdefault('keywords', [])
-
 
             except Exception as error:
-                # Catch other errors during extraction for this page
                 logger.error(f"{page_node_log_prefix} Error extracting data: {error}", exc_info=True)
                 page['extraction_error'] = str(error)
-                # Set defaults
                 page.setdefault('webpage_type', 'other')
                 page.setdefault('relevant', 'no')
                 page.setdefault('publication_date', None)
@@ -988,7 +928,6 @@ class DataExtractionNode(ResilientNode):
                 page.setdefault('quotes', [])
                 page.setdefault('keywords', [])
 
-        # Create and run tasks
         for page in pages_to_process:
             tasks.append(process_page(page))
         await asyncio.gather(*tasks)
@@ -1004,8 +943,7 @@ class DataExtractionNode(ResilientNode):
         logger.info(f'Filtering articles published on or after: {cutoff_date} (or manually specified URLs)')
 
         def parse_pub_date(pub_date):
-            """Safely parse publication date from string or date object."""
-            if isinstance(pub_date, date): return pub_date
+            if isinstance(pub_date, date_type): return pub_date
             if isinstance(pub_date, str):
                 for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y/%m/%d"):
                     try: return datetime.strptime(pub_date, fmt).date()
@@ -1020,27 +958,33 @@ class DataExtractionNode(ResilientNode):
         for page in ctx.state.scraped_pages:
             page_url = page.get('url', 'unknown URL')
             log_prefix = f"Filtering '{page_url}':"
-            filter_reason = "Included" # Default assumption
-
+            filter_reason = "Included"
+            
             if page is None:
                 logger.debug(f"{log_prefix} Skipping None page object.")
                 continue
 
-            # Check for parsing error FIRST
             if parse_err_msg := page.get('parsing_error'):
                  logger.info(f"{log_prefix} Excluded - Parsing error: {parse_err_msg}")
-                 filter_reason = f"Parsing error: {escape(parse_err_msg)}" # Escape for safety
-                 page['filter_reason'] = filter_reason
+                 page['filter_reason'] = f"Parsing error: {escape(parse_err_msg)}"
                  continue
 
-            # Then check for extraction error
             if extract_err_msg := page.get('extraction_error'):
                 logger.info(f"{log_prefix} Excluded - Extraction error: {extract_err_msg}")
-                filter_reason = f"Extraction error: {escape(extract_err_msg)}" # Escape for safety
-                page['filter_reason'] = filter_reason
+                page['filter_reason'] = f"Extraction error: {escape(extract_err_msg)}"
                 continue
+            
+            is_manual_url = page_url in manual_urls
 
-            # --- Continue with original filtering logic ---
+            ### FIX 1: Force-include manual URLs, bypassing other checks ###
+            if is_manual_url:
+                logger.info(f"{log_prefix} Force-including as it is a manually provided URL.")
+                filter_reason = "Included (Manual URL)"
+                page['filter_reason'] = filter_reason
+                articles.append(page)
+                continue # Skip all other checks for this manual URL
+
+            # --- These checks now ONLY apply to non-manual URLs ---
             page_type = page.get('webpage_type')
             if page_type != "article":
                 logger.info(f"{log_prefix} Excluded - Not classified as 'article' (Type: {page_type}).")
@@ -1055,38 +999,43 @@ class DataExtractionNode(ResilientNode):
                 page['filter_reason'] = filter_reason
                 continue
 
-            # Date Check Logic
-            is_manual_url = page_url in manual_urls
             publication_date_obj = parse_pub_date(page.get('publication_date'))
-            pub_date_str = page.get('publication_date', 'N/A') # Get original value for logging
+            pub_date_str = page.get('publication_date', 'N/A')
 
-            if not is_manual_url:
-                if publication_date_obj is None:
-                    logger.info(f"{log_prefix} Excluded - Could not parse publication date ('{pub_date_str}') and not a manual URL.")
-                    filter_reason = f"Could not parse publication date ('{escape(str(pub_date_str))}')"
-                    page['filter_reason'] = filter_reason
-                    continue
-                if publication_date_obj < cutoff_date:
-                    logger.info(f"{log_prefix} Excluded - Publication date {publication_date_obj} is older than cutoff {cutoff_date} and not a manual URL.")
-                    filter_reason = f"Publication date {publication_date_obj} older than cutoff {cutoff_date}"
-                    page['filter_reason'] = filter_reason
-                    continue
+            if publication_date_obj is None:
+                logger.info(f"{log_prefix} Excluded - Could not parse publication date ('{pub_date_str}').")
+                filter_reason = f"Could not parse publication date ('{escape(str(pub_date_str))}')"
+                page['filter_reason'] = filter_reason
+                continue
+            if publication_date_obj < cutoff_date:
+                logger.info(f"{log_prefix} Excluded - Publication date {publication_date_obj} is older than cutoff {cutoff_date}.")
+                filter_reason = f"Publication date {publication_date_obj} older than cutoff {cutoff_date}"
+                page['filter_reason'] = filter_reason
+                continue
 
-            # If all checks passed
+            # If all checks passed for a non-manual URL
             logger.debug(f"{log_prefix} Included.")
-            page['filter_reason'] = filter_reason # Explicitly mark as included
-            articles.append(page) # Add to the list of articles to aggregate from
+            page['filter_reason'] = filter_reason
+            articles.append(page)
 
-
-        # --- Handle case where no articles meet criteria ---
+        ### FIX 2: Check for ANY available facts before proceeding. ###
+        llm_facts_available = ctx.state.researched_info.facts_from_llm or []
+        if not articles and not llm_facts_available:
+            error_message = "No relevant articles were found after filtering and no LLM facts are available. Cannot write an article without source material."
+            logger.error(f"{node_name}: {error_message}")
+            ctx.state.add_error(node_name, error_message)
+            save_state(ctx.state)
+            error_report = self._generate_error_report(ctx.state.errors)
+            return End(f"ERROR: Process stopped. No content available to write an article.\n\nError Log:\n{error_report}")
+        
+        # This handles the case where there are no articles, but there ARE LLM facts.
         if not articles:
-            logger.warning("No relevant articles found after filtering. Proceeding to InstructionsNode with only LLM facts (if any).")
-            llm_facts_preserved = ctx.state.researched_info.facts_from_llm or []
-            llm_fact_strings = [f.fact_llm for f in llm_facts_preserved if f.fact_llm]
+            logger.warning("No relevant articles found after filtering. Proceeding to InstructionsNode with only LLM facts.")
+            llm_fact_strings = [f.fact_llm for f in llm_facts_available if f.fact_llm]
             ctx.state.researched_info = ResearchedInfo(
                  facts=llm_fact_strings,
                  facts_from_articles=[],
-                 facts_from_llm=llm_facts_preserved,
+                 facts_from_llm=llm_facts_available,
                  quotes=[],
                  keywords=[],
                  article_texts=""
@@ -1094,10 +1043,11 @@ class DataExtractionNode(ResilientNode):
             ctx.state.sources = list(manual_urls) # Keep only manual URLs if no articles used
             save_state(ctx.state)
             logger.info(f"Transitioning from {node_name} to InstructionsNode (no relevant articles found)")
-            return InstructionsNode() # Instantiate
+            return InstructionsNode()
 
 
         # --- Aggregate Data from Filtered Articles ---
+        # (This section remains largely the same, but now it operates on a correctly filtered list)
         existing_facts_from_llm = ctx.state.researched_info.facts_from_llm or []
         llm_fact_strings = [fact.fact_llm for fact in existing_facts_from_llm if fact.fact_llm]
 
@@ -1117,37 +1067,38 @@ class DataExtractionNode(ResilientNode):
             if url := article.get('url'): article_sources.add(url) # Add URL of used article
             if snippet := article.get('formated_article_short'): article_texts_snippets.append(snippet)
 
-        combined_quotes = []
-        for q_data in combined_quotes_data:
-             if isinstance(q_data, dict):
-                 try: combined_quotes.append(Quote(**q_data))
-                 except Exception as e: logger.warning(f"Could not create Quote object from data: {q_data}. Error: {e}")
-             elif isinstance(q_data, Quote): combined_quotes.append(q_data)
+        # combined_quotes = []
+        # for q_data in combined_quotes_data:
+        #      if isinstance(q_data, dict):
+        #          try: combined_quotes.append(Quote(**q_data))
+        #          except Exception as e: logger.warning(f"Could not create Quote object from data: {q_data}. Error: {e}")
+        #      elif isinstance(q_data, Quote): combined_quotes.append(q_data)
+        combined_quotes = combined_quotes_data
 
         combined_facts = llm_fact_strings + facts_from_articles
         if not combined_facts:
             logger.warning("No facts found (LLM or Article) after filtering. Proceeding, but article quality may suffer.")
 
-        # Update state with combined info
         ctx.state.researched_info.quotes = combined_quotes if combined_quotes else None
         ctx.state.researched_info.facts = combined_facts
         ctx.state.researched_info.facts_from_articles = facts_from_articles
         ctx.state.researched_info.keywords = list(combined_keywords)
         ctx.state.researched_info.article_texts = "\n\n==============================\n\n".join(article_texts_snippets)
-        ctx.state.sources = sorted(list(article_sources)) # Final list of sources, sorted
+        ctx.state.sources = sorted(list(article_sources))
 
         logger.info(f"Aggregated data: {len(combined_facts)} facts, {len(combined_quotes)} quotes, {len(ctx.state.sources)} sources.")
-
-        # Save the final aggregated state
         save_state(ctx.state)
-
-        # Proceed to the next node
         logger.info(f"Transitioning from {node_name} to InstructionsNode")
-        return InstructionsNode() # Instantiate
+        return InstructionsNode()
+
+
+
 
 
 ###############################################################################
 ############################## Instructions Node ##############################
+
+
 instructions_agent_prompt = """
 You are an **Editor-in-Chief**. Your task is to provide detailed, structured instructions for a journalist to write a **high-quality web article**.
 
@@ -1179,6 +1130,8 @@ The following plan was proposed for the article:
 {plan}
 - You **do not need to strictly follow the plan**, but use it as guidance.
 
+{additional_instructions_formatted}
+
 ### Reference Articles:
 These are articles on the similar topic written by our competitors. Make sure your journalist will make a better job:
 {article_texts}
@@ -1204,13 +1157,10 @@ class InstructionsNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
 
-        model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
 
         # --- Instantiate Agent within _execute ---
         instructions_agent = Agent( # Agent local to this execution
-            model=node_fallback_model,
+            model=instructions_node_fallback_model,
             result_type=str, # Expecting plain string instructions
             retries=1 # Optional agent retries before fallback
         )
@@ -1220,16 +1170,23 @@ class InstructionsNode(ResilientNode):
         article_texts = ctx.state.researched_info.article_texts or "No reference articles available."
         research_plan = ctx.state.research_plan.plan if ctx.state.research_plan else "No initial plan provided."
         topic = ctx.state.configuration.article_topic
+        additional_instructions = ctx.state.configuration.additional_instructions
 
         if not topic:
             # This error will be caught by ResilientNode.run
             raise ValueError(f"{node_name}: Article topic is missing in configuration.")
-
+        
+        if additional_instructions is not None and additional_instructions not in ["None", "none", ""]:
+            additional_instructions_formatted = f"### Additional Instructions and Context:\nThese are additional instructions to follow or context to include while writing the article:\n{additional_instructions}\nThey are very important and must be included."
+        else:
+            additional_instructions_formatted = ""
+        
         user_prompt = instructions_agent_prompt.format( # Ensure prompt is accessible
             article_texts=article_texts,
             plan=research_plan,
             topic=topic,
-            example_articles=example_articles
+            example_articles=example_articles,
+            additional_instructions_formatted=additional_instructions_formatted,
         )
         # logger.debug(f"{node_name} prompt snippet: {user_prompt[:300]}...")
 
@@ -1305,13 +1262,10 @@ class WritingNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic (Round: {ctx.state.reflection_round})...")
 
-        model_names = ["gemini-2.5-pro-preview-05-06", "deepseek/deepseek-r1", "gpt-4.1"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
 
         # --- Instantiate Agent within _execute ---
         writing_agent = Agent[None, str]( # Agent local to this execution
-            model=node_fallback_model,
+            model=writing_node_fallback_model,
             result_type=str, # Expecting the article as a string
             retries=1 # Optional agent retries before fallback
         )
@@ -1325,7 +1279,8 @@ class WritingNode(ResilientNode):
             keywords_list = ctx.state.researched_info.keywords or []
             keywords_str = ", ".join(keywords_list) if keywords_list else "N/A"
             quotes_list = ctx.state.researched_info.quotes or []
-            quotes_str = "\n".join([f'"{escape(q.text or "")}" - {escape(q.speaker or "Unknown")} (Source: {escape(q.source or "N/A")})' for q in quotes_list]) \
+            
+            quotes_str = "\n".join([f'"{escape(q.get("text") or "")}" - {escape(q.get("speaker") or "Unknown")} (Source: {escape(q.get("source") or "N/A")})' for q in quotes_list]) \
                          if quotes_list else "No quotes available."
 
             if not ctx.state.instructions:
@@ -1395,6 +1350,8 @@ class WritingNode(ResilientNode):
 
 ###############################################################################
 ############################### Reflection Node ###############################
+
+
 reflection_agent_prompt = """You are an **Editor-in-Chief**. Your task is to **review the article** written by the editor agent and provide **detailed, relevant, and actionable feedback**. Your output must consist solely of a structured AI prompt for a writing agent—do not include any additional commentary or explanations. The entire feedback must be written in the same language as the revised article.
 
 ###Your review must:
@@ -1440,13 +1397,9 @@ class ReflectionNode(ResilientNode):
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
 
-        model_names = ["gemini-2.5-pro-preview-05-06", "gpt-4.1"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
-
         # --- Instantiate Agent within _execute ---
         reflection_agent = Agent( # Agent local to this execution
-            model=node_fallback_model,
+            model=reflection_node_fallback_model,
             result_type=str, # Expecting feedback string
             retries=1 # Optional agent retries before fallback
         )
@@ -1508,8 +1461,7 @@ class ReflectionNode(ResilientNode):
 
 ###############################################################################
 ############################## Follow up Node ##############################
-# followup_model = OpenAIModel('o3-mini', api_key=os.getenv('OPENAI_API_KEY'))
-# followup_model = OpenAIModel('o3-mini', provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')))
+
 
 followup_agent_prompt = """You are given a finished article (referred to as "finished_article"). Please analyze it thoroughly and perform the following steps:
 
@@ -1520,19 +1472,22 @@ followup_agent_prompt = """You are given a finished article (referred to as "fin
     
     You can find examples of good titles for various articles—use their style and structure for inspiration:
     #####
-    Imię słowiańskiej bogini powoli się odradza. Ma ciekawe znaczenie i nosi je już 47 Polek
-    W PRL-u wszyscy się nimi zajadali. Zrobisz je szybko i za grosze
+    Szokujące sceny na proteście Bąkiewicza, do akcji wkroczyła policja. Szef MSWiA ostro komentuje
+    Mentzen już zaciera ręce. Tak chce przechytrzyć Kaczyńskiego
     To warzywo jest kopalnią witamin. Jednak Polacy kręcą na nie nosem
-    Najtańsza odżywka do storczyka. Wystarczy odrobina, by utonął w kwiatach
-    Tu poczujesz się jak w alpejskim kurorcie. Raj nie tylko dla narciarzy, organizm będzie ci wdzięczny
-    Nowe egzotyczne połączenie z polskiego lotniska. Turyści już szykują kapelusze i kremy z filtrem
-    Wcale nie bombki. Tuż za granicą Polski na choince wieszają coś innego, aż zapierają dech w piersi
+    Niesłychane, co poseł Konfederacji wypalił o Kaczyńskim. Jego słowa obiegły całą Polskę
+    Rzecznik Nawrockiego nie wytrzymał. Wałęsa usłyszał, co o nim myślą
+    Wjechał konno i miał suknię z peleryną. Ten polski ślub przebił wszystko
+    Kto tak naprawdę zapłacił za wesele prezydentówny? Są niepodważalne dowody, które rozwiewają wątpliwości
     Nigdy nie dodawaj tego składnika do sałatki greckiej. Grecy poczują się urażeni
-    Nie Bułgaria i nie Turcja. Oto 3 pomysły na tanie wakacje samolotem
+    Myslovitz przerwał koncert przez... Brauna. Zrobiło się poważnie
     Baśniowa kraina tuż przy polskiej granicy – to jedynie 3,5 godziny jazdy z Krakowa
     Było symbolem Malty. 8 lat temu runęło do morza
+    Skiba nie wytrzymał po słowach Chorosińskiej. Z riposty zrobił się mem
+    Największy lęk Joanny Kołaczkowskiej stał się prawdą. O kancerofobii mówiła głośno od lat
     Zakwitły już nad Bałtykiem. Są piękne, ale śmiertelnie niebezpieczne
     Jak nie robić zdjęć w podróży. Takie zachowanie to naruszenie zasad
+    "To jest skandal!" Miał zamiatać ulice, ale PAD go ułaskawił. Komentarze mówią wszystko o... Dudzie
     #####
     
 2. Suggest 5 new article topics that relate—directly or loosely—to the content of the "finished_article." Each topic should:
@@ -1573,12 +1528,8 @@ class FollowUpNode(ResilientNode):
             error_report = self._generate_error_report(ctx.state.errors) # Use helper from ResilientNode
             return End(f"ERROR: Finished article missing.\n\nError Log:\n{error_report}")
 
-        model_names = ["o3-mini", "gemini-2.5-flash-preview-04-17"]
-        logger.info(f"--- Using FallbackModel for {node_name} with models: {model_names} ---")
-        node_fallback_model = setup_fallback_model(model_names)
-
         followup_agent = Agent( # Agent local to this execution
-            model=node_fallback_model,
+            model=followUp_node_fallback_model,
             result_type=FollowUp, # Ensure FollowUp model is defined/imported
             retries=1 # Optional agent retries before fallback
         )
@@ -1693,17 +1644,31 @@ class FollowUpNode(ResilientNode):
             content = f"<ul>{list_items}</ul>"
         return f"<section><h2>{escape(title)}</h2>{content}</section>"
 
-    def _generate_quotes_html(self, quotes: Optional[List[Quote]]) -> str:
+    def _generate_quotes_html(self, quotes: Optional[List[dict]]) -> str:
         """Generates HTML for the quotes section."""
         title = "Cytaty"
         if not quotes:
             content = "<ul><li>No quotes available.</li></ul>"
         else:
-            list_items = "".join(
-                f"<li>{escape(q.text or 'N/A')} - {escape(q.speaker or 'Unknown')} (Źródło: {escape(q.source or 'N/A')})</li>"
-                for q in quotes
-            )
-            content = f"<ul>{list_items}</ul>"
+            list_items = []
+            for q in quotes:
+
+                source_parts = []
+                if original_source := q.get('source'):
+                    source_parts.append(escape(original_source))
+                
+                if page_url := q.get('page_url'):
+                    page_link = f'<a href="{escape(page_url)}" target="_blank">znaleziono na stronie</a>'
+                    source_parts.append(page_link)
+
+                source_details = ' / '.join(source_parts) or 'N/A'
+
+                # Use `or` fallback to prevent escaping None values.
+                list_items.append(
+                    f"<li>{escape(q.get('text') or 'N/A')} - {escape(q.get('speaker') or 'Unknown')} (Źródło: {source_details})</li>"
+                )
+
+            content = f"<ul>{''.join(list_items)}</ul>"
         return f"<section><h2>{escape(title)}</h2>{content}</section>"
 
     def _generate_llm_facts_html(self, llm_facts: Optional[List[FactFromLlm]]) -> str:
@@ -1747,19 +1712,30 @@ class FollowUpNode(ResilientNode):
             list_items = ""
             # Sort by URL for consistent output
             for page in sorted(all_pages, key=lambda p: p.get('url', '') if p else ''):
-                if not page: continue # Skip None pages if they somehow exist
+                if not page: continue
 
                 url = page.get('url', 'N/A')
                 reason = page.get('filter_reason', 'Status unknown')
-                status_class = "status-excluded" # Default style
-                status_text = f"Excluded ({escape(reason)})"
+                
+                # ### FIX: Updated logic to correctly classify and display status ###
+                status_class = ""
+                status_text = ""
 
-                if reason == "Included":
-                    status_class = "status-included"
-                    status_text = "Included in final article"
+                # Check for inclusion first (covers manual and regular inclusion)
+                if reason.startswith("Included"):
+                    status_class = "status-included" # Green style
+                    if reason == "Included (Manual URL)":
+                        status_text = "Included (Manually Provided)"
+                    else:
+                        status_text = "Included in final article"
+                # Check for processing errors
                 elif "error" in reason.lower():
-                     status_class = "status-error"
-                     # status_text already contains escaped error details
+                    status_class = "status-error" # Red style
+                    status_text = f"Processing Error ({escape(reason)})"
+                # All other cases are considered excluded
+                else:
+                    status_class = "status-excluded" # Orange/Yellow style
+                    status_text = f"Excluded ({escape(reason)})"
 
                 list_items += (
                     f"<li class='source-item'>"
@@ -1781,12 +1757,13 @@ class ArticleWriter:
         article_topic: str,
         domains: List[str],
         urls: List[str] = None,  # <-- new parameter
-        number_of_queries: int = 3,
+        number_of_queries: int = 2,
         scraping_model: str = "",
         max_search_results: int = 4,
         search_days: int = 500,
-        provide_llm_facts: Literal["yes", "no"] = "yes",
+        provide_llm_facts: Literal["yes", "no"] = "no",
         extraction_mode: Literal["markdown", "html", "llm"] = "markdown",
+        additional_instructions: Optional[str] = None,
     ) -> str:
         async def _run_graph():
             state = State(
@@ -1800,6 +1777,7 @@ class ArticleWriter:
                     search_days=search_days,
                     extraction_mode=extraction_mode,
                     provide_llm_facts=provide_llm_facts,
+                    additional_instructions = additional_instructions
 
                 )
             )
@@ -1821,15 +1799,16 @@ class ArticleWriter:
 ###############################################################################
 if __name__ == "__main__":
     article = ArticleWriter.write_article(
-        article_topic="Paula i Michał z 'Love Never Lies 3' wypowiadają się o kolegach z programu",
+        article_topic="na festiwalu w koszalinie kabareciarze wyśmiali agatę dudę",
         domains=[],  # example domains
-        urls=['https://party.pl/tv-show/paula-i-michal-z-love-never-lies-gorzko-o-uczestnikach-tak-nie-robia-prawdziwe-osoby-tylko-falszywe-po-emisji-w-niedziele/'],       # example URLs
-        number_of_queries=1,
+        urls=['https://www.plotek.pl/plotek/7,154063,32131471,kabareciarze-wysmiali-agate-dude-na-festiwalu-w-koszalinie.html'],       # example URLs
+        number_of_queries=2,
         scraping_model="",        # specify your scraping model if needed
-        max_search_results=2,
-        search_days=10,
+        max_search_results=3,
+        search_days=3,
         extraction_mode="markdown",
-        provide_llm_facts="yes"
+        provide_llm_facts="no",
+        additional_instructions = None
     )
     print(article)
 

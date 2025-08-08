@@ -26,7 +26,8 @@ class ArticleRequest(BaseModel):
     max_search_results: int = 3
     search_days: int = 30
     extraction_mode: Literal["markdown", "html", "llm"] = "markdown"
-    provide_llm_facts: Literal["yes", "no"] = "yes"  # <-- new parameter added
+    provide_llm_facts: Literal["yes", "no"] = "no"  # <-- new parameter added
+    additional_instructions: Optional[str] = None
 
 
 def send_response(id, article_text, topic):
@@ -86,7 +87,8 @@ def worker(q):
             max_search_results=job.max_search_results,
             search_days=job.search_days,
             extraction_mode=job.extraction_mode,
-            provide_llm_facts=job.provide_llm_facts  # <-- pass the parameter
+            provide_llm_facts=job.provide_llm_facts,  # <-- pass the parameter
+            additional_instructions = job.additional_instructions
         )
 
         print(f"final_text {final_text}")
