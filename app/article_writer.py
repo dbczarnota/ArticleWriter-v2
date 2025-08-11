@@ -93,7 +93,7 @@ class ResilientNode(BaseNode, abc.ABC):
             )
             # Optional: Reset retry counter on success
             # setattr(ctx.state, self.retry_counter_attr, 0)
-            # save_state(ctx.state)
+            
             logger.info(f"{node_name} completed successfully.")
             return result # Return the next node or End
 
@@ -134,14 +134,14 @@ class ResilientNode(BaseNode, abc.ABC):
 
         if current_retries < self.max_retries:
             setattr(ctx.state, self.retry_counter_attr, current_retries + 1)
-            save_state(ctx.state) # Save state after incrementing counter and adding error
+            
             logger.warning(f"Retrying {node_name} (Attempt {current_retries + 2}/{self.max_retries + 1})...")
             return self.__class__()
         else:
             final_error_msg = f"ERROR: {node_name} failed permanently after {self.max_retries + 1} attempts. Last error: {error_message}"
             logger.error(final_error_msg)
             # Ensure state is saved with the final error logged
-            save_state(ctx.state)
+            
             # Append detailed error report from state to the End message
             error_report = self._generate_error_report(ctx.state.errors) # Assuming helper exists or add it
             return End(f"{final_error_msg}\n\nError Log:\n{error_report}")
@@ -160,17 +160,17 @@ class ResilientNode(BaseNode, abc.ABC):
 # # Centralized Model Initialization
 # ###############################################################################
 #SearchNode
-model_names = ["gpt-5-mini", "gpt-4.1-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.0-flash", "gpt-5-mini", "gpt-4.1-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for SearchNode with models: {model_names} ---")
 search_node_fallback_model = setup_fallback_model(model_names)
 
 #LlmKnowledgeNode
-model_names = ["gpt-5-mini", "gemini-2.0-flash", "gpt-4.1-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.0-flash", "gpt-4.1-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for LlmKnowledgeNode with models: {model_names} ---")
 llmknowledge_node_fallback_model = setup_fallback_model(model_names)
 
 #ParsingNode
-model_names = ["gpt-5-mini", "gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
+model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
 logger.info(f"--- Using FallbackModel for ParsingNode with models: {model_names} ---")
 parsing_node_fallback_model = setup_fallback_model(model_names)
 
@@ -211,8 +211,8 @@ class Configuration(BaseModel):
     max_search_results: int = 3
     search_days: int = 30
     extraction_mode: Literal["markdown", "html", "llm"] = "markdown"
-    provide_llm_facts: Literal["yes", "no"] = "yes",
-    additional_instructions: Optional[str] = None,
+    provide_llm_facts: Literal["yes", "no"] = "yes"
+    additional_instructions: Optional[str] = None
 
 
 class ResearchPlan(BaseModel):
@@ -264,23 +264,6 @@ class State(BaseModel):
         
         
         
-###############################################################################
-# Helper functions
-###############################################################################
-def get_state_file_path(filename: str = "state.json") -> str:
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(script_dir, filename)
-
-def save_state(state: State, filename: str = "state.json") -> None:
-    file_path = get_state_file_path(filename)
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(state.model_dump_json())
-
-def load_state(filename: str = "state.json") -> State:
-    file_path = get_state_file_path(filename)
-    with open(file_path, "r", encoding="utf-8") as f:
-        state_json = f.read()
-    return State.model_validate_json(state_json)
 
 ###############################################################################
 # Nodes
@@ -331,7 +314,7 @@ class SearchNode(ResilientNode):
         # --- Update State ---
         ctx.state.research_plan = result.data
         ctx.state.research_plan.queries.append(ctx.state.configuration.article_topic)
-        save_state(ctx.state)
+        
         logger.info(f'Search queries generated: {ctx.state.research_plan.queries}')
 
         # --- Return Next Node INSTANCE --- <--- CORRECTED
@@ -401,8 +384,7 @@ class LlmKnowledgeNode(ResilientNode):
         ctx.state.researched_info.facts_from_llm = result.data
         logger.info(f'LLM facts retrieved: {len(ctx.state.researched_info.facts_from_llm)} items.')
 
-        # Save state
-        save_state(ctx.state)
+        
 
         # --- Return Next Node INSTANCE ---
         logger.info(f"Transitioning from {node_name} to ScrapingNode")
@@ -463,7 +445,7 @@ class ScrapingNode(ResilientNode):
             # We can proceed to ParsingNode which should handle empty input gracefully,
             # or decide to end here if scraping is essential. Let's proceed for now.
             # Optionally save state if needed even with no scraping.
-            # save_state(ctx.state)
+            
             return ParsingNode()
 
         logger.info(f"Scraping {len(urls_to_scrape)} unique URLs...")
@@ -476,8 +458,7 @@ class ScrapingNode(ResilientNode):
         ctx.state.scraped_pages = scrape_result.get("aggregated_results", []) # Use .get for safety
         logger.info(f"Scraping complete. Found {len(ctx.state.scraped_pages)} pages.")
 
-        # Save state on successful completion
-        save_state(ctx.state)
+        
 
         # Return INSTANCE of the next node
         return ParsingNode()
@@ -591,8 +572,6 @@ class ParsingNode(ResilientNode):
         failed_parses = len(pages_to_process) - successful_parses
         logger.info(f"Parsing finished for {len(pages_to_process)} pages. Successful: {successful_parses}, Failed: {failed_parses}.")
 
-        # Save the updated state (including pages with errors)
-        save_state(ctx.state)
 
         # Proceed to the next node
         logger.info(f"Transitioning from {node_name} to DataExtractionNode")
@@ -676,7 +655,7 @@ class DataExtractionNode(ResilientNode):
             if not ctx.state.researched_info.facts_from_llm:
                  logger.error(f"{node_name}: No parsed pages AND no LLM facts found. Ending run.")
                  ctx.state.add_error(node_name, "No content (parsed pages or LLM facts) available for processing.")
-                 save_state(ctx.state)
+                 
                  error_report = self._generate_error_report(ctx.state.errors)
                  return End(f"ERROR: No content available to write an article.\n\nError Log:\n{error_report}")
             else:
@@ -693,7 +672,7 @@ class DataExtractionNode(ResilientNode):
                      article_texts=""
                 )
                 ctx.state.sources = list(manual_urls)
-                save_state(ctx.state)
+                
                 logger.info(f"Transitioning from {node_name} to InstructionsNode (only LLM facts)")
                 return InstructionsNode()
 
@@ -872,7 +851,7 @@ class DataExtractionNode(ResilientNode):
             error_message = "No relevant articles were found after filtering and no LLM facts are available. Cannot write an article without source material."
             logger.error(f"{node_name}: {error_message}")
             ctx.state.add_error(node_name, error_message)
-            save_state(ctx.state)
+            
             error_report = self._generate_error_report(ctx.state.errors)
             return End(f"ERROR: Process stopped. No content available to write an article.\n\nError Log:\n{error_report}")
         
@@ -889,7 +868,7 @@ class DataExtractionNode(ResilientNode):
                  article_texts=""
             )
             ctx.state.sources = list(manual_urls) # Keep only manual URLs if no articles used
-            save_state(ctx.state)
+            
             logger.info(f"Transitioning from {node_name} to InstructionsNode (no relevant articles found)")
             return InstructionsNode()
 
@@ -935,7 +914,7 @@ class DataExtractionNode(ResilientNode):
         ctx.state.sources = sorted(list(article_sources))
 
         logger.info(f"Aggregated data: {len(combined_facts)} facts, {len(combined_quotes)} quotes, {len(ctx.state.sources)} sources.")
-        save_state(ctx.state)
+        
         logger.info(f"Transitioning from {node_name} to InstructionsNode")
         return InstructionsNode()
 
@@ -1006,8 +985,6 @@ class InstructionsNode(ResilientNode):
         ctx.state.instructions = result.data
         logger.info("Successfully generated writing instructions.")
 
-        # Save state
-        save_state(ctx.state)
 
         # --- Return Next Node INSTANCE ---
         logger.info(f"Transitioning from {node_name} to WritingNode")
@@ -1107,14 +1084,14 @@ class WritingNode(ResilientNode):
             # This was the revision round based on reflection
             ctx.state.finished_article = result.data # Store final article
             logger.info(f"Article revision complete (Round {ctx.state.reflection_round}). Proceeding to FollowUpNode.")
-            save_state(ctx.state) # Save state including the finished article
+            
             logger.info(f"Transitioning from {node_name} to FollowUpNode")
             return FollowUpNode() # Instantiate
         else:
             # This was the first writing round
             # Draft is in result.data (and messages). Don't set finished_article yet.
             logger.info("Initial article draft complete. Proceeding to ReflectionNode.")
-            save_state(ctx.state) # Save state including the updated message history
+            
             logger.info(f"Transitioning from {node_name} to ReflectionNode")
             return ReflectionNode() # Instantiate
 
@@ -1193,8 +1170,7 @@ class ReflectionNode(ResilientNode):
 
         logger.info(f"Reflection complete. Generated feedback prompt for round {ctx.state.reflection_round}.")
 
-        # Save state
-        save_state(ctx.state)
+
 
         # --- Return Next Node INSTANCE ---
         logger.info(f"Transitioning from {node_name} back to WritingNode")
@@ -1228,7 +1204,7 @@ class FollowUpNode(ResilientNode):
             error_msg = f"{node_name}: Finished article is missing in state. Cannot generate follow-up content."
             logger.error(error_msg)
             ctx.state.add_error(node_name, "Finished article missing in state.")
-            save_state(ctx.state)
+           
             error_report = self._generate_error_report(ctx.state.errors) # Use helper from ResilientNode
             return End(f"ERROR: Finished article missing.\n\nError Log:\n{error_report}")
 
@@ -1328,7 +1304,7 @@ class FollowUpNode(ResilientNode):
 </html>
 """
         # Save final state including any errors added in this node
-        save_state(ctx.state)
+    
         logger.info("FollowUpNode complete. Returning final output.")
         # This node always ends the graph
         return End(full_result)
