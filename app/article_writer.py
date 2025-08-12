@@ -159,45 +159,59 @@ class ResilientNode(BaseNode, abc.ABC):
 # ###############################################################################
 # # Centralized Model Initialization
 # ###############################################################################
-#SearchNode
-model_names = ["gemini-2.0-flash", "gpt-5-mini", "gpt-4.1-mini", "gemini-2.0-flash"]
-logger.info(f"--- Using FallbackModel for SearchNode with models: {model_names} ---")
-search_node_fallback_model = setup_fallback_model(model_names)
+NODE_MODEL_CONFIG = {
+    "SearchNode": ["gemini-2.0-flash", "gpt-5-mini", "gpt-4.1-mini", "gemini-2.0-flash"],
+    "LlmKnowledgeNode": ["gemini-2.0-flash", "gpt-4.1-mini", "gemini-2.0-flash"],
+    "ParsingNode": ["gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"],
+    "DataExtractionNode": ["gemini-2.5-pro",  "o3-mini", "gemini-2.0-flash"],
+    "InstructionsNode": ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"],
+    "WritingNode": ["gemini-2.5-pro", "gpt-4.1"],
+    "ReflectionNode": ["gemini-2.5-pro", "gpt-4.1"],
+    "FollowUpNode": ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"],
+}
 
-#LlmKnowledgeNode
-model_names = ["gemini-2.0-flash", "gpt-4.1-mini", "gemini-2.0-flash"]
-logger.info(f"--- Using FallbackModel for LlmKnowledgeNode with models: {model_names} ---")
-llmknowledge_node_fallback_model = setup_fallback_model(model_names)
 
-#ParsingNode
-model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
-logger.info(f"--- Using FallbackModel for ParsingNode with models: {model_names} ---")
-parsing_node_fallback_model = setup_fallback_model(model_names)
 
-#DataExtractionNode
-model_names = ["gemini-2.5-pro",  "o3-mini", "gemini-2.0-flash"]
-logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model_names} ---")
-dataextraction_node_fallback_model = setup_fallback_model(model_names)
 
-#InstructionsNode
-model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
-logger.info(f"--- Using FallbackModel for InstructionsNode with models: {model_names} ---")
-instructions_node_fallback_model = setup_fallback_model(model_names)
+# #SearchNode
+# model_names = ["gemini-2.0-flash", "gpt-5-mini", "gpt-4.1-mini", "gemini-2.0-flash"]
+# logger.info(f"--- Using FallbackModel for SearchNode with models: {model_names} ---")
+# search_node_fallback_model = setup_fallback_model(model_names)
 
-#WritingNode
-model_names = ["gemini-2.5-pro", "gpt-4.1"]
-logger.info(f"--- Using FallbackModel for WritingNode with models: {model_names} ---")
-writing_node_fallback_model = setup_fallback_model(model_names)
+# #LlmKnowledgeNode
+# model_names = ["gemini-2.0-flash", "gpt-4.1-mini", "gemini-2.0-flash"]
+# logger.info(f"--- Using FallbackModel for LlmKnowledgeNode with models: {model_names} ---")
+# llmknowledge_node_fallback_model = setup_fallback_model(model_names)
 
-#ReflectionNode
-model_names = ["gemini-2.5-pro", "gpt-4.1"]
-logger.info(f"--- Using FallbackModel for ReflectionNode with models: {model_names} ---")
-reflection_node_fallback_model = setup_fallback_model(model_names)
+# #ParsingNode
+# model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
+# logger.info(f"--- Using FallbackModel for ParsingNode with models: {model_names} ---")
+# parsing_node_fallback_model = setup_fallback_model(model_names)
 
-#FollowUpNode
-model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
-logger.info(f"--- Using FallbackModel for FollowUpNode with models: {model_names} ---")
-followUp_node_fallback_model = setup_fallback_model(model_names)
+# #DataExtractionNode
+# model_names = ["gemini-2.5-pro",  "o3-mini", "gemini-2.0-flash"]
+# logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model_names} ---")
+# dataextraction_node_fallback_model = setup_fallback_model(model_names)
+
+# #InstructionsNode
+# model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
+# logger.info(f"--- Using FallbackModel for InstructionsNode with models: {model_names} ---")
+# instructions_node_fallback_model = setup_fallback_model(model_names)
+
+# #WritingNode
+# model_names = ["gemini-2.5-pro", "gpt-4.1"]
+# logger.info(f"--- Using FallbackModel for WritingNode with models: {model_names} ---")
+# writing_node_fallback_model = setup_fallback_model(model_names)
+
+# #ReflectionNode
+# model_names = ["gemini-2.5-pro", "gpt-4.1"]
+# logger.info(f"--- Using FallbackModel for ReflectionNode with models: {model_names} ---")
+# reflection_node_fallback_model = setup_fallback_model(model_names)
+
+# #FollowUpNode
+# model_names = ["gemini-2.5-pro", "gemini-2.0-flash"]
+# logger.info(f"--- Using FallbackModel for FollowUpNode with models: {model_names} ---")
+# followUp_node_fallback_model = setup_fallback_model(model_names)
 
 ###############################################################################
 # State definition
@@ -287,10 +301,10 @@ class SearchNode(ResilientNode):
 
 
         # --- Instantiate Agent within _execute ---
+        fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
         research_agent = Agent[None, ResearchPlan](
-            model=search_node_fallback_model,
+            model=fallback_model,
             result_type=ResearchPlan,
-            # retries=1 # Optional
         )
         
         additional_instructions = ctx.state.configuration.additional_instructions
@@ -348,12 +362,10 @@ class LlmKnowledgeNode(ResilientNode):
 
 
 
-        # --- Instantiate Agent within _execute ---
-        # Use the FallbackModel instance for the agent
-        llmknowledge_agent = Agent( # Agent variable is local to _execute
-            model=llmknowledge_node_fallback_model,
-            result_type=List[FactFromLlm] # Ensure FactFromLlm is imported/defined
-            # retries=1 # Optional agent-level retries
+        fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
+        llmknowledge_agent = Agent( 
+            model=fallback_model,
+            result_type=List[FactFromLlm]
         )
 
         # --- Core Logic ---
@@ -510,12 +522,12 @@ class ParsingNode(ResilientNode):
                     page['parsed_article'] = None
                     return
 
-                parsing_agent = Agent( # Agent is local to this page processing task
-                    model=parsing_node_fallback_model,
-                    result_type=ParsedArticle, # Ensure ParsedArticle is defined/imported
-                    retries=1 # Optional: Agent retries *before* falling back
+                fallback_model = setup_fallback_model(NODE_MODEL_CONFIG["ParsingNode"])
+                parsing_agent = Agent(
+                    model=fallback_model,
+                    result_type=ParsedArticle, 
+                    retries=1
                 )
-                # --------------------------------------------------------------
 
                 tokens = enc.encode(article_body)
                 token_count = len(tokens)
@@ -686,8 +698,9 @@ class DataExtractionNode(ResilientNode):
             try:
                 parsed_article = page.get("parsed_article", "")
 
+                fallback_model = setup_fallback_model(NODE_MODEL_CONFIG["DataExtractionNode"])
                 data_extraction_agent = Agent(
-                    model=dataextraction_node_fallback_model,
+                    model=fallback_model,
                     result_type=ResearchedArticle,
                     retries=1
                 )
@@ -944,12 +957,12 @@ class InstructionsNode(ResilientNode):
 
 
         # --- Instantiate Agent within _execute ---
-        instructions_agent = Agent( # Agent local to this execution
-            model=instructions_node_fallback_model,
-            result_type=str, # Expecting plain string instructions
-            retries=1 # Optional agent retries before fallback
+        fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
+        instructions_agent = Agent( 
+            model=fallback_model,
+            result_type=str,
+            retries=1
         )
-        # --------------------------------------------------------------
 
         # --- Core Logic ---
         article_texts = ctx.state.researched_info.article_texts or "No reference articles available."
@@ -1012,12 +1025,12 @@ class WritingNode(ResilientNode):
 
 
         # --- Instantiate Agent within _execute ---
-        writing_agent = Agent[None, str]( # Agent local to this execution
-            model=writing_node_fallback_model,
-            result_type=str, # Expecting the article as a string
-            retries=1 # Optional agent retries before fallback
+        fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
+        writing_agent = Agent[None, str](
+            model=fallback_model,
+            result_type=str,
+            retries=1
         )
-        # --------------------------------------------------------------
 
         # --- Determine Prompt ---
         if ctx.state.reflection_round == 0:
@@ -1116,12 +1129,12 @@ class ReflectionNode(ResilientNode):
         logger.info(f"Executing {node_name} logic...")
 
         # --- Instantiate Agent within _execute ---
-        reflection_agent = Agent( # Agent local to this execution
-            model=reflection_node_fallback_model,
-            result_type=str, # Expecting feedback string
-            retries=1 # Optional agent retries before fallback
+        fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
+        reflection_agent = Agent(
+            model=fallback_model,
+            result_type=str, 
+            retries=1
         )
-        # --------------------------------------------------------------
 
         # --- Prepare Prompt ---
         benchmark_articles = ctx.state.researched_info.article_texts or "No benchmark articles available."
@@ -1208,10 +1221,11 @@ class FollowUpNode(ResilientNode):
             error_report = self._generate_error_report(ctx.state.errors) # Use helper from ResilientNode
             return End(f"ERROR: Finished article missing.\n\nError Log:\n{error_report}")
 
-        followup_agent = Agent( # Agent local to this execution
-            model=followUp_node_fallback_model,
-            result_type=FollowUp, # Ensure FollowUp model is defined/imported
-            retries=1 # Optional agent retries before fallback
+        fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
+        followup_agent = Agent(
+            model=fallback_model,
+            result_type=FollowUp,
+            retries=1
         )
         # --------------------------------------------------------------
 

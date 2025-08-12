@@ -128,12 +128,13 @@ def setup_fallback_model(
         effective_openrouter_api_key = openrouter_api_key or os.getenv('OPENROUTER_API_KEY')
         if effective_openrouter_api_key:
             try:
-                custom_http_client = AsyncClient(timeout=30)
+                # custom_http_client = AsyncClient(timeout=30)
                 openrouter_provider = OpenAIProvider(
                 # base_url='https://openrouter.ai/api/v1',
                 base_url="https://openrouter.ai/api/v1/chat/completions",
                 api_key=effective_openrouter_api_key,
-                http_client=custom_http_client
+                # http_client=custom_http_client
+                # client_kwargs={'timeout': 30.0}
                 )
                 
                 logger.info("Openrouter Provider initialized successfully.")
