@@ -41,7 +41,9 @@ from prompts import (
     followup_agent_prompt
     )
 from llm_models import setup_fallback_model
-
+from tavily import TavilyClient
+from crawl4ai import AsyncWebCrawler
+from crawl4ai.async_configs import CrawlerRunConfig, CacheMode
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -160,14 +162,14 @@ class ResilientNode(BaseNode, abc.ABC):
 # # Centralized Model Initialization
 # ###############################################################################
 NODE_MODEL_CONFIG = {
-    "SearchNode": ["gemini-2.0-flash", "gpt-5-mini", "gpt-4.1-mini", "gemini-2.0-flash"],
-    "LlmKnowledgeNode": ["gemini-2.0-flash", "gpt-4.1-mini", "gemini-2.0-flash"],
-    "ParsingNode": ["gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"],
-    "DataExtractionNode": ["gemini-2.5-pro",  "o3-mini", "gemini-2.0-flash"],
-    "InstructionsNode": ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"],
-    "WritingNode": ["gemini-2.5-pro", "gpt-4.1"],
-    "ReflectionNode": ["gemini-2.5-pro", "gpt-4.1"],
-    "FollowUpNode": ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"],
+    "SearchNode": ["gemini-2.0-flash", "gpt-5-mini"],
+    "LlmKnowledgeNode": ["gemini-2.0-flash", "gpt-5-mini"],
+    "ParsingNode": ["gemini-2.0-flash", "gpt-5-mini"],
+    "DataExtractionNode": ["gemini-2.5-pro",  "gpt-5"],
+    "InstructionsNode": ["gemini-2.5-pro", "gpt-5"],
+    "WritingNode": ["gemini-2.5-pro", "gpt-5"],
+    "ReflectionNode": ["gemini-2.5-pro", "gpt-5"],
+    "FollowUpNode": ["gemini-2.5-pro", "gpt-5"],
 }
 
 
@@ -304,7 +306,7 @@ class SearchNode(ResilientNode):
         fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
         research_agent = Agent[None, ResearchPlan](
             model=fallback_model,
-            result_type=ResearchPlan,
+            output_type=ResearchPlan,
         )
         
         additional_instructions = ctx.state.configuration.additional_instructions
@@ -322,11 +324,11 @@ class SearchNode(ResilientNode):
         )
         result = await research_agent.run(user_prompt=prompt)
 
-        if not result or not result.data:
+        if not result or not result.output:
              raise ValueError(f"{node_name} agent run did not return valid data after attempting models.")
 
         # --- Update State ---
-        ctx.state.research_plan = result.data
+        ctx.state.research_plan = result.output
         ctx.state.research_plan.queries.append(ctx.state.configuration.article_topic)
         
         logger.info(f'Search queries generated: {ctx.state.research_plan.queries}')
@@ -365,7 +367,7 @@ class LlmKnowledgeNode(ResilientNode):
         fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
         llmknowledge_agent = Agent( 
             model=fallback_model,
-            result_type=List[FactFromLlm]
+            output_type=List[FactFromLlm]
         )
 
         # --- Core Logic ---
@@ -388,7 +390,7 @@ class LlmKnowledgeNode(ResilientNode):
         result = await llmknowledge_agent.run(user_prompt=prompt)
 
         # Check result validity
-        if result is None or result.data is None: # Check for None data specifically
+        if result is None or result.output is None: # Check for None data specifically
              # result.data could be an empty list [], which is valid, so check for None
              raise ValueError(f"{node_name} agent run did not return valid data after attempting models.")
 
@@ -402,6 +404,81 @@ class LlmKnowledgeNode(ResilientNode):
         logger.info(f"Transitioning from {node_name} to ScrapingNode")
         return ScrapingNode() # Instantiate
             
+# ###############################################################################
+# ################################ Scraping Node ################################
+# @dataclass
+# class ScrapingNode(ResilientNode):
+#     # --- Configure ResilientNode ---
+#     retry_counter_attr: str = "scrapingnode_tries"
+#     max_retries: int = 1
+#     # Potentially longer timeout for scraping multiple sites? Adjust as needed.
+#     timeout_seconds: int = 720 # Example: 12 minutes
+
+#     # --- Corrected signature ---
+#     async def _execute(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
+#         """
+#         Searches for relevant URLs using generated queries and scrapes their content.
+#         """
+#         logger.info("Executing ScrapingNode logic...")
+#         # ctx.state = load_state() # Generally not needed here
+
+#         # Initialize scraper
+#         scraper = SearchAndScrape(
+#             search_domains=ctx.state.configuration.domains,
+#             max_results=ctx.state.configuration.max_search_results,
+#             days=ctx.state.configuration.search_days,
+#             model=ctx.state.configuration.scraping_model,
+#             # Ensure extraction_mode is set correctly if needed by SearchAndScrape init
+#             extraction_mode=ctx.state.configuration.extraction_mode
+#         )
+
+#         # Define search tasks using asyncio.to_thread for potentially blocking calls
+#         search_tasks = [
+#             asyncio.create_task(asyncio.to_thread(scraper.search_urls, query))
+#             for query in ctx.state.research_plan.queries
+#         ]
+#         # Gather search results
+#         search_results = await asyncio.gather(*search_tasks)
+
+#         # Process search results to get unique URLs and descriptions
+#         unique_urls = set()
+#         combined_descriptions = {}
+#         for urls, desc_map in search_results:
+#             if urls: # Check if urls list is not None or empty
+#                unique_urls.update(urls)
+#             if desc_map: # Check if desc_map is not None or empty
+#                 combined_descriptions.update(desc_map)
+
+#         # Add manually provided URLs
+#         unique_urls.update(ctx.state.configuration.urls)
+#         # Convert set to list for scraping, filtering out any empty or None URLs
+#         urls_to_scrape = [url for url in unique_urls if url]
+
+#         if not urls_to_scrape:
+#             logger.warning("No unique URLs found or provided to scrape. Moving to ParsingNode.")
+#             # We can proceed to ParsingNode which should handle empty input gracefully,
+#             # or decide to end here if scraping is essential. Let's proceed for now.
+#             # Optionally save state if needed even with no scraping.
+            
+#             return ParsingNode()
+
+#         logger.info(f"Scraping {len(urls_to_scrape)} unique URLs...")
+
+#         # Scrape the identified URLs
+#         # Assuming scrape_urls is async; if not, wrap in asyncio.to_thread
+#         scrape_result = await scraper.scrape_urls(urls_to_scrape, description_mapping=combined_descriptions)
+
+#         # Update state with scraped pages
+#         ctx.state.scraped_pages = scrape_result.get("aggregated_results", []) # Use .get for safety
+#         logger.info(f"Scraping complete. Found {len(ctx.state.scraped_pages)} pages.")
+
+        
+
+#         # Return INSTANCE of the next node
+#         return ParsingNode()
+
+
+
 ###############################################################################
 ################################ Scraping Node ################################
 @dataclass
@@ -409,72 +486,103 @@ class ScrapingNode(ResilientNode):
     # --- Configure ResilientNode ---
     retry_counter_attr: str = "scrapingnode_tries"
     max_retries: int = 1
-    # Potentially longer timeout for scraping multiple sites? Adjust as needed.
-    timeout_seconds: int = 720 # Example: 12 minutes
+    timeout_seconds: int = 900 # Increased timeout for potentially many pages
 
-    # --- Corrected signature ---
     async def _execute(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
         """
-        Searches for relevant URLs using generated queries and scrapes their content.
+        Performs web searches using Tavily, filters out irrelevant domains,
+        and scrapes the content of the remaining URLs into clean markdown using Crawl4AI.
         """
         logger.info("Executing ScrapingNode logic...")
-        # ctx.state = load_state() # Generally not needed here
 
-        # Initialize scraper
-        scraper = SearchAndScrape(
-            search_domains=ctx.state.configuration.domains,
-            max_results=ctx.state.configuration.max_search_results,
-            days=ctx.state.configuration.search_days,
-            model=ctx.state.configuration.scraping_model,
-            # Ensure extraction_mode is set correctly if needed by SearchAndScrape init
-            extraction_mode=ctx.state.configuration.extraction_mode
-        )
+        # --- 1. Search Phase ---
+        try:
+            tavily_client = TavilyClient(api_key=os.getenv('TAVILY_API_KEY'))
+        except Exception as e:
+            raise ValueError(f"Failed to initialize TavilyClient. Ensure TAVILY_API_KEY is set. Error: {e}")
 
-        # Define search tasks using asyncio.to_thread for potentially blocking calls
-        search_tasks = [
-            asyncio.create_task(asyncio.to_thread(scraper.search_urls, query))
-            for query in ctx.state.research_plan.queries
-        ]
-        # Gather search results
-        search_results = await asyncio.gather(*search_tasks)
-
-        # Process search results to get unique URLs and descriptions
         unique_urls = set()
-        combined_descriptions = {}
-        for urls, desc_map in search_results:
-            if urls: # Check if urls list is not None or empty
-               unique_urls.update(urls)
-            if desc_map: # Check if desc_map is not None or empty
-                combined_descriptions.update(desc_map)
+        url_to_description = {}
+        
+        logger.info(f"Generating search results for queries: {ctx.state.research_plan.queries}")
+        for query in ctx.state.research_plan.queries:
+            try:
+                search_response = tavily_client.search(
+                    query=query,
+                    max_results=ctx.state.configuration.max_search_results,
+                    days=ctx.state.configuration.search_days,
+                    include_domains=ctx.state.configuration.domains or None
+                )
+                for result in search_response.get("results", []):
+                    if url := result.get("url"):
+                        unique_urls.add(url)
+                        url_to_description[url] = result.get("content", "")
+            except Exception as e:
+                logger.warning(f"Tavily search failed for query '{query}'. Error: {e}")
 
-        # Add manually provided URLs
-        unique_urls.update(ctx.state.configuration.urls)
-        # Convert set to list for scraping, filtering out any empty or None URLs
-        urls_to_scrape = [url for url in unique_urls if url]
+        # Add manually provided URLs from the configuration
+        if manual_urls := ctx.state.configuration.urls:
+            unique_urls.update(manual_urls)
+            # Add a placeholder description for manual URLs if not already present
+            for url in manual_urls:
+                url_to_description.setdefault(url, "Manually provided URL.")
+
+        # --- 2. URL Filtering Phase ---
+        EXCLUDED_DOMAINS = [
+            'youtube.com', 'facebook.com', 'twitter.com', 'x.com', 
+            'instagram.com', 'linkedin.com', 'tiktok.com'
+        ]
+        
+        filtered_urls = {
+            url for url in unique_urls 
+            if not any(domain in url for domain in EXCLUDED_DOMAINS)
+        }
+        
+        urls_to_scrape = list(filtered_urls)
 
         if not urls_to_scrape:
-            logger.warning("No unique URLs found or provided to scrape. Moving to ParsingNode.")
-            # We can proceed to ParsingNode which should handle empty input gracefully,
-            # or decide to end here if scraping is essential. Let's proceed for now.
-            # Optionally save state if needed even with no scraping.
-            
+            logger.warning("No URLs to scrape after searching and filtering. Proceeding to ParsingNode.")
             return ParsingNode()
 
-        logger.info(f"Scraping {len(urls_to_scrape)} unique URLs...")
+        logger.info(f"Identified {len(urls_to_scrape)} unique URLs to scrape after filtering.")
 
-        # Scrape the identified URLs
-        # Assuming scrape_urls is async; if not, wrap in asyncio.to_thread
-        scrape_result = await scraper.scrape_urls(urls_to_scrape, description_mapping=combined_descriptions)
-
-        # Update state with scraped pages
-        ctx.state.scraped_pages = scrape_result.get("aggregated_results", []) # Use .get for safety
-        logger.info(f"Scraping complete. Found {len(ctx.state.scraped_pages)} pages.")
-
+        # --- 3. Scraping Phase ---
+        scraped_pages_data = []
         
+        # Configure the crawler for clean, link-free markdown
+        run_config = CrawlerRunConfig(
+            extraction_strategy=None, # Use built-in markdown conversion
+            excluded_tags=['nav', 'header', 'footer', 'aside', 'form', 'script', 'style'],
+            remove_overlay_elements=True,
+            process_iframes=False,
+            cache_mode=CacheMode.BYPASS,
+            word_count_threshold=10
+        )
+        
+        logger.info("Starting web scraping with Crawl4AI...")
+        async with AsyncWebCrawler() as crawler:
+            results = await crawler.arun_many(urls=urls_to_scrape, config=run_config)
 
-        # Return INSTANCE of the next node
+            for result in results:
+                if result.success:
+                    logger.debug(f"Successfully scraped: {result.url}")
+                    # Create a dictionary matching the structure expected by downstream nodes
+                    page_data = {
+                        "url": result.url,
+                        "title": result.metadata.get('title', 'Title not found'),
+                        "article_body": result.markdown, # Use clean markdown as the body
+                        "description": url_to_description.get(result.url, "")
+                    }
+                    scraped_pages_data.append(page_data)
+                else:
+                    logger.error(f"Failed to scrape {result.url}: {result.error_message}")
+
+        # --- 4. Update State ---
+        ctx.state.scraped_pages = scraped_pages_data
+        logger.info(f"Scraping complete. Successfully processed {len(scraped_pages_data)} pages.")
+        
+        # Transition to the next node
         return ParsingNode()
-
 
 ###############################################################################
 ################################ Parsing Node #################################
@@ -495,6 +603,7 @@ class ParsingNode(ResilientNode):
         """
         Parses the raw HTML of scraped pages to extract article text,
         handling token limits and using a fallback model strategy for each page.
+        Includes a page-level retry mechanism for transient model errors.
         """
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
@@ -505,89 +614,85 @@ class ParsingNode(ResilientNode):
         pages_to_process = ctx.state.scraped_pages
         if not pages_to_process:
             logger.warning("No scraped pages found to parse. Proceeding.")
-            return DataExtractionNode() # Instantiate
+            return DataExtractionNode()
 
         tasks = []
 
         async def process_page(page: dict):
-            """Inner function to process a single page using FallbackModel."""
+            """Inner function to process a single page with retries."""
             page_url = page.get('url', 'unknown URL')
             page_node_log_prefix = f"{node_name} - Page {page_url}:"
+            
+            # --- New: Page-level retry logic ---
+            max_page_retries = 1 # Total of 2 attempts per page
+            attempt = 0
+            
+            while attempt <= max_page_retries:
+                try:
+                    # On retry, log the attempt number
+                    if attempt > 0:
+                        logger.warning(f"{page_node_log_prefix} Retrying... (Attempt {attempt + 1}/{max_page_retries + 1})")
 
-            try:
-                article_body = page.get("article_body", "")
-                if not article_body:
-                    logger.warning(f"{page_node_log_prefix} No article_body found. Skipping parsing.")
-                    page['webpage_type'] = 'other'
-                    page['parsed_article'] = None
-                    return
+                    article_body = page.get("article_body", "")
+                    if not article_body:
+                        logger.warning(f"{page_node_log_prefix} No article_body found. Skipping.")
+                        page['webpage_type'] = 'other'
+                        page['parsed_article'] = None
+                        return # Exit for this page, no need to retry empty body
 
-                fallback_model = setup_fallback_model(NODE_MODEL_CONFIG["ParsingNode"])
-                parsing_agent = Agent(
-                    model=fallback_model,
-                    result_type=ParsedArticle, 
-                    retries=1
-                )
-
-                tokens = enc.encode(article_body)
-                token_count = len(tokens)
-
-                if token_count > MAX_TOKENS:
-                    logger.warning(
-                        f"{page_node_log_prefix} Article has {token_count} tokens, exceeding {MAX_TOKENS}. Truncating."
+                    # Initialize model and agent inside the loop to ensure fresh state on retry
+                    fallback_model = setup_fallback_model(NODE_MODEL_CONFIG["ParsingNode"])
+                    parsing_agent = Agent[None, ParsedArticle](
+                        model=fallback_model,
+                        output_type = ParsedArticle,
+                        retries=1 # Agent-level retries (will try each model in fallback once)
                     )
-                    tokens = tokens[:MAX_TOKENS]
-                    article_body = enc.decode(tokens)
-                    page["article_body_truncated"] = True
+                    
+                    tokens = enc.encode(article_body)
+                    if len(tokens) > MAX_TOKENS:
+                        logger.warning(f"{page_node_log_prefix} Article has {len(tokens)} tokens, truncating.")
+                        tokens = tokens[:MAX_TOKENS]
+                        article_body = enc.decode(tokens)
+                        page["article_body_truncated"] = True
 
-                prompt = parsing_agent_prompt.format(html=article_body, current_date=ctx.state.current_date,) # Ensure prompt is accessible
+                    prompt = parsing_agent_prompt.format(html=article_body, current_date=ctx.state.current_date)
+                    result = await parsing_agent.run(user_prompt=prompt)
 
-                # Run agent - it will use the fallback sequence
-                result = await parsing_agent.run(user_prompt=prompt)
+                    if result is None or result.output is None:
+                         raise ValueError("Parsing agent run did not return valid data.")
 
-                if result is None or result.data is None:
-                     raise ValueError("Parsing agent run did not return valid data after attempting models.")
+                    # --- Success Case ---
+                    page['webpage_type'] = result.output.webpage_type
+                    page['parsed_article'] = result.output.parsed_article
+                    page.pop('parsing_error', None) # Clear any previous error on success
+                    logger.debug(f"{page_node_log_prefix} Successfully parsed.")
+                    break # Exit the while loop on success
 
-                # Update the page dictionary directly
-                page['webpage_type'] = result.data.webpage_type
-                page['parsed_article'] = result.data.parsed_article
-                logger.debug(f"{page_node_log_prefix} Successfully parsed as {result.data.webpage_type}")
+                except Exception as error:
+                    attempt += 1
+                    # If this was the last attempt, log final error and mark page as failed
+                    if attempt > max_page_retries:
+                        logger.error(f"{page_node_log_prefix} Failed permanently after {max_page_retries + 1} attempts: {error}", exc_info=True)
+                        page['webpage_type'] = 'other'
+                        page['parsed_article'] = None
+                        page['parsing_error'] = str(error)
+                        break # Exit the loop, the page has failed
+                    else:
+                        # Log the temporary error and allow the loop to continue for another attempt
+                        logger.warning(f"{page_node_log_prefix} Encountered temporary error: {error}. Preparing to retry.")
+                        await asyncio.sleep(1) # Small delay before retrying
 
-            except FallbackExceptionGroup as feg:
-                # Catch fallback errors specific to this page
-                error_message = f"All fallback models failed for page {page_url}."
-                logger.error(f"{page_node_log_prefix} {error_message}")
-                for i, exc in enumerate(feg.exceptions):
-                     # Log details without crashing the whole node
-                     logger.error(f"  - Model {i+1}: {type(exc).__name__}: {exc}")
-                page['webpage_type'] = 'other'
-                page['parsed_article'] = None
-                page['parsing_error'] = error_message # Store specific error
-
-            except Exception as error:
-                # Catch other errors for this page (incl. ValueError from model check)
-                logger.error(f"{page_node_log_prefix} Error processing: {error}", exc_info=True)
-                page['webpage_type'] = 'other'
-                page['parsed_article'] = None
-                page['parsing_error'] = str(error)
-
-        # Create tasks for processing pages
+        # Create and run tasks
         for page in pages_to_process:
             tasks.append(process_page(page))
-
-        # Run all parsing tasks concurrently
         await asyncio.gather(*tasks)
 
-        # Filter out pages that failed parsing before saving state? Optional.
-        # Currently, failed pages are marked with 'parsing_error'.
         successful_parses = sum(1 for p in pages_to_process if 'parsing_error' not in p and p.get('parsed_article') is not None)
         failed_parses = len(pages_to_process) - successful_parses
         logger.info(f"Parsing finished for {len(pages_to_process)} pages. Successful: {successful_parses}, Failed: {failed_parses}.")
 
-
-        # Proceed to the next node
         logger.info(f"Transitioning from {node_name} to DataExtractionNode")
-        return DataExtractionNode() # Instantiate
+        return DataExtractionNode()
 
 
 ###############################################################################
@@ -651,132 +756,120 @@ class DataExtractionNode(ResilientNode):
     async def _execute(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
         """
         Extracts structured information from parsed articles using a fallback
-        model strategy for each relevant page, filters, and aggregates data.
+        model strategy for each relevant page, with page-level retries.
+        It then filters and aggregates the data.
         """
         node_name = self.__class__.__name__
         logger.info(f"Executing {node_name} logic...")
 
-        # Filter pages with actual parsed content first, excluding those with parsing errors
         pages_to_process = [
             page for page in ctx.state.scraped_pages
-            if page and page.get('parsed_article') and not page.get('parsing_error')
+            if page and page.get('article_body') and not page.get('parsing_error')
         ]
 
         if not pages_to_process:
-            logger.warning(f"{node_name}: No successfully parsed pages found to extract data from.")
+            logger.warning(f"{node_name}: No successfully parsed pages to extract data from.")
             if not ctx.state.researched_info.facts_from_llm:
                  logger.error(f"{node_name}: No parsed pages AND no LLM facts found. Ending run.")
-                 ctx.state.add_error(node_name, "No content (parsed pages or LLM facts) available for processing.")
-                 
+                 ctx.state.add_error(node_name, "No content available for processing.")
                  error_report = self._generate_error_report(ctx.state.errors)
-                 return End(f"ERROR: No content available to write an article.\n\nError Log:\n{error_report}")
+                 return End(f"ERROR: No content to write an article.\n\nError Log:\n{error_report}")
             else:
+                # If there are only LLM facts, we can proceed.
                 logger.info(f"{node_name}: Proceeding with only LLM facts.")
-                llm_facts_preserved = ctx.state.researched_info.facts_from_llm or []
-                llm_fact_strings = [f.fact_llm for f in llm_facts_preserved if f.fact_llm]
-                manual_urls = set(ctx.state.configuration.urls or [])
-                ctx.state.researched_info = ResearchedInfo(
-                     facts=llm_fact_strings,
-                     facts_from_articles=[],
-                     facts_from_llm=llm_facts_preserved,
-                     quotes=[],
-                     keywords=[],
-                     article_texts=""
-                )
-                ctx.state.sources = list(manual_urls)
-                
-                logger.info(f"Transitioning from {node_name} to InstructionsNode (only LLM facts)")
-                return InstructionsNode()
+                # The filtering logic below will handle this case gracefully.
 
         tasks = []
 
         async def process_page(page: dict):
-            # ... (the process_page inner function remains unchanged)
+            """Inner function to process a single page with retries."""
             page_url = page.get('url', 'unknown URL')
             page_node_log_prefix = f"{node_name} - Page {page_url}:"
+            
+            # Page-level retry logic
+            max_page_retries = 1
+            attempt = 0
+            
+            while attempt <= max_page_retries:
+                try:
+                    if attempt > 0:
+                        logger.warning(f"{page_node_log_prefix} Retrying... (Attempt {attempt + 1}/{max_page_retries + 1})")
 
-            try:
-                parsed_article = page.get("parsed_article", "")
+                    parsed_article_body = page.get("article_body", "")
 
-                fallback_model = setup_fallback_model(NODE_MODEL_CONFIG["DataExtractionNode"])
-                data_extraction_agent = Agent(
-                    model=fallback_model,
-                    result_type=ResearchedArticle,
-                    retries=1
-                )
+                    # Format article for the prompt
+                    title = page.get('title', "Title not found")
+                    article_text_for_prompt = article_snippet.format(
+                        url=page_url,
+                        title=title,
+                        description=page.get("description", "No description available"),
+                        article_text=parsed_article_body
+                    )
+                    page['formated_article'] = article_text_for_prompt
+                    page['formated_article_short'] = article_snippet_short.format(
+                        title=title,
+                        article_text=parsed_article_body
+                    )
+                    
+                    # Initialize model and agent inside the loop for fresh state
+                    fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
+                    data_extraction_agent = Agent[None, ResearchedArticle](
+                        model=fallback_model,
+                        output_type=ResearchedArticle,
+                        retries=1
+                    )
+                    
+                    prompt = data_extraction_agent_prompt.format(
+                        text=article_text_for_prompt,
+                        topic=ctx.state.configuration.article_topic
+                    )
+                    
+                    researched_article_result = await data_extraction_agent.run(user_prompt=prompt)
 
-                title_match = re.search(r"<h1.*?>(.*?)</h1>", parsed_article, re.IGNORECASE | re.DOTALL)
-                title = title_match.group(1).strip() if title_match else page.get('title', "Title not found")
-                article_text_no_h1 = re.sub(r"<h1.*?>.*?</h1>", "", parsed_article, flags=re.IGNORECASE | re.DOTALL).strip()
+                    if researched_article_result is None or researched_article_result.output is None:
+                         raise ValueError("Data extraction agent run did not return valid data.")
 
-                page['formated_article'] = article_snippet.format(
-                    url=page_url,
-                    title=title,
-                    description=page.get("description", "No description available"),
-                    article_text=article_text_no_h1
-                )
-                page['formated_article_short'] = article_snippet_short.format(
-                    title=title,
-                    article_text=article_text_no_h1
-                )
-                prompt = data_extraction_agent_prompt.format(
-                    text=page['formated_article'],
-                    topic=ctx.state.configuration.article_topic
-                )
-                researched_article_result = await data_extraction_agent.run(user_prompt=prompt)
+                    # --- Success Case ---
+                    data = researched_article_result.output
+                    page['webpage_type'] = data.webpage_type
+                    page['relevant'] = data.relevant
+                    page['facts'] = data.facts
+                    page['publication_date'] = data.publication_date
+                    page['keywords'] = data.keywords
+                    
+                    if data.quotes:
+                        page['quotes'] = [q.model_dump() for q in data.quotes]
+                        for quote_dict in page['quotes']:
+                            quote_dict['page_url'] = page_url
+                    else:
+                        page['quotes'] = []
+                    
+                    page.pop('extraction_error', None) # Clear previous errors
+                    logger.debug(f"{page_node_log_prefix} Successfully extracted data.")
+                    break # Exit loop on success
 
-                if researched_article_result is None or researched_article_result.data is None:
-                     raise ValueError("Data extraction agent run did not return valid data after attempting models.")
-
-                data = researched_article_result.data
-                page['webpage_type'] = data.webpage_type
-                page['relevant'] = data.relevant
-                page['facts'] = data.facts
-                if data.quotes:
-                    page['quotes'] = [q.model_dump() for q in data.quotes]
-                    for quote_dict in page['quotes']:
-                        quote_dict['page_url'] = page_url
-                else:
-                    page['quotes'] = []
-                # This line has been removed as it was overwriting the quotes list
-                # and discarding the 'page_url' that was just added.
-                # page['quotes'] = [q.model_dump() for q in data.quotes] if data.quotes else []
-                page['keywords'] = data.keywords
-                page['publication_date'] = data.publication_date
-                logger.debug(f"{page_node_log_prefix} Successfully extracted data.")
-
-            except FallbackExceptionGroup as feg:
-                error_message = f"All fallback models failed for data extraction on page {page_url}."
-                logger.error(f"{page_node_log_prefix} {error_message}")
-                for i, exc in enumerate(feg.exceptions):
-                     logger.error(f"  - Model {i+1}: {type(exc).__name__}: {exc}")
-                page['extraction_error'] = error_message
-                page.setdefault('webpage_type', 'other')
-                page.setdefault('relevant', 'no')
-                page.setdefault('publication_date', None)
-                page.setdefault('facts', [])
-                page.setdefault('quotes', [])
-                page.setdefault('keywords', [])
-
-            except Exception as error:
-                logger.error(f"{page_node_log_prefix} Error extracting data: {error}", exc_info=True)
-                page['extraction_error'] = str(error)
-                page.setdefault('webpage_type', 'other')
-                page.setdefault('relevant', 'no')
-                page.setdefault('publication_date', None)
-                page.setdefault('facts', [])
-                page.setdefault('quotes', [])
-                page.setdefault('keywords', [])
-
+                except Exception as error:
+                    attempt += 1
+                    if attempt > max_page_retries:
+                        logger.error(f"{page_node_log_prefix} Failed permanently after {max_page_retries + 1} attempts: {error}", exc_info=True)
+                        page['extraction_error'] = str(error)
+                        page.setdefault('webpage_type', 'other')
+                        page.setdefault('relevant', 'no')
+                        break # Exit loop, page has failed
+                    else:
+                        logger.warning(f"{page_node_log_prefix} Encountered temporary error: {error}. Preparing to retry.")
+                        await asyncio.sleep(1)
+        
+        # Create and run tasks
         for page in pages_to_process:
             tasks.append(process_page(page))
         await asyncio.gather(*tasks)
 
         successful_extractions = sum(1 for p in pages_to_process if 'extraction_error' not in p)
         failed_extractions = len(pages_to_process) - successful_extractions
-        logger.info(f"Data extraction finished processing {len(pages_to_process)} pages. Successful: {successful_extractions}, Failed: {failed_extractions}.")
+        logger.info(f"Data extraction finished. Successful: {successful_extractions}, Failed: {failed_extractions}.")
 
-        # --- Filtering and Aggregation Logic ---
+        # --- Filtering and Aggregation Logic (remains the same) ---
         logger.info("Filtering and aggregating extracted data...")
         x_days = ctx.state.configuration.search_days
         cutoff_date = datetime.now().date() - timedelta(days=x_days)
@@ -816,15 +909,13 @@ class DataExtractionNode(ResilientNode):
             
             is_manual_url = page_url in manual_urls
 
-            ### FIX 1: Force-include manual URLs, bypassing other checks ###
             if is_manual_url:
                 logger.info(f"{log_prefix} Force-including as it is a manually provided URL.")
                 filter_reason = "Included (Manual URL)"
                 page['filter_reason'] = filter_reason
                 articles.append(page)
-                continue # Skip all other checks for this manual URL
+                continue
 
-            # --- These checks now ONLY apply to non-manual URLs ---
             page_type = page.get('webpage_type')
             if page_type != "article":
                 logger.info(f"{log_prefix} Excluded - Not classified as 'article' (Type: {page_type}).")
@@ -853,82 +944,47 @@ class DataExtractionNode(ResilientNode):
                 page['filter_reason'] = filter_reason
                 continue
 
-            # If all checks passed for a non-manual URL
             logger.debug(f"{log_prefix} Included.")
             page['filter_reason'] = filter_reason
             articles.append(page)
 
-        ### FIX 2: Check for ANY available facts before proceeding. ###
         llm_facts_available = ctx.state.researched_info.facts_from_llm or []
         if not articles and not llm_facts_available:
-            error_message = "No relevant articles were found after filtering and no LLM facts are available. Cannot write an article without source material."
+            error_message = "No relevant articles found after filtering and no LLM facts available."
             logger.error(f"{node_name}: {error_message}")
             ctx.state.add_error(node_name, error_message)
-            
             error_report = self._generate_error_report(ctx.state.errors)
-            return End(f"ERROR: Process stopped. No content available to write an article.\n\nError Log:\n{error_report}")
+            return End(f"ERROR: No content to write an article.\n\nError Log:\n{error_report}")
         
-        # This handles the case where there are no articles, but there ARE LLM facts.
-        if not articles:
-            logger.warning("No relevant articles found after filtering. Proceeding to InstructionsNode with only LLM facts.")
-            llm_fact_strings = [f.fact_llm for f in llm_facts_available if f.fact_llm]
-            ctx.state.researched_info = ResearchedInfo(
-                 facts=llm_fact_strings,
-                 facts_from_articles=[],
-                 facts_from_llm=llm_facts_available,
-                 quotes=[],
-                 keywords=[],
-                 article_texts=""
-            )
-            ctx.state.sources = list(manual_urls) # Keep only manual URLs if no articles used
-            
-            logger.info(f"Transitioning from {node_name} to InstructionsNode (no relevant articles found)")
-            return InstructionsNode()
-
-
-        # --- Aggregate Data from Filtered Articles ---
-        # (This section remains largely the same, but now it operates on a correctly filtered list)
+        # Aggregate Data
         existing_facts_from_llm = ctx.state.researched_info.facts_from_llm or []
         llm_fact_strings = [fact.fact_llm for fact in existing_facts_from_llm if fact.fact_llm]
 
         facts_from_articles = []
         combined_quotes_data = []
         combined_keywords = set()
-        article_sources = set(manual_urls) # Start with manual URLs
+        article_sources = set(manual_urls)
         article_texts_snippets = []
 
         for article in articles:
-            if facts := article.get('facts'):
-                 if isinstance(facts, list): facts_from_articles.extend(facts)
-            if quotes_data := article.get('quotes'):
-                 if isinstance(quotes_data, list): combined_quotes_data.extend(quotes_data)
-            if keywords := article.get('keywords'):
-                 if isinstance(keywords, list): combined_keywords.update(keywords)
-            if url := article.get('url'): article_sources.add(url) # Add URL of used article
+            if facts := article.get('facts'): facts_from_articles.extend(facts)
+            if quotes := article.get('quotes'): combined_quotes_data.extend(quotes)
+            if keywords := article.get('keywords'): combined_keywords.update(keywords)
+            if url := article.get('url'): article_sources.add(url)
             if snippet := article.get('formated_article_short'): article_texts_snippets.append(snippet)
-
-        # combined_quotes = []
-        # for q_data in combined_quotes_data:
-        #      if isinstance(q_data, dict):
-        #          try: combined_quotes.append(Quote(**q_data))
-        #          except Exception as e: logger.warning(f"Could not create Quote object from data: {q_data}. Error: {e}")
-        #      elif isinstance(q_data, Quote): combined_quotes.append(q_data)
-        combined_quotes = combined_quotes_data
 
         combined_facts = llm_fact_strings + facts_from_articles
         if not combined_facts:
-            logger.warning("No facts found (LLM or Article) after filtering. Proceeding, but article quality may suffer.")
+            logger.warning("No facts found after filtering. Article quality may suffer.")
 
-        ctx.state.researched_info.quotes = combined_quotes if combined_quotes else None
+        ctx.state.researched_info.quotes = combined_quotes_data or None
         ctx.state.researched_info.facts = combined_facts
         ctx.state.researched_info.facts_from_articles = facts_from_articles
         ctx.state.researched_info.keywords = list(combined_keywords)
         ctx.state.researched_info.article_texts = "\n\n==============================\n\n".join(article_texts_snippets)
         ctx.state.sources = sorted(list(article_sources))
 
-        logger.info(f"Aggregated data: {len(combined_facts)} facts, {len(combined_quotes)} quotes, {len(ctx.state.sources)} sources.")
-        
-        logger.info(f"Transitioning from {node_name} to InstructionsNode")
+        logger.info(f"Aggregated data: {len(combined_facts)} facts, {len(combined_quotes_data)} quotes, {len(ctx.state.sources)} sources.")
         return InstructionsNode()
 
 
@@ -937,8 +993,6 @@ class DataExtractionNode(ResilientNode):
 
 ###############################################################################
 ############################## Instructions Node ##############################
-
-
 
 
 @dataclass
@@ -960,7 +1014,7 @@ class InstructionsNode(ResilientNode):
         fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
         instructions_agent = Agent( 
             model=fallback_model,
-            result_type=str,
+            output_type=str,
             retries=1
         )
 
@@ -991,11 +1045,11 @@ class InstructionsNode(ResilientNode):
         # Run agent - uses fallback
         result = await instructions_agent.run(user_prompt=user_prompt)
 
-        if result is None or not result.data: # Check for None or empty string
+        if result is None or not result.output: # Check for None or empty string
              raise ValueError(f"{node_name} agent run did not return valid data (instructions) after attempting models.")
 
         # --- Update State ---
-        ctx.state.instructions = result.data
+        ctx.state.instructions = result.output
         logger.info("Successfully generated writing instructions.")
 
 
@@ -1028,7 +1082,7 @@ class WritingNode(ResilientNode):
         fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
         writing_agent = Agent[None, str](
             model=fallback_model,
-            result_type=str,
+            output_type=str,
             retries=1
         )
 
@@ -1085,7 +1139,7 @@ class WritingNode(ResilientNode):
             logger.error(f"{node_name} agent run failed: {agent_error}", exc_info=True)
             raise agent_error
 
-        if result is None or not result.data: # Check for None or empty string result
+        if result is None or not result.output: # Check for None or empty string result
             raise ValueError(f"{node_name} agent run did not return valid data (article) after attempting models.")
 
         # --- Update State ---
@@ -1095,7 +1149,7 @@ class WritingNode(ResilientNode):
         # --- Determine Next Step ---
         if ctx.state.reflection_round > 0:
             # This was the revision round based on reflection
-            ctx.state.finished_article = result.data # Store final article
+            ctx.state.finished_article = result.output # Store final article
             logger.info(f"Article revision complete (Round {ctx.state.reflection_round}). Proceeding to FollowUpNode.")
             
             logger.info(f"Transitioning from {node_name} to FollowUpNode")
@@ -1132,7 +1186,7 @@ class ReflectionNode(ResilientNode):
         fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
         reflection_agent = Agent(
             model=fallback_model,
-            result_type=str, 
+            output_type=str, 
             retries=1
         )
 
@@ -1165,11 +1219,11 @@ class ReflectionNode(ResilientNode):
             raise agent_error
 
 
-        if result is None or not result.data: # Check for None or empty feedback
+        if result is None or not result.output: # Check for None or empty feedback
             raise ValueError(f"{node_name} agent run did not return valid data (feedback) after attempting models.")
 
         # --- Process Result & Update State ---
-        feedback = result.data
+        feedback = result.output
         # Construct the full feedback prompt for the next WritingNode execution
         full_reflection_prompt = (
             f'Follow these instructions to improve your article:\n{feedback}\n\n'
@@ -1224,7 +1278,7 @@ class FollowUpNode(ResilientNode):
         fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
         followup_agent = Agent(
             model=fallback_model,
-            result_type=FollowUp,
+            output_type=FollowUp,
             retries=1
         )
         # --------------------------------------------------------------
@@ -1239,12 +1293,12 @@ class FollowUpNode(ResilientNode):
         try:
             result = await followup_agent.run(user_prompt=user_prompt)
             # Handle case where agent runs but returns None or no data
-            if result is None or result.data is None:
+            if result is None or result.output is None:
                     logger.warning(f"{node_name} agent run succeeded but returned no data. Proceeding without suggestions.")
                     follow_up_data = FollowUp(alternative_titles=[], followup_articles=[])
                     ctx.state.add_error(node_name, "Follow-up agent returned no suggestions (result was None or empty).")
             else:
-                    follow_up_data = result.data
+                    follow_up_data = result.output
 
         except FallbackExceptionGroup as feg:
             # Log the error, add to state, but proceed without follow-up suggestions
@@ -1493,13 +1547,13 @@ class ArticleWriter:
 ###############################################################################
 if __name__ == "__main__":
     article = ArticleWriter.write_article(
-        article_topic="na festiwalu w koszalinie kabareciarze wyśmiali agatę dudę",
+        article_topic="Ludzie przetarli oczy ze zdumienia. Zobaczyli, co Nawrocki założył na mecz i zawrzało",
         domains=[],  # example domains
-        urls=['https://www.plotek.pl/plotek/7,154063,32131471,kabareciarze-wysmiali-agate-dude-na-festiwalu-w-koszalinie.html'],       # example URLs
-        number_of_queries=2,
+        urls=['https://swiatgwiazd.pl/ludzie-nie-wierza-co-nawrocki-wlozyl-na-siebie-na-mecz-zapomnial-ze-jest-prezydentem-ks-mjj-120825'],       # example URLs
+        number_of_queries=1,
         scraping_model="",        # specify your scraping model if needed
-        max_search_results=3,
-        search_days=3,
+        max_search_results=2,
+        search_days=30,
         extraction_mode="markdown",
         provide_llm_facts="no",
         additional_instructions = None

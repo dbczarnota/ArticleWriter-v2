@@ -55,8 +55,8 @@ def setup_fallback_model(
         models_to_actually_use = internal_default_models
         logger.info(f"No specific models provided (or list was empty) for FallbackModel setup. Using internal defaults: {internal_default_models}")
  
-    logger.info("\n[bold blue]--- FallbackModel Initialization Start ---[/bold blue]")
-    logger.info(f"Attempting to initialize FallbackModel with: {models_to_actually_use}")
+    logger.debug("\n[bold blue]--- FallbackModel Initialization Start ---[/bold blue]")
+    logger.debug(f"Attempting to initialize FallbackModel with: {models_to_actually_use}")
 
     # Define which models depend on which provider.
     openai_models = {"gpt-4o-mini", "o3-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1", "gpt-5","gpt-5-mini"}
@@ -83,13 +83,13 @@ def setup_fallback_model(
         if effective_openai_api_key:
             try:
                 openai_provider = OpenAIProvider(api_key=effective_openai_api_key)
-                logger.info("OpenAI Provider initialized successfully.")
+                logger.debug("OpenAI Provider initialized successfully.")
             except Exception as e:
                 logger.warning(f"Failed to initialize OpenAI Provider: {e}", exc_info=True)
         else:
             logger.warning("OPENAI_API_KEY not found in args or env. Skipping OpenAI provider initialization.")
     else:
-        logger.info("OpenAI Provider not required by requested models.")
+        logger.debug("OpenAI Provider not required by requested models.")
 
     # Gemini Provider (Google GLA)
     gemini_provider = None
@@ -98,13 +98,13 @@ def setup_fallback_model(
         if effective_gemini_api_key:
             try:
                 gemini_provider = GoogleGLAProvider(api_key=effective_gemini_api_key)
-                logger.info("Google GLA Provider initialized successfully.")
+                logger.debug("Google GLA Provider initialized successfully.")
             except Exception as e:
                 logger.warning(f"Failed to initialize Google GLA Provider: {e}", exc_info=True)
         else:
             logger.warning("GEMINI_API_KEY not found in args or env. Skipping Gemini provider initialization.")
     else:
-        logger.info("Gemini Provider not required by requested models.")
+        logger.debug("Gemini Provider not required by requested models.")
 
     # Groq Provider
     groq_provider = None
@@ -113,13 +113,13 @@ def setup_fallback_model(
         if effective_groq_api_key:
             try:
                 groq_provider = GroqProvider(api_key=effective_groq_api_key)
-                logger.info("Groq Provider initialized successfully.")
+                logger.debug("Groq Provider initialized successfully.")
             except Exception as e:
                 logger.warning(f"Failed to initialize Groq Provider: {e}", exc_info=True)
         else:
             logger.warning("GROQ_API_KEY not found in args or env. Skipping Groq provider initialization.")
     else:
-        logger.info("Groq Provider not required by requested models.")
+        logger.debug("Groq Provider not required by requested models.")
         
     
     # Openrouter Provider
@@ -137,13 +137,13 @@ def setup_fallback_model(
                 # client_kwargs={'timeout': 30.0}
                 )
                 
-                logger.info("Openrouter Provider initialized successfully.")
+                logger.debug("Openrouter Provider initialized successfully.")
             except Exception as e:
                 logger.warning(f"Failed to initialize Openrouter Provider: {e}", exc_info=True)
         else:
             logger.warning("OPENROUTER_API_KEY not found in args or env. Skipping Openrouter provider initialization.")
     else:
-        logger.info("Openrouter Provider not required by requested models.")
+        logger.debug("Openrouter Provider not required by requested models.")
     
     
     # Ollama Provider - set up on runpod
@@ -156,12 +156,12 @@ def setup_fallback_model(
             base_url=effective_ollama_base_url,
             )
             
-            logger.info("Ollama Provider initialized successfully.")
+            logger.debug("Ollama Provider initialized successfully.")
         except Exception as e:
             logger.warning(f"Failed to initialize Ollama Provider: {e}", exc_info=True)
 
     else:
-        logger.info("Ollama Provider not required by requested models.")
+        logger.debug("Ollama Provider not required by requested models.")
 
     # --- Define a Mapping of Model Initializers ---
     # This section programmatically builds the initializers to reduce code duplication.
@@ -203,13 +203,13 @@ def setup_fallback_model(
                 model_instance = initializer()
                 if model_instance:
                     available_models.append(model_instance)
-                    logger.info(f"Model '{model_str}' initialized successfully.")
+                    logger.debug(f"Model '{model_str}' initialized successfully.")
                 else:
                     logger.warning(f"Provider not available for model '{model_str}'. Skipping it.")
             except Exception as e:
                 logger.warning(f"Failed to initialize model '{model_str}': {e}", exc_info=True)
 
-    logger.info("[bold blue]--- Initialization Complete ---[/bold blue]\n")
+    logger.debug("[bold blue]--- Initialization Complete ---[/bold blue]\n")
     if not available_models:
         logger.error("No LLM models available after initialization.")
         return "classification_failed_no_models"
