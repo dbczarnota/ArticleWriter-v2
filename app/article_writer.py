@@ -2,7 +2,7 @@ from __future__ import annotations
 import asyncio
 import os
 import re
-from typing import List, Literal, Optional, Dict, Type
+
 from pydantic import BaseModel, Field
 from pydantic_ai.messages import ModelMessage
 from pydantic_graph import BaseNode, End, Graph, GraphRunContext
@@ -44,6 +44,7 @@ from llm_models import setup_fallback_model
 from tavily import TavilyClient
 from crawl4ai import AsyncWebCrawler
 from crawl4ai.async_configs import CrawlerRunConfig, CacheMode
+from pydantic_ai.exceptions import FallbackExceptionGroup, ModelHTTPError
 
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -149,7 +150,7 @@ class ResilientNode(BaseNode, abc.ABC):
             return End(f"{final_error_msg}\n\nError Log:\n{error_report}")
 
     # Helper method to generate error report (similar to FollowUpNode)
-    def _generate_error_report(self, errors: List[Dict[str, str]]) -> str:
+    def _generate_error_report(self, errors: list[dict[str, str]]) -> str:
         """Generates a plain text error report."""
         if not errors:
             return "No errors reported during execution."
@@ -165,55 +166,14 @@ NODE_MODEL_CONFIG = {
     "SearchNode": ["gemini-2.0-flash", "gpt-5-mini"],
     "LlmKnowledgeNode": ["gemini-2.0-flash", "gpt-5-mini"],
     "ParsingNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "DataExtractionNode": ["gemini-2.5-pro",  "gpt-5"],
+    "DataExtractionNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gpt-5"],
     "InstructionsNode": ["gemini-2.5-pro", "gpt-5"],
     "WritingNode": ["gemini-2.5-pro", "gpt-5"],
     "ReflectionNode": ["gemini-2.5-pro", "gpt-5"],
-    "FollowUpNode": ["gemini-2.5-pro", "gpt-5"],
+    "FollowUpNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gpt-5"],
 }
 
 
-
-
-# #SearchNode
-# model_names = ["gemini-2.0-flash", "gpt-5-mini", "gpt-4.1-mini", "gemini-2.0-flash"]
-# logger.info(f"--- Using FallbackModel for SearchNode with models: {model_names} ---")
-# search_node_fallback_model = setup_fallback_model(model_names)
-
-# #LlmKnowledgeNode
-# model_names = ["gemini-2.0-flash", "gpt-4.1-mini", "gemini-2.0-flash"]
-# logger.info(f"--- Using FallbackModel for LlmKnowledgeNode with models: {model_names} ---")
-# llmknowledge_node_fallback_model = setup_fallback_model(model_names)
-
-# #ParsingNode
-# model_names = ["gemini-2.0-flash", "gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
-# logger.info(f"--- Using FallbackModel for ParsingNode with models: {model_names} ---")
-# parsing_node_fallback_model = setup_fallback_model(model_names)
-
-# #DataExtractionNode
-# model_names = ["gemini-2.5-pro",  "o3-mini", "gemini-2.0-flash"]
-# logger.info(f"--- Using FallbackModel for DataExtractionNode with models: {model_names} ---")
-# dataextraction_node_fallback_model = setup_fallback_model(model_names)
-
-# #InstructionsNode
-# model_names = ["gemini-2.5-pro", "o3-mini", "gemini-2.0-flash"]
-# logger.info(f"--- Using FallbackModel for InstructionsNode with models: {model_names} ---")
-# instructions_node_fallback_model = setup_fallback_model(model_names)
-
-# #WritingNode
-# model_names = ["gemini-2.5-pro", "gpt-4.1"]
-# logger.info(f"--- Using FallbackModel for WritingNode with models: {model_names} ---")
-# writing_node_fallback_model = setup_fallback_model(model_names)
-
-# #ReflectionNode
-# model_names = ["gemini-2.5-pro", "gpt-4.1"]
-# logger.info(f"--- Using FallbackModel for ReflectionNode with models: {model_names} ---")
-# reflection_node_fallback_model = setup_fallback_model(model_names)
-
-# #FollowUpNode
-# model_names = ["gemini-2.5-pro", "gemini-2.0-flash"]
-# logger.info(f"--- Using FallbackModel for FollowUpNode with models: {model_names} ---")
-# followUp_node_fallback_model = setup_fallback_model(model_names)
 
 ###############################################################################
 # State definition
@@ -238,17 +198,17 @@ class ResearchPlan(BaseModel):
 
 
 class ResearchedInfo(BaseModel):
-    quotes: list[dict] | None = None # Old: quotes: list[Quote] | None = None
-    facts: list[str] | None = None
-    keywords: list[str] | None = None
-    article_texts: str | None = None
-    facts_from_llm: list[FactFromLlm] | None  = None
-    facts_from_articles: list[str] | None = None
+    quotes: list[dict] = Field(default_factory=list) 
+    facts: list[str] = Field(default_factory=list)
+    keywords: list[str] = Field(default_factory=list)
+    article_texts: Optional[str] = None
+    facts_from_llm: list[FactFromLlm] = Field(default_factory=list)
+    facts_from_articles: list[str] = Field(default_factory=list)
 
 
 class FactFromLlm(BaseModel):
-    fact_llm: str | None
-    source: str | None
+    fact_llm: Optional[str] = None
+    source: Optional[str] = None
 
 
 class State(BaseModel):
@@ -258,7 +218,7 @@ class State(BaseModel):
     instructions: str = ""
     reflection_prompt: str = ""
     research_plan: ResearchPlan = None
-    scraped_pages: list[Dict] = Field(default_factory=list)
+    scraped_pages: list[dict] = Field(default_factory=list)
     researched_info: ResearchedInfo = ResearchedInfo()
     finished_article: str = ""
     sources: list[str] = Field(default_factory=list)
@@ -272,7 +232,7 @@ class State(BaseModel):
     reflectionnode_tries: int = 0
     followupnode_tries: int = 0
     llmknowledgenode_tries: int = 0
-    errors: List[Dict[str, str]] = Field(default_factory=list, description="List of errors encountered during the graph run.")
+    errors: list[dict[str, str]] = Field(default_factory=list, description="List of errors encountered during the graph run.")
     
     # --- Optional: Add helper to add errors ---
     def add_error(self, node_name: str, error_message: str):
@@ -367,7 +327,7 @@ class LlmKnowledgeNode(ResilientNode):
         fallback_model = setup_fallback_model(NODE_MODEL_CONFIG[node_name])
         llmknowledge_agent = Agent( 
             model=fallback_model,
-            output_type=List[FactFromLlm]
+            output_type=list[FactFromLlm]
         )
 
         # --- Core Logic ---
@@ -404,79 +364,6 @@ class LlmKnowledgeNode(ResilientNode):
         logger.info(f"Transitioning from {node_name} to ScrapingNode")
         return ScrapingNode() # Instantiate
             
-# ###############################################################################
-# ################################ Scraping Node ################################
-# @dataclass
-# class ScrapingNode(ResilientNode):
-#     # --- Configure ResilientNode ---
-#     retry_counter_attr: str = "scrapingnode_tries"
-#     max_retries: int = 1
-#     # Potentially longer timeout for scraping multiple sites? Adjust as needed.
-#     timeout_seconds: int = 720 # Example: 12 minutes
-
-#     # --- Corrected signature ---
-#     async def _execute(self, ctx: GraphRunContext[State]) -> ParsingNode | End:
-#         """
-#         Searches for relevant URLs using generated queries and scrapes their content.
-#         """
-#         logger.info("Executing ScrapingNode logic...")
-#         # ctx.state = load_state() # Generally not needed here
-
-#         # Initialize scraper
-#         scraper = SearchAndScrape(
-#             search_domains=ctx.state.configuration.domains,
-#             max_results=ctx.state.configuration.max_search_results,
-#             days=ctx.state.configuration.search_days,
-#             model=ctx.state.configuration.scraping_model,
-#             # Ensure extraction_mode is set correctly if needed by SearchAndScrape init
-#             extraction_mode=ctx.state.configuration.extraction_mode
-#         )
-
-#         # Define search tasks using asyncio.to_thread for potentially blocking calls
-#         search_tasks = [
-#             asyncio.create_task(asyncio.to_thread(scraper.search_urls, query))
-#             for query in ctx.state.research_plan.queries
-#         ]
-#         # Gather search results
-#         search_results = await asyncio.gather(*search_tasks)
-
-#         # Process search results to get unique URLs and descriptions
-#         unique_urls = set()
-#         combined_descriptions = {}
-#         for urls, desc_map in search_results:
-#             if urls: # Check if urls list is not None or empty
-#                unique_urls.update(urls)
-#             if desc_map: # Check if desc_map is not None or empty
-#                 combined_descriptions.update(desc_map)
-
-#         # Add manually provided URLs
-#         unique_urls.update(ctx.state.configuration.urls)
-#         # Convert set to list for scraping, filtering out any empty or None URLs
-#         urls_to_scrape = [url for url in unique_urls if url]
-
-#         if not urls_to_scrape:
-#             logger.warning("No unique URLs found or provided to scrape. Moving to ParsingNode.")
-#             # We can proceed to ParsingNode which should handle empty input gracefully,
-#             # or decide to end here if scraping is essential. Let's proceed for now.
-#             # Optionally save state if needed even with no scraping.
-            
-#             return ParsingNode()
-
-#         logger.info(f"Scraping {len(urls_to_scrape)} unique URLs...")
-
-#         # Scrape the identified URLs
-#         # Assuming scrape_urls is async; if not, wrap in asyncio.to_thread
-#         scrape_result = await scraper.scrape_urls(urls_to_scrape, description_mapping=combined_descriptions)
-
-#         # Update state with scraped pages
-#         ctx.state.scraped_pages = scrape_result.get("aggregated_results", []) # Use .get for safety
-#         logger.info(f"Scraping complete. Found {len(ctx.state.scraped_pages)} pages.")
-
-        
-
-#         # Return INSTANCE of the next node
-#         return ParsingNode()
-
 
 
 ###############################################################################
@@ -699,17 +586,17 @@ class ParsingNode(ResilientNode):
 ############################# DataExtraction Node #############################
 
 class Quote(BaseModel):
-    text: str | None
-    speaker: str | None
-    source: str | None
+    text: Optional[str] = None
+    speaker: Optional[str] = None
+    source: Optional[str] = None
     
 class ResearchedArticle(BaseModel):
     webpage_type: Literal['article', 'other']
     relevant: Literal['yes', 'no']
     publication_date: date_type
-    facts: Optional[List[str]]
-    quotes: Optional[List[Quote]]
-    keywords: Optional[List[str]]
+    facts: list[str] = Field(default_factory=list)
+    quotes: list[Quote] = Field(default_factory=list)
+    keywords: list[str] = Field(default_factory=list)
     
     
     @field_validator('publication_date', mode='before')
@@ -849,6 +736,19 @@ class DataExtractionNode(ResilientNode):
                     break # Exit loop on success
 
                 except Exception as error:
+                    raw_response = None
+                    if isinstance(error, FallbackExceptionGroup):
+                        # Find the first inner exception that has a response body
+                        for inner_exc in error.exceptions:
+                            if hasattr(inner_exc, 'response') and getattr(inner_exc, 'response', None):
+                                raw_response = getattr(inner_exc, 'response')
+                                break
+                    elif hasattr(error, 'response') and getattr(error, 'response', None):
+                        raw_response = getattr(error, 'response')
+
+                    if raw_response:
+                        logger.warning(f"{page_node_log_prefix} Model returned a response that caused an error. Raw response: {raw_response}")
+
                     attempt += 1
                     if attempt > max_page_retries:
                         logger.error(f"{page_node_log_prefix} Failed permanently after {max_page_retries + 1} attempts: {error}", exc_info=True)
@@ -1124,11 +1024,12 @@ class WritingNode(ResilientNode):
         # --- Run Agent ---
         # Run the agent, passing the current message history if it exists
         # The agent will use the fallback model sequence
+        # logger.info(f'!!!ctx.state.messages: {ctx.state.messages}')
         try:
             result = await writing_agent.run(
                 user_prompt=user_prompt,
                 # Pass message history only if it's not empty, otherwise default might be used
-                message_history=ctx.state.messages if ctx.state.messages else None
+                message_history=ctx.state.messages #if ctx.state.messages else None
             )
         except FallbackExceptionGroup as feg:
              # Re-raise to be caught by ResilientNode's run method
@@ -1392,7 +1293,7 @@ class FollowUpNode(ResilientNode):
             content = f"<ul>{list_items}</ul>"
         return f"<section><h2>{escape(title)}</h2>{content}</section>"
 
-    def _generate_quotes_html(self, quotes: Optional[List[dict]]) -> str:
+    def _generate_quotes_html(self, quotes: Optional[list[dict]]) -> str:
         """Generates HTML for the quotes section."""
         title = "Cytaty"
         if not quotes:
@@ -1419,7 +1320,7 @@ class FollowUpNode(ResilientNode):
             content = f"<ul>{''.join(list_items)}</ul>"
         return f"<section><h2>{escape(title)}</h2>{content}</section>"
 
-    def _generate_llm_facts_html(self, llm_facts: Optional[List[FactFromLlm]]) -> str:
+    def _generate_llm_facts_html(self, llm_facts: Optional[list[FactFromLlm]]) -> str:
         """Generates HTML for the LLM facts section."""
         title = "LLM Fakty i ich źródła"
         if not llm_facts:
@@ -1432,7 +1333,7 @@ class FollowUpNode(ResilientNode):
             content = f"<ul>{list_items}</ul>"
         return f"<section><h2>{escape(title)}</h2>{content}</section>"
 
-    def _generate_error_report_html(self, errors: List[Dict[str, str]]) -> str:
+    def _generate_error_report_html(self, errors: list[dict[str, str]]) -> str:
         """Generates an HTML section reporting errors logged during the run."""
         if not errors: return ""
         title = "Execution Errors Report"
@@ -1443,7 +1344,7 @@ class FollowUpNode(ResilientNode):
         content = f"<ul>{list_items}</ul>"
         return f"<section class='error-report'><h2>{escape(title)}</h2>{content}</section>"
 
-    def _generate_error_report(self, errors: List[Dict[str, str]]) -> str:
+    def _generate_error_report(self, errors: list[dict[str, str]]) -> str:
         """Generates a plain text error report."""
         # Ensure this helper is present if needed by the error check at the start
         if not errors: return "No errors reported."
@@ -1452,7 +1353,7 @@ class FollowUpNode(ResilientNode):
              report += f"- Node: {escape(err.get('node', 'Unknown Node'))}, Error: {escape(err.get('error', 'Unknown Error'))}\n"
         return report
 
-    def _generate_detailed_sources_html(self, title: str, all_pages: List[Dict]) -> str:
+    def _generate_detailed_sources_html(self, title: str, all_pages: list[dict]) -> str:
         """Generates HTML for sources, showing status and filter reason."""
         if not all_pages:
             content = "<ul><li>No sources were processed.</li></ul>"
@@ -1503,8 +1404,8 @@ class ArticleWriter:
     @staticmethod
     def write_article(
         article_topic: str,
-        domains: List[str],
-        urls: List[str] = None,  # <-- new parameter
+        domains: list[str] = [],
+        urls: list[str] = [],  # <-- new parameter
         number_of_queries: int = 2,
         scraping_model: str = "",
         max_search_results: int = 4,
