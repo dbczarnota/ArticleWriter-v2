@@ -899,7 +899,7 @@ class DataExtractionNode(ResilientNode):
 class InstructionsNode(ResilientNode):
     # --- Configure ResilientNode ---
     retry_counter_attr: str = "instructionsnode_tries"
-    max_retries: int = 1
+    max_retries: int = 2
     timeout_seconds: int = 600
 
     async def _execute(self, ctx: GraphRunContext[State]) -> WritingNode | End:
@@ -966,7 +966,7 @@ class InstructionsNode(ResilientNode):
 class WritingNode(ResilientNode):
     # --- Configure ResilientNode ---
     retry_counter_attr: str = "writingnode_tries"
-    max_retries: int = 1
+    max_retries: int = 2
     timeout_seconds: int = 900 # 15 minutes
 
     async def _execute(self, ctx: GraphRunContext[State]) -> ReflectionNode | FollowUpNode | End:
@@ -1072,7 +1072,7 @@ class WritingNode(ResilientNode):
 class ReflectionNode(ResilientNode):
     # --- Configure ResilientNode ---
     retry_counter_attr: str = "reflectionnode_tries"
-    max_retries: int = 1
+    max_retries: int = 2
     timeout_seconds: int = 600
 
     async def _execute(self, ctx: GraphRunContext[State]) -> WritingNode | End:
