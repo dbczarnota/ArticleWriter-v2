@@ -170,7 +170,7 @@ NODE_MODEL_CONFIG = {
     "InstructionsNode": ["gemini-2.5-pro", "gpt-5"],
     "WritingNode": ["gemini-2.5-pro", "gpt-5"],
     "ReflectionNode": ["gemini-2.5-pro", "gpt-5"],
-    "FollowUpNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gpt-5"],
+    "FollowUpNode": ["gemini-2.5-pro", "gpt-5"],
 }
 
 
