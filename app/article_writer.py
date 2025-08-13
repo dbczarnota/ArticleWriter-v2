@@ -90,11 +90,11 @@ NODE_MODEL_CONFIG = {
     "SearchNode": ["gemini-2.0-flash", "gpt-5-mini"],
     "LlmKnowledgeNode": ["gemini-2.0-flash", "gpt-5-mini"],
     "ParsingNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "DataExtractionNode": ["gemini-2.0-flash", "gpt-5-mini", "gemini-2.5-pro", "gpt-5"],
-    "InstructionsNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5"],
-    "WritingNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5"],
-    "ReflectionNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5"],
-    "FollowUpNode": ["gemini-2.5-pro", "gemini-2.0-flash", "gpt-5"],
+    "DataExtractionNode": ["gemini-2.0-flash", "gpt-5-mini"],
+    "InstructionsNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-pro", "gpt-5"],
+    "WritingNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-pro", "gpt-5"],
+    "ReflectionNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-pro", "gpt-5"],
+    "FollowUpNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gpt-5"],
 }
 
 ###############################################################################
@@ -123,7 +123,7 @@ class ResearchedInfo(BaseModel):
     keywords: list[str] = Field(default_factory=list)
     article_texts: Optional[str] = None
     facts_from_llm: list[FactFromLlm] = Field(default_factory=list)
-    facts_from_articles: list[str] = Field(default_factory=list)
+    facts_from_articles: list[dict] = Field(default_factory=list)
 
 class FactFromLlm(BaseModel):
     fact_llm: Optional[str] = None
@@ -446,18 +446,24 @@ class DataExtractionNode(ArticleWriterBaseNode):
             raise ValueError("No relevant articles found and no LLM facts available.")
 
         # Aggregate Data
-        facts_from_articles = [fact for article in articles for fact in article.get('facts', [])]
+        facts_from_articles = []
+        for article in articles:
+            if facts := article.get('facts'):
+                source_url = article.get('url', '#') # Default to '#' if no URL
+                for fact_text in facts:
+                    facts_from_articles.append({'text': fact_text, 'source_url': source_url})
         llm_fact_strings = [fact.fact_llm for fact in ctx.state.researched_info.facts_from_llm if fact.fact_llm]
         
-        ctx.state.researched_info.facts = llm_fact_strings + facts_from_articles
+        ctx.state.researched_info.facts = llm_fact_strings + [f.get('text', '') for f in facts_from_articles]
+        ctx.state.researched_info.facts_from_articles = facts_from_articles
         ctx.state.researched_info.quotes = [q for article in articles for q in article.get('quotes', [])]
         ctx.state.researched_info.keywords = list(set(k for article in articles for k in article.get('keywords', [])))
         ctx.state.researched_info.article_texts = "\n\n==============================\n\n".join(
             [a.get('formated_article_short', '') for a in articles]
         )
         ctx.state.sources = sorted(list(set(a['url'] for a in articles)))
-        
-        logger.info(f"Aggregated data: {len(ctx.state.researched_info.facts)} facts, {len(ctx.state.researched_info.quotes)} quotes.")
+        logger.info(f"Aggregated data: {len(ctx.state.researched_info.facts)} total facts ({len(llm_fact_strings)} from LLM, {len(facts_from_articles)} from articles).")
+        logger.info(f"Aggregated data: {len(ctx.state.researched_info.quotes)} quotes from {len(ctx.state.sources)} sources.")
         return InstructionsNode()
 
 @dataclass
@@ -492,7 +498,10 @@ class InstructionsNode(ArticleWriterBaseNode):
 class WritingNode(ArticleWriterBaseNode):
     async def _execute(self, ctx: GraphRunContext[State]) -> ReflectionNode | FollowUpNode | End:
         if ctx.state.reflection_round == 0:
-            facts_str = "\n - ".join(ctx.state.researched_info.facts or ["No facts available."])
+            fact_items = ctx.state.researched_info.facts or []
+            # Handle mixed list of strings and dicts
+            facts_str_list = [f if isinstance(f, str) else f.get('text', '') for f in fact_items]
+            facts_str = "\n - ".join(facts_str_list) if facts_str_list else "No facts available."
             keywords_str = ", ".join(ctx.state.researched_info.keywords or ["N/A"])
             quotes_str = "\n".join([f'"{escape(q.get("text",""))}" - {escape(q.get("speaker","?"))}' for q in ctx.state.researched_info.quotes or []]) or "No quotes."
             
@@ -583,7 +592,7 @@ class FollowUpNode(ArticleWriterBaseNode):
         topics_html = self._generate_list_html("Tematy do rozważenia", follow_up_data.followup_articles)
         sources_html = self._generate_detailed_sources_html("Źródła i Status Przetwarzania", ctx.state.scraped_pages)
         quotes_html = self._generate_quotes_html(ctx.state.researched_info.quotes)
-        article_facts_html = self._generate_list_html("Fakty z artykułów źródłowych", ctx.state.researched_info.facts_from_articles)
+        article_facts_html = self._generate_article_facts_html("Fakty z artykułów źródłowych", ctx.state.researched_info.facts_from_articles)
         llm_facts_html = self._generate_llm_facts_html(ctx.state.researched_info.facts_from_llm)
         error_report_html = self._generate_error_report_html(ctx.state.errors)
 
@@ -607,7 +616,22 @@ body{{font-family:sans-serif;margin:20px}}article{{border:1px solid #ccc;padding
             source_details = f" (Źródło: {' / '.join(source_parts)})" if source_parts else ""
             items.append(f"{escape(q.get('text','N/A'))} - {escape(q.get('speaker','Unknown'))}{source_details}")
         return self._generate_list_html("Cytaty", items)
+    
+    def _generate_article_facts_html(self, title: str, facts: Optional[list[dict]]) -> str:
+        """Generates HTML for facts extracted from articles, including a link to the source."""
+        if not facts:
+            return self._generate_list_html(title, None)
+        
+        list_items = []
+        for fact in facts:
+            fact_text = escape(fact.get('text', 'N/A'))
+            source_url = escape(fact.get('source_url', '#'))
+            item_html = f'<li>{fact_text} (<a href="{source_url}" target="_blank">źródło</a>)</li>'
+            list_items.append(item_html)
 
+        content = f"<ul>{''.join(list_items)}</ul>"
+        return f"<section><h2>{escape(title)}</h2>{content}</section>"
+    
     def _generate_llm_facts_html(self, llm_facts: Optional[list[FactFromLlm]]) -> str:
         items = [f"{escape(f.fact_llm or 'N/A')} (Źródło: {escape(f.source or 'N/A')})" for f in llm_facts] if llm_facts else []
         return self._generate_list_html("LLM Fakty i ich źródła", items or None)
@@ -667,9 +691,9 @@ class ArticleWriter:
 ###############################################################################
 if __name__ == "__main__":
     article = ArticleWriter.write_article(
-        article_topic="Ludzie przetarli oczy ze zdumienia. Zobaczyli, co Nawrocki założył na mecz i zawrzało",
+        article_topic="Miłość i wielkie pieniądze. Cristiano dał jej pierścionek, ale umowę podpisali już dawno. Ujawniamy kwoty.",
         domains=[],
-        urls=['https://swiatgwiazd.pl/ludzie-nie-wierza-co-nawrocki-wlozyl-na-siebie-na-mecz-zapomnial-ze-jest-prezydentem-ks-mjj-120825'],
+        urls=[],
         number_of_queries=1,
         max_search_results=2,
         search_days=30,
