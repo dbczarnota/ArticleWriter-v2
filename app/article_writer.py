@@ -92,11 +92,11 @@ NODE_MODEL_CONFIG = {
     "LlmKnowledgeNode": ["gemini-2.0-flash", "gpt-5-mini"],
     "ParsingNode": ["gemini-2.0-flash", "gpt-5-mini"],
     "DataExtractionNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "InstructionsNode": ["gemini-2.5-pro", "gpt-5"],
-    "WritingNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5"],
-    "ReflectionNode": ["gemini-2.5-pro", "gpt-5"],
-    "FollowUpNode": ["gemini-2.5-pro", "gemini-2.0-flash", "gpt-5"],
-    "UsageTracking": ["gemini-2.0-flash", "gpt-5-mini"],
+    "InstructionsNode": ["gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
+    "WritingNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
+    "ReflectionNode": ["gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
+    "FollowUpNode": ["gemini-2.5-pro", "gemini-2.0-flash", "gpt-5", "gemini-2.0-flash"],
+    "UsageTracking": ["gemini-2.0-flash", "gpt-5-mini", "gemini-2.0-flash"],
 }
 
 ###############################################################################
