@@ -112,7 +112,7 @@ Your task is to analyze text and determine whether it is an **article** or anoth
 2. **Quotes**:
    - Identify all direct quotes in the article.
    - Each quote must:
-     - Be an **exact citation** from the article.
+     - Be an **exact citation** from the article - quote **in verbatim** (this is absolutely critical)
      - Have a **specific speaker** (not the article's author).
      - Include the **source** if available.
 
@@ -126,7 +126,7 @@ Your task is to analyze text and determine whether it is an **article** or anoth
 ### Step 3: Decide if it is relevant for the topic below (for articles only)
 {topic}
 
-### Text:
+### Text to be analyzed:
 {text}
 
 Output must be in the language of the text.
@@ -207,12 +207,16 @@ Use these **quotes** where appropriate:
 Incorporate these **important keywords** for SEO (where appropriate):
 {keywords}
 
+These are example, published articles from your web magazine covering different topics. The **style, tone, format, structure and length** of the new article should be similar:
+{example_articles}
+
 ### Writing Guidelines:
 - Follow these **detailed instructions** carefully:
 {instructions}
 
 Moreover:
 - **Do not make up facts**—use only the provided information.
+- **Do not make up quotes**—use only the provided quotes **in verbatim**.
 - **Infuse your writing with wit, charm, and humor**
 - Use **simple HTML tags** for formatting:
   - `<h1>` for the main title
@@ -224,9 +228,6 @@ Moreover:
 - Keep **paragraphs between 3-5 sentences** for readability.
 - Keep in mind current date: {current_date}
 - Return **only the article**—**no additional comments** or explanations are necessary.
-
-These are example, published articles from your web magazine covering different topics. The **style, tone, format, structure and length** of the new article should be similar:
-{example_articles}
 
 """
 
@@ -260,8 +261,13 @@ These are articles on the similar topic written by our competitors. Make sure yo
 {benchmark_articles}
 """
 
-followup_agent_prompt = """You are given a finished article (referred to as "finished_article"). Please analyze it thoroughly and perform the following steps:
+followup_agent_prompt = """You are given an article:
 
+#####################
+{finished_article}
+#####################
+
+Please analyze it thoroughly and perform the following steps:
 1. Propose 10 clickbait-style alternative titles that capture attention. Each title should:
    - Highlight at least one unique or intriguing detail from the article.
    - Pose some form of puzzle, mystery, or question to entice readers.
@@ -292,20 +298,10 @@ followup_agent_prompt = """You are given a finished article (referred to as "fin
    - Offer a fresh perspective or expand on the ideas mentioned.
 
 
-The article:
-{finished_article}
-
 """
 
 usage_tracking_agent_prompt = """
 You are a meticulous auditor. Your task is to analyze a finished article and determine which of the provided facts and quotes were used.
-
-### Instructions:
-1.  Read the "Finished Article" carefully.
-2.  Review the "List of Available Facts".
-3.  Review the "List of Available Quotes".
-4.  Identify which facts and quotes from the lists are present in the article. **A fact or quote is considered "used" even if it has been slightly rephrased, paraphrased, or partially quoted**, as long as the core information is clearly present.
-5.  Your output must be a list of the exact, original strings of the facts and quotes that you identified as being used. Do not include any items that were not used.
 
 ### Finished Article:
 {article_text}
@@ -315,4 +311,13 @@ You are a meticulous auditor. Your task is to analyze a finished article and det
 
 ### List of Available Quotes:
 {list_of_quotes}
+
+
+### Instructions:
+1.  Read the "Finished Article" carefully.
+2.  Review the "List of Available Facts".
+3.  Review the "List of Available Quotes".
+4.  Identify which facts and quotes from the lists are present in the article. **A fact or quote is considered "used" even if it has been slightly rephrased, paraphrased, or partially quoted**, as long as the core information is clearly present.
+5.  Your output must be a list of the exact, original strings of the facts and quotes that you identified as being used. Do not include any items that were not used.
+
 """
