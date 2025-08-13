@@ -142,6 +142,7 @@ class State(BaseModel):
     researched_info: ResearchedInfo = ResearchedInfo()
     finished_article: str = ""
     sources: list[str] = Field(default_factory=list)
+    model_usage: dict[str, str] = Field(default_factory=dict)
     messages: list[ModelMessage] = Field(default_factory=list)
     errors: list[dict[str, str]] = Field(default_factory=list, description="List of errors encountered during the graph run.")
 
@@ -166,12 +167,12 @@ class SearchNode(ArticleWriterBaseNode):
             additional_instructions_formatted=additional_instructions_formatted,
         )
 
-        result = await run_with_retry(
+        result, used_model = await run_with_retry(
             model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
             output_type=ResearchPlan,
             user_prompt=prompt
         )
-
+        ctx.state.model_usage[self.__class__.__name__] = used_model
         if not result or not result.output:
             raise ValueError("SearchNode agent run returned invalid data.")
 
@@ -199,12 +200,12 @@ class LlmKnowledgeNode(ArticleWriterBaseNode):
             current_date=ctx.state.current_date
         )
 
-        result = await run_with_retry(
+        result, used_model = await run_with_retry(
             model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
             output_type=List[FactFromLlm],
             user_prompt=prompt
         )
-
+        ctx.state.model_usage[self.__class__.__name__] = used_model
         if result is None or result.output is None:
             raise ValueError("LlmKnowledgeNode agent run did not return valid data.")
 
@@ -315,11 +316,12 @@ class ParsingNode(ArticleWriterBaseNode):
             prompt = parsing_agent_prompt.format(html=article_body, current_date=ctx.state.current_date)
             
             try:
-                result = await run_with_retry(
+                result, used_model = await run_with_retry(
                     model_list=NODE_MODEL_CONFIG["ParsingNode"],
                     output_type=ParsedArticle,
                     user_prompt=prompt,
                 )
+                ctx.state.model_usage[self.__class__.__name__] = used_model
                 if result and result.output:
                     page.update({
                         'webpage_type': result.output.webpage_type,
@@ -395,11 +397,12 @@ class DataExtractionNode(ArticleWriterBaseNode):
             prompt = data_extraction_agent_prompt.format(text=article_text_for_prompt, topic=ctx.state.configuration.article_topic)
 
             try:
-                result = await run_with_retry(
+                result, used_model = await run_with_retry(
                     model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
                     output_type=ResearchedArticle,
                     user_prompt=prompt,
                 )
+                ctx.state.model_usage[self.__class__.__name__] = used_model
                 if result and result.output:
                     data = result.output
                     page.update({
@@ -484,11 +487,12 @@ class InstructionsNode(ArticleWriterBaseNode):
             additional_instructions_formatted=additional_instructions_formatted,
         )
 
-        result = await run_with_retry(
+        result,used_model = await run_with_retry(
             model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
             output_type=str,
             user_prompt=user_prompt
         )
+        ctx.state.model_usage[self.__class__.__name__] = used_model
 
         if not result or not result.output:
             raise ValueError("InstructionsNode agent returned empty data.")
@@ -517,12 +521,13 @@ class WritingNode(ArticleWriterBaseNode):
                 raise ValueError(f"Reflection prompt missing for round {ctx.state.reflection_round}.")
             user_prompt = ctx.state.reflection_prompt
 
-        result = await run_with_retry(
+        result, used_model = await run_with_retry(
             model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
             output_type=str,
             user_prompt=user_prompt,
             message_history=ctx.state.messages
         )
+        ctx.state.model_usage[self.__class__.__name__] = used_model
 
         if not result or not result.output:
             raise ValueError("WritingNode agent returned empty data.")
@@ -546,12 +551,13 @@ class ReflectionNode(ArticleWriterBaseNode):
             example_articles=example_articles
         )
 
-        result = await run_with_retry(
+        result, used_model = await run_with_retry(
             model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
             output_type=str,
             user_prompt=user_prompt,
             message_history=ctx.state.messages
         )
+        ctx.state.model_usage[self.__class__.__name__] = used_model
 
         if not result or not result.output:
             raise ValueError("ReflectionNode agent returned empty feedback.")
@@ -590,26 +596,28 @@ class FollowUpNode(ArticleWriterBaseNode):
                         list_of_facts="\n- ".join(all_facts),
                         list_of_quotes="\n- ".join(all_quotes_text)
                     )
-                    usage_result = await run_with_retry(
+                    usage_result, used_model = await run_with_retry(
                         model_list=NODE_MODEL_CONFIG["UsageTracking"],
                         output_type=UsedItems,
                         user_prompt=usage_prompt
                     )
+                    ctx.state.model_usage["UsageTracking"] = used_model
                     if usage_result and usage_result.output:
                         used_facts_set = set(usage_result.output.used_facts)
                         used_quotes_set = set(usage_result.output.used_quotes)
                         logger.info(f"Usage tracking complete. Found {len(used_facts_set)} used facts and {len(used_quotes_set)} used quotes.")
                 except Exception as e:
                     logger.warning(f"Usage tracking agent failed: {e}. Proceeding without usage data.")
-                    ctx.state.add_error(self.__class__.__name__, f"Usage tracking failed: {e}")
+                    ctx.state.add_error("UsageTracking", f"Usage tracking failed: {e}")
 
             # Step 2: Run follow-up suggestions agent
             try:
-                result = await run_with_retry(
+                result, used_model = await run_with_retry(
                     model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
                     output_type=FollowUp,
                     user_prompt=followup_agent_prompt.format(finished_article=ctx.state.finished_article)
                 )
+                ctx.state.model_usage[self.__class__.__name__] = used_model
                 follow_up_data = result.output if result and result.output else FollowUp()
             except AllModelsFailedError as e:
                 logger.warning(f"Follow-up generation failed: {e}. Proceeding without suggestions.")
@@ -629,12 +637,13 @@ class FollowUpNode(ArticleWriterBaseNode):
         article_facts_html = self._generate_article_facts_html("Fakty z artykułów źródłowych", ctx.state.researched_info.facts_from_articles, used_facts_set)
         llm_facts_html = self._generate_llm_facts_html(ctx.state.researched_info.facts_from_llm, used_facts_set)
         error_report_html = self._generate_error_report_html(ctx.state.errors)
+        model_usage_html = self._generate_model_usage_html("Model Usage Report", ctx.state.model_usage)
 
         full_result = f"""<!DOCTYPE html>
 <html><head><title>Article Result</title><meta charset="UTF-8"><style>
 body{{font-family:sans-serif;margin:20px}}article{{border:1px solid #ccc;padding:15px;margin-bottom:20px;background-color:#f9f9f9}}section{{margin-bottom:20px;border:1px solid #eee;padding:0 15px 15px 15px}}h1,h2{{color:#333}}h1{{border-bottom:2px solid #ccc;padding-bottom:5px}}h2{{border-bottom:1px solid #eee;padding-bottom:3px}}ul{{list-style-type:disc;margin-left:20px}}li{{margin-bottom:5px}}blockquote{{border-left:3px solid #ccc;padding-left:10px;margin-left:0;font-style:italic;color:#555}}.source-item{{margin-bottom:8px}}.source-url{{font-weight:bold}}.source-status{{font-style:italic;margin-left:10px;padding:2px 5px;border-radius:3px}}.status-included{{color:#2a8a2a;background-color:#e9f5e9}}.status-excluded,.status-error{{color:#b95000;background-color:#fff8e1}}.error-report{{border-color:#d32f2f;background-color:#ffebee}}.error-report h2{{color:#c00}}.used-marker{{color:green;font-weight:bold;margin-left:10px;font-size:0.8em}}
 </style></head><body>
-{article_html}{error_report_html}{titles_html}{topics_html}{sources_html}{quotes_html}{article_facts_html}{llm_facts_html}
+{article_html}{error_report_html}{titles_html}{topics_html}{sources_html}{model_usage_html}{quotes_html}{article_facts_html}{llm_facts_html}
 </body></html>"""
         return End(full_result)
 
@@ -690,6 +699,13 @@ body{{font-family:sans-serif;margin:20px}}article{{border:1px solid #ccc;padding
             status_class = "status-included" if "Included" in reason else "status-excluded"
             items.append(f"<li class='source-item'><span class='source-url'>{url}</span> - <span class='source-status {status_class}'>{reason}</span></li>")
         return f"<section><h2>{escape(title)}</h2><ul>{''.join(items)}</ul></section>"
+        
+    def _generate_model_usage_html(self, title: str, usage_data: dict[str, str]) -> str:
+        """Generates an HTML section reporting which model was used for each node."""
+        if not usage_data: return ""
+        items = [f"<li><strong>{escape(node)}:</strong> {escape(model)}</li>" for node, model in usage_data.items()]
+        content = f"<ul>{''.join(items)}</ul>"
+        return f"<section><h2>{escape(title)}</h2>{content}</section>"
 
 ###############################################################################
 # Class wrapper

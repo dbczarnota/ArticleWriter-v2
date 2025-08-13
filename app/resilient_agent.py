@@ -143,7 +143,7 @@ async def run_with_retry(
             )
 
             logger.info(f"Attempt {attempt_num} with model '{model_name}' succeeded.")
-            return result
+            return result, model_name
 
         except Exception as e:
             error_msg = f"Attempt {attempt_num} with model '{model_name}' failed. Error: {type(e).__name__}: {str(e)}"
