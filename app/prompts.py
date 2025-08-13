@@ -296,3 +296,23 @@ The article:
 {finished_article}
 
 """
+
+usage_tracking_agent_prompt = """
+You are a meticulous auditor. Your task is to analyze a finished article and determine which of the provided facts and quotes were used.
+
+### Instructions:
+1.  Read the "Finished Article" carefully.
+2.  Review the "List of Available Facts".
+3.  Review the "List of Available Quotes".
+4.  Identify which facts and quotes from the lists are present in the article. **A fact or quote is considered "used" even if it has been slightly rephrased, paraphrased, or partially quoted**, as long as the core information is clearly present.
+5.  Your output must be a list of the exact, original strings of the facts and quotes that you identified as being used. Do not include any items that were not used.
+
+### Finished Article:
+{article_text}
+
+### List of Available Facts:
+{list_of_facts}
+
+### List of Available Quotes:
+{list_of_quotes}
+"""

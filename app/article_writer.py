@@ -27,7 +27,8 @@ from prompts import (
     instructions_agent_prompt,
     writing_agent_prompt,
     reflection_agent_prompt,
-    followup_agent_prompt
+    followup_agent_prompt,
+    usage_tracking_agent_prompt,
 )
 from tavily import TavilyClient
 from crawl4ai import AsyncWebCrawler
@@ -91,10 +92,11 @@ NODE_MODEL_CONFIG = {
     "LlmKnowledgeNode": ["gemini-2.0-flash", "gpt-5-mini"],
     "ParsingNode": ["gemini-2.0-flash", "gpt-5-mini"],
     "DataExtractionNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "InstructionsNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-pro", "gpt-5"],
-    "WritingNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-pro", "gpt-5"],
-    "ReflectionNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-pro", "gpt-5"],
-    "FollowUpNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gpt-5"],
+    "InstructionsNode": ["gemini-2.5-pro", "gpt-5"],
+    "WritingNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5"],
+    "ReflectionNode": ["gemini-2.5-pro", "gpt-5"],
+    "FollowUpNode": ["gemini-2.5-pro", "gemini-2.0-flash", "gpt-5"],
+    "UsageTracking": ["gemini-2.0-flash", "gpt-5-mini"],
 }
 
 ###############################################################################
@@ -566,14 +568,42 @@ class FollowUp(BaseModel):
     alternative_titles: list[str] = Field(default_factory=list)
     followup_articles: list[str] = Field(default_factory=list)
 
+class UsedItems(BaseModel):
+    used_facts: list[str] = Field(default_factory=list, description="A list of the exact facts that were used in the article.")
+    used_quotes: list[str] = Field(default_factory=list, description="A list of the exact quotes that were used in the article.")
+
 @dataclass
 class FollowUpNode(ArticleWriterBaseNode):
     async def _execute(self, ctx: GraphRunContext[State]) -> End:
-        if not ctx.state.finished_article:
-            logger.error("FollowUpNode: Finished article is missing.")
-            ctx.state.add_error(self.__class__.__name__, "Finished article was not generated.")
-            follow_up_data = FollowUp() # Create empty object
-        else:
+        used_facts_set = set()
+        used_quotes_set = set()
+
+        if ctx.state.finished_article:
+            # Step 1: Run usage tracking agent
+            all_facts = ctx.state.researched_info.facts or []
+            all_quotes_text = [q.get('text', '') for q in ctx.state.researched_info.quotes or [] if q.get('text')]
+            
+            if all_facts or all_quotes_text:
+                try:
+                    usage_prompt = usage_tracking_agent_prompt.format(
+                        article_text=ctx.state.finished_article,
+                        list_of_facts="\n- ".join(all_facts),
+                        list_of_quotes="\n- ".join(all_quotes_text)
+                    )
+                    usage_result = await run_with_retry(
+                        model_list=NODE_MODEL_CONFIG["UsageTracking"],
+                        output_type=UsedItems,
+                        user_prompt=usage_prompt
+                    )
+                    if usage_result and usage_result.output:
+                        used_facts_set = set(usage_result.output.used_facts)
+                        used_quotes_set = set(usage_result.output.used_quotes)
+                        logger.info(f"Usage tracking complete. Found {len(used_facts_set)} used facts and {len(used_quotes_set)} used quotes.")
+                except Exception as e:
+                    logger.warning(f"Usage tracking agent failed: {e}. Proceeding without usage data.")
+                    ctx.state.add_error(self.__class__.__name__, f"Usage tracking failed: {e}")
+
+            # Step 2: Run follow-up suggestions agent
             try:
                 result = await run_with_retry(
                     model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
@@ -585,20 +615,24 @@ class FollowUpNode(ArticleWriterBaseNode):
                 logger.warning(f"Follow-up generation failed: {e}. Proceeding without suggestions.")
                 ctx.state.add_error(self.__class__.__name__, f"Follow-up generation failed: {e}")
                 follow_up_data = FollowUp()
+        else:
+            logger.error("FollowUpNode: Finished article is missing.")
+            ctx.state.add_error(self.__class__.__name__, "Finished article was not generated.")
+            follow_up_data = FollowUp()
 
-        # Construct final HTML output
+        # Step 3: Construct final HTML output
         article_html = f"<article>\n{ctx.state.finished_article}\n</article>" 
         titles_html = self._generate_list_html("Alternatywne tytuły", follow_up_data.alternative_titles)
         topics_html = self._generate_list_html("Tematy do rozważenia", follow_up_data.followup_articles)
         sources_html = self._generate_detailed_sources_html("Źródła i Status Przetwarzania", ctx.state.scraped_pages)
-        quotes_html = self._generate_quotes_html(ctx.state.researched_info.quotes)
-        article_facts_html = self._generate_article_facts_html("Fakty z artykułów źródłowych", ctx.state.researched_info.facts_from_articles)
-        llm_facts_html = self._generate_llm_facts_html(ctx.state.researched_info.facts_from_llm)
+        quotes_html = self._generate_quotes_html(ctx.state.researched_info.quotes, used_quotes_set)
+        article_facts_html = self._generate_article_facts_html("Fakty z artykułów źródłowych", ctx.state.researched_info.facts_from_articles, used_facts_set)
+        llm_facts_html = self._generate_llm_facts_html(ctx.state.researched_info.facts_from_llm, used_facts_set)
         error_report_html = self._generate_error_report_html(ctx.state.errors)
 
         full_result = f"""<!DOCTYPE html>
 <html><head><title>Article Result</title><meta charset="UTF-8"><style>
-body{{font-family:sans-serif;margin:20px}}article{{border:1px solid #ccc;padding:15px;margin-bottom:20px;background-color:#f9f9f9}}section{{margin-bottom:20px;border:1px solid #eee;padding:0 15px 15px 15px}}h1,h2{{color:#333}}h1{{border-bottom:2px solid #ccc;padding-bottom:5px}}h2{{border-bottom:1px solid #eee;padding-bottom:3px}}ul{{list-style-type:disc;margin-left:20px}}li{{margin-bottom:5px}}blockquote{{border-left:3px solid #ccc;padding-left:10px;margin-left:0;font-style:italic;color:#555}}.source-item{{margin-bottom:8px}}.source-url{{font-weight:bold}}.source-status{{font-style:italic;margin-left:10px;padding:2px 5px;border-radius:3px}}.status-included{{color:#2a8a2a;background-color:#e9f5e9}}.status-excluded,.status-error{{color:#b95000;background-color:#fff8e1}}.error-report{{border-color:#d32f2f;background-color:#ffebee}}.error-report h2{{color:#c00}}
+body{{font-family:sans-serif;margin:20px}}article{{border:1px solid #ccc;padding:15px;margin-bottom:20px;background-color:#f9f9f9}}section{{margin-bottom:20px;border:1px solid #eee;padding:0 15px 15px 15px}}h1,h2{{color:#333}}h1{{border-bottom:2px solid #ccc;padding-bottom:5px}}h2{{border-bottom:1px solid #eee;padding-bottom:3px}}ul{{list-style-type:disc;margin-left:20px}}li{{margin-bottom:5px}}blockquote{{border-left:3px solid #ccc;padding-left:10px;margin-left:0;font-style:italic;color:#555}}.source-item{{margin-bottom:8px}}.source-url{{font-weight:bold}}.source-status{{font-style:italic;margin-left:10px;padding:2px 5px;border-radius:3px}}.status-included{{color:#2a8a2a;background-color:#e9f5e9}}.status-excluded,.status-error{{color:#b95000;background-color:#fff8e1}}.error-report{{border-color:#d32f2f;background-color:#ffebee}}.error-report h2{{color:#c00}}.used-marker{{color:green;font-weight:bold;margin-left:10px;font-size:0.8em}}
 </style></head><body>
 {article_html}{error_report_html}{titles_html}{topics_html}{sources_html}{quotes_html}{article_facts_html}{llm_facts_html}
 </body></html>"""
@@ -608,33 +642,37 @@ body{{font-family:sans-serif;margin:20px}}article{{border:1px solid #ccc;padding
         content = f"<ul>{''.join(f'<li>{escape(item)}</li>' for item in items)}</ul>" if items else "<ul><li>Brak danych.</li></ul>"
         return f"<section><h2>{escape(title)}</h2>{content}</section>"
     
-    def _generate_quotes_html(self, quotes: Optional[list[dict]]) -> str:
+    def _generate_quotes_html(self, quotes: Optional[list[dict]], used_quotes: set) -> str:
         if not quotes: return self._generate_list_html("Cytaty", None)
         items = []
         for q in quotes:
+            text = q.get('text', 'N/A')
+            used_marker = '<span class="used-marker">USED</span>' if text in used_quotes else ''
             source_parts = [escape(s) for s in [q.get('source'), q.get('page_url')] if s]
             source_details = f" (Źródło: {' / '.join(source_parts)})" if source_parts else ""
-            items.append(f"{escape(q.get('text','N/A'))} - {escape(q.get('speaker','Unknown'))}{source_details}")
-        return self._generate_list_html("Cytaty", items)
-    
-    def _generate_article_facts_html(self, title: str, facts: Optional[list[dict]]) -> str:
-        """Generates HTML for facts extracted from articles, including a link to the source."""
-        if not facts:
-            return self._generate_list_html(title, None)
-        
+            items.append(f"<li>{escape(text)} - {escape(q.get('speaker','Unknown'))}{source_details}{used_marker}</li>")
+        return f"<section><h2>Cytaty</h2><ul>{''.join(items)}</ul></section>"
+
+    def _generate_article_facts_html(self, title: str, facts: Optional[list[dict]], used_facts: set) -> str:
+        if not facts: return self._generate_list_html(title, None)
         list_items = []
         for fact in facts:
             fact_text = escape(fact.get('text', 'N/A'))
+            used_marker = '<span class="used-marker">USED</span>' if fact.get('text') in used_facts else ''
             source_url = escape(fact.get('source_url', '#'))
-            item_html = f'<li>{fact_text} (<a href="{source_url}" target="_blank">źródło</a>)</li>'
+            item_html = f'<li>{fact_text} (<a href="{source_url}" target="_blank">źródło</a>){used_marker}</li>'
             list_items.append(item_html)
-
         content = f"<ul>{''.join(list_items)}</ul>"
         return f"<section><h2>{escape(title)}</h2>{content}</section>"
-    
-    def _generate_llm_facts_html(self, llm_facts: Optional[list[FactFromLlm]]) -> str:
-        items = [f"{escape(f.fact_llm or 'N/A')} (Źródło: {escape(f.source or 'N/A')})" for f in llm_facts] if llm_facts else []
-        return self._generate_list_html("LLM Fakty i ich źródła", items or None)
+
+    def _generate_llm_facts_html(self, llm_facts: Optional[list[FactFromLlm]], used_facts: set) -> str:
+        if not llm_facts: return self._generate_list_html("LLM Fakty i ich źródła", None)
+        items = []
+        for f in llm_facts:
+            fact_text = f.fact_llm or 'N/A'
+            used_marker = '<span class="used-marker">USED</span>' if fact_text in used_facts else ''
+            items.append(f"<li>{escape(fact_text)} (Źródło: {escape(f.source or 'N/A')}){used_marker}</li>")
+        return f"<section><h2>LLM Fakty i ich źródła</h2><ul>{''.join(items)}</ul></section>"
 
     def _generate_error_report_html(self, errors: list[dict[str, str]]) -> str:
         if not errors: return ""
