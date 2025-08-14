@@ -658,20 +658,20 @@ body{{font-family:sans-serif;margin:20px}}article{{border:1px solid #ccc;padding
         if not quotes: return self._generate_list_html("Cytaty", None)
         items = []
         for q in quotes:
-            text = q.get('text', 'N/A')
+            text = q.get('text') or ''
             used_marker = '<span class="used-marker">USED</span>' if text in used_quotes else ''
-            source_parts = [escape(s) for s in [q.get('source'), q.get('page_url')] if s]
+            source_parts = [escape(s or '') for s in [q.get('source'), q.get('page_url')] if s]
             source_details = f" (Źródło: {' / '.join(source_parts)})" if source_parts else ""
-            items.append(f"<li>{escape(text)} - {escape(q.get('speaker','Unknown'))}{source_details}{used_marker}</li>")
+            items.append(f"<li>{escape(text)} - {escape(q.get('speaker') or 'Unknown')}{source_details}{used_marker}</li>")
         return f"<section><h2>Cytaty</h2><ul>{''.join(items)}</ul></section>"
 
     def _generate_article_facts_html(self, title: str, facts: Optional[list[dict]], used_facts: set) -> str:
         if not facts: return self._generate_list_html(title, None)
         list_items = []
         for fact in facts:
-            fact_text = escape(fact.get('text', 'N/A'))
+            fact_text = escape(fact.get('text') or 'N/A')
             used_marker = '<span class="used-marker">USED</span>' if fact.get('text') in used_facts else ''
-            source_url = escape(fact.get('source_url', '#'))
+            source_url = escape(fact.get('source_url') or '#')
             item_html = f'<li>{fact_text} (<a href="{source_url}" target="_blank">źródło</a>){used_marker}</li>'
             list_items.append(item_html)
         content = f"<ul>{''.join(list_items)}</ul>"
