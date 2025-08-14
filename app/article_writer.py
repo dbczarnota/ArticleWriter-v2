@@ -65,8 +65,10 @@ class ArticleWriterBaseNode(BaseNode, abc.ABC):
         except AllModelsFailedError as e:
             error_message = f"{node_name} failed permanently after all model retries."
             logger.error(f"{error_message} Details: {e}", exc_info=False)
+            ctx.state.model_usage.append({'node': node_name, 'status': 'Failed', 'attempts': e.history})
             ctx.state.add_error(node_name, str(e))
             error_report = self._generate_error_report(ctx.state.errors)
+            model_usage_report = self._generate_model_usage_html("Model Usage Report", ctx.state.model_usage)
             return End(f"ERROR: A critical step failed at {node_name}.\n\nError Log:\n{error_report}")
         except Exception as e:
             error_message = f"An unexpected error occurred in {node_name}: {type(e).__name__}"
@@ -142,7 +144,7 @@ class State(BaseModel):
     researched_info: ResearchedInfo = ResearchedInfo()
     finished_article: str = ""
     sources: list[str] = Field(default_factory=list)
-    model_usage: dict[str, str] = Field(default_factory=dict)
+    model_usage: list[dict] = Field(default_factory=list)
     messages: list[ModelMessage] = Field(default_factory=list)
     errors: list[dict[str, str]] = Field(default_factory=list, description="List of errors encountered during the graph run.")
 
@@ -167,12 +169,13 @@ class SearchNode(ArticleWriterBaseNode):
             additional_instructions_formatted=additional_instructions_formatted,
         )
 
-        result, used_model = await run_with_retry(
+        result, attempts = await run_with_retry(
             model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
             output_type=ResearchPlan,
             user_prompt=prompt
         )
-        ctx.state.model_usage[self.__class__.__name__] = used_model
+        ctx.state.model_usage.append({'node': self.__class__.__name__, 'attempts': attempts})
+        
         if not result or not result.output:
             raise ValueError("SearchNode agent run returned invalid data.")
 
@@ -200,12 +203,12 @@ class LlmKnowledgeNode(ArticleWriterBaseNode):
             current_date=ctx.state.current_date
         )
 
-        result, used_model = await run_with_retry(
+        result, attempts = await run_with_retry(
             model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
             output_type=List[FactFromLlm],
             user_prompt=prompt
         )
-        ctx.state.model_usage[self.__class__.__name__] = used_model
+        ctx.state.model_usage.append({'node': self.__class__.__name__, 'attempts': attempts})
         if result is None or result.output is None:
             raise ValueError("LlmKnowledgeNode agent run did not return valid data.")
 
@@ -316,12 +319,12 @@ class ParsingNode(ArticleWriterBaseNode):
             prompt = parsing_agent_prompt.format(html=article_body, current_date=ctx.state.current_date)
             
             try:
-                result, used_model = await run_with_retry(
+                result, attempts = await run_with_retry(
                     model_list=NODE_MODEL_CONFIG["ParsingNode"],
                     output_type=ParsedArticle,
                     user_prompt=prompt,
                 )
-                ctx.state.model_usage[self.__class__.__name__] = used_model
+                ctx.state.model_usage.append({'node': 'ParsingNode', 'details': f"URL: {page_url}", 'attempts': attempts})
                 if result and result.output:
                     page.update({
                         'webpage_type': result.output.webpage_type,
@@ -397,12 +400,12 @@ class DataExtractionNode(ArticleWriterBaseNode):
             prompt = data_extraction_agent_prompt.format(text=article_text_for_prompt, topic=ctx.state.configuration.article_topic)
 
             try:
-                result, used_model = await run_with_retry(
+                result, attempts = await run_with_retry(
                     model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
                     output_type=ResearchedArticle,
                     user_prompt=prompt,
                 )
-                ctx.state.model_usage[self.__class__.__name__] = used_model
+                ctx.state.model_usage.append({'node': 'ParsingNode', 'details': f"URL: {page_url}", 'attempts': attempts})
                 if result and result.output:
                     data = result.output
                     page.update({
@@ -487,12 +490,12 @@ class InstructionsNode(ArticleWriterBaseNode):
             additional_instructions_formatted=additional_instructions_formatted,
         )
 
-        result,used_model = await run_with_retry(
+        result,attempts = await run_with_retry(
             model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
             output_type=str,
             user_prompt=user_prompt
         )
-        ctx.state.model_usage[self.__class__.__name__] = used_model
+        ctx.state.model_usage.append({'node': self.__class__.__name__, 'attempts': attempts})
 
         if not result or not result.output:
             raise ValueError("InstructionsNode agent returned empty data.")
@@ -503,6 +506,8 @@ class InstructionsNode(ArticleWriterBaseNode):
 @dataclass
 class WritingNode(ArticleWriterBaseNode):
     async def _execute(self, ctx: GraphRunContext[State]) -> ReflectionNode | FollowUpNode | End:
+        
+        node_label = f"WritingNode ({'Revision' if ctx.state.reflection_round > 0 else 'Initial Draft'})"
         if ctx.state.reflection_round == 0:
             fact_items = ctx.state.researched_info.facts or []
             # Handle mixed list of strings and dicts
@@ -524,13 +529,13 @@ class WritingNode(ArticleWriterBaseNode):
                 raise ValueError(f"Reflection prompt missing for round {ctx.state.reflection_round}.")
             user_prompt = ctx.state.reflection_prompt
 
-        result, used_model = await run_with_retry(
+        result, attempts = await run_with_retry(
             model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
             output_type=str,
             user_prompt=user_prompt,
             message_history=ctx.state.messages
         )
-        ctx.state.model_usage[self.__class__.__name__] = used_model
+        ctx.state.model_usage.append({'node': node_label, 'attempts': attempts})
 
         if not result or not result.output:
             raise ValueError("WritingNode agent returned empty data.")
@@ -554,13 +559,13 @@ class ReflectionNode(ArticleWriterBaseNode):
             example_articles=example_articles
         )
 
-        result, used_model = await run_with_retry(
+        result, attempts = await run_with_retry(
             model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
             output_type=str,
             user_prompt=user_prompt,
             message_history=ctx.state.messages
         )
-        ctx.state.model_usage[self.__class__.__name__] = used_model
+        ctx.state.model_usage.append({'node': self.__class__.__name__, 'attempts': attempts})
 
         if not result or not result.output:
             raise ValueError("ReflectionNode agent returned empty feedback.")
@@ -588,7 +593,6 @@ class FollowUpNode(ArticleWriterBaseNode):
         used_quotes_set = set()
 
         if ctx.state.finished_article:
-            # Step 1: Run usage tracking agent
             all_facts = ctx.state.researched_info.facts or []
             all_quotes_text = [q.get('text', '') for q in ctx.state.researched_info.quotes or [] if q.get('text')]
             
@@ -599,12 +603,12 @@ class FollowUpNode(ArticleWriterBaseNode):
                         list_of_facts="\n- ".join(all_facts),
                         list_of_quotes="\n- ".join(all_quotes_text)
                     )
-                    usage_result, used_model = await run_with_retry(
+                    usage_result, attempts = await run_with_retry(
                         model_list=NODE_MODEL_CONFIG["UsageTracking"],
                         output_type=UsedItems,
                         user_prompt=usage_prompt
                     )
-                    ctx.state.model_usage["UsageTracking"] = used_model
+                    ctx.state.model_usage.append({'node': 'UsageTracking', 'attempts': attempts})
                     if usage_result and usage_result.output:
                         used_facts_set = set(usage_result.output.used_facts)
                         used_quotes_set = set(usage_result.output.used_quotes)
@@ -613,17 +617,17 @@ class FollowUpNode(ArticleWriterBaseNode):
                     logger.warning(f"Usage tracking agent failed: {e}. Proceeding without usage data.")
                     ctx.state.add_error("UsageTracking", f"Usage tracking failed: {e}")
 
-            # Step 2: Run follow-up suggestions agent
             try:
-                result, used_model = await run_with_retry(
+                result, attempts = await run_with_retry(
                     model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
                     output_type=FollowUp,
                     user_prompt=followup_agent_prompt.format(finished_article=ctx.state.finished_article)
                 )
-                ctx.state.model_usage[self.__class__.__name__] = used_model
+                ctx.state.model_usage.append({'node': self.__class__.__name__, 'attempts': attempts})
                 follow_up_data = result.output if result and result.output else FollowUp()
             except AllModelsFailedError as e:
                 logger.warning(f"Follow-up generation failed: {e}. Proceeding without suggestions.")
+                ctx.state.model_usage.append({'node': self.__class__.__name__, 'status': 'Failed', 'attempts': e.history})
                 ctx.state.add_error(self.__class__.__name__, f"Follow-up generation failed: {e}")
                 follow_up_data = FollowUp()
         else:
@@ -631,7 +635,6 @@ class FollowUpNode(ArticleWriterBaseNode):
             ctx.state.add_error(self.__class__.__name__, "Finished article was not generated.")
             follow_up_data = FollowUp()
 
-        # Step 3: Construct final HTML output
         article_html = f"<article>\n{ctx.state.finished_article}\n</article>" 
         titles_html = self._generate_list_html("Alternatywne tytuły", follow_up_data.alternative_titles)
         topics_html = self._generate_list_html("Tematy do rozważenia", follow_up_data.followup_articles)
@@ -644,7 +647,7 @@ class FollowUpNode(ArticleWriterBaseNode):
 
         full_result = f"""<!DOCTYPE html>
 <html><head><title>Article Result</title><meta charset="UTF-8"><style>
-body{{font-family:sans-serif;margin:20px}}article{{border:1px solid #ccc;padding:15px;margin-bottom:20px;background-color:#f9f9f9}}section{{margin-bottom:20px;border:1px solid #eee;padding:0 15px 15px 15px}}h1,h2{{color:#333}}h1{{border-bottom:2px solid #ccc;padding-bottom:5px}}h2{{border-bottom:1px solid #eee;padding-bottom:3px}}ul{{list-style-type:disc;margin-left:20px}}li{{margin-bottom:5px}}blockquote{{border-left:3px solid #ccc;padding-left:10px;margin-left:0;font-style:italic;color:#555}}.source-item{{margin-bottom:8px}}.source-url{{font-weight:bold}}.source-status{{font-style:italic;margin-left:10px;padding:2px 5px;border-radius:3px}}.status-included{{color:#2a8a2a;background-color:#e9f5e9}}.status-excluded,.status-error{{color:#b95000;background-color:#fff8e1}}.error-report{{border-color:#d32f2f;background-color:#ffebee}}.error-report h2{{color:#c00}}.used-marker{{background-color:#d4edda;color:#155724;border:1px solid #c3e6cb;padding:2px 6px;border-radius:4px;font-size:0.8em;font-weight:bold;margin-left:8px;display:inline-block;vertical-align:middle;}}
+body{{font-family:sans-serif;margin:20px}}article{{border:1px solid #ccc;padding:15px;margin-bottom:20px;background-color:#f9f9f9}}section{{margin-bottom:20px;border:1px solid #eee;padding:0 15px 15px 15px}}h1,h2{{color:#333}}h1{{border-bottom:2px solid #ccc;padding-bottom:5px}}h2{{border-bottom:1px solid #eee;padding-bottom:3px}}ul{{list-style-type:disc;margin-left:20px}}li{{margin-bottom:5px}}blockquote{{border-left:3px solid #ccc;padding-left:10px;margin-left:0;font-style:italic;color:#555}}.source-item{{margin-bottom:8px}}.source-url{{font-weight:bold}}.source-status{{font-style:italic;margin-left:10px;padding:2px 5px;border-radius:3px}}.status-included{{color:#2a8a2a;background-color:#e9f5e9}}.status-excluded,.status-error{{color:#b95000;background-color:#fff8e1}}.error-report{{border-color:#d32f2f;background-color:#ffebee}}.error-report h2{{color:#c00}}.used-marker{{background-color:#d4edda;color:#155724;border:1px solid #c3e6cb;padding:2px 6px;border-radius:4px;font-size:0.8em;font-weight:bold;margin-left:8px;display:inline-block;vertical-align:middle;}}.status-succeeded{{color:#155724;font-weight:bold;}}.status-failed{{color:#721c24;font-weight:bold;}}
 </style></head><body>
 {article_html}{error_report_html}{titles_html}{topics_html}{sources_html}{model_usage_html}{quotes_html}{article_facts_html}{llm_facts_html}
 </body></html>"""
@@ -703,10 +706,29 @@ body{{font-family:sans-serif;margin:20px}}article{{border:1px solid #ccc;padding
             items.append(f"<li class='source-item'><span class='source-url'>{url}</span> - <span class='source-status {status_class}'>{reason}</span></li>")
         return f"<section><h2>{escape(title)}</h2><ul>{''.join(items)}</ul></section>"
         
-    def _generate_model_usage_html(self, title: str, usage_data: dict[str, str]) -> str:
-        """Generates an HTML section reporting which model was used for each node."""
+    def _generate_model_usage_html(self, title: str, usage_data: list[dict]) -> str:
         if not usage_data: return ""
-        items = [f"<li><strong>{escape(node)}:</strong> {escape(model)}</li>" for node, model in usage_data.items()]
+        items = []
+        for entry in usage_data:
+            node = escape(entry.get('node', 'Unknown Node'))
+            details = f" ({escape(entry.get('details', ''))})" if entry.get('details') else ""
+            
+            node_status = entry.get('status')
+            if node_status == 'Failed':
+                 items.append(f'<li><strong>{node}{details} - <span class="status-failed">FAILED</span></strong>')
+            else:
+                 items.append(f"<li><strong>{node}{details}</strong>")
+
+            attempt_html = "<ul>"
+            for attempt in entry.get('attempts', []):
+                model = escape(attempt.get('model', ''))
+                status = escape(attempt.get('status', ''))
+                status_class = "status-succeeded" if status == 'succeeded' else "status-failed"
+                reason = f" <small>({escape(attempt.get('reason', '') or '')})</small>" if status == 'failed' else ""
+                attempt_html += f'<li><span class="{status_class}">{status.upper()}</span> with <strong>{model}</strong>{reason}</li>'
+            attempt_html += "</ul></li>"
+            items.append(attempt_html)
+
         content = f"<ul>{''.join(items)}</ul>"
         return f"<section><h2>{escape(title)}</h2>{content}</section>"
 

@@ -28,12 +28,13 @@ T = TypeVar("T", bound=BaseModel)
 
 class AllModelsFailedError(Exception):
     """Custom exception raised when all models in the retry loop have failed."""
-    def __init__(self, message: str, errors: list[tuple[str, Exception]]):
+    def __init__(self, message: str, errors: list[tuple[str, Exception]], history: list[dict]):
         full_message = f"{message}\n"
         for model_name, error in errors:
             full_message += f"  - Model '{model_name}': {type(error).__name__}: {str(error)}\n"
         super().__init__(full_message)
         self.errors = errors
+        self.history = history
 
 
 # --- Provider and Model Mappings ---
@@ -94,24 +95,17 @@ async def run_with_retry(
     user_prompt: str,
     system_prompt: Optional[str] = None,
     message_history: Optional[List[ModelMessage]] = None
-) -> AgentRunResult[T]:
+) -> tuple[AgentRunResult[T], list[dict]]:
     """
     Runs a pydantic-ai Agent with a list of models, retrying on any failure.
-
-    Args:
-        model_list: A list of model name strings to try in order.
-        output_type: The Pydantic model for the expected output.
-        user_prompt: The prompt to send to the user.
-        system_prompt: The system prompt for the agent.
-        message_history: The message history for the agent.
-
-    Raises:
-        AllModelsFailedError: If all models in the list fail to produce a valid response.
+    
+    ... (docstring) ...
 
     Returns:
-        A successful AgentRunResult object from the first model that succeeds.
+        A tuple containing the successful AgentRunResult and a list of all attempt dictionaries.
     """
     encountered_errors = []
+    attempts_history = []
 
     for i, model_name in enumerate(model_list):
         attempt_num = i + 1
@@ -122,6 +116,7 @@ async def run_with_retry(
             if not model_instance:
                 error = ValueError(f"Provider for model '{model_name}' is not configured or available.")
                 encountered_errors.append((model_name, error))
+                attempts_history.append({'model': model_name, 'status': 'failed', 'reason': str(error)})
                 continue
 
             agent_kwargs = {
@@ -143,7 +138,8 @@ async def run_with_retry(
             )
 
             logger.info(f"Attempt {attempt_num} with model '{model_name}' succeeded.")
-            return result, model_name
+            attempts_history.append({'model': model_name, 'status': 'succeeded'})
+            return result, attempts_history
 
         except Exception as e:
             error_msg = f"Attempt {attempt_num} with model '{model_name}' failed. Error: {type(e).__name__}: {str(e)}"
@@ -152,10 +148,12 @@ async def run_with_retry(
                 logger.warning(f"Validation errors for model '{model_name}': {e.errors()}")
 
             encountered_errors.append((model_name, e))
+            attempts_history.append({'model': model_name, 'status': 'failed', 'reason': error_msg})
 
     raise AllModelsFailedError(
         message="All models failed to produce a valid response.",
-        errors=encountered_errors
+        errors=encountered_errors,
+        history=attempts_history
     )
 
 
