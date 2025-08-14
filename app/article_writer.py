@@ -92,10 +92,10 @@ NODE_MODEL_CONFIG = {
     "LlmKnowledgeNode": ["gemini-2.0-flash", "gpt-5-mini"],
     "ParsingNode": ["gemini-2.0-flash", "gpt-5-mini"],
     "DataExtractionNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "InstructionsNode": ["gemini-2.5-pro","gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
-    "WritingNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
-    "ReflectionNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
-    "FollowUpNode": ["gemini-2.5-pro", "gemini-2.0-flash", "gpt-5", "gemini-2.0-flash"],
+    "InstructionsNode": ["gemini-2.0-flash", "gemini-2.5-pro","gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
+    "WritingNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
+    "ReflectionNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
+    "FollowUpNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gpt-5", "gemini-2.0-flash"],
     "UsageTracking": ["gemini-2.0-flash", "gpt-5-mini", "gemini-2.0-flash"],
 }
 
@@ -509,7 +509,10 @@ class WritingNode(ArticleWriterBaseNode):
             facts_str_list = [f if isinstance(f, str) else f.get('text', '') for f in fact_items]
             facts_str = "\n - ".join(facts_str_list) if facts_str_list else "No facts available."
             keywords_str = ", ".join(ctx.state.researched_info.keywords or ["N/A"])
-            quotes_str = "\n".join([f'"{escape(q.get("text",""))}" - {escape(q.get("speaker","?"))}' for q in ctx.state.researched_info.quotes or []]) or "No quotes."
+            quotes_str = "\n".join([
+                f'"{escape(q.get("text") or "")}" - {escape(q.get("speaker") or "?")}' 
+                for q in ctx.state.researched_info.quotes or []
+            ]) or "No quotes."
             
             user_prompt = writing_agent_prompt.format(
                 topic=ctx.state.configuration.article_topic, facts=facts_str, keywords=keywords_str,
