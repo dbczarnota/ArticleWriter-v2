@@ -4,6 +4,7 @@ import logging
 from typing import List, Optional, TypeVar, Type
 
 from dotenv import load_dotenv
+from httpx import AsyncClient
 from pydantic import BaseModel, ValidationError
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
@@ -13,6 +14,8 @@ from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.google import GoogleProvider
+from pydantic_ai.models.gemini import GeminiModel
+from pydantic_ai.providers.google_gla import GoogleGLAProvider
 from pydantic_ai.providers.groq import GroqProvider
 from pydantic_ai.providers.openai import OpenAIProvider
 from rich.logging import RichHandler
@@ -44,12 +47,15 @@ _GROQ_MODELS = {"meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4
 _OPENROUTER_MODELS = {"google/gemma-3-27b-it", "qwen/qwen-vl-plus", "deepseek/deepseek-r1"}
 _OLLAMA_MODELS = {"ollama/gemma3:4b", "ollama/gemma3:27b"}
 
+HTTP_CLIENT_TIMEOUT = 300
 # --- Provider Instances ---
-_openai_provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY')) if os.getenv('OPENAI_API_KEY') else None
-_gemini_provider = GoogleProvider(api_key=os.getenv('GEMINI_API_KEY')) if os.getenv('GEMINI_API_KEY') else None
-_groq_provider = GroqProvider(api_key=os.getenv('GROQ_API_KEY')) if os.getenv('GROQ_API_KEY') else None
-_openrouter_provider = OpenAIProvider(base_url="https://openrouter.ai/api/v1/chat/completions", api_key=os.getenv('OPENROUTER_API_KEY')) if os.getenv('OPENROUTER_API_KEY') else None
-_ollama_provider = OpenAIProvider(base_url=os.getenv('OLLAMA_BASE_URL', 'https://z8dc1gdrcy9i17.proxy.runpod.net/v1'))
+_openai_provider = OpenAIProvider(api_key=os.getenv('OPENAI_API_KEY'),http_client=AsyncClient(timeout=HTTP_CLIENT_TIMEOUT)) if os.getenv('OPENAI_API_KEY') else None
+_gemini_provider = GoogleGLAProvider(
+        api_key=os.getenv('GEMINI_API_KEY'),
+        http_client=AsyncClient(timeout=HTTP_CLIENT_TIMEOUT)) if os.getenv('GEMINI_API_KEY') else None
+_groq_provider = GroqProvider(api_key=os.getenv('GROQ_API_KEY'),http_client=AsyncClient(timeout=HTTP_CLIENT_TIMEOUT)) if os.getenv('GROQ_API_KEY') else None
+_openrouter_provider = OpenAIProvider(base_url="https://openrouter.ai/api/v1/chat/completions", api_key=os.getenv('OPENROUTER_API_KEY'),http_client=AsyncClient(timeout=HTTP_CLIENT_TIMEOUT)) if os.getenv('OPENROUTER_API_KEY') else None
+_ollama_provider = OpenAIProvider(base_url=os.getenv('OLLAMA_BASE_URL', 'https://z8dc1gdrcy9i17.proxy.runpod.net/v1'),http_client=AsyncClient(timeout=HTTP_CLIENT_TIMEOUT))
 
 
 def create_model_instance(model_name: str) -> Optional[PydanticAIModel]:
@@ -67,7 +73,7 @@ def create_model_instance(model_name: str) -> Optional[PydanticAIModel]:
         if not _gemini_provider:
             logger.warning(f"Gemini provider not configured. Skipping model '{model_name}'.")
             return None
-        return GoogleModel(model_name, provider=_gemini_provider)
+        return GeminiModel(model_name, provider=_gemini_provider)
 
     if model_name in _GROQ_MODELS:
         if not _groq_provider:
