@@ -15,6 +15,11 @@ import time
 # Create the FastAPI application
 app = FastAPI()
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 # Define a Pydantic model for the request body
 class ArticleRequest(BaseModel):
     id: str
@@ -33,74 +38,80 @@ class ArticleRequest(BaseModel):
 def send_response(id, article_text, topic):
     try:
         webhook_url = "https://hook.eu1.make.com/gs74hirsewkmxbvpp15tpgb78ohl4g28"
-        data = {
-            "ID": id,
-            "article_text": article_text,
-            "topic": topic
-        }
-        print(f"send response {data}")
+        data = {"ID": id, "article_text": article_text, "topic": topic}
+        logger.info(f"send response {data}")
         with httpx.Client() as client:
             response = client.post(webhook_url, json=data)
-        print(f"")    
+        logger.info(f"")
     except httpx.RequestError as e:
-        print(f"An error occurred while making the request: {e}")
+        logger.info(f"An error occurred while making the request: {e}")
         return "Error occurred during the request."
 
-    # Print the status code
-    print(f"Response status code: {response.status_code}")
+    # logger.info the status code
+    logger.info(f"Response status code: {response.status_code}")
 
     # Try to parse JSON if the response contains JSON content
     try:
         if response.headers.get("Content-Type", "").startswith("application/json"):
-            print("Response JSON content:", response.json())  # JSON response content
+            logger.info(
+                "Response JSON content:", response.json()
+            )  # JSON response content
         else:
-            print("Response text content:", response.text)  # Fallback to printing raw text
+            logger.info(
+                "Response text content:", response.text
+            )  # Fallback to logger.infoing raw text
     except httpx.JSONDecodeError:
-        print("Response is not JSON format. Raw content:")
-        print(response.text)
-
+        logger.info("Response is not JSON format. Raw content:")
+        logger.info(response.text)
 
 
 def worker(q):
     while True:
-        job = q.get()  # Get a job from the queue
-        if job is None:
-            break  # Exit if no more jobs
-        print(f"Processing job: {job}")
-        
-        if job.domains != None:
-            domains = job.domains.split("|")
-        else:
-            domains = []
+        try:
+            job = q.get()  # Get a job from the queue
+            if job is None:
+                break  # Exit if no more jobs
+            logger.info(f"Processing job: {job}")
 
-        if job.urls != None:
-            urls = job.urls.split("|")
-        else:
-            urls = []
+            if job.domains != None:
+                domains = job.domains.split("|")
+            else:
+                domains = []
 
-        final_text = ArticleWriter.write_article(
-            article_topic=job.topic,
-            domains=domains,
-            urls=urls,
-            number_of_queries=job.number_of_queries,
-            scraping_model=job.scraping_model,
-            max_search_results=job.max_search_results,
-            search_days=job.search_days,
-            extraction_mode=job.extraction_mode,
-            provide_llm_facts=job.provide_llm_facts,  # <-- pass the parameter
-            additional_instructions = job.additional_instructions
-        )
+            if job.urls != None:
+                urls = job.urls.split("|")
+            else:
+                urls = []
 
-        print(f"final_text {final_text}")
+            try:
+                final_text = ArticleWriter.write_article(
+                    article_topic=job.topic,
+                    domains=domains,
+                    urls=urls,
+                    number_of_queries=job.number_of_queries,
+                    scraping_model=job.scraping_model,
+                    max_search_results=job.max_search_results,
+                    search_days=job.search_days,
+                    extraction_mode=job.extraction_mode,
+                    provide_llm_facts=job.provide_llm_facts,  # <-- pass the parameter
+                    additional_instructions=job.additional_instructions,
+                )
+            except Exception as e:
+                logger.error(f"Exception in  ArticleWriter.write_article {e}")
 
-        print(f"Finished job: {job}")
+            logger.info(f"final_text {final_text}")
 
-        send_response(job.id, final_text, job.topic)
-        q.task_done()  # Mark the job as done
+            logger.info(f"Finished job: {job}")
+
+            send_response(job.id, final_text, job.topic)
+        finally:
+            logger.info(f"Mark task as completed {job}")
+            q.task_done()  # Mark the job as done
+
 
 job_queue = queue.Queue()
 
-num_workers = 1
+num_workers = 5
 threads = []
 for _ in range(num_workers):
     t = threading.Thread(target=worker, args=(job_queue,))
@@ -109,11 +120,12 @@ for _ in range(num_workers):
 
 job_queue.join()
 
+
 @app.post("/write_article")
 def create_article(request_data: List[ArticleRequest]):
     """
     POST to this endpoint with a JSON body describing the article parameters.
-    
+
     Example request body:
     {
       "article_topic": "Sample Topic",
@@ -126,9 +138,9 @@ def create_article(request_data: List[ArticleRequest]):
     }
     """
     for it in request_data:
-        print(f"adding new job")
+        logger.info(f"adding new job")
         job_queue.put(it)
-        print(f"queue: {job_queue.qsize()}")
+        logger.info(f"queue: {job_queue.qsize()}")
 
     # final_text = ArticleWriter.write_article(
     #     article_topic=request_data.topic,
@@ -139,11 +151,13 @@ def create_article(request_data: List[ArticleRequest]):
     #     search_days=request_data.search_days,
     #     extraction_mode=request_data.extraction_mode
     # )
-    # print(f"final_text {final_text}")
+    # logger.info(f"final_text {final_text}")
     # return {"article": final_text}
     return {"status": "OK"}
+
 
 # Optional: to run directly from this file
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=False)

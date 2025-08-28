@@ -1,7 +1,6 @@
 from __future__ import annotations
 import asyncio
 import os
-import re
 import abc
 from html import escape
 from dataclasses import dataclass
@@ -15,7 +14,6 @@ from pydantic_ai.messages import ModelMessage
 
 # Local imports
 from resilient_agent import run_with_retry, AllModelsFailedError
-from searchandscrape import SearchAndScrape
 from example_articles import example_articles
 from prompts import (
     research_agent_prompt,
@@ -31,7 +29,7 @@ from prompts import (
     usage_tracking_agent_prompt,
 )
 from tavily import TavilyClient
-from crawl4ai import AsyncWebCrawler
+from crawl4ai import AsyncWebCrawler, SemaphoreDispatcher
 from crawl4ai.async_configs import CrawlerRunConfig, CacheMode
 import tiktoken
 
@@ -266,18 +264,27 @@ class ScrapingNode(ArticleWriterBaseNode):
             remove_overlay_elements=True,
             process_iframes=False,
             cache_mode=CacheMode.BYPASS,
-            word_count_threshold=10
+            word_count_threshold=10,
+            scan_full_page=True,
+            scroll_delay=0.5,
+            wait_for_images=False,
+            page_timeout=10000,
+            wait_for_timeout=10000,
         )
         
         scraped_pages_data = []
         async with AsyncWebCrawler() as crawler:
-            results = await crawler.arun_many(urls=urls_to_scrape, config=run_config)
+            results = await crawler.arun_many(
+                dispatcher = SemaphoreDispatcher(),
+                urls=urls_to_scrape, 
+                config=run_config)
             # Defensive check: If the crawler fails internally and returns None, treat it as an empty list.
             if results is None:
                 logger.warning("Crawl4AI returned None. Treating as no results.")
                 results = []
             for result in results:
                 if result.success:
+                    logger.info(f"Cralwer result: {result.url}")
                     scraped_pages_data.append({
                         "url": result.url,
                         "title": result.metadata.get('title', 'Title not found'),
