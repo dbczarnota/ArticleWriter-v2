@@ -272,6 +272,10 @@ class ScrapingNode(ArticleWriterBaseNode):
         scraped_pages_data = []
         async with AsyncWebCrawler() as crawler:
             results = await crawler.arun_many(urls=urls_to_scrape, config=run_config)
+            # Defensive check: If the crawler fails internally and returns None, treat it as an empty list.
+            if results is None:
+                logger.warning("Crawl4AI returned None. Treating as no results.")
+                results = []
             for result in results:
                 if result.success:
                     scraped_pages_data.append({
