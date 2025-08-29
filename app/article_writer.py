@@ -113,6 +113,9 @@ class Configuration(BaseModel):
     extraction_mode: Literal["markdown", "html", "llm"] = "markdown"
     provide_llm_facts: Literal["yes", "no"] = "yes"
     additional_instructions: Optional[str] = None
+    instructions_node: List[str] = []
+    writing_node: List[str] = []
+    reflection_node: List[str] = []
 
 class ResearchPlan(BaseModel):
     queries: list[str] = Field(default_factory=list)
@@ -501,9 +504,8 @@ class InstructionsNode(ArticleWriterBaseNode):
             example_articles=example_articles,
             additional_instructions_formatted=additional_instructions_formatted,
         )
-
         result,attempts = await run_with_retry(
-            model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
+            model_list=ctx.state.configuration.instructions_node,
             output_type=str,
             user_prompt=user_prompt
         )
@@ -542,7 +544,7 @@ class WritingNode(ArticleWriterBaseNode):
             user_prompt = ctx.state.reflection_prompt
 
         result, attempts = await run_with_retry(
-            model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
+            model_list=ctx.state.configuration.writing_node,
             output_type=str,
             user_prompt=user_prompt,
             message_history=ctx.state.messages
@@ -572,7 +574,7 @@ class ReflectionNode(ArticleWriterBaseNode):
         )
 
         result, attempts = await run_with_retry(
-            model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
+            model_list=ctx.state.configuration.reflection_node,
             output_type=str,
             user_prompt=user_prompt,
             message_history=ctx.state.messages
@@ -760,15 +762,38 @@ class ArticleWriter:
         provide_llm_facts: Literal["yes", "no"] = "no",
         extraction_mode: Literal["markdown", "html", "llm"] = "markdown",
         additional_instructions: Optional[str] = None,
+        instructions_node: str ="",
+        writing_node: str ="",
+        reflection_node: str ="",
+
     ) -> str:
         async def _run_graph():
+
+            instructions_node_list = NODE_MODEL_CONFIG["InstructionsNode"]
+            writing_node_list = NODE_MODEL_CONFIG["WritingNode"]
+            reflection_node_list= NODE_MODEL_CONFIG["FollowUpNode"]
+
+            if len(instructions_node)>0:
+                instructions_node_list = [item.strip() for item in instructions_node.split(",")]
+            if len(writing_node)>0:
+                writing_node_list = [item.strip() for item in writing_node.split(",")]
+            if len(reflection_node)>0:
+                reflection_node_list = [item.strip() for item in reflection_node.split(",")]                
+
+            logger.info(f"use instructions_node_list={instructions_node_list}")
+            logger.info(f"use writing_node_list={writing_node_list}")
+            logger.info(f"use reflection_node_list={reflection_node_list}")
+
             state = State(
                 configuration=Configuration(
                     article_topic=article_topic, domains=domains, urls=urls or [],
                     number_of_queries=number_of_queries, scraping_model=scraping_model,
                     max_search_results=max_search_results, search_days=search_days,
                     extraction_mode=extraction_mode, provide_llm_facts=provide_llm_facts,
-                    additional_instructions=additional_instructions
+                    additional_instructions=additional_instructions,
+                    instructions_node = instructions_node_list,
+                    writing_node =writing_node_list,
+                    reflection_node=reflection_node_list,
                 )
             )
             graph = Graph(nodes=list(ArticleWriterBaseNode.__subclasses__()))

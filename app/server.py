@@ -40,6 +40,10 @@ class ArticleRequest(BaseModel):
     extraction_mode: Literal["markdown", "html", "llm"] = "markdown"
     provide_llm_facts: Literal["yes", "no"] = "no"  # <-- new parameter added
     additional_instructions: Optional[str] = None
+    instructions_node: str
+    writing_node: str
+    reflection_node: str
+
 
 
 def send_response(id, article_text, topic):
@@ -49,27 +53,13 @@ def send_response(id, article_text, topic):
         logger.info(f"send response {data}")
         with httpx.Client() as client:
             response = client.post(webhook_url, json=data)
-        logger.info(f"")
+        logger.info(f"------------------->>>END {id} {topic}")
     except httpx.RequestError as e:
         logger.info(f"An error occurred while making the request: {e}")
         return "Error occurred during the request."
 
-    # logger.info the status code
     logger.info(f"Response status code: {response.status_code}")
 
-    # Try to parse JSON if the response contains JSON content
-    try:
-        if response.headers.get("Content-Type", "").startswith("application/json"):
-            logger.info(
-                "Response JSON content:", response.json()
-            )  # JSON response content
-        else:
-            logger.info(
-                "Response text content:", response.text
-            )  # Fallback to logger.infoing raw text
-    except Exception as e:
-        logger.info(f"Error in sending response {e}")
-        logger.info(response.text)
 
 
 def worker(q):
@@ -102,6 +92,9 @@ def worker(q):
                     extraction_mode=job.extraction_mode,
                     provide_llm_facts=job.provide_llm_facts,  # <-- pass the parameter
                     additional_instructions=job.additional_instructions,
+                    instructions_node=job.instructions_node,
+                    writing_node=job.writing_node,
+                    reflection_node=job.reflection_node,
                 )
             except Exception as e:
                 logger.error(f"Exception in  ArticleWriter.write_article {e}")
@@ -149,17 +142,6 @@ def create_article(request_data: List[ArticleRequest]):
         job_queue.put(it)
         logger.info(f"queue: {job_queue.qsize()}")
 
-    # final_text = ArticleWriter.write_article(
-    #     article_topic=request_data.topic,
-    #     domains=request_data.domains,
-    #     number_of_queries=request_data.number_of_queries,
-    #     scraping_model=request_data.scraping_model,
-    #     max_search_results=request_data.max_search_results,
-    #     search_days=request_data.search_days,
-    #     extraction_mode=request_data.extraction_mode
-    # )
-    # logger.info(f"final_text {final_text}")
-    # return {"article": final_text}
     return {"status": "OK"}
 
 
