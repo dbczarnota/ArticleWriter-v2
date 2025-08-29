@@ -116,7 +116,7 @@ def worker(q):
             q.task_done()  # Mark the job as done
 
 
-job_queue = queue.Queue()
+job_queue = queue.Queue(maxsize=100)
 
 num_workers = 5
 threads = []
