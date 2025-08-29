@@ -88,15 +88,15 @@ class ArticleWriterBaseNode(BaseNode, abc.ABC):
 # # Centralized Model Configuration
 # ###############################################################################
 NODE_MODEL_CONFIG = {
-    "SearchNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "LlmKnowledgeNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "ParsingNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "DataExtractionNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "InstructionsNode": ["gemini-2.5-pro","gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
-    "WritingNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
-    "ReflectionNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.0-flash"],
-    "FollowUpNode": ["gemini-2.5-pro", "gemini-2.0-flash", "gpt-5", "gemini-2.0-flash"],
-    "UsageTracking": ["gemini-2.0-flash", "gpt-5-mini", "gemini-2.0-flash"],
+    "SearchNode": ["gemini-2.5-flash", "gpt-5-mini"],
+    "LlmKnowledgeNode": ["gemini-2.5-flash", "gpt-5-mini"],
+    "ParsingNode": ["gemini-2.5-flash", "gpt-5-mini"],
+    "DataExtractionNode": ["gemini-2.5-flash", "gpt-5-mini"],
+    "InstructionsNode": ["gemini-2.5-pro","gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
+    "WritingNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
+    "ReflectionNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
+    "FollowUpNode": ["gemini-2.5-pro", "gemini-2.5-flash", "gpt-5", "gemini-2.5-flash"],
+    "UsageTracking": ["gemini-2.5-flash", "gpt-5-mini", "gemini-2.5-flash"],
 }
 
 ###############################################################################
@@ -780,8 +780,17 @@ class ArticleWriter:
 # Main
 ###############################################################################
 if __name__ == "__main__":
+    from rich.logging import RichHandler
+
+    logger.setLevel(logging.DEBUG)
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s - %(message)s",
+        handlers=[RichHandler(rich_tracebacks=True, markup=True)],
+    )
+    
     article = ArticleWriter.write_article(
-        article_topic="Miłość i wielkie pieniądze. Cristiano dał jej pierścionek, ale umowę podpisali już dawno. Ujawniamy kwoty.",
+        article_topic="Katastrofa F-16 w Radomiu.",
         domains=[],
         urls=[],
         number_of_queries=1,

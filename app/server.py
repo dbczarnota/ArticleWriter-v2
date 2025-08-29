@@ -16,9 +16,16 @@ import time
 app = FastAPI()
 
 import logging
+from rich.logging import RichHandler
+
+logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(message)s",
+        handlers=[RichHandler(rich_tracebacks=True, markup=True)],
+    )
+
 
 logger = logging.getLogger(__name__)
-
 
 # Define a Pydantic model for the request body
 class ArticleRequest(BaseModel):
@@ -111,7 +118,7 @@ def worker(q):
 
 job_queue = queue.Queue()
 
-num_workers = 5
+num_workers = 1
 threads = []
 for _ in range(num_workers):
     t = threading.Thread(target=worker, args=(job_queue,))

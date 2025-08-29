@@ -163,10 +163,10 @@ class ResilientNode(BaseNode, abc.ABC):
 # # Centralized Model Initialization
 # ###############################################################################
 NODE_MODEL_CONFIG = {
-    "SearchNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "LlmKnowledgeNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "ParsingNode": ["gemini-2.0-flash", "gpt-5-mini"],
-    "DataExtractionNode": ["gemini-2.0-flash", "gemini-2.5-pro", "gpt-5"],
+    "SearchNode": ["gemini-2.5-flash", "gpt-5-mini"],
+    "LlmKnowledgeNode": ["gemini-2.5-flash", "gpt-5-mini"],
+    "ParsingNode": ["gemini-2.5-flash", "gpt-5-mini"],
+    "DataExtractionNode": ["gemini-2.5-flash", "gemini-2.5-pro", "gpt-5"],
     "InstructionsNode": ["gemini-2.5-pro", "gpt-5"],
     "WritingNode": ["gemini-2.5-pro", "gpt-5"],
     "ReflectionNode": ["gemini-2.5-pro", "gpt-5"],

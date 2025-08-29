@@ -4,9 +4,9 @@ import os
 from dotenv import load_dotenv
 from typing import List, Optional
 from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.providers.google_gla import GoogleGLAProvider
-from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.models.gemini import GeminiModel
+from pydantic_ai.providers.google import GoogleProvider
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.google import GoogleModel
 from pydantic_ai.models.groq import GroqModel
 from pydantic_ai.providers.groq import GroqProvider
 from pydantic_ai.models.fallback import FallbackModel
@@ -60,7 +60,7 @@ def setup_fallback_model(
 
     # Define which models depend on which provider.
     openai_models = {"gpt-4o-mini", "o3-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1", "gpt-5","gpt-5-mini"}
-    gemini_models = {"gemini-2.5-pro", "gemini-2.5-flash-preview-04-17", "gemini-2.0-flash", "gemini-2.5-pro-preview-05-06", "gemma-3-27b-it", "gemini-2.5-pro-preview-06-05"}
+    gemini_models = {"gemini-2.5-pro", "gemini-2.5-flash-preview-04-17", "gemini-2.5-flash", "gemini-2.5-pro-preview-05-06", "gemma-3-27b-it", "gemini-2.5-pro-preview-06-05"}
     groq_models   = {"meta-llama/llama-4-scout-17b-16e-instruct", "meta-llama/llama-4-maverick-17b-128e-instruct"}
     openrouter_models = {"google/gemma-3-27b-it", "qwen/qwen-vl-plus", "deepseek/deepseek-r1"}
     ollama_models = {"ollama/gemma3:4b", "ollama/gemma3:27b"}
@@ -82,7 +82,8 @@ def setup_fallback_model(
         effective_openai_api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
         if effective_openai_api_key:
             try:
-                openai_provider = OpenAIProvider(api_key=effective_openai_api_key)
+                custom_http_client = AsyncClient(timeout=30)
+                openai_provider = OpenAIProvider(api_key=effective_openai_api_key, http_client=custom_http_client)
                 logger.debug("OpenAI Provider initialized successfully.")
             except Exception as e:
                 logger.warning(f"Failed to initialize OpenAI Provider: {e}", exc_info=True)
@@ -97,7 +98,7 @@ def setup_fallback_model(
         effective_gemini_api_key = gemini_api_key or os.getenv('GEMINI_API_KEY')
         if effective_gemini_api_key:
             try:
-                gemini_provider = GoogleGLAProvider(api_key=effective_gemini_api_key)
+                gemini_provider = GoogleProvider(api_key=effective_gemini_api_key)
                 logger.debug("Google GLA Provider initialized successfully.")
             except Exception as e:
                 logger.warning(f"Failed to initialize Google GLA Provider: {e}", exc_info=True)
@@ -128,12 +129,12 @@ def setup_fallback_model(
         effective_openrouter_api_key = openrouter_api_key or os.getenv('OPENROUTER_API_KEY')
         if effective_openrouter_api_key:
             try:
-                # custom_http_client = AsyncClient(timeout=30)
+                custom_http_client = AsyncClient(timeout=30)
                 openrouter_provider = OpenAIProvider(
                 # base_url='https://openrouter.ai/api/v1',
                 base_url="https://openrouter.ai/api/v1/chat/completions",
                 api_key=effective_openrouter_api_key,
-                # http_client=custom_http_client
+                http_client=custom_http_client
                 # client_kwargs={'timeout': 30.0}
                 )
                 
@@ -170,11 +171,11 @@ def setup_fallback_model(
     # Group model definitions by provider to simplify initialization.
     # Structure: (provider_instance, ModelClass, set_of_model_name_strings)
     model_definition_groups = [
-        (openai_provider, OpenAIModel, openai_models),
-        (gemini_provider, GeminiModel, gemini_models),
+        (openai_provider, OpenAIChatModel, openai_models),
+        (gemini_provider, GoogleModel, gemini_models),
         (groq_provider, GroqModel, groq_models),
-        (openrouter_provider, OpenAIModel, openrouter_models),
-        (ollama_provider, OpenAIModel, ollama_models),
+        (openrouter_provider, OpenAIChatModel, openrouter_models),
+        (ollama_provider, OpenAIChatModel, ollama_models),
     ]
 
     for provider, model_class, model_names in model_definition_groups:
@@ -247,7 +248,7 @@ if __name__ == "__main__":
         # "google/gemma-3-27b-it",
         "gpt-4o-mini",
         "o3-mini",
-        "gemini-2.0-flash",
+        "gemini-2.5-flash",
         "meta-llama/llama-4-scout-17b-16e-instruct"
     ]
     
