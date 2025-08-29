@@ -118,7 +118,7 @@ def worker(q):
 
 job_queue = queue.Queue()
 
-num_workers = 1
+num_workers = 5
 threads = []
 for _ in range(num_workers):
     t = threading.Thread(target=worker, args=(job_queue,))
