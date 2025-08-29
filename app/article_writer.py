@@ -259,7 +259,7 @@ class ScrapingNode(ArticleWriterBaseNode):
         logger.info(f"Identified {len(urls_to_scrape)} unique URLs to scrape.")
         
         run_config = CrawlerRunConfig(
-            extraction_strategy=None,
+            # extraction_strategy=None,
             excluded_tags=['nav', 'header', 'footer', 'aside', 'form', 'script', 'style'],
             remove_overlay_elements=True,
             process_iframes=False,
@@ -276,6 +276,7 @@ class ScrapingNode(ArticleWriterBaseNode):
         async with AsyncWebCrawler() as crawler:
             results = await crawler.arun_many(
                 dispatcher = SemaphoreDispatcher(),
+                process_iframes=False,
                 urls=urls_to_scrape, 
                 config=run_config)
             # Defensive check: If the crawler fails internally and returns None, treat it as an empty list.
