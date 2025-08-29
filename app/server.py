@@ -67,8 +67,8 @@ def send_response(id, article_text, topic):
             logger.info(
                 "Response text content:", response.text
             )  # Fallback to logger.infoing raw text
-    except httpx.JSONDecodeError:
-        logger.info("Response is not JSON format. Raw content:")
+    except Exception as e:
+        logger.info(f"Error in sending response {e}")
         logger.info(response.text)
 
 
