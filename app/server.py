@@ -40,9 +40,9 @@ class ArticleRequest(BaseModel):
     extraction_mode: Literal["markdown", "html", "llm"] = "markdown"
     provide_llm_facts: Literal["yes", "no"] = "no"  # <-- new parameter added
     additional_instructions: Optional[str] = None
-    instructions_node: str
-    writing_node: str
-    reflection_node: str
+    instructions_node: Optional[str]
+    writing_node: Optional[str]
+    reflection_node: Optional[str]
 
 
 
@@ -92,9 +92,9 @@ def worker(q):
                     extraction_mode=job.extraction_mode,
                     provide_llm_facts=job.provide_llm_facts,  # <-- pass the parameter
                     additional_instructions=job.additional_instructions,
-                    instructions_node=job.instructions_node,
-                    writing_node=job.writing_node,
-                    reflection_node=job.reflection_node,
+                    instructions_node=job.instructions_node or "",
+                    writing_node=job.writing_node or "",
+                    reflection_node=job.reflection_node or "",
                 )
             except Exception as e:
                 logger.error(f"Exception in  ArticleWriter.write_article {e}")
