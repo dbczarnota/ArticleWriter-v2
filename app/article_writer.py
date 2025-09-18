@@ -93,7 +93,7 @@ NODE_MODEL_CONFIG = {
     "ParsingNode": ["gemini-2.5-flash", "gpt-5-mini"],
     "DataExtractionNode": ["gemini-2.5-flash", "gpt-5-mini"],
     "InstructionsNode": ["gemini-2.5-pro","gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
-    "WritingNode": ["moonshotai/kimi-k2-instruct-0905", "gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
+    "WritingNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
     "ReflectionNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
     "FollowUpNode": ["gemini-2.5-pro", "gemini-2.5-flash", "gpt-5", "gemini-2.5-flash"],
     "UsageTracking": ["gemini-2.5-flash", "gpt-5-mini", "gemini-2.5-flash"],
