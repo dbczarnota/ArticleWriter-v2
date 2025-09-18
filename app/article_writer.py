@@ -93,7 +93,7 @@ NODE_MODEL_CONFIG = {
     "ParsingNode": ["gemini-2.5-flash", "gpt-5-mini"],
     "DataExtractionNode": ["gemini-2.5-flash", "gpt-5-mini"],
     "InstructionsNode": ["gemini-2.5-pro","gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
-    "WritingNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
+    "WritingNode": ["moonshotai/kimi-k2-instruct-0905", "gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
     "ReflectionNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
     "FollowUpNode": ["gemini-2.5-pro", "gemini-2.5-flash", "gpt-5", "gemini-2.5-flash"],
     "UsageTracking": ["gemini-2.5-flash", "gpt-5-mini", "gemini-2.5-flash"],
@@ -808,15 +808,15 @@ class ArticleWriter:
 if __name__ == "__main__":
     from rich.logging import RichHandler
 
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s - %(message)s",
         handlers=[RichHandler(rich_tracebacks=True, markup=True)],
     )
     
     article = ArticleWriter.write_article(
-        article_topic="Katastrofa F-16 w Radomiu.",
+        article_topic="Kosiniak-Kamysz z wizytą w Kijowie. Szef MON ogłosił podpisanie istotnego porozumienia",
         domains=[],
         urls=[],
         number_of_queries=1,
