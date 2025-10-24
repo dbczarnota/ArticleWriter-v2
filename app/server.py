@@ -19,7 +19,7 @@ import logging
 from rich.logging import RichHandler
 
 logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format="%(asctime)s - %(message)s",
         handlers=[RichHandler(rich_tracebacks=True, markup=True)],
     )
@@ -111,7 +111,7 @@ def worker(q):
 
 job_queue = queue.Queue(maxsize=100)
 
-num_workers = 5
+num_workers = 3
 threads = []
 for _ in range(num_workers):
     t = threading.Thread(target=worker, args=(job_queue,))
