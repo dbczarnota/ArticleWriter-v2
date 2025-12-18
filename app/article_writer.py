@@ -56,7 +56,7 @@ class ArticleWriterBaseNode(BaseNode, abc.ABC):
         """
         node_name = self.__class__.__name__
         try:
-            logger.info(f"Running {node_name}...")
+            logger.info(f"Running {node_name}... for '{ctx.state.configuration.article_topic}'")
             result = await self._execute(ctx)
             logger.info(f"{node_name} completed successfully.")
             return result
@@ -185,10 +185,10 @@ class SearchNode(ArticleWriterBaseNode):
         logger.info(f'Search queries generated: {ctx.state.research_plan.queries}')
 
         if ctx.state.configuration.provide_llm_facts == "yes":
-            logger.info("Transitioning to LlmKnowledgeNode")
+            logger.info(f"Transitioning to LlmKnowledgeNode for {ctx.state.configuration.article_topic}")
             return LlmKnowledgeNode()
         else:
-            logger.info("Transitioning to ScrapingNode")
+            logger.info(f"Transitioning to ScrapingNode for {ctx.state.configuration.article_topic}")
             return ScrapingNode()
 
 @dataclass
@@ -216,7 +216,7 @@ class LlmKnowledgeNode(ArticleWriterBaseNode):
         ctx.state.researched_info.facts_from_llm = result.output
         logger.info(f'LLM facts retrieved: {len(ctx.state.researched_info.facts_from_llm)} items.')
 
-        logger.info("Transitioning to ScrapingNode")
+        logger.info(f"Transitioning to ScrapingNode for {ctx.state.configuration.article_topic}")
         return ScrapingNode()
 
 @dataclass
@@ -299,7 +299,7 @@ class ScrapingNode(ArticleWriterBaseNode):
                     logger.error(f"Failed to scrape {result.url}: {result.error_message}")
 
         ctx.state.scraped_pages = scraped_pages_data
-        logger.info(f"Scraping complete. Processed {len(scraped_pages_data)} pages.")
+        logger.info(f"Scraping complete. Processed {len(scraped_pages_data)} pages for {ctx.state.configuration.article_topic}")
         return ParsingNode()
 
 class ParsedArticle(BaseModel):
@@ -353,7 +353,7 @@ class ParsingNode(ArticleWriterBaseNode):
                 page.update({'webpage_type': 'other', 'parsed_article': None, 'parsing_error': str(e)})
 
         await asyncio.gather(*(process_page(page) for page in pages_to_process))
-        logger.info("Finished parsing all pages.")
+        logger.info(f"Finished parsing all pages for {ctx.state.configuration.article_topic}")
         return DataExtractionNode()
 
 class Quote(BaseModel):
