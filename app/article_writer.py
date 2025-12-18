@@ -88,15 +88,15 @@ class ArticleWriterBaseNode(BaseNode, abc.ABC):
 # # Centralized Model Configuration
 # ###############################################################################
 NODE_MODEL_CONFIG = {
-    "SearchNode": ["gemini-2.5-flash", "gpt-5-mini"],
-    "LlmKnowledgeNode": ["gemini-2.5-flash", "gpt-5-mini"],
-    "ParsingNode": ["gemini-2.5-flash", "gpt-5-mini"],
-    "DataExtractionNode": ["gemini-2.5-flash", "gpt-5-mini"],
-    "InstructionsNode": ["gemini-2.5-pro","gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
-    "WritingNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
-    "ReflectionNode": ["gemini-2.5-pro", "gemini-2.5-pro", "gpt-5", "gemini-2.5-flash"],
-    "FollowUpNode": ["gemini-2.5-pro", "gemini-2.5-flash", "gpt-5", "gemini-2.5-flash"],
-    "UsageTracking": ["gemini-2.5-flash", "gpt-5-mini", "gemini-2.5-flash"],
+    "SearchNode": ["gemini-3-flash-preview", "gemini-3-flash-preview", "gemini-flash-latest", "gemini-2.5-flash", "gpt-5-mini"],
+    "LlmKnowledgeNode": ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-2.5-flash", "gpt-5-mini"],
+    "ParsingNode": ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-2.5-flash", "gpt-5-mini"],
+    "DataExtractionNode": ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-2.5-flash", "gpt-5-mini"],
+    "InstructionsNode": ["gemini-3-flash-preview", "gemini-2.5-pro","gemini-2.5-pro", "gemini-3-flash-preview"],
+    "WritingNode": ["gemini-3-pro-preview", "gemini-2.5-pro", "gemini-3-flash-preview"],
+    "ReflectionNode": ["gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-pro", "gemini-3-flash-preview"],
+    "FollowUpNode": ["gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-3-flash-preview"],
+    "UsageTracking": ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-flash-latest"],
 }
 
 ###############################################################################
@@ -816,11 +816,11 @@ if __name__ == "__main__":
     )
     
     article = ArticleWriter.write_article(
-        article_topic="Kosiniak-Kamysz z wizytą w Kijowie. Szef MON ogłosił podpisanie istotnego porozumienia",
+        article_topic="Nawrocki podjął decyzję. Okrągły stół znika z Pałacu Prezydenckiego. Dziś skończył się postkomunizm",
         domains=[],
         urls=[],
-        number_of_queries=1,
-        max_search_results=2,
+        number_of_queries=2,
+        max_search_results=4,
         search_days=30,
         provide_llm_facts="no",
         additional_instructions=None
