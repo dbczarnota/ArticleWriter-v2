@@ -114,7 +114,7 @@ NODE_MODEL_CONFIG = {
     "ParsingNode": ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-2.5-flash", "gpt-5-mini"],
     "DataExtractionNode": ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-2.5-flash", "gpt-5-mini"],
     "InstructionsNode": ["gemini-3-flash-preview", "gemini-2.5-pro","gemini-2.5-pro", "gemini-3-flash-preview"],
-    "WritingNode": ["gemini-3-flash-preview", "gemini-3-pro-preview", "gemini-2.5-pro", "gemini-3-flash-preview"],
+    "WritingNode": ["gemini-3-pro-preview", "gemini-2.5-pro", "gemini-3-flash-preview"],
     "ReflectionNode": ["gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-pro", "gemini-3-flash-preview"],
     "FollowUpNode": ["gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-3-flash-preview"],
     "UsageTracking": ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-flash-latest"],
