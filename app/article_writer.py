@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 import os
 import abc
+import jinja2
 from html import escape
 from dataclasses import dataclass
 import logging
@@ -35,6 +36,26 @@ import tiktoken
 
 logger = logging.getLogger(__name__)
 current_date = date_type.today()
+
+###############################################################################
+# Template Rendering Helper
+###############################################################################
+def render_prompt(template_str: str, **kwargs) -> str:
+    template = jinja2.Template(template_str)
+    return template.render(**kwargs)
+
+###############################################################################
+# Debug Helper
+###############################################################################
+def debug_dump(label: str, content: str):
+    # To disable, simply comment out the lines below
+    pass
+    # with open("debug_dump.txt", "a", encoding="utf-8") as f:
+    #     f.write(f"\n{'='*80}\n")
+    #     f.write(f"DEBUG: {label}\n")
+    #     f.write(f"{'='*80}\n")
+    #     f.write(str(content))
+    #     f.write("\n")
 
 ###############################################################################
 # New Simplified Base Node with Centralized Error Handling
@@ -93,7 +114,7 @@ NODE_MODEL_CONFIG = {
     "ParsingNode": ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-2.5-flash", "gpt-5-mini"],
     "DataExtractionNode": ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-2.5-flash", "gpt-5-mini"],
     "InstructionsNode": ["gemini-3-flash-preview", "gemini-2.5-pro","gemini-2.5-pro", "gemini-3-flash-preview"],
-    "WritingNode": ["gemini-3-pro-preview", "gemini-2.5-pro", "gemini-3-flash-preview"],
+    "WritingNode": ["gemini-3-flash-preview", "gemini-3-pro-preview", "gemini-2.5-pro", "gemini-3-flash-preview"],
     "ReflectionNode": ["gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-pro", "gemini-3-flash-preview"],
     "FollowUpNode": ["gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-3-flash-preview"],
     "UsageTracking": ["gemini-3-flash-preview", "gemini-flash-latest", "gemini-flash-latest"],
@@ -163,7 +184,8 @@ class SearchNode(ArticleWriterBaseNode):
         if additional_instructions and additional_instructions.lower() not in ["none", ""]:
             additional_instructions_formatted = f"### Additional Instructions and Context:\n{additional_instructions}\nThey are very important and must be included."
 
-        prompt = research_agent_prompt.format(
+        prompt = render_prompt(
+            research_agent_prompt,
             current_date=ctx.state.current_date,
             article_topic=ctx.state.configuration.article_topic,
             number_of_queries=ctx.state.configuration.number_of_queries,
@@ -181,6 +203,7 @@ class SearchNode(ArticleWriterBaseNode):
             raise ValueError("SearchNode agent run returned invalid data.")
 
         ctx.state.research_plan = result.output
+        # debug_dump("RESEARCH PLAN", ctx.state.research_plan.model_dump_json(indent=2))
         ctx.state.research_plan.queries.append(ctx.state.configuration.article_topic)
         logger.info(f'Search queries generated: {ctx.state.research_plan.queries}')
 
@@ -197,9 +220,10 @@ class LlmKnowledgeNode(ArticleWriterBaseNode):
         if not ctx.state.research_plan:
             raise ValueError("Cannot execute LlmKnowledgeNode: research_plan is missing.")
 
-        prompt = llmknowledge_agent_prompt.format(
+        prompt = render_prompt(
+            llmknowledge_agent_prompt,
             article_topic=ctx.state.configuration.article_topic,
-            initial_plan=getattr(ctx.state.research_plan, 'plan', "No plan available"),
+            # initial_plan=getattr(ctx.state.research_plan, 'plan', "No plan available"),
             search_queries=getattr(ctx.state.research_plan, 'queries', []),
             current_date=ctx.state.current_date
         )
@@ -331,7 +355,7 @@ class ParsingNode(ArticleWriterBaseNode):
                 article_body = enc.decode(tokens[:MAX_TOKENS])
                 page["article_body_truncated"] = True
 
-            prompt = parsing_agent_prompt.format(html=article_body, current_date=ctx.state.current_date)
+            prompt = render_prompt(parsing_agent_prompt, html=article_body, current_date=ctx.state.current_date)
             
             try:
                 result, attempts = await run_with_retry(
@@ -345,6 +369,7 @@ class ParsingNode(ArticleWriterBaseNode):
                         'webpage_type': result.output.webpage_type,
                         'parsed_article': result.output.parsed_article
                     })
+                    # debug_dump(f"PARSED ARTICLE: {page_url}", result.output.model_dump_json(indent=2))
                     logger.debug(f"Page {page_url}: Successfully parsed.")
                 else:
                     raise ValueError("Parsing agent returned empty data.")
@@ -394,7 +419,7 @@ class ResearchedArticle(BaseModel):
 class DataExtractionNode(ArticleWriterBaseNode):
     async def _execute(self, ctx: GraphRunContext[State]) -> InstructionsNode | End:
         pages_to_process = [
-            p for p in ctx.state.scraped_pages if p and p.get('article_body') and not p.get('parsing_error')
+            p for p in ctx.state.scraped_pages if p and p.get('parsed_article') and not p.get('parsing_error')
         ]
         if not pages_to_process:
             logger.warning("No successfully parsed pages to extract data from.")
@@ -403,16 +428,17 @@ class DataExtractionNode(ArticleWriterBaseNode):
         
         async def process_page(page: dict):
             page_url = page.get('url', 'unknown URL')
-            parsed_article_body = page.get("article_body", "")
+            parsed_article_body = page.get("parsed_article", "")
             title = page.get('title', "Title not found")
             
-            article_text_for_prompt = article_snippet.format(
+            article_text_for_prompt = render_prompt(
+                article_snippet,
                 url=page_url, title=title, description=page.get("description", ""), article_text=parsed_article_body
             )
             page['formated_article'] = article_text_for_prompt
-            page['formated_article_short'] = article_snippet_short.format(title=title, article_text=parsed_article_body)
+            page['formated_article_short'] = render_prompt(article_snippet_short, url=page_url, title=title, article_text=parsed_article_body)
             
-            prompt = data_extraction_agent_prompt.format(text=article_text_for_prompt, topic=ctx.state.configuration.article_topic)
+            prompt = render_prompt(data_extraction_agent_prompt, text=article_text_for_prompt, topic=ctx.state.configuration.article_topic)
 
             try:
                 result, attempts = await run_with_retry(
@@ -497,9 +523,10 @@ class InstructionsNode(ArticleWriterBaseNode):
         if additional_instructions and additional_instructions.lower() not in ["none", ""]:
             additional_instructions_formatted = f"### Additional Instructions and Context:\n{additional_instructions}"
 
-        user_prompt = instructions_agent_prompt.format(
+        user_prompt = render_prompt(
+            instructions_agent_prompt,
             article_texts=ctx.state.researched_info.article_texts or "No reference articles.",
-            plan=ctx.state.research_plan.plan if ctx.state.research_plan else "No plan.",
+            # plan=ctx.state.research_plan.plan if ctx.state.research_plan else "No plan.",
             topic=ctx.state.configuration.article_topic,
             example_articles=example_articles,
             additional_instructions_formatted=additional_instructions_formatted,
@@ -515,6 +542,8 @@ class InstructionsNode(ArticleWriterBaseNode):
             raise ValueError("InstructionsNode agent returned empty data.")
         
         ctx.state.instructions = result.output
+        # debug_dump("INSTRUCTIONS", ctx.state.instructions)
+        # logger.info(f"InstructionsNode completed successfully.\nInstructions: {ctx.state.instructions}")
         return WritingNode()
 
 @dataclass
@@ -533,7 +562,8 @@ class WritingNode(ArticleWriterBaseNode):
                 for q in ctx.state.researched_info.quotes or []
             ]) or "No quotes."
             
-            user_prompt = writing_agent_prompt.format(
+            user_prompt = render_prompt(
+                writing_agent_prompt,
                 topic=ctx.state.configuration.article_topic, facts=facts_str, keywords=keywords_str,
                 quotes=quotes_str, instructions=ctx.state.instructions, current_date=ctx.state.current_date,
                 example_articles=example_articles
@@ -555,6 +585,7 @@ class WritingNode(ArticleWriterBaseNode):
             raise ValueError("WritingNode agent returned empty data.")
 
         ctx.state.messages = result.all_messages()
+        # debug_dump(f"WRITING ROUND {ctx.state.reflection_round}", result.output)
 
         if ctx.state.reflection_round > 0:
             ctx.state.finished_article = result.output
@@ -568,10 +599,12 @@ class ReflectionNode(ArticleWriterBaseNode):
         if not ctx.state.messages:
             raise ValueError("Message history is empty. Cannot perform reflection.")
 
-        user_prompt = reflection_agent_prompt.format(
+        user_prompt = render_prompt(
+            reflection_agent_prompt,
             benchmark_articles=ctx.state.researched_info.article_texts or "No benchmark articles.",
             example_articles=example_articles
         )
+        # debug_dump("REFLECTION AGENT PROMPT", user_prompt)
 
         result, attempts = await run_with_retry(
             model_list=ctx.state.configuration.reflection_node,
@@ -589,6 +622,8 @@ class ReflectionNode(ArticleWriterBaseNode):
             f'--- Benchmark Articles for Reference ---\n'
             f'{ctx.state.researched_info.article_texts or "N/A"}'
         )
+        # debug_dump("REFLECTION PROMPT", ctx.state.reflection_prompt)
+        # logger.info(f"ReflectionNode completed successfully.\nReflection Prompt: {ctx.state.reflection_prompt}")
         ctx.state.reflection_round += 1
         return WritingNode()
 
@@ -612,7 +647,8 @@ class FollowUpNode(ArticleWriterBaseNode):
             
             if all_facts or all_quotes_text:
                 try:
-                    usage_prompt = usage_tracking_agent_prompt.format(
+                    usage_prompt = render_prompt(
+                        usage_tracking_agent_prompt,
                         article_text=ctx.state.finished_article,
                         list_of_facts="\n- ".join(all_facts),
                         list_of_quotes="\n- ".join(all_quotes_text)
@@ -635,7 +671,7 @@ class FollowUpNode(ArticleWriterBaseNode):
                 result, attempts = await run_with_retry(
                     model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
                     output_type=FollowUp,
-                    user_prompt=followup_agent_prompt.format(finished_article=ctx.state.finished_article)
+                    user_prompt=render_prompt(followup_agent_prompt, finished_article=ctx.state.finished_article)
                 )
                 ctx.state.model_usage.append({'node': self.__class__.__name__, 'attempts': attempts})
                 follow_up_data = result.output if result and result.output else FollowUp()
@@ -816,11 +852,11 @@ if __name__ == "__main__":
     )
     
     article = ArticleWriter.write_article(
-        article_topic="Nawrocki podjął decyzję. Okrągły stół znika z Pałacu Prezydenckiego. Dziś skończył się postkomunizm",
+        article_topic="Sylwester w Elblągu odwołany - sytuacja jest krytyczna",
         domains=[],
         urls=[],
         number_of_queries=2,
-        max_search_results=4,
+        max_search_results=2,
         search_days=30,
         provide_llm_facts="no",
         additional_instructions=None
