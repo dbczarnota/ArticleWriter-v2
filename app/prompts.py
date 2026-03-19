@@ -336,6 +336,10 @@ Incorporate these **important keywords** for SEO (where appropriate):
 These are example, published articles from your web magazine covering different topics. The **style, tone, format, structure and length** of the new article should be similar:
 {{ example_articles }}
 
+### Editorial Guidelines (Context & Style):
+The following are the magazine's editorial guidelines. Note that you do NOT invent the topic (the topic is already provided above), so the section about topics is just for your context. However, you MUST heavily apply the practical tips regarding titles, tone, language, and structuring to make the article as engaging as possible:
+{{ editor_guidelines }}
+
 ### Writing Guidelines:
 - Follow these **detailed instructions** carefully:
 {{ instructions }}
@@ -365,6 +369,10 @@ reflection_agent_prompt = """You are an **Editor-in-Chief**. Your task is to **r
 - **Take high-quality benchmark articles into account** - use them to compare and score revised article against them as well as to co suggest enhancements
 - **Avoid instructing the other agent to verify or double-check any details; it is your job so do it and solely provide actionable advice.**
 - **Check the style** - it should be similar to style of the high-quality benchmark articles and not overly flowery and to the point.
+
+### Editorial Guidelines (Context & Evaluation):
+Review the article against the magazine's editorial guidelines provided below. Keep in mind that the topic of the article is already set, so do not suggest changing the topic. However, ensure the article strictly follows the guidelines regarding title construction (clickbait, emotion, curiosity gap), tone, and vocabulary.
+{{ editor_guidelines }}
 
 ### Actionable Instructions for the AI Writing Agent:
 - **Do not include any commentary or meta discussion beyond this prompt.**
@@ -398,26 +406,11 @@ Please analyze it thoroughly and perform the following steps:
    - Highlight at least one unique or intriguing detail from the article.
    - Pose some form of puzzle, mystery, or question to entice readers.
    - Differ from each other in style, tone, or focus.
+   - Strictly follow the provided Editorial Guidelines for title creation.
     
-    You can find examples of good titles for various articles—use their style and structure for inspiration:
-    #####
-    Szokujące sceny na proteście Bąkiewicza, do akcji wkroczyła policja. Szef MSWiA ostro komentuje
-    Mentzen już zaciera ręce. Tak chce przechytrzyć Kaczyńskiego
-    To warzywo jest kopalnią witamin. Jednak Polacy kręcą na nie nosem
-    Niesłychane, co poseł Konfederacji wypalił o Kaczyńskim. Jego słowa obiegły całą Polskę
-    Rzecznik Nawrockiego nie wytrzymał. Wałęsa usłyszał, co o nim myślą
-    Wjechał konno i miał suknię z peleryną. Ten polski ślub przebił wszystko
-    Kto tak naprawdę zapłacił za wesele prezydentówny? Są niepodważalne dowody, które rozwiewają wątpliwości
-    Nigdy nie dodawaj tego składnika do sałatki greckiej. Grecy poczują się urażeni
-    Myslovitz przerwał koncert przez... Brauna. Zrobiło się poważnie
-    Baśniowa kraina tuż przy polskiej granicy – to jedynie 3,5 godziny jazdy z Krakowa
-    Było symbolem Malty. 8 lat temu runęło do morza
-    Skiba nie wytrzymał po słowach Chorosińskiej. Z riposty zrobił się mem
-    Największy lęk Joanny Kołaczkowskiej stał się prawdą. O kancerofobii mówiła głośno od lat
-    Zakwitły już nad Bałtykiem. Są piękne, ale śmiertelnie niebezpieczne
-    Jak nie robić zdjęć w podróży. Takie zachowanie to naruszenie zasad
-    "To jest skandal!" Miał zamiatać ulice, ale PAD go ułaskawił. Komentarze mówią wszystko o... Dudzie
-    #####
+    ### Editorial Guidelines (Title Construction):
+    Use these guidelines to create the titles, applying the practical tips and structures described:
+    {{ editor_guidelines }}
     
 2. Suggest 5 new article topics that relate—directly or loosely—to the content of the "finished_article." Each topic should:
    - Be interesting enough to link from or to the original article.
@@ -425,6 +418,7 @@ Please analyze it thoroughly and perform the following steps:
 
 
 """
+
 
 usage_tracking_agent_prompt = """
 You are a meticulous auditor. Your task is to analyze a finished article and determine which of the provided facts and quotes were used.
@@ -446,4 +440,96 @@ You are a meticulous auditor. Your task is to analyze a finished article and det
 4.  Identify which facts and quotes from the lists are present in the article. **A fact or quote is considered "used" even if it has been slightly rephrased, paraphrased, or partially quoted**, as long as the core information is clearly present.
 5.  Your output must be a list of the exact, original strings of the facts and quotes that you identified as being used. Do not include any items that were not used.
 
+"""
+
+
+editor_guidelines = """
+
+Witaj w zespole Styl.fm! Zanim zaczniesz pisać swoje pierwsze teksty, musisz zrozumieć jedną, najważniejszą zasadę naszej pracy: **w internecie nie sprzedajemy suchych informacji – sprzedajemy emocje, ciekawość i obietnicę.**
+
+Użytkownik Facebooka scrolluje feed w ułamkach sekund. Czytelnik w Google Discover widzi tylko nagłówek. Masz dosłownie chwilę, by ich zatrzymać. Przeanalizowaliśmy twarde dane z naszych absolutnie najlepszych artykułów – tych, które wykręcają setki tysięcy odsłon i kosmiczne CTR-y (klikalność). 
+
+Oto Twój praktyczny przewodnik – **"Biblia Redaktora Styl.fm"**. Dowiesz się z niej, o czym pisać i jak konstruować tytuły, by maksymalizować ruch z obu naszych głównych źródeł (Facebooka i Google).
+
+---
+
+### CZĘŚĆ I: O CZYM PISZEMY? (ZŁOTE FILARY TEMATYCZNE)
+
+Z danych jasno wynika, że nasi czytelnicy mają bardzo konkretne zainteresowania. Podzieliliśmy je na dwa główne silniki napędowe.
+
+#### SILNIK 1: Emocje, kontrowersje i ocena (Hity Facebooka)
+Facebook karmi się oburzeniem i skrajnymi opiniami. Ludzie klikają, żeby zobaczyć obrazek, ale komentują, żeby kogoś ocenić (co niesamowicie podbija nam zasięgi).
+*   **Ciało, nagość i granice przyzwoitości:** To nasz absolutny top. Nie piszemy jednak tylko, że ktoś "pokazał ciało". Zawsze dodajemy ocenę moralną internautów. 
+    *   *Przykład z danych:* "Julia Wieniawa wypina rozgogolony tył w mikroskopijnych majtkach. Fani mają mieszane uczucia: 'Co za dużo, to niezdrowo' [zdjęcia]" (257 tys. odsłon).
+*   **Ekstremalne metamorfozy i demistyfikacja:** Szokujący, niecodzienny wygląd lub zrzucenie kilogramów.
+    *   *Przykład z danych:* "Violetta Villas bez peruki! Do sieci wyciekło zdjęcie, które zaskakuje..." (231 tys. odsłon).
+*   **Luksus i bogactwo (kłucie w oczy):** Uruchamia zazdrość i chęć komentowania.
+    *   *Przykład z danych:* "Mąż Viki Gabor to prawdziwy krezus. 19-letni Giovanni opływa w luksusy..." (113 tys. odsłon).
+*   **Nostalgia i wiadomości "zza grobu":** Nasz starszy czytelnik kocha wzruszenia.
+    *   *Przykład z danych:* "Emilian Kamiński dotrzymał słowa z zaświatów. To, co zobaczyła jego żona, odbiera mowę" (175 tys. odsłon).
+
+#### SILNIK 2: Tajemnica, śledztwa i lęk (Hity Google)
+Algorytmy Google (News/Discover) uwielbiają ciągłość historii, aktualizacje i rozwiązywanie zagadek. Tu czytelnik klika, bo chce poznać ukryty fakt.
+*   **True Crime i niewyjaśnione zagadki:** Sprawy, którymi żyje Polska. Należy budować napięcie i obiecywać nowe fakty.
+    *   *Przykład z danych:* "Przełom w sprawie Iwony Wieczorek? Sopot huczy od teorii..." (77 tys. odsłon).
+*   **Mroczne tragedie z ukrytym morałem:** Włącza się instynkt przetrwania. Ludzie chcą wiedzieć, co się stało, by samemu uniknąć błędu.
+    *   *Przykład z danych:* "Tragedia pod Włodawą. 37-letnia Emilia zamarzła po kłótni z mężem. Sąsiedzi przerwali milczenie" (98 tys. odsłon).
+*   **Przepowiednie i wizje:** Strach przed przyszłością świetnie się klika.
+    *   *Przykład z danych:* "Wstrząsająca wizja na czerwiec 2026. Aida mówi wprost" (33 tys. odsłon).
+
+---
+
+### CZĘŚĆ II: JAK KONSTRUUJEMY TYTUŁY? (MECHANIKA)
+
+Nawet najlepszy temat przepadnie z nudnym tytułem. Stosuj te 4 żelazne zasady za każdym razem.
+
+#### ZASADA 1: Konstrukcja "dwuzdaniowa" (Fakt + Reakcja/Świadek)
+To nasz przepis na sukces. Zaczynamy od szokującego faktu, a po kropce lub dwukropku dajemy emocjonalną reakcję (pod FB) lub uwiarygodnienie świadka (pod Google).
+*   **Dla Facebooka (Cytat z komentarzy):** Daje czytelnikowi sygnał: "Inni już to oceniają, wejdź i dołącz!".
+    *   *Dobrze:* Anna Mucha wypięła rozgogolone pośladki do kamery. **Fani nie gryzą się w język: "To jest dno, pani Aniu"** [zdjęcie]
+*   **Dla Google (Świadek/Ekspert przerywa milczenie):** Obiecuje, że w tekście przemówi ktoś, kto wie więcej.
+    *   *Dobrze:* Tragiczny finał poszukiwań 37-letniej Emilii. Wysiadła z auta po kłótni z mężem, **teraz jej brat przerywa milczenie**
+
+#### ZASADA 2: Luka informacyjna (Curiosity Gap)
+Nigdy nie podawaj puenty w tytule! Ukrywaj kluczowe informacje pod słowami-wytrychami. Mózg czytelnika nie znosi nierozwiązanych zagadek.
+*   *Źle:* Zginęli przez ładowarkę do telefonu pozostawioną w kontakcie.
+*   *Dobrze:* Dramat pod Kępnem. Dorota i jej niepełnosprawny synek zginęli **przez mały przedmiot** z pokoju dziecięcego. *(Czytelnik: Jaki przedmiot?! Muszę sprawdzić, czy nie mam go w domu!)*
+*   *Źle:* Nie dawaj księdzu koperty, bo go to obraża.
+*   *Dobrze:* Tego absolutnie nie rób podczas kolędy. **Jedno zachowanie** to "wyraz najwyższej pogardy". *(Czytelnik: Jakie zachowanie?!)*
+
+#### ZASADA 3: Tagi wizualne na końcu tytułu
+W internecie obraz to podstawa. Czytelnik musi wiedzieć, że Twój artykuł to nie tylko ściana tekstu, ale twardy dowód w postaci zdjęć. 
+*   **Zawsze kończ tytuł nawiasem kwadratowym:** `[zdjęcia]`, `[zdjęcie]`, `[galeria]`, `[wideo]`, `[porównujemy zdjęcia]`, `[dużo zdjęć]`.
+*   *Przykład:* Szczęka opada! Aneta z "Kanapowczyń" schudła 50 kg i pokazała ciało w prześwitującym body. Trudno ją rozpoznać **[porównujemy zdjęcia]**.
+
+#### ZASADA 4: Słowa wywołujące silne emocje i hiperbole
+Zapomnij o suchym języku z agencji prasowych. Piszemy plastycznie i z rozmachem. Zastępuj zwykłe słowa naszymi "haczykami".
+*   Zamiast "pokazała ciało" ➡️ **wypięła rozgogolony tył, wyeksponowała, odsłoniła wszystko jak na dłoni.**
+*   Zamiast "skąpo ubrana" ➡️ **w mikroskopijnych majtkach, zapomniała majtek, niemal naga.**
+*   Zamiast "powiedział/zareagował" ➡️ **przerywa milczenie, nie gryzie się w język, mówi wprost.**
+*   Zamiast "ciekawe/nowe fakty" ➡️ **szczęka opada, wbija w fotel, mrozi krew w żyłach, przełom, nagły zwrot.**
+
+---
+
+### REDAKCYJNY SŁOWNICZEK (Kopiuj i używaj!)
+
+Zestawienie sformułowań, które statystycznie najbardziej podbijają klikalność (CTR) w naszych artykułach:
+*   **Emocje i szok:** *mrozi krew w żyłach, wbija w fotel, odbiera mowę, szczęka opada, wprawia w osłupienie, zwala z nóg, trudno uwierzyć.*
+*   **Zaczepki i opinie:** *fani nie gryzą się w język, fani wściekli, internauci nie mają litości, mają mieszane uczucia, w sieci wrze.*
+*   **Tajemnica i śledztwo:** *przerywa milczenie, mówi wprost, prawda wychodzi na jaw, przełom w sprawie, tajemniczy ślad, ten jeden szczegół.*
+*   **Wygląd:** *rozgogolona (absolutny hit!), mikroskopijne bikini, w pełnej krasie, jak na dłoni, opływa w luksusy.*
+
+---
+
+### TWOJA CHECKLISTA PRZED PUBLIKACJĄ (5 kroków do sukcesu)
+
+Zanim klikniesz "Publikuj", zadaj sobie te pytania:
+
+1. [ ] **Czy mój temat wpisuje się w nasze filary?** (Ciało/skandal, mroczna tajemnica/kryminalna, drastyczna metamorfoza, luksus, nostalgia).
+2. [ ] **Czy zachowałem "lukę informacyjną"?** (Czy ukryłem "ten jeden szczegół", "mały przedmiot", imię nowej partnerki, zamiast wykładać wszystko w tytule?).
+3.[ ] **Czy użyłem dwuzdaniowej konstrukcji?** (Czy po faksie jest mocny cytat z fanów LUB informacja, że "ktoś przerywa milczenie"?).
+4. [ ] **Czy język jest wystarczająco podkręcony?** (Czy zamiast "zaskakujące" dałem "wbija w fotel"? Czy zamiast "rozebrana" użyłem słowa "rozgogolona"?).
+5. [ ] **Czy na końcu dodałem obietnicę wizualną?** (Czy jest tag np. `[zdjęcia]`, `[wideo]`, `[galeria]`?).
+
+Jeśli na wszystkie pytania odpowiedziałeś "TAK" – masz w rękach materiał na kolejny hit Styl.fm. Powodzenia!
 """

@@ -28,6 +28,7 @@ from prompts import (
     reflection_agent_prompt,
     followup_agent_prompt,
     usage_tracking_agent_prompt,
+    editor_guidelines,
 )
 from tavily import TavilyClient
 from crawl4ai import AsyncWebCrawler, SemaphoreDispatcher
@@ -566,7 +567,8 @@ class WritingNode(ArticleWriterBaseNode):
                 writing_agent_prompt,
                 topic=ctx.state.configuration.article_topic, facts=facts_str, keywords=keywords_str,
                 quotes=quotes_str, instructions=ctx.state.instructions, current_date=ctx.state.current_date,
-                example_articles=example_articles
+                example_articles=example_articles,
+                editor_guidelines=editor_guidelines
             )
         else:
             if not ctx.state.reflection_prompt:
@@ -602,7 +604,8 @@ class ReflectionNode(ArticleWriterBaseNode):
         user_prompt = render_prompt(
             reflection_agent_prompt,
             benchmark_articles=ctx.state.researched_info.article_texts or "No benchmark articles.",
-            example_articles=example_articles
+            example_articles=example_articles,
+            editor_guidelines=editor_guidelines
         )
         # debug_dump("REFLECTION AGENT PROMPT", user_prompt)
 
@@ -671,7 +674,11 @@ class FollowUpNode(ArticleWriterBaseNode):
                 result, attempts = await run_with_retry(
                     model_list=NODE_MODEL_CONFIG[self.__class__.__name__],
                     output_type=FollowUp,
-                    user_prompt=render_prompt(followup_agent_prompt, finished_article=ctx.state.finished_article)
+                    user_prompt=render_prompt(
+                        followup_agent_prompt,
+                        finished_article=ctx.state.finished_article,
+                        editor_guidelines=editor_guidelines
+                    )
                 )
                 ctx.state.model_usage.append({'node': self.__class__.__name__, 'attempts': attempts})
                 follow_up_data = result.output if result and result.output else FollowUp()
