@@ -356,6 +356,7 @@ Moreover:
 - Do not use any other formatting (e.g. markdown) but html tags(e.g. <strong>Strong</strong>, not **Strong**)
 - You always need `<h1>`, article lead, at least 2 `<h2>`
 - **NEVER use visual tags like `[zdjęcia]`, `[wideo]` inside `<h2>` subheadings. These are meant exclusively for the main `<h1>` title!**
+- **Do NOT put quotes inside `<h2>` headings. `<h2>` subheadings should be clear and optimized for Google (SEO-friendly).**
 - Keep **paragraphs between 3-5 sentences** for readability.
 - Keep in mind current date: {{ current_date }}
 - Return **only the article**—**no additional comments** or explanations are necessary.
