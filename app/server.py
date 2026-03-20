@@ -17,13 +17,9 @@ app = FastAPI()
 
 import logging
 from rich.logging import RichHandler
+from log_config import setup_logging, current_article_topic
 
-logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(message)s",
-        handlers=[RichHandler(rich_tracebacks=True, markup=True)],
-    )
-
+setup_logging(logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +64,10 @@ def worker(q):
             job = q.get()  # Get a job from the queue
             if job is None:
                 break  # Exit if no more jobs
+                
+            # Set the context variable so ALL logs within this execution show the article id and topic
+            ctx_token = current_article_topic.set(f"{job.id} | {job.topic}")
+            
             logger.info(f"Processing job: {job}")
 
             if job.domains != None:
@@ -107,6 +107,9 @@ def worker(q):
         finally:
             logger.info(f"Mark task as completed {job}")
             q.task_done()  # Mark the job as done
+            # Reset context var
+            if 'ctx_token' in locals():
+                current_article_topic.reset(ctx_token)
 
 
 job_queue = queue.Queue(maxsize=100)
@@ -138,9 +141,9 @@ def create_article(request_data: List[ArticleRequest]):
     }
     """
     for it in request_data:
-        logger.info(f"adding new job")
+        logger.info(f"[{it.id} | {it.topic}] adding new job")
         job_queue.put(it)
-        logger.info(f"queue: {job_queue.qsize()}")
+        logger.info(f"[{it.id} | {it.topic}] queue: {job_queue.qsize()}")
 
     return {"status": "OK"}
 
