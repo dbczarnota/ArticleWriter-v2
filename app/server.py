@@ -49,9 +49,10 @@ def send_response(id, article_text, topic):
         logger.info(f"send response {data}")
         with httpx.Client() as client:
             response = client.post(webhook_url, json=data)
+            response.raise_for_status()  # Check for 4xx or 5xx status codes
         logger.info(f"------------------->>>END {id} {topic}")
-    except httpx.RequestError as e:
-        logger.info(f"An error occurred while making the request: {e}")
+    except httpx.HTTPError as e:
+        logger.error(f"An error occurred while making the request: {e}", exc_info=True)
         return "Error occurred during the request."
 
     logger.info(f"Response status code: {response.status_code}")
@@ -80,6 +81,7 @@ def worker(q):
             else:
                 urls = []
 
+            final_text = "Nie udało się wygenerować artykułu - błąd wewnętrzny systemu."
             try:
                 final_text = ArticleWriter.write_article(
                     article_topic=job.topic,
@@ -97,7 +99,8 @@ def worker(q):
                     reflection_node=job.reflection_node or "",
                 )
             except Exception as e:
-                logger.error(f"Exception in  ArticleWriter.write_article {e}")
+                logger.error(f"Exception in  ArticleWriter.write_article {e}", exc_info=True)
+                final_text = f"ERROR: Wystąpił błąd krytyczny podczas uruchamiania procesu: {e}"
 
             logger.info(f"final_text {final_text}")
 
