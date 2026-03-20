@@ -18,7 +18,7 @@ def setup_logging(level=logging.INFO):
     logging.basicConfig(
         level=level,
         format="%(message)s",
-        handlers=[RichHandler(rich_tracebacks=True, markup=True, show_time=False)],
+        handlers=[RichHandler(rich_tracebacks=True, markup=True, show_time=False, show_path=False)],
         force=True # Ensures the configuration is re-applied even if called previously
     )
     root_logger = logging.getLogger()

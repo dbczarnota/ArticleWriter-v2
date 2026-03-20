@@ -20,7 +20,7 @@ from crawl4ai.async_dispatcher import MemoryAdaptiveDispatcher
 logging.basicConfig(
     level=logging.INFO,  # Log INFO level and above.
     format="%(message)s",
-    handlers=[RichHandler(show_time=False)]  # Use RichHandler for colorful output without time.
+    handlers=[RichHandler(show_time=False, show_path=False)]  # Use RichHandler for colorful output without time.
 )
 logger = logging.getLogger("SearchAndScrape")
 
