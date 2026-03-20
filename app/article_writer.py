@@ -78,9 +78,9 @@ class ArticleWriterBaseNode(BaseNode, abc.ABC):
         """
         node_name = self.__class__.__name__
         try:
-            logger.info(f"Running {node_name}...")
+            logger.info(f"[bold yellow]▶▶▶ === RUNNING: {node_name} === ◀◀◀[/bold yellow]")
             result = await self._execute(ctx)
-            logger.info(f"{node_name} completed successfully.")
+            logger.info(f"[bold green]✔ === {node_name} COMPLETED === ✔[/bold green]")
             return result
         except AllModelsFailedError as e:
             error_message = f"{node_name} failed permanently after all model retries."
