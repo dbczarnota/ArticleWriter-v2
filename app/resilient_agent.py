@@ -168,8 +168,8 @@ if __name__ == "__main__":
     # Configure logging for rich output
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s - %(message)s",
-        handlers=[RichHandler(rich_tracebacks=True, markup=True)],
+        format="%(message)s",
+        handlers=[RichHandler(rich_tracebacks=True, markup=True, show_time=False)],
     )
 
     # 1. Define the desired output structure

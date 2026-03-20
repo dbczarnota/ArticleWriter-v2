@@ -17,8 +17,8 @@ _filter_instance = ArticleContextFilter()
 def setup_logging(level=logging.INFO):
     logging.basicConfig(
         level=level,
-        format="%(asctime)s - %(message)s",
-        handlers=[RichHandler(rich_tracebacks=True, markup=True)],
+        format="%(message)s",
+        handlers=[RichHandler(rich_tracebacks=True, markup=True, show_time=False)],
         force=True # Ensures the configuration is re-applied even if called previously
     )
     root_logger = logging.getLogger()

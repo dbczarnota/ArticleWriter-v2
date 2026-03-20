@@ -854,8 +854,8 @@ if __name__ == "__main__":
     logger.setLevel(logging.INFO)
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s - %(message)s",
-        handlers=[RichHandler(rich_tracebacks=True, markup=True)],
+        format="%(message)s",
+        handlers=[RichHandler(rich_tracebacks=True, markup=True, show_time=False)],
     )
     
     article = ArticleWriter.write_article(
