@@ -285,28 +285,41 @@ class ScrapingNode(ArticleWriterBaseNode):
             return ParsingNode()
 
         logger.info(f"Identified {len(urls_to_scrape)} unique URLs to scrape.")
+        for i, u in enumerate(urls_to_scrape, 1):
+            logger.info(f"  URL {i}: {u}")
         
         run_config = CrawlerRunConfig(
             # extraction_strategy=None,
             excluded_tags=['nav', 'header', 'footer', 'aside', 'form', 'script', 'style'],
             remove_overlay_elements=True,
-            process_iframes=False,
+            process_iframes=False, # to skip iframes which often hang
             cache_mode=CacheMode.BYPASS,
             word_count_threshold=10,
             scan_full_page=True,
             scroll_delay=0.5,
             wait_for_images=False,
-            page_timeout=10000,
-            wait_for_timeout=10000,
+            page_timeout=30000,
+            wait_for_timeout=15000,
         )
         
         scraped_pages_data = []
+        logger.info("Initializing AsyncWebCrawler...")
         async with AsyncWebCrawler() as crawler:
-            results = await crawler.arun_many(
-                dispatcher = SemaphoreDispatcher(),
-                process_iframes=False,
-                urls=urls_to_scrape, 
-                config=run_config)
+            logger.info(f"Starting crawler.arun_many for {len(urls_to_scrape)} URLs...")
+            try:
+                results = await asyncio.wait_for(
+                    crawler.arun_many(
+                        dispatcher = SemaphoreDispatcher(semaphore_count=3),
+                        process_iframes=False,
+                        urls=urls_to_scrape, 
+                        config=run_config
+                    ),
+                    timeout=240.0 # Maksymalnie 4 minuty dla wszystkich adresów - zapobiega zawieszeniu wątku
+                )
+            except asyncio.TimeoutError:
+                logger.error("CRITICAL: Scraping process timed out after 240 seconds! The crawler hung on one of the URLs.")
+                results = []
+            
             # Defensive check: If the crawler fails internally and returns None, treat it as an empty list.
             if results is None:
                 logger.warning("Crawl4AI returned None. Treating as no results.")
