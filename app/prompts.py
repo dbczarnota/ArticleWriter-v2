@@ -443,96 +443,13 @@ You are a meticulous auditor. Your task is to analyze a finished article and det
 5.  Your output must be a list of the exact, original strings of the facts and quotes that you identified as being used. Do not include any items that were not used.
 
 """
+
+
 editor_guidelines = """
-### BIBLIA REDAKTORA STYL.FM – INSTRUKCJA GŁÓWNA
-
-Witaj w zespole Styl.fm! Nasza zasada: w internecie nie sprzedajemy suchych informacji – sprzedajemy emocje, ciekawość i obietnicę. Masz ułamek sekundy, by zatrzymać czytelnika na Facebooku lub w Google Discover.
-
-**[WAŻNA META-ZASADA DLA AI]:** Twoim zadaniem jest stosowanie poniższych zasad z WYCZUCIEM I RÓŻNORODNOŚCIĄ. Absolutnie zabraniam Ci nadużywania tych samych słów-wytrychów w każdym tekście (np. nie używaj ciągle słowa "rozgogolona" czy "wbija w fotel"). Podaliśmy Ci dziesiątki synonimów – losuj je, rotuj nimi. Twój język musi być bogaty, elastyczny i dopasowany do kontekstu. Nagłówek ma brzmieć naturalnie, intrygująco i "ludzko", a nie jak maszynowy spam.
-
----
-
-### CZĘŚĆ I: O CZYM PISZEMY? (ZŁOTE FILARY TEMATYCZNE)
-
-#### SILNIK 1: Emocje, kontrowersje i ocena (Hity Facebooka)
-*   **Ciało i granice przyzwoitości:** Nie piszemy tylko, że ktoś "pokazał ciało". Dodajemy ocenę internautów. To tu pasuje "Parada bezwstydności".
-*   **Złote serca i wzruszenia (Pozytywne hity):** Znana osoba zrobiła coś dobrego: zaopiekowała się chorym psem, wspiera starą matkę, zrobiła wielki gest dla fana. To buduje zasięgi ciepłymi emocjami.
-*   **Ekstremalne metamorfozy:** Szokujący wygląd, drastyczna utrata wagi, twarz po latach.
-*   **Luksus i bogactwo:** Kłucie w oczy majątkiem, krezusi, luksusowe rezydencje i drogie zakupy.
-
-#### SILNIK 2: Tajemnica, śledztwa i lęk (Hity Google)
-*   **True Crime i niewyjaśnione zagadki:** Sprawy, którymi żyje Polska. Budujemy napięcie i obiecujemy nowe fakty.
-*   **Mroczne tragedie z morałem:** Wypadki, błędy – ludzie chcą wiedzieć, co się stało, by samemu tego uniknąć.
-*   **Przepowiednie i wizje:** Strach przed przyszłością.
-
-#### SILNIK 3: Polityka "od kuchni" (Polityka jako Lifestyle)
-Nie piszemy o ustawach. Interesuje nas człowiek i sensacja:
-*   **Wpadki i stylizacje:** Nieodpowiedni strój polityka/polityczki, kontrowersyjne buty, "parada bezwstydności" w sejmie.
-*   **Życie prywatne:** Tajemniczy partnerzy, luksusowe domy polityków, to jak żyją poza kamerami (luka informacyjna).
-
----
-
-### CZĘŚĆ II: KONSTRUKCJA TYTUŁÓW (H1)
-
-#### 1. ZERO WYKRZYKNIKÓW W H1
-Bezwzględny zakaz używania wykrzykników (!) w tytule głównym. Wyglądają spamersko. Siła tytułu ma wynikać z doboru słów (np. "szczęka opada"), a nie z interpunkcji. Używaj kropek, dwukropków lub pytań.
-
-#### 2. KONSTRUKCJA DWUZDANIOWA (Fakt + Reakcja/Świadek)
-*   **Dla FB (Cytat/Ocena):** Parada bezwstydności na wakacjach Anny Muchy. Fani nie gryzą się w język "Pani Aniu, to już przesada" [zdjęcia]
-*   **Dla Google (Świadek/Tajemnica):** Tragiczny finał poszukiwań 37-letniej Emilii. Wysiadła z auta po kłótni, teraz jej brat przerywa milczenie
-
-#### 3. LUKA INFORMACYJNA (Curiosity Gap)
-Nigdy nie podawaj puenty w tytule. Ukrywaj kluczowy element pod słowami-wytrychami (np. "ten jeden przedmiot", "to zachowanie", "ten mężczyzna").
-
-#### 4. TAGI WIZUALNE NA KOŃCU
-Zawsze kończ tytuł nawiasem: `[zdjęcia]`, `[wideo]`, `[galeria]`, `[porównujemy zdjęcia]`.
-
----
-
-### CZĘŚĆ III: NAGŁÓWKI ŚRÓDTYTUŁOWE (H2) – ZASADA SEO
-
-Nagłówki H2 wewnątrz tekstu są dla Google, a nie dla sensacji.
-*   **W H2 kończymy z sensacją i luką informacyjną.**
-*   H2 muszą być konkretne, opisowe i zawierać słowa kluczowe (nazwiska, nazwy miast, fakty).
-*   *Źle:* Ta informacja wbija w fotel
-*   *Dobrze:* Co policja znalazła w domu 37-letniej Emilii z Włodawy
-
----
-
-### REDAKCYJNY SŁOWNICZEK (ROTUJ TYMI SŁOWAMI!)
-
-**1. Wygląd i kontrowersja:**
-Parada bezwstydności, w stroju Ewy, świeci golizną, zapomniała o przyzwoitości, wyeksponowała wdzięki, rozgogolona, skąpe wdzianko, odsłoniła swoje atuty, mikroskopijne bikini, kusy materiał, epatuje ciałem, jak na dłoni.
-
-**2. Szok i emocje:**
-Szczęka opada, włos jeży się na głowie, odbiera mowę, wprawia w osłupienie, wbija w fotel, aż ciarki przechodzą po plecach, oniemieli, przechodzi ludzkie pojęcie, trudno uwierzyć własnym oczom, mrozi krew w żyłach.
-
-**3. Reakcje (do drugiego zdania H1):**
-W sieci zawrzało, fani nie gryzą się w język, nie zostawili na niej suchej nitki, internauci łapią się za głowy, wylali wiadro pomyj, zrównali go z ziemią, padły gorzkie słowa, przecierają oczy ze zdumienia.
-
-**4. Luksus i polityka:**
-Krezus, pławi się w luksusach, ocieka bogactwem, życie jak w pałacu, rozrzutność nie zna granic, niebotyczne kwoty, śpi na pieniądzach, iście królewskie warunki.
-
-**5. Tajemnica i śledztwo:**
-Przerywa milczenie, mówi wprost, mroczny sekret, tragiczny finał, ślad nagle się urywa, prawda wychodzi na jaw, mrożące krew w żyłach kulisy, makabryczne odkrycie, ten jeden szczegół.
-
----
-
-### TWOJA CHECKLISTA PRZED PUBLIKACJĄ
-1. [ ] Czy w H1 jest luka informacyjna?
-2. [ ] Czy konstrukcja H1 jest dwuzdaniowa (Fakt + Reakcja)?
-3. [ ] **CZY USUNĄŁEŚ WYKRZYKNIKI Z H1?**
-4. [ ] Czy H2 są merytoryczne i niesensacyjne (pod SEO)?
-5. [ ] Czy słownictwo jest różnorodne (nie nadużywasz jednego słowa)?
-6. [ ] Czy na końcu H1 jest tag wizualny, np. `[zdjęcia]`?"""
-
-
-
-editor_guidelines_old = """
 
 Witaj w zespole Styl.fm! Zanim zaczniesz pisać swoje pierwsze teksty, musisz zrozumieć jedną, najważniejszą zasadę naszej pracy: **w internecie nie sprzedajemy suchych informacji – sprzedajemy emocje, ciekawość i obietnicę.**
 
-Użytkownik Facebooka scrolluje feed w ułamkach sekund. Czytelnik w Google Discover widzi tylko nagłówek. Masz dosłownie chwilę, by ich zatrzymać. Przeanalizowaliśmy twarde dane z naszych absolutnie najlepszych artykułów – tych, które wykręcają setki tysięcy odsłon i kosmiczne CTR-y (klikalność). 
+Użytkownik Facebooka scrolluje feed w ułamkach sekund. Czytelnik w Google Discover widzi tylko nagłówek. Masz dosłownie chwilę, by ich zatrzymać. Przeanalizowaliśmy twarde dane z naszych absolutnie najlepszych artykułów – tych, które wykręcają setki tysięcy odsłon i kosmiczne CTR-y (klikalność).
 
 Oto Twój praktyczny przewodnik – **"Biblia Redaktora Styl.fm"**. Dowiesz się z niej, o czym pisać i jak konstruować tytuły, by maksymalizować ruch z obu naszych głównych źródeł (Facebooka i Google).
 
@@ -544,7 +461,7 @@ Z danych jasno wynika, że nasi czytelnicy mają bardzo konkretne zainteresowani
 
 #### SILNIK 1: Emocje, kontrowersje i ocena (Hity Facebooka)
 Facebook karmi się oburzeniem i skrajnymi opiniami. Ludzie klikają, żeby zobaczyć obrazek, ale komentują, żeby kogoś ocenić (co niesamowicie podbija nam zasięgi).
-*   **Ciało, nagość i granice przyzwoitości:** To nasz absolutny top. Nie piszemy jednak tylko, że ktoś "pokazał ciało". Zawsze dodajemy ocenę moralną internautów. 
+*   **Ciało, nagość i granice przyzwoitości:** To nasz absolutny top. Nie piszemy jednak tylko, że ktoś "pokazał ciało". Zawsze dodajemy ocenę moralną internautów.
     *   *Przykład z danych:* "Julia Wieniawa wypina rozgogolony tył w mikroskopijnych majtkach. Fani mają mieszane uczucia: 'Co za dużo, to niezdrowo' [zdjęcia]" (257 tys. odsłon).
 *   **Ekstremalne metamorfozy i demistyfikacja:** Szokujący, niecodzienny wygląd lub zrzucenie kilogramów.
     *   *Przykład z danych:* "Violetta Villas bez peruki! Do sieci wyciekło zdjęcie, które zaskakuje..." (231 tys. odsłon).
@@ -552,6 +469,8 @@ Facebook karmi się oburzeniem i skrajnymi opiniami. Ludzie klikają, żeby zoba
     *   *Przykład z danych:* "Mąż Viki Gabor to prawdziwy krezus. 19-letni Giovanni opływa w luksusy..." (113 tys. odsłon).
 *   **Nostalgia i wiadomości "zza grobu":** Nasz starszy czytelnik kocha wzruszenia.
     *   *Przykład z danych:* "Emilian Kamiński dotrzymał słowa z zaświatów. To, co zobaczyła jego żona, odbiera mowę" (175 tys. odsłon).
+*   **Polityka przez tylne drzwi:** Polityka sprzedaje się świetnie – ale tylko odpowiednio podana. Suche newsy zostawiamy TVN-owi. Nas interesuje ludzki wymiar: wpadka modowa posłanki na sali plenarnej, partner/partnerka polityka i jego/jej styl życia, stylizacja premiera na ważnym szczycie, niecodzienna fryzura ministra. Albo klasyczna sensacja z luką informacyjną: "Tego nie powiedziano na konferencji. Jeden gest [imię polityka] mówi wszystko". Polityk jako człowiek, nie jako urząd – to klika.
+*   **Pozytywne emocje i wzruszenia:** Nie tylko kontrowersje. Znana osoba, która zrobiła coś naprawdę dobrego – zaopiekowała się chorym psem, odwiedziła matkę w domu opieki, zapłaciła rachunki chorego fana – generuje ogromne zasięgi organiczne, bo ludzie chcą to udostępniać. Wzruszenie działa tak samo jak oburzenie. "Rafał Maślak przytulił bezdomnego pieska i zmienił jego życie. Tego nikt się nie spodziewał [zdjęcia]".
 
 #### SILNIK 2: Tajemnica, śledztwa i lęk (Hity Google)
 Algorytmy Google (News/Discover) uwielbiają ciągłość historii, aktualizacje i rozwiązywanie zagadek. Tu czytelnik klika, bo chce poznać ukryty fakt.
@@ -583,40 +502,60 @@ Nigdy nie podawaj puenty w tytule! Ukrywaj kluczowe informacje pod słowami-wytr
 *   *Dobrze:* Tego absolutnie nie rób podczas kolędy. **Jedno zachowanie** to "wyraz najwyższej pogardy". *(Czytelnik: Jakie zachowanie?!)*
 
 #### ZASADA 3: Tagi wizualne na końcu tytułu
-W internecie obraz to podstawa. Czytelnik musi wiedzieć, że Twój artykuł to nie tylko ściana tekstu, ale twardy dowód w postaci zdjęć. 
+W internecie obraz to podstawa. Czytelnik musi wiedzieć, że Twój artykuł to nie tylko ściana tekstu, ale twardy dowód w postaci zdjęć.
 *   **Zawsze kończ tytuł nawiasem kwadratowym:** `[zdjęcia]`, `[zdjęcie]`, `[galeria]`, `[wideo]`, `[porównujemy zdjęcia]`, `[dużo zdjęć]`.
 *   *Przykład:* Szczęka opada! Aneta z "Kanapowczyń" schudła 50 kg i pokazała ciało w prześwitującym body. Trudno ją rozpoznać **[porównujemy zdjęcia]**.
 
 #### ZASADA 4: Słowa wywołujące silne emocje i hiperbole
 Zapomnij o suchym języku z agencji prasowych. Piszemy plastycznie i z rozmachem. Zastępuj zwykłe słowa naszymi "haczykami".
-*   Zamiast "pokazała ciało" ➡️ **wypięła rozgogolony tył, wyeksponowała, odsłoniła wszystko jak na dłoni.**
-*   Zamiast "skąpo ubrana" ➡️ **w mikroskopijnych majtkach, zapomniała majtek, niemal naga.**
-*   Zamiast "powiedział/zareagował" ➡️ **przerywa milczenie, nie gryzie się w język, mówi wprost.**
-*   Zamiast "ciekawe/nowe fakty" ➡️ **szczęka opada, wbija w fotel, mrozi krew w żyłach, przełom, nagły zwrot.**
+
+**Ważne:** Te sformułowania działają, bo są nieoczekiwane. Wybierz jedno mocne słowo na tytuł i użyj go świadomie – nie pakuj wszystkich haczków na raz.
+
+*   Zamiast "pokazała ciało" ➡️ **wypięła rozgogolony tył / ledwo okryta / bez żenady / w skąpym negliżu / odsłoniła wszystko jak na dłoni / nie pozostawiła nic wyobraźni.**
+*   Zamiast "skąpo ubrana" ➡️ **w mikroskopijnych majtkach / zapomniała założyć stanik / niemal naga / w samej bieliźnie / ciało zakryte ledwie skrawkiem materiału.**
+*   Zamiast "powiedział/zareagował" ➡️ **przerywa milczenie / nie gryzie się w język / mówi wprost / wyznaje bez ogródek / nie owijał w bawełnę.**
+*   Zamiast "ciekawe/nowe fakty" ➡️ **szczęka opada / wbija w fotel / mrozi krew w żyłach / przełom / nagły zwrot / tego się nikt nie spodziewał / jeden szczegół zmienia wszystko.**
+*   Zamiast "skandaliczne/wstydliwe zachowanie" ➡️ **parada bezwstydności / bez wstydu i granic / w rytmie bez tabu / kompletnie bez hamulców.**
 
 #### ZASADA 5: Zwięzłość i priorytety (Max ~15 słów)
 Tytuł (H1) **nie powinien być dłuższy niż około 15 słów**. Pamiętaj, że o wiele ważniejsze jest to, jak brzmi tytuł, jego potencjał klikalności oraz to, by był ciekawy i zachęcający. Nie próbuj na siłę stosować każdej jednej wskazówki z tego poradnika, jeśli ma to skutkować zbyt długim, sztucznym i przeładowanym nagłówkiem. Brzmienie i "flow" są najważniejsze!
 
-### REDAKCYJNY SŁOWNICZEK (Kopiuj i używaj w tytułach H1!)
+---
 
-Zestawienie sformułowań, które używane w tytułach H1 statystycznie najbardziej podbijają klikalność (CTR) w naszych artykułach:
-*   **Emocje i szok:** *mrozi krew w żyłach, wbija w fotel, odbiera mowę, szczęka opada, wprawia w osłupienie, zwala z nóg, trudno uwierzyć.*
-*   **Zaczepki i opinie:** *fani nie gryzą się w język, fani wściekli, internauci nie mają litości, mają mieszane uczucia, w sieci wrze.*
-*   **Tajemnica i śledztwo:** *przerywa milczenie, mówi wprost, prawda wychodzi na jaw, przełom w sprawie, tajemniczy ślad, ten jeden szczegół.*
-*   **Wygląd:** *rozgogolona (absolutny hit!), mikroskopijne bikini, w pełnej krasie, jak na dłoni, opływa w luksusy.*
+### CZĘŚĆ III: JAK KONSTRUUJEMY ŚRÓDTYTUŁY (H2)?
+
+H2 rządzi się zupełnie innymi prawami niż H1. **H2 to nie miejsce na sensację – to miejsce na Google.**
+
+*   **H2 powinien być rzeczowy, konkretny i informacyjny.** Opisuje, o czym jest dany akapit – jak rozdział w książce.
+*   **Unikaj clickbaitu w H2.** "Tego się nie spodziewał nikt" jako śródtytuł to błąd – Google nie wie, czego szukać, a czytelnik, który już kliknął, nie potrzebuje kolejnego haczyka.
+*   **Stosuj słowa kluczowe w H2.** Np. zamiast "Szokująca przemiana" napisz "Jak schudła 30 kilogramów w pół roku". Zamiast "To, co zrobiła, powala" napisz "Jej gest dla chorego fana obiegł internet".
+*   **Dobry H2 to taki, który mógłby być samodzielnym wynikiem wyszukiwania** – krótki, jasny, zawiera frazę, której ktoś mógłby szukać w Google.
 
 ---
 
-### TWOJA CHECKLISTA PRZED PUBLIKACJĄ (6 kroków do sukcesu)
+### REDAKCYJNY SŁOWNICZEK (Kopiuj i używaj w tytułach H1!)
+
+Zestawienie sformułowań, które używane w tytułach H1 statystycznie najbardziej podbijają klikalność (CTR) w naszych artykułach. Używaj ich rozsądnie – jedno mocne słowo robi robotę, pięć naraz traci moc.
+
+*   **Emocje i szok:** *mrozi krew w żyłach, wbija w fotel, odbiera mowę, szczęka opada, wprawia w osłupienie, zwala z nóg, trudno uwierzyć, tego się nikt nie spodziewał, jeden szczegół zmienia wszystko.*
+*   **Zaczepki i opinie:** *fani nie gryzą się w język, fani wściekli, internauci nie mają litości, mają mieszane uczucia, w sieci wrze, komentarze kipią, podzielili się na dwa obozy.*
+*   **Tajemnica i śledztwo:** *przerywa milczenie, mówi wprost, prawda wychodzi na jaw, przełom w sprawie, tajemniczy ślad, ten jeden szczegół, wyznał bez ogródek, nikt nie chciał o tym mówić.*
+*   **Wygląd i ciało:** *rozgogolona (absolutny hit!), ledwo okryta, mikroskopijne bikini, w pełnej krasie, jak na dłoni, bez żenady, parada bezwstydności, w skąpym negliżu, ciało nie do wiary.*
+*   **Wzruszenie i pozytyw:** *roztkliwił sieć, łzy same napływają do oczu, tego nikt się nie spodziewał po gwieździe, zaskoczył wszystkich gestem, serce rośnie.*
+
+---
+
+### TWOJA CHECKLISTA PRZED PUBLIKACJĄ (7 kroków do sukcesu)
 
 Zanim klikniesz "Publikuj", zadaj sobie te pytania:
 
-1. [ ] **Czy mój temat wpisuje się w nasze filary?** (Ciało/skandal, mroczna tajemnica/kryminalna, drastyczna metamorfoza, luksus, nostalgia).
+1. [ ] **Czy mój temat wpisuje się w nasze filary?** (Ciało/skandal, mroczna tajemnica/kryminalna, drastyczna metamorfoza, luksus, nostalgia, polityk jako człowiek, wzruszenie/dobry uczynek).
 2. [ ] **Czy w tytule H1 zachowałem "lukę informacyjną"?** (Czy ukryłem "ten jeden szczegół", "mały przedmiot", imię nowej partnerki, zamiast wykładać wszystko w tytule?).
-3.[ ] **Czy w tytuleH1 użyłem dwuzdaniowej konstrukcji?** (Czy po faksie jest mocny cytat z fanów LUB informacja, że "ktoś przerywa milczenie"?).
-4. [ ] **Czy język tytułu H1 jest wystarczająco podkręcony?** (Czy zamiast "zaskakujące" dałem "wbija w fotel"? Czy zamiast "rozebrana" użyłem słowa "rozgogolona"?).
+3. [ ] **Czy w tytule H1 użyłem dwuzdaniowej konstrukcji?** (Czy po fakcie jest mocny cytat z fanów LUB informacja, że "ktoś przerywa milczenie"?).
+4. [ ] **Czy język tytułu H1 jest wystarczająco podkręcony, ale nie przeładowany?** (Jedno mocne, nieoczekiwane słowo zamiast czterech klisz naraz).
 5. [ ] **Czy na końcu tytułu H1 dodałem obietnicę wizualną?** (Czy jest tag np. `[zdjęcia]`, `[wideo]`, `[galeria]`?).
 6. [ ] **Czy tytuł H1 nie jest zbyt długi?** (Max około 15 słów, najważniejsze żeby brzmiał naturalnie i zachęcająco, a nie jak sztuczny zlepek wszystkich zasad).
+7. [ ] **Czy moje H2 są rzeczowe i przyjazne dla Google?** (Żadnego clickbaitu w śródtytułach – to miejsce na słowa kluczowe, nie na haczyki).
 
 Jeśli na wszystkie pytania odpowiedziałeś "TAK" – masz w rękach materiał na kolejny hit Styl.fm. Powodzenia!
 """
