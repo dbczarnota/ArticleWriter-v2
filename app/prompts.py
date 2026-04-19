@@ -533,6 +533,20 @@ H2 rządzi się zupełnie innymi prawami niż H1. **H2 to nie miejsce na sensacj
 
 ---
 
+### CZĘŚĆ IV: JAK PISZEMY LEAD (PIERWSZY AKAPIT)?
+
+Lead to pierwsze, wyboldowane zdania artykułu – to, co czytelnik widzi zaraz po kliknięciu w tytuł. **Lead musi być naładowany faktami**, nie wodolejstwem. To nie miejsce na rozkręcanie emocji po raz drugi – tytuł już zrobił swoje. Teraz czytelnik chce dostać konkret, który potwierdzi, że warto zostać.
+
+*   **Zaczynaj od imienia i nazwiska bohatera tekstu** (jeśli to ma sens – czyli gdy piszemy o konkretnej osobie). Google i czytelnik od razu wiedzą, o kim mowa, a imię i nazwisko to również mocne słowo kluczowe.
+    *   *Dobrze:* **Julia Wieniawa** ponownie rozgrzała swoich fanów na Instagramie. Aktorka opublikowała zdjęcie w mikroskopijnych majtkach, które w kilka godzin zebrało ponad 50 tys. polubień.
+    *   *Źle:* Pewna polska aktorka znowu dała fanom powód do dyskusji. Tym razem przeszła samą siebie.
+*   **Pakuj fakty:** kto, co, gdzie, kiedy, ile. Konkretne liczby, daty, miejsca, nazwiska – to buduje wiarygodność i nasyca tekst słowami kluczowymi dla Google.
+*   **Nie powtarzaj tytułu** słowo w słowo. Lead ma rozwijać obietnicę z H1, a nie ją kopiować.
+*   **Wyjątki od zasady "imię i nazwisko na start":** gdy piszemy o zdarzeniu (tragedia, katastrofa, sprawa kryminalna, w której nazwisko nie jest publiczne), gdy bohaterem jest grupa lub instytucja, albo gdy ukrycie tożsamości jest elementem luki informacyjnej. Wtedy zaczynamy od faktu zdarzenia (miejsce + co się stało).
+    *   *Dobrze:* **Pod Włodawą** doszło do tragedii. 37-letnia **Emilia S.** zamarzła na polu kukurydzy po nocnej kłótni z mężem.
+
+---
+
 ### REDAKCYJNY SŁOWNICZEK (Kopiuj i używaj w tytułach H1!)
 
 Zestawienie sformułowań, które używane w tytułach H1 statystycznie najbardziej podbijają klikalność (CTR) w naszych artykułach. Używaj ich rozsądnie – jedno mocne słowo robi robotę, pięć naraz traci moc.
@@ -556,6 +570,7 @@ Zanim klikniesz "Publikuj", zadaj sobie te pytania:
 5. [ ] **Czy na końcu tytułu H1 dodałem obietnicę wizualną?** (Czy jest tag np. `[zdjęcia]`, `[wideo]`, `[galeria]`?).
 6. [ ] **Czy tytuł H1 nie jest zbyt długi?** (Max około 15 słów, najważniejsze żeby brzmiał naturalnie i zachęcająco, a nie jak sztuczny zlepek wszystkich zasad).
 7. [ ] **Czy moje H2 są rzeczowe i przyjazne dla Google?** (Żadnego clickbaitu w śródtytułach – to miejsce na słowa kluczowe, nie na haczyki).
+8. [ ] **Czy mój lead jest naładowany faktami i zaczyna się od imienia i nazwiska bohatera?** (Jeśli piszemy o konkretnej osobie – to pierwsze słowa leadu. Fakty zamiast wodolejstwa, konkrety zamiast ogólników).
 
 Jeśli na wszystkie pytania odpowiedziałeś "TAK" – masz w rękach materiał na kolejny hit Styl.fm. Powodzenia!
 """
