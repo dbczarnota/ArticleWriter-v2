@@ -53,6 +53,16 @@ class VideoResult:
 
 
 @dataclass
+class EmbedCandidate:
+    url: str
+    title: str
+    source: Literal["youtube", "twitter", "tiktok", "instagram", "facebook"]
+    thumbnail_url: str | None = None
+    description: str | None = None
+    channel: str | None = None
+
+
+@dataclass
 class ArticleOutput:
     html: str
     alternative_titles: list[str] = field(default_factory=list)
@@ -63,3 +73,4 @@ class ArticleOutput:
     scraped_urls: list[str] = field(default_factory=list)
     errors: list[dict[str, str]] = field(default_factory=list)
     filter_reasons: dict[str, str] = field(default_factory=dict)
+    embed_candidates: list[EmbedCandidate] = field(default_factory=list)

@@ -18,6 +18,7 @@ class SearchAgentConfig(AgentConfig):
     num_queries: int = 3
     max_results: int = 5
     search_freshness: str = "qdr:w"
+    news_search: bool = False
 
 
 @dataclass(frozen=True)

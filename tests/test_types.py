@@ -52,3 +52,18 @@ def test_article_output_defaults():
     assert out.used_facts == []
     assert out.used_quotes == []
     assert out.sources == []
+
+
+def test_embed_candidate_fields():
+    from agents._base.types import EmbedCandidate
+    c = EmbedCandidate(url="https://youtube.com/watch?v=x", title="T", source="youtube",
+                       thumbnail_url="https://i.ytimg.com/x.jpg", channel="Ch")
+    assert c.url == "https://youtube.com/watch?v=x"
+    assert c.source == "youtube"
+    assert c.channel == "Ch"
+
+
+def test_article_output_has_embed_candidates():
+    from agents._base.types import ArticleOutput
+    o = ArticleOutput(html="<p>x</p>")
+    assert o.embed_candidates == []

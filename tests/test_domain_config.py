@@ -42,3 +42,11 @@ def test_domain_config_language_default():
 
 def test_styl_fm_language_is_polish():
     assert STYL_FM_DOMAIN.language == "pl"
+
+
+def test_domain_config_new_flags():
+    from domains._base.config import DomainConfig
+    d = DomainConfig(name="test", description="t")
+    assert d.news_search is False
+    assert d.tiktok_search is False
+    assert d.instagram_search is False

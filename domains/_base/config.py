@@ -16,5 +16,9 @@ class DomainConfig:
     youtube_search: bool = False
     twitter_search: bool = False
     facebook_search: bool = False
+    news_search: bool = False
+    tiktok_search: bool = False
+    instagram_search: bool = False
     guidelines: str = ""
+    html_format: str = ""
     example_articles: tuple[str, ...] = ()

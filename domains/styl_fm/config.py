@@ -14,9 +14,17 @@ STYL_FM_DOMAIN = DomainConfig(
     default_search_freshness="qdr:d",   # newsy — domyślnie 24h
     default_num_queries=3,
     default_max_results=5,
-    youtube_search=False,
-    twitter_search=False,
+    youtube_search=True,
+    twitter_search=True,
     facebook_search=False,
+    news_search=True,
+    tiktok_search=True,
+    instagram_search=True,
     guidelines=_GUIDELINES_PATH.read_text(encoding="utf-8"),
+    html_format=(
+        "Use <h1> for the main title, <h2> for section headings, <p> for paragraphs. "
+        "Wrap direct quotes from people in <blockquote>. "
+        "No <html>, <head>, or <body> tags — article content only."
+    ),
     example_articles=tuple(EXAMPLE_ARTICLES),
 )
