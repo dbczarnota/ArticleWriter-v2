@@ -136,3 +136,100 @@ async def test_pipeline_skips_followup_returns_minimal_output(mocked_agents):
     assert result.alternative_titles == []
     assert result.followup_topics == []
     assert "https://e.com/1" in result.sources
+
+
+@pytest.mark.asyncio
+async def test_pipeline_runs_extra_search_round(mocked_agents):
+    """When adaptive agent says needs_more_research + has queries, runs one extra round."""
+    from agents.pipeline.runner import run_pipeline
+
+    extra_extraction = ExtractionResult(
+        facts=[Fact("Extra fakt", "ctx", "https://e.com/2", "T2")],
+        quotes=[],
+        keywords=["kw2"],
+    )
+    mocked_agents["adaptive"].return_value = AdaptiveSearchDecision(
+        needs_more_research=True,
+        additional_queries=["Dawid Podsiadło zarobki 2025"],
+    )
+    mocked_agents["serper"].return_value = [
+        SearchResult(url="https://e.com/2", title="T2", snippet="S2", source="web")
+    ]
+    mocked_agents["extraction"].side_effect = [_EXTRACTION, extra_extraction]
+    mocked_agents["scraping"].return_value = [
+        ScrapedPage(url="https://e.com/2", title="T2", content="Extra", scrape_tier="httpx")
+    ]
+    mocked_agents["parsing"].return_value = [
+        ParsedArticle(url="https://e.com/2", title="T2", content="Extra", publication_date=None)
+    ]
+
+    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=True, reflection=False, followup=False))
+    await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
+    assert mocked_agents["serper"].call_count == 1
+    assert mocked_agents["extraction"].call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_pipeline_adaptive_skips_when_no_queries(mocked_agents):
+    """needs_more_research=True but additional_queries=[] → no extra search."""
+    from agents.pipeline.runner import run_pipeline
+
+    mocked_agents["adaptive"].return_value = AdaptiveSearchDecision(
+        needs_more_research=True,
+        additional_queries=[],
+    )
+
+    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=True, reflection=False, followup=False))
+    await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
+    mocked_agents["serper"].assert_not_called()
+    mocked_agents["extraction"].assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_adaptive_respects_max_rounds(mocked_agents):
+    """max_additional_rounds=1: only one extra round even if more could be done."""
+    from agents.pipeline.runner import run_pipeline
+    from agents._base.config import AdaptiveSearchAgentConfig
+    import dataclasses
+
+    mocked_agents["adaptive"].return_value = AdaptiveSearchDecision(
+        needs_more_research=True,
+        additional_queries=["extra query"],
+    )
+    mocked_agents["serper"].return_value = [
+        SearchResult(url="https://e.com/extra", title="E", snippet="s", source="web")
+    ]
+    mocked_agents["extraction"].side_effect = [
+        _EXTRACTION,
+        ExtractionResult(facts=[], quotes=[], keywords=[]),
+    ]
+
+    settings = AppSettings(
+        adaptive_search_agent=dataclasses.replace(AdaptiveSearchAgentConfig(), max_additional_rounds=1),
+        pipeline=PipelineFlags(adaptive_search=True, reflection=False, followup=False),
+    )
+    await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
+    assert mocked_agents["adaptive"].call_count == 1
+    assert mocked_agents["extraction"].call_count == 2
+
+
+def test_merge_extraction_deduplicates_by_text():
+    from agents.pipeline.runner import _merge_extraction
+
+    base = ExtractionResult(
+        facts=[Fact("Fakt A", "ctx", "https://a.com", "A")],
+        quotes=[Quote("Cytat A", "Ktoś", "ctx", "https://a.com")],
+        keywords=["kw1"],
+    )
+    extra = ExtractionResult(
+        facts=[
+            Fact("Fakt A", "ctx", "https://a.com", "A"),  # duplicate
+            Fact("Fakt B", "ctx", "https://b.com", "B"),  # new
+        ],
+        quotes=[Quote("Cytat B", "Ktoś B", "ctx", "https://b.com")],
+        keywords=["kw1", "kw2"],
+    )
+    merged = _merge_extraction(base, extra)
+    assert len(merged.facts) == 2  # A + B, not duplicate A
+    assert len(merged.quotes) == 2
+    assert merged.keywords == ["kw1", "kw2"]
