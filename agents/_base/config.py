@@ -60,6 +60,7 @@ class WriterAgentConfig(AgentConfig):
 @dataclass(frozen=True)
 class ReflectionAgentConfig(AgentConfig):
     model: str = "google-gla:gemini-2.5-flash"
+    max_rounds: int = 1
 
 
 @dataclass(frozen=True)
