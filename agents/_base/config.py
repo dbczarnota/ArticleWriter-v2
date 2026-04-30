@@ -59,12 +59,10 @@ class WriterAgentConfig(AgentConfig):
 @dataclass(frozen=True)
 class ReflectionAgentConfig(AgentConfig):
     model: str = "google-gla:gemini-2.5-flash"
-    enabled: bool = True
 
 
 @dataclass(frozen=True)
 class FollowUpAgentConfig(AgentConfig):
     model: str = "google-gla:gemini-2.5-flash"
-    enabled: bool = True
     num_titles: int = 10
     num_topics: int = 5
