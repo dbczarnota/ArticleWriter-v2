@@ -27,5 +27,7 @@ async def write_article(
         domain=domain,
         serper_api_key=cfg.serper_api_key,
         jina_api_key=cfg.jina_api_key,
+        urls=req.urls or None,
+        additional_instructions=req.additional_instructions,
     )
     return dataclasses.asdict(result)

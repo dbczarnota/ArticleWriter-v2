@@ -3,6 +3,9 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from functools import lru_cache
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 @dataclass(frozen=True)
@@ -13,8 +16,6 @@ class Settings:
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    from dotenv import load_dotenv
-    load_dotenv()
     serper_key = os.environ.get("SERPER_API_KEY", "")
     if not serper_key:
         raise RuntimeError("SERPER_API_KEY environment variable is required")
