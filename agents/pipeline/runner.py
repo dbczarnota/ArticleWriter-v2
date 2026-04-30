@@ -1,6 +1,8 @@
 # agents/pipeline/runner.py
 from __future__ import annotations
 
+import asyncio
+
 from agents._base.types import ArticleOutput, ParsedArticle
 from agents.extraction.agent import ExtractionResult, run_extraction_agent
 from agents.search.agent import run_search_agent
@@ -12,6 +14,7 @@ from agents.writer.agent import ArticleHtml, run_writer_agent
 from agents.reflection.agent import run_reflection_agent
 from agents.followup.agent import run_followup_agent
 from agents.usage_tracking.agent import run_usage_tracking_agent
+from agents.media_search.agent import run_media_search
 from backend.config import AppSettings
 from domains._base.config import DomainConfig
 from toolsets.scraping.serper import search as serper_search
@@ -36,6 +39,7 @@ async def run_pipeline(
 
     _errors: list[dict[str, str]] = []
     _filter_reasons: dict[str, str] = {}
+    embed_candidates: list = []
 
     # Apply domain freshness default when the caller hasn't explicitly overridden it
     if settings.search.search_freshness == SearchAgentConfig().search_freshness:
@@ -55,11 +59,18 @@ async def run_pipeline(
     log.search_start(topic, settings.search.num_queries, settings.search.max_results,
                      settings.search.search_freshness)
     try:
-        search_results = await run_search_agent(
-            topic,
-            config=settings.search,
-            domain_language=domain.language,
-            serper_api_key=serper_api_key,
+        search_results, embed_candidates = await asyncio.gather(
+            run_search_agent(
+                topic,
+                config=settings.search,
+                domain_language=domain.language,
+                serper_api_key=serper_api_key,
+            ),
+            run_media_search(
+                topic,
+                domain=domain,
+                serper_api_key=serper_api_key,
+            ),
         )
         log.search_done(search_results)
     except Exception as e:
@@ -248,6 +259,7 @@ async def run_pipeline(
                 scraped_urls=scraped_urls,
                 errors=_errors,
                 filter_reasons=_filter_reasons,
+                embed_candidates=embed_candidates,
             )
         except Exception as e:
             _errors.append({"stage": "followup", "error": str(e)})
@@ -268,6 +280,7 @@ async def run_pipeline(
         scraped_urls=scraped_urls,
         errors=_errors,
         filter_reasons=_filter_reasons,
+        embed_candidates=embed_candidates,
     )
 
 

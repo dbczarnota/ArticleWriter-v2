@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch
 from agents._base.types import (
-    ArticleOutput, Fact, Quote, SearchResult, ScrapedPage, ParsedArticle,
+    ArticleOutput, EmbedCandidate, Fact, Quote, SearchResult, ScrapedPage, ParsedArticle,
 )
 from agents.extraction.agent import ExtractionResult
 from agents.adaptive_search.agent import AdaptiveSearchDecision
@@ -43,6 +43,7 @@ _ARTICLE_OUTPUT = ArticleOutput(
     used_quotes=["Cytat 1"],
     sources=["https://e.com/1"],
 )
+_EMBED = EmbedCandidate(url="https://youtube.com/watch?v=1", title="YT Video", source="youtube")
 
 
 @pytest.fixture
@@ -58,6 +59,7 @@ def mocked_agents():
         patch("agents.pipeline.runner.run_reflection_agent", new_callable=AsyncMock) as m_reflect,
         patch("agents.pipeline.runner.run_followup_agent", new_callable=AsyncMock) as m_followup,
         patch("agents.pipeline.runner.serper_search", new_callable=AsyncMock) as m_serper,
+        patch("agents.pipeline.runner.run_media_search", new_callable=AsyncMock) as m_media,
     ):
         m_search.return_value = _SEARCH_RESULTS
         m_scrape.return_value = (_SCRAPED, [])
@@ -69,6 +71,7 @@ def mocked_agents():
         m_reflect.return_value = _REFLECTION
         m_followup.return_value = _ARTICLE_OUTPUT
         m_serper.return_value = []
+        m_media.return_value = [_EMBED]
         yield {
             "search": m_search,
             "scraping": m_scrape,
@@ -80,6 +83,7 @@ def mocked_agents():
             "reflection": m_reflect,
             "followup": m_followup,
             "serper": m_serper,
+            "media": m_media,
         }
 
 
@@ -212,6 +216,16 @@ async def test_pipeline_adaptive_respects_max_rounds(mocked_agents):
     await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
     assert mocked_agents["adaptive"].call_count == 1
     assert mocked_agents["extraction"].call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_pipeline_passes_embed_candidates_to_output(mocked_agents):
+    from agents.pipeline.runner import run_pipeline
+
+    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False))
+    result = await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
+    assert len(result.embed_candidates) == 1
+    assert result.embed_candidates[0].source == "youtube"
 
 
 def test_merge_extraction_deduplicates_by_text():
