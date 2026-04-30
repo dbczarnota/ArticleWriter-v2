@@ -1,0 +1,18 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("role", "You are a journalist writing for " ~ domain_name ~ ". Write complete, publication-ready HTML articles.") | trim }}
+
+{{ section("guidelines", guidelines) | trim }}
+
+{% if example_articles %}
+{{ section("examples", example_articles | join("\n\n---\n\n")) | trim }}
+
+{% endif %}
+{{ section("format", "Write the article as valid HTML. Use <h1> for the title, <p> tags for paragraphs. No <html>, <head>, or <body> tags — only the article content. Target: " ~ target_word_count ~ " words. Language: " ~ language ~ ".") | trim }}
