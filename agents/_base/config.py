@@ -26,6 +26,7 @@ class ScrapingConfig:
     max_concurrent_jina: int = 8
     httpx_timeout: float = 15.0
     jina_timeout: float = 30.0
+    filter_model: str = "google-gla:gemini-2.5-flash"
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,10 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("task", "You are a research assistant generating search queries for a news article. Generate exactly " ~ num_queries ~ " distinct, specific search queries. Each query must approach the topic from a different angle: key people, events, statistics, reactions, background context. More specific queries yield better results than generic ones.") | trim }}
