@@ -54,24 +54,24 @@ def _errors_section(errors: list[dict]) -> str:
 
 def _sources_section(output: ArticleOutput) -> str:
     included = set(output.sources)
-    all_urls = list(dict.fromkeys(output.scraped_urls + output.sources))  # preserve order, dedupe
+    all_urls = list(dict.fromkeys(output.scraped_urls + output.sources + list(output.filter_reasons)))
 
     if not all_urls:
-        return _section("Źródła i Status Przetwarzania", [])
+        return "<section><h2>Źródła i Status Przetwarzania</h2><ul><li>Brak danych.</li></ul></section>"
 
     items = []
     for url in all_urls:
-        safe_url = escape(url)
         if url in included:
-            status = '<span class="source-status status-included">Included</span>'
+            css, label = "status-included", "Included"
+        elif url in output.filter_reasons:
+            css, label = "status-excluded", output.filter_reasons[url]
         else:
-            status = '<span class="source-status status-excluded">Scraped, not used</span>'
+            css, label = "status-excluded", "Scraped, not used"
+        safe_url = escape(url)
         items.append(
-            f'<li class="source-item">'
-            f'<span class="source-url">{safe_url}</span>{status}'
-            f"</li>"
+            f'<li class="source-item"><span class="source-url">{safe_url}</span>'
+            f'<span class="source-status {css}">{escape(label)}</span></li>'
         )
-
     content = f"<ul>{''.join(items)}</ul>"
     return f"<section><h2>Źródła i Status Przetwarzania</h2>{content}</section>"
 

@@ -35,7 +35,7 @@ async def test_run_scraping_agent_scrapes_approved_urls():
     ) as mock_scrape:
         mock_scrape.return_value = [_make_scraped_page(u) for u in urls]
 
-        pages = await run_scraping_agent(
+        pages, rejected = await run_scraping_agent(
             search_results,
             topic="Dawid Podsiadło",
             scraping_config=ScrapingConfig(),
@@ -44,6 +44,7 @@ async def test_run_scraping_agent_scrapes_approved_urls():
         )
 
     assert len(pages) == 2
+    assert rejected == []
     mock_scrape.assert_called_once_with(urls, config=ScrapingConfig(), jina_api_key=None)
 
 
@@ -55,7 +56,7 @@ async def test_run_scraping_agent_skips_rejected_urls():
     with patch(
         "agents.scraping.agent.scrape_urls", new_callable=AsyncMock
     ) as mock_scrape:
-        pages = await run_scraping_agent(
+        pages, rejected = await run_scraping_agent(
             search_results,
             topic="topic",
             scraping_config=ScrapingConfig(),
@@ -64,6 +65,7 @@ async def test_run_scraping_agent_skips_rejected_urls():
         )
 
     assert pages == []
+    assert rejected == ["https://bad.com"]
     mock_scrape.assert_not_called()
 
 
@@ -73,7 +75,7 @@ async def test_run_scraping_agent_empty_input_returns_empty():
     with patch(
         "agents.scraping.agent.scrape_urls", new_callable=AsyncMock
     ) as mock_scrape:
-        pages = await run_scraping_agent(
+        pages, rejected = await run_scraping_agent(
             [],
             topic="topic",
             scraping_config=ScrapingConfig(),
@@ -81,6 +83,7 @@ async def test_run_scraping_agent_empty_input_returns_empty():
         )
 
     assert pages == []
+    assert rejected == []
     mock_scrape.assert_not_called()
 
 
@@ -94,7 +97,7 @@ async def test_run_scraping_agent_passes_jina_key_to_orchestrator():
     ) as mock_scrape:
         mock_scrape.return_value = [_make_scraped_page(url)]
 
-        await run_scraping_agent(
+        _pages, _rejected = await run_scraping_agent(
             [_make_search_result(url)],
             topic="topic",
             scraping_config=ScrapingConfig(),

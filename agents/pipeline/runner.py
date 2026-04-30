@@ -30,6 +30,7 @@ async def run_pipeline(
     from agents._base.config import SearchAgentConfig
 
     _errors: list[dict[str, str]] = []
+    _filter_reasons: dict[str, str] = {}
 
     # Apply domain freshness default when the caller hasn't explicitly overridden it
     if settings.search.search_freshness == SearchAgentConfig().search_freshness:
@@ -51,13 +52,14 @@ async def run_pipeline(
         search_results = []
 
     try:
-        scraped = await run_scraping_agent(
+        scraped, rejected_by_filter = await run_scraping_agent(
             search_results,
             topic,
             scraping_config=settings.scraping,
             jina_api_key=jina_api_key,
             extra_urls=urls or [],
         )
+        _filter_reasons = {url: "Not selected by filter" for url in rejected_by_filter}
     except Exception as e:
         _errors.append({"stage": "scraping", "error": str(e)})
         scraped = []
@@ -70,7 +72,6 @@ async def run_pipeline(
         articles = []
         scraped_urls = []
 
-    _date_reasons: dict[str, str] = {}
     if settings.pipeline.cutoff_days > 0:
         articles, _date_reasons = _filter_by_date(
             articles,
@@ -78,6 +79,7 @@ async def run_pipeline(
             manual_urls=set(urls or []),
         )
         scraped_urls = [a.url for a in articles if a.url]
+        _filter_reasons.update(_date_reasons)
 
     try:
         extraction = await run_extraction_agent(
@@ -193,6 +195,7 @@ async def run_pipeline(
                 sources=result.sources or scraped_urls,
                 scraped_urls=scraped_urls,
                 errors=_errors,
+                filter_reasons=_filter_reasons,
             )
         except Exception as e:
             _errors.append({"stage": "followup", "error": str(e)})
@@ -210,6 +213,7 @@ async def run_pipeline(
         sources=sources,
         scraped_urls=scraped_urls,
         errors=_errors,
+        filter_reasons=_filter_reasons,
     )
 
 

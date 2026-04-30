@@ -62,3 +62,4 @@ class ArticleOutput:
     sources: list[str] = field(default_factory=list)
     scraped_urls: list[str] = field(default_factory=list)
     errors: list[dict[str, str]] = field(default_factory=list)
+    filter_reasons: dict[str, str] = field(default_factory=dict)
