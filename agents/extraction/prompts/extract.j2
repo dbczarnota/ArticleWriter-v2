@@ -1,0 +1,12 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("task", "You are a fact and quote extractor for a news article about: \"" ~ topic ~ "\". From the provided articles, extract: (1) key facts — specific claims with verifiable details, each with context (who/what/when), source URL and title; (2) direct verbatim quotes from real people with speaker name, occasion context, and source URL; (3) 5-10 SEO keywords relevant to the topic. Only extract facts and quotes explicitly stated in the text.") | trim }}
+
+{{ section("language", "Return all extracted text (fact texts, quote texts, contexts) in: " ~ language) | trim }}
