@@ -3,6 +3,7 @@ import pathlib
 from typing import TYPE_CHECKING
 from pydantic import BaseModel
 from pydantic_ai import Agent
+from pydantic_ai.messages import ModelMessage
 from agents._base.config import WriterAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents.instructions.agent import WritingBrief
@@ -25,8 +26,9 @@ async def run_writer_agent(
     domain: DomainConfig,
     config: WriterAgentConfig,
     reflection_feedback: ReflectionFeedback | None = None,
+    additional_instructions: str | None = None,
     _agent: Agent | None = None,
-) -> ArticleHtml:
+) -> tuple[ArticleHtml, list[ModelMessage]]:
     """Write an HTML article from the writing brief. Accepts optional reflection feedback for round 2."""
     facts_block = "\n".join(f"- {f}" for f in brief.selected_facts)
     quotes_block = "\n".join(f"- {q}" for q in brief.selected_quotes)
@@ -37,6 +39,9 @@ async def run_writer_agent(
         f"FACTS TO USE:\n{facts_block}\n\n"
         f"QUOTES TO USE:\n{quotes_block}"
     )
+
+    if additional_instructions:
+        user_prompt += f"\n\n### Additional Instructions and Context:\n{additional_instructions}"
 
     if reflection_feedback:
         fixes = "\n".join(f"- {f}" for f in reflection_feedback.priority_fixes)
@@ -52,6 +57,7 @@ async def run_writer_agent(
             _PROMPTS_DIR / "writer.j2",
             domain_name=domain.name,
             guidelines=domain.guidelines,
+            html_format=domain.html_format,
             example_articles=list(domain.example_articles),
             target_word_count=domain.target_word_count,
             language=domain.language,
@@ -60,4 +66,4 @@ async def run_writer_agent(
     )
 
     result = await agent.run(user_prompt)
-    return result.output
+    return result.output, list(result.all_messages())

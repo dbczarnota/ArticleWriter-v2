@@ -150,7 +150,7 @@ async def run_pipeline(
         brief = WritingBrief(selected_facts=[], selected_quotes=[], writing_instructions="")
 
     try:
-        article = await run_writer_agent(
+        article, _messages = await run_writer_agent(
             brief,
             topic=topic,
             domain=domain,
@@ -160,24 +160,27 @@ async def run_pipeline(
     except Exception as e:
         _errors.append({"stage": "writer", "error": str(e)})
         article = ArticleHtml(html="")
+        _messages = []
 
     # Stage 4: Reflection
     if settings.pipeline.reflection:
         try:
-            feedback = await run_reflection_agent(
-                article,
-                topic=topic,
-                domain=domain,
-                config=settings.reflection,
-            )
-            article = await run_writer_agent(
-                brief,
-                topic=topic,
-                domain=domain,
-                config=settings.writer,
-                reflection_feedback=feedback,
-                additional_instructions=additional_instructions,
-            )
+            for _round in range(settings.reflection.max_rounds):
+                feedback = await run_reflection_agent(
+                    article,
+                    topic=topic,
+                    domain=domain,
+                    config=settings.reflection,
+                    message_history=_messages,
+                )
+                article, _messages = await run_writer_agent(
+                    brief,
+                    topic=topic,
+                    domain=domain,
+                    config=settings.writer,
+                    reflection_feedback=feedback,
+                    additional_instructions=additional_instructions,
+                )
         except Exception as e:
             _errors.append({"stage": "reflection", "error": str(e)})
 

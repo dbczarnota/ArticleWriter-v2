@@ -3,6 +3,7 @@ from __future__ import annotations
 import pathlib
 from pydantic import BaseModel
 from pydantic_ai import Agent
+from pydantic_ai.messages import ModelMessage
 from agents._base.config import ReflectionAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents.writer.agent import ArticleHtml
@@ -22,6 +23,7 @@ async def run_reflection_agent(
     topic: str,
     domain: DomainConfig,
     config: ReflectionAgentConfig,
+    message_history: list[ModelMessage] | None = None,
     _agent: Agent | None = None,
 ) -> ReflectionFeedback:
     """Review article quality against domain guidelines and return actionable feedback."""
@@ -38,6 +40,7 @@ async def run_reflection_agent(
     )
 
     result = await agent.run(
-        f"TOPIC: {topic}\n\nARTICLE TO REVIEW:\n{article.html}"
+        f"TOPIC: {topic}\n\nARTICLE TO REVIEW:\n{article.html}",
+        message_history=message_history or [],
     )
     return result.output

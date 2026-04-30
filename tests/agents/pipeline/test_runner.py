@@ -65,7 +65,7 @@ def mocked_agents():
         m_extract.return_value = _EXTRACTION
         m_adaptive.return_value = AdaptiveSearchDecision(needs_more_research=False)
         m_instr.return_value = _BRIEF
-        m_writer.return_value = _ARTICLE_HTML
+        m_writer.return_value = (_ARTICLE_HTML, [])
         m_reflect.return_value = _REFLECTION
         m_followup.return_value = _ARTICLE_OUTPUT
         m_serper.return_value = []

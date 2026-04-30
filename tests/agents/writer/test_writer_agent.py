@@ -36,16 +36,17 @@ def _make_writer_agent(html: str = _HTML) -> Agent:
 
 @pytest.mark.asyncio
 async def test_run_writer_agent_returns_html():
-    result = await run_writer_agent(
+    article, messages = await run_writer_agent(
         _BRIEF,
         topic="Dawid Podsiadło",
         domain=_DOMAIN,
         config=WriterAgentConfig(),
         _agent=_make_writer_agent(),
     )
-    assert isinstance(result, ArticleHtml)
-    assert "<h1>" in result.html
-    assert len(result.html) > 20
+    assert isinstance(article, ArticleHtml)
+    assert "<h1>" in article.html
+    assert len(article.html) > 20
+    assert isinstance(messages, list)
 
 
 @pytest.mark.asyncio
@@ -60,7 +61,7 @@ async def test_run_writer_agent_with_reflection_feedback():
         selected_quotes=['"Cytat" — Ktoś'],
         writing_instructions="Pisz o sukcesie.",
     )
-    result = await run_writer_agent(
+    article, messages = await run_writer_agent(
         brief,
         topic="topic",
         domain=_DOMAIN,
@@ -68,7 +69,8 @@ async def test_run_writer_agent_with_reflection_feedback():
         reflection_feedback=feedback,
         _agent=_make_writer_agent(),
     )
-    assert result.html == _HTML
+    assert article.html == _HTML
+    assert isinstance(messages, list)
 
 
 @pytest.mark.asyncio
@@ -81,11 +83,12 @@ async def test_run_writer_agent_no_examples_domain():
         guidelines="Write factually.",
         example_articles=(),
     )
-    result = await run_writer_agent(
+    article, messages = await run_writer_agent(
         _BRIEF,
         topic="topic",
         domain=domain_no_examples,
         config=WriterAgentConfig(),
         _agent=_make_writer_agent("<p>Article content here.</p>"),
     )
-    assert result.html == "<p>Article content here.</p>"
+    assert article.html == "<p>Article content here.</p>"
+    assert isinstance(messages, list)
