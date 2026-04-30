@@ -18,5 +18,5 @@ STYL_FM_DOMAIN = DomainConfig(
     twitter_search=False,
     facebook_search=False,
     guidelines=_GUIDELINES_PATH.read_text(encoding="utf-8"),
-    example_articles=EXAMPLE_ARTICLES,
+    example_articles=tuple(EXAMPLE_ARTICLES),
 )

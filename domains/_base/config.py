@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -17,4 +17,4 @@ class DomainConfig:
     twitter_search: bool = False
     facebook_search: bool = False
     guidelines: str = ""
-    example_articles: list[str] = field(default_factory=list)
+    example_articles: tuple[str, ...] = ()

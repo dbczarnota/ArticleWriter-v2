@@ -11,6 +11,7 @@ def test_domain_config_defaults():
     assert d.max_quotes_in_article == 3
     assert d.default_search_freshness == "qdr:w"
     assert d.default_num_queries == 3
+    assert d.default_max_results == 5
     assert d.youtube_search is False
     assert d.twitter_search is False
     assert d.facebook_search is False
