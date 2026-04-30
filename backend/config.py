@@ -28,6 +28,20 @@ AVAILABLE_MODELS: list[dict[str, str]] = [
 ]
 
 
+# Mapowanie nazw kluczy z ArticleRequest.agents na pola AppSettings
+_AGENT_FIELD_MAP: dict[str, str] = {
+    "search": "search",
+    "scraping": "scraping",
+    "parsing": "parsing",
+    "extraction": "extraction",
+    "adaptive_search": "adaptive_search_agent",
+    "instructions": "instructions",
+    "writer": "writer",
+    "reflection": "reflection",
+    "followup": "followup",
+}
+
+
 @dataclass(frozen=True)
 class PipelineFlags:
     llm_knowledge: bool = False
@@ -56,21 +70,9 @@ class AppSettings:
 
         defaults = cls(domain=req.domain)
 
-        _AGENT_MAP: dict[str, str] = {
-            "search": "search",
-            "scraping": "scraping",
-            "parsing": "parsing",
-            "extraction": "extraction",
-            "adaptive_search": "adaptive_search_agent",
-            "instructions": "instructions",
-            "writer": "writer",
-            "reflection": "reflection",
-            "followup": "followup",
-        }
-
         patches: dict = {}
 
-        for req_key, settings_key in _AGENT_MAP.items():
+        for req_key, settings_key in _AGENT_FIELD_MAP.items():
             payload = (req.agents or {}).get(req_key)
             if not payload:
                 continue
