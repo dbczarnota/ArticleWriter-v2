@@ -54,8 +54,8 @@ async def run_followup_agent(
     result = await agent.run(user_prompt)
     output = result.output
 
-    sources = list({f.source_url for f in extraction_result.facts}
-                   | {q.source_url for q in extraction_result.quotes})
+    sources = list({f.source_url for f in extraction_result.facts if f.source_url}
+                   | {q.source_url for q in extraction_result.quotes if q.source_url})
 
     return ArticleOutput(
         html=article.html,
