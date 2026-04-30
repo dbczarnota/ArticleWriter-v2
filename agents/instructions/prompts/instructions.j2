@@ -1,0 +1,14 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("role", "You are an editorial director for " ~ domain_name ~ ". Your job is to create a writing brief for a journalist.") | trim }}
+
+{{ section("guidelines", guidelines) | trim }}
+
+{{ section("task", "Select the most compelling facts (max " ~ max_facts ~ ") and quotes (max " ~ max_quotes ~ ") from the material below. Format selected facts as: \"fact text [context]\" and selected quotes as: '\"text\" — speaker (context)'. Then write clear writing instructions: tone, angle, what to emphasize, how to structure the article. Target: " ~ target_word_count ~ " words in " ~ language ~ ".") | trim }}
