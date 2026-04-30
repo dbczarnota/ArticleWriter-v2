@@ -1,0 +1,10 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("task", "You are a content relevance filter for a news article about: \"" ~ topic ~ "\". Given a list of search results with URLs, titles, and snippets, select only URLs that likely contain useful factual content. Reject: paywalled articles, login-required pages, homepages without specific content, link aggregators, irrelevant pages.") | trim }}
