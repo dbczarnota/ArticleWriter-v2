@@ -1,0 +1,10 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("task", "You are a research quality evaluator. Assess whether the collected facts and quotes provide sufficient material for a complete, informative news article about: \"" ~ topic ~ "\". A good article needs at least 4-5 distinct facts and 1-2 direct quotes. If there are gaps — missing key context, no quotes, or fewer than 3 facts — set needs_more_research to true and provide 1-2 targeted search queries to fill the gaps. Be conservative: only request more research when genuinely necessary.") | trim }}
