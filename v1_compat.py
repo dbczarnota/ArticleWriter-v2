@@ -26,7 +26,57 @@ _CSS = (
     ".models-table th,.models-table td{text-align:left;padding:4px 10px;border-bottom:1px solid #eee}"
     ".models-table th{color:#555;font-weight:bold}"
     ".stage-ok{color:#2a8a2a}.stage-err{color:#c00;font-weight:bold}"
+    ".embeds-grid{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}"
+    ".embed-card{border:1px solid #ddd;border-radius:6px;padding:10px;max-width:280px;"
+    "background:#fff;display:flex;flex-direction:column;gap:4px}"
+    ".embed-thumb{width:100%;height:auto;border-radius:4px;max-height:150px;object-fit:cover}"
+    ".embed-title{font-weight:bold;font-size:0.9em;color:#1a0dab;text-decoration:none}"
+    ".embed-title:hover{text-decoration:underline}"
+    ".embed-channel{font-size:0.8em;color:#555}"
+    ".embed-desc{font-size:0.8em;color:#666}"
+    ".embed-source-yt{border-left:3px solid #ff0000}"
+    ".embed-source-twitter{border-left:3px solid #1da1f2}"
+    ".embed-source-tiktok{border-left:3px solid #010101}"
+    ".embed-source-instagram{border-left:3px solid #c13584}"
+    ".embed-source-facebook{border-left:3px solid #1877f2}"
 )
+
+
+_SOURCE_LABELS = {
+    "youtube": "YouTube", "twitter": "Twitter / X",
+    "tiktok": "TikTok", "instagram": "Instagram", "facebook": "Facebook",
+}
+
+
+def _embeds_section(candidates: list) -> str:
+    if not candidates:
+        return ""
+    by_source: dict[str, list] = {}
+    for c in candidates:
+        by_source.setdefault(c.source, []).append(c)
+
+    html = "<section><h2>Media do osadzenia</h2>"
+    for source, items in by_source.items():
+        label = _SOURCE_LABELS.get(source, source)
+        html += f"<h3>{escape(label)}</h3><div class='embeds-grid'>"
+        for c in items:
+            css = f"embed-card embed-source-{source}"
+            card = f'<div class="{css}">'
+            if c.thumbnail_url:
+                card += f'<img src="{escape(c.thumbnail_url)}" class="embed-thumb" loading="lazy" />'
+            card += (
+                f'<a href="{escape(c.url)}" target="_blank" class="embed-title">'
+                f'{escape(c.title)}</a>'
+            )
+            if c.channel:
+                card += f'<span class="embed-channel">{escape(c.channel)}</span>'
+            if c.description:
+                card += f'<span class="embed-desc">{escape(c.description[:120])}</span>'
+            card += "</div>"
+            html += card
+        html += "</div>"
+    html += "</section>"
+    return html
 
 
 def _section(title: str, items: list[str]) -> str:
@@ -106,12 +156,13 @@ def to_v1_html(output: ArticleOutput, agent_models: dict[str, str] | None = None
     sources = _sources_section(output)
     quotes = _used_section("Cytaty użyte w artykule", output.used_quotes)
     facts = _used_section("Fakty użyte w artykule", output.used_facts)
+    embeds = _embeds_section(output.embed_candidates)
     models = _models_section(agent_models, output.errors) if agent_models else ""
 
     return (
         "<!DOCTYPE html><html>"
         f'<head><title>Article Result</title><meta charset="UTF-8">'
         f"<style>{_CSS}</style></head><body>"
-        f"{article}{errors}{titles}{topics}{sources}{quotes}{facts}{models}"
+        f"{article}{errors}{titles}{topics}{sources}{quotes}{facts}{embeds}{models}"
         "</body></html>"
     )
