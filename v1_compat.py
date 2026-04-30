@@ -60,7 +60,8 @@ def _embeds_section(candidates: list) -> str:
         label = _SOURCE_LABELS.get(source, source)
         html += f"<h3>{escape(label)}</h3><div class='embeds-grid'>"
         for c in items:
-            css = f"embed-card embed-source-{source}"
+            safe_source = escape(source)
+            css = f"embed-card embed-source-{safe_source}"
             card = f'<div class="{css}">'
             if c.thumbnail_url:
                 card += f'<img src="{escape(c.thumbnail_url)}" class="embed-thumb" loading="lazy" />'
