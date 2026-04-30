@@ -3,6 +3,7 @@ from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
 from agents._base.config import WriterAgentConfig
 from agents.instructions.agent import WritingBrief
+from agents.reflection.agent import ReflectionFeedback
 from agents.writer.agent import ArticleHtml, run_writer_agent
 from domains._base.config import DomainConfig
 
@@ -50,14 +51,15 @@ async def test_run_writer_agent_returns_html():
 @pytest.mark.asyncio
 async def test_run_writer_agent_with_reflection_feedback():
     """When reflection_feedback is provided, it is included in the user prompt."""
-    feedback = "Dodaj więcej emocji w pierwszym akapicie."
+    feedback = ReflectionFeedback(
+        feedback="Dodaj więcej emocji w pierwszym akapicie.",
+        priority_fixes=["Wzmocnij lead", "Usuń suchy wstęp"],
+    )
     brief = WritingBrief(
         selected_facts=["Fakt"],
         selected_quotes=['"Cytat" — Ktoś'],
         writing_instructions="Pisz o sukcesie.",
     )
-
-    # Simpler approach: just verify the function accepts reflection_feedback without error
     result = await run_writer_agent(
         brief,
         topic="topic",
