@@ -7,6 +7,7 @@ _GUIDELINES_PATH = Path(__file__).parent / "guidelines.md"
 STYL_FM_DOMAIN = DomainConfig(
     name="styl_fm",
     description="Polski portal lifestyle/celebryci. Clickbait, emocje, krótkie artykuły.",
+    language="pl",
     target_word_count=600,
     max_facts_in_article=8,
     max_quotes_in_article=3,

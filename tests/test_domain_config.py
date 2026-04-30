@@ -32,3 +32,12 @@ def test_domain_config_is_frozen():
     d = DomainConfig(name="test", description="Test")
     with pytest.raises(FrozenInstanceError):
         d.target_word_count = 999
+
+
+def test_domain_config_language_default():
+    d = DomainConfig(name="test", description="Test domain")
+    assert d.language == "pl"
+
+
+def test_styl_fm_language_is_polish():
+    assert STYL_FM_DOMAIN.language == "pl"

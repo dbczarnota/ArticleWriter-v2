@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 class DomainConfig:
     name: str
     description: str
+    language: str = "pl"
     target_word_count: int = 600
     max_facts_in_article: int = 8
     max_quotes_in_article: int = 3
