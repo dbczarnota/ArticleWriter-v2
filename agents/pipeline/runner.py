@@ -26,9 +26,13 @@ async def run_pipeline(
     jina_api_key: str | None = None,
     urls: list[str] | None = None,
     additional_instructions: str | None = None,
+    debug: bool = False,
 ) -> ArticleOutput:
     from dataclasses import replace as dc_replace
     from agents._base.config import SearchAgentConfig
+    from agents._base.debug_log import PipelineLogger
+
+    log = PipelineLogger(enabled=debug)
 
     _errors: list[dict[str, str]] = []
     _filter_reasons: dict[str, str] = {}
@@ -41,6 +45,8 @@ async def run_pipeline(
         )
 
     # Stage 1: Research
+    log.search_start(topic, settings.search.num_queries, settings.search.max_results,
+                     settings.search.search_freshness)
     try:
         search_results = await run_search_agent(
             topic,
@@ -48,10 +54,13 @@ async def run_pipeline(
             domain_language=domain.language,
             serper_api_key=serper_api_key,
         )
+        log.search_done(search_results)
     except Exception as e:
         _errors.append({"stage": "search", "error": str(e)})
+        log.error("search", e)
         search_results = []
 
+    log.scraping_start(len(search_results), len(urls or []))
     try:
         scraped, rejected_by_filter = await run_scraping_agent(
             search_results,
@@ -61,15 +70,19 @@ async def run_pipeline(
             extra_urls=urls or [],
         )
         _filter_reasons = {url: "Not selected by filter" for url in rejected_by_filter}
+        log.scraping_done(scraped, rejected_by_filter)
     except Exception as e:
         _errors.append({"stage": "scraping", "error": str(e)})
+        log.error("scraping", e)
         scraped = []
 
     try:
         articles = await run_parsing_agent(scraped, config=settings.parsing)
         scraped_urls: list[str] = [a.url for a in articles if a.url]
+        log.parsing_done(articles)
     except Exception as e:
         _errors.append({"stage": "parsing", "error": str(e)})
+        log.error("parsing", e)
         articles = []
         scraped_urls = []
 
@@ -81,6 +94,7 @@ async def run_pipeline(
         )
         scraped_urls = [a.url for a in articles if a.url]
         _filter_reasons.update(_date_reasons)
+        log.date_filter_done(len(articles), len(_date_reasons))
 
     try:
         extraction = await run_extraction_agent(
@@ -89,20 +103,23 @@ async def run_pipeline(
             language=domain.language,
             config=settings.extraction,
         )
+        log.extraction_done(extraction)
     except Exception as e:
         _errors.append({"stage": "extraction", "error": str(e)})
+        log.error("extraction", e)
         extraction = ExtractionResult(facts=[], quotes=[], keywords=[])
 
     # Stage 2: Adaptive search loop
     if settings.pipeline.adaptive_search:
         try:
             seen_urls: set[str] = {r.url for r in search_results}
-            for _ in range(settings.adaptive_search_agent.max_additional_rounds):
+            for _round in range(settings.adaptive_search_agent.max_additional_rounds):
                 decision = await run_adaptive_search_agent(
                     extraction,
                     topic=topic,
                     config=settings.adaptive_search_agent,
                 )
+                log.adaptive_search_done(decision, _round + 1)
                 if not decision.needs_more_research or not decision.additional_queries:
                     break
                 extra_results = []
@@ -119,7 +136,7 @@ async def run_pipeline(
                             extra_results.append(r)
                 if not extra_results:
                     break
-                extra_scraped = await run_scraping_agent(
+                extra_scraped, _ = await run_scraping_agent(
                     extra_results,
                     topic,
                     scraping_config=settings.scraping,
@@ -133,8 +150,10 @@ async def run_pipeline(
                     config=settings.extraction,
                 )
                 extraction = _merge_extraction(extraction, extra_extraction)
+                log.extraction_done(extraction)
         except Exception as e:
             _errors.append({"stage": "adaptive_search", "error": str(e)})
+            log.error("adaptive_search", e)
 
     # Stage 3: Writing
     try:
@@ -145,8 +164,10 @@ async def run_pipeline(
             config=settings.instructions,
             additional_instructions=additional_instructions,
         )
+        log.instructions_done(brief)
     except Exception as e:
         _errors.append({"stage": "instructions", "error": str(e)})
+        log.error("instructions", e)
         brief = WritingBrief(selected_facts=[], selected_quotes=[], writing_instructions="")
 
     try:
@@ -157,8 +178,10 @@ async def run_pipeline(
             config=settings.writer,
             additional_instructions=additional_instructions,
         )
+        log.writer_done(article, round_n=1)
     except Exception as e:
         _errors.append({"stage": "writer", "error": str(e)})
+        log.error("writer", e)
         article = ArticleHtml(html="")
         _messages = []
 
@@ -173,6 +196,7 @@ async def run_pipeline(
                     config=settings.reflection,
                     message_history=_messages,
                 )
+                log.reflection_done(feedback, round_n=_round + 1)
                 article, _messages = await run_writer_agent(
                     brief,
                     topic=topic,
@@ -181,8 +205,10 @@ async def run_pipeline(
                     reflection_feedback=feedback,
                     additional_instructions=additional_instructions,
                 )
+                log.writer_done(article, round_n=_round + 2)
         except Exception as e:
             _errors.append({"stage": "reflection", "error": str(e)})
+            log.error("reflection", e)
 
     # Stage 5: Follow-up
     if settings.pipeline.followup:
@@ -200,9 +226,13 @@ async def run_pipeline(
                     extraction_result=extraction,
                     config=settings.usage_tracking,
                 )
+                log.usage_tracking_done(used_facts, used_quotes)
             except Exception as e:
                 _errors.append({"stage": "usage_tracking", "error": str(e)})
+                log.error("usage_tracking", e)
                 used_facts, used_quotes = [], []
+            log.followup_done(result.alternative_titles, result.followup_topics)
+            log.done(len(result.sources or scraped_urls), len(_errors))
             return _replace(
                 result,
                 used_facts=used_facts,
@@ -214,11 +244,13 @@ async def run_pipeline(
             )
         except Exception as e:
             _errors.append({"stage": "followup", "error": str(e)})
+            log.error("followup", e)
 
     sources = list(
         {f.source_url for f in extraction.facts if f.source_url}
         | {q.source_url for q in extraction.quotes if q.source_url}
     ) or scraped_urls
+    log.done(len(sources), len(_errors))
     return ArticleOutput(
         html=article.html,
         alternative_titles=[],

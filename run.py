@@ -16,7 +16,9 @@ ADDITIONAL_INSTRUCTIONS: str | None = None
 
 # Search freshness — leave None to use domain default (styl_fm = qdr:d = last 24h)
 # Options: "qdr:h" (hour), "qdr:d" (day), "qdr:w" (week), "qdr:m" (month), "qdr:y" (year)
-SEARCH_FRESHNESS: str | None = None
+SEARCH_FRESHNESS: str | None = "qdr:3d"
+
+DEBUG = True  # rich pipeline logs in terminal
 
 OUTPUT_FILE = "output.html"
 
@@ -34,7 +36,11 @@ async def main() -> None:
 
     from agents._base.config import SearchAgentConfig
     search_cfg = SearchAgentConfig(search_freshness=SEARCH_FRESHNESS) if SEARCH_FRESHNESS else SearchAgentConfig()
-    settings = AppSettings(domain=DOMAIN, search=search_cfg)
+    settings = AppSettings(
+    domain=DOMAIN,
+    search=SearchAgentConfig(max_results=10, num_queries=5, search_freshness=SEARCH_FRESHNESS or "qdr:w"),
+)
+
     domain = load_domain(DOMAIN)
 
     serper_key = os.environ["SERPER_API_KEY"]
@@ -49,6 +55,7 @@ async def main() -> None:
         jina_api_key=jina_key,
         urls=URLS or None,
         additional_instructions=ADDITIONAL_INSTRUCTIONS,
+        debug=DEBUG,
     )
 
     agent_models = {

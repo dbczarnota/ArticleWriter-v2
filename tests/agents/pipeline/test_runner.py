@@ -60,7 +60,7 @@ def mocked_agents():
         patch("agents.pipeline.runner.serper_search", new_callable=AsyncMock) as m_serper,
     ):
         m_search.return_value = _SEARCH_RESULTS
-        m_scrape.return_value = _SCRAPED
+        m_scrape.return_value = (_SCRAPED, [])
         m_parse.return_value = _ARTICLES
         m_extract.return_value = _EXTRACTION
         m_adaptive.return_value = AdaptiveSearchDecision(needs_more_research=False)
@@ -156,9 +156,10 @@ async def test_pipeline_runs_extra_search_round(mocked_agents):
         SearchResult(url="https://e.com/2", title="T2", snippet="S2", source="web")
     ]
     mocked_agents["extraction"].side_effect = [_EXTRACTION, extra_extraction]
-    mocked_agents["scraping"].return_value = [
-        ScrapedPage(url="https://e.com/2", title="T2", content="Extra", scrape_tier="httpx")
-    ]
+    mocked_agents["scraping"].return_value = (
+        [ScrapedPage(url="https://e.com/2", title="T2", content="Extra", scrape_tier="httpx")],
+        [],
+    )
     mocked_agents["parsing"].return_value = [
         ParsedArticle(url="https://e.com/2", title="T2", content="Extra", publication_date=None)
     ]
