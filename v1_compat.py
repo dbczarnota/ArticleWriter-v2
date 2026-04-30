@@ -22,6 +22,10 @@ _CSS = (
     "margin-left:8px;display:inline-block;vertical-align:middle;}"
     ".error-report{border-color:#d32f2f;background-color:#ffebee}"
     ".error-report h2{color:#c00}"
+    ".models-table{border-collapse:collapse;width:100%;font-size:0.9em}"
+    ".models-table th,.models-table td{text-align:left;padding:4px 10px;border-bottom:1px solid #eee}"
+    ".models-table th{color:#555;font-weight:bold}"
+    ".stage-ok{color:#2a8a2a}.stage-err{color:#c00;font-weight:bold}"
 )
 
 
@@ -76,7 +80,25 @@ def _sources_section(output: ArticleOutput) -> str:
     return f"<section><h2>Źródła i Status Przetwarzania</h2>{content}</section>"
 
 
-def to_v1_html(output: ArticleOutput) -> str:
+def _models_section(agent_models: dict[str, str], errors: list[dict]) -> str:
+    error_stages = {e.get("stage", "") for e in errors}
+    rows = ""
+    for stage, model in agent_models.items():
+        if stage in error_stages:
+            status = '<span class="stage-err">&#x2717; error</span>'
+        else:
+            status = '<span class="stage-ok">&#x2713;</span>'
+        rows += f"<tr><td>{escape(stage)}</td><td>{escape(model)}</td><td>{status}</td></tr>"
+    return (
+        "<section><h2>Modele</h2>"
+        '<table class="models-table">'
+        "<thead><tr><th>Agent</th><th>Model</th><th>Status</th></tr></thead>"
+        f"<tbody>{rows}</tbody>"
+        "</table></section>"
+    )
+
+
+def to_v1_html(output: ArticleOutput, agent_models: dict[str, str] | None = None) -> str:
     article = f"<article>\n{output.html}\n</article>"
     errors = _errors_section(output.errors)
     titles = _section("Alternatywne tytuły", output.alternative_titles)
@@ -84,11 +106,12 @@ def to_v1_html(output: ArticleOutput) -> str:
     sources = _sources_section(output)
     quotes = _used_section("Cytaty użyte w artykule", output.used_quotes)
     facts = _used_section("Fakty użyte w artykule", output.used_facts)
+    models = _models_section(agent_models, output.errors) if agent_models else ""
 
     return (
         "<!DOCTYPE html><html>"
         f'<head><title>Article Result</title><meta charset="UTF-8">'
         f"<style>{_CSS}</style></head><body>"
-        f"{article}{errors}{titles}{topics}{sources}{quotes}{facts}"
+        f"{article}{errors}{titles}{topics}{sources}{quotes}{facts}{models}"
         "</body></html>"
     )
