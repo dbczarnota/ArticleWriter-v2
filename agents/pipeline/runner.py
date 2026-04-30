@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 from agents._base.types import ArticleOutput
-from agents.extraction.agent import ExtractionResult
+from agents.extraction.agent import ExtractionResult, run_extraction_agent
 from agents.search.agent import run_search_agent
 from agents.scraping.agent import run_scraping_agent
 from agents.parsing.agent import run_parsing_agent
-from agents.extraction.agent import run_extraction_agent
 from agents.adaptive_search.agent import run_adaptive_search_agent
-from agents.instructions.agent import run_instructions_agent
-from agents.writer.agent import run_writer_agent
+from agents.instructions.agent import WritingBrief, run_instructions_agent
+from agents.writer.agent import ArticleHtml, run_writer_agent
 from agents.reflection.agent import run_reflection_agent
 from agents.followup.agent import run_followup_agent
 from backend.config import AppSettings
@@ -24,110 +23,175 @@ async def run_pipeline(
     domain: DomainConfig,
     serper_api_key: str,
     jina_api_key: str | None = None,
+    urls: list[str] | None = None,
+    additional_instructions: str | None = None,
 ) -> ArticleOutput:
+    from dataclasses import replace as dc_replace
+    from agents._base.config import SearchAgentConfig
+
+    _errors: list[dict[str, str]] = []
+
+    # Apply domain freshness default when the caller hasn't explicitly overridden it
+    if settings.search.search_freshness == SearchAgentConfig().search_freshness:
+        settings = dc_replace(
+            settings,
+            search=dc_replace(settings.search, search_freshness=domain.default_search_freshness),
+        )
+
     # Stage 1: Research
-    search_results = await run_search_agent(
-        topic,
-        config=settings.search,
-        domain_language=domain.language,
-        serper_api_key=serper_api_key,
-    )
-    scraped = await run_scraping_agent(
-        search_results,
-        topic,
-        scraping_config=settings.scraping,
-        jina_api_key=jina_api_key,
-    )
-    articles = await run_parsing_agent(scraped, config=settings.parsing)
-    extraction = await run_extraction_agent(
-        articles,
-        topic=topic,
-        language=domain.language,
-        config=settings.extraction,
-    )
+    try:
+        search_results = await run_search_agent(
+            topic,
+            config=settings.search,
+            domain_language=domain.language,
+            serper_api_key=serper_api_key,
+        )
+    except Exception as e:
+        _errors.append({"stage": "search", "error": str(e)})
+        search_results = []
+
+    try:
+        scraped = await run_scraping_agent(
+            search_results,
+            topic,
+            scraping_config=settings.scraping,
+            jina_api_key=jina_api_key,
+            extra_urls=urls or [],
+        )
+    except Exception as e:
+        _errors.append({"stage": "scraping", "error": str(e)})
+        scraped = []
+
+    try:
+        articles = await run_parsing_agent(scraped, config=settings.parsing)
+        scraped_urls: list[str] = [a.url for a in articles if a.url]
+    except Exception as e:
+        _errors.append({"stage": "parsing", "error": str(e)})
+        articles = []
+        scraped_urls = []
+
+    try:
+        extraction = await run_extraction_agent(
+            articles,
+            topic=topic,
+            language=domain.language,
+            config=settings.extraction,
+        )
+    except Exception as e:
+        _errors.append({"stage": "extraction", "error": str(e)})
+        extraction = ExtractionResult(facts=[], quotes=[], keywords=[])
 
     # Stage 2: Adaptive search loop
     if settings.pipeline.adaptive_search:
-        seen_urls: set[str] = {r.url for r in search_results}
-        for _ in range(settings.adaptive_search_agent.max_additional_rounds):
-            decision = await run_adaptive_search_agent(
-                extraction,
-                topic=topic,
-                config=settings.adaptive_search_agent,
-            )
-            if not decision.needs_more_research or not decision.additional_queries:
-                break
-            extra_results = []
-            for query in decision.additional_queries:
-                for r in await serper_search(
-                    query,
-                    num=settings.search.max_results,
-                    freshness=settings.search.search_freshness,
+        try:
+            seen_urls: set[str] = {r.url for r in search_results}
+            for _ in range(settings.adaptive_search_agent.max_additional_rounds):
+                decision = await run_adaptive_search_agent(
+                    extraction,
+                    topic=topic,
+                    config=settings.adaptive_search_agent,
+                )
+                if not decision.needs_more_research or not decision.additional_queries:
+                    break
+                extra_results = []
+                for query in decision.additional_queries:
+                    for r in await serper_search(
+                        query,
+                        num=settings.search.max_results,
+                        freshness=settings.search.search_freshness,
+                        language=domain.language,
+                        api_key=serper_api_key,
+                    ):
+                        if r.url not in seen_urls:
+                            seen_urls.add(r.url)
+                            extra_results.append(r)
+                if not extra_results:
+                    break
+                extra_scraped = await run_scraping_agent(
+                    extra_results,
+                    topic,
+                    scraping_config=settings.scraping,
+                    jina_api_key=jina_api_key,
+                )
+                extra_articles = await run_parsing_agent(extra_scraped, config=settings.parsing)
+                extra_extraction = await run_extraction_agent(
+                    extra_articles,
+                    topic=topic,
                     language=domain.language,
-                    api_key=serper_api_key,
-                ):
-                    if r.url not in seen_urls:
-                        seen_urls.add(r.url)
-                        extra_results.append(r)
-            if not extra_results:
-                break
-            extra_scraped = await run_scraping_agent(
-                extra_results,
-                topic,
-                scraping_config=settings.scraping,
-                jina_api_key=jina_api_key,
-            )
-            extra_articles = await run_parsing_agent(extra_scraped, config=settings.parsing)
-            extra_extraction = await run_extraction_agent(
-                extra_articles,
-                topic=topic,
-                language=domain.language,
-                config=settings.extraction,
-            )
-            extraction = _merge_extraction(extraction, extra_extraction)
+                    config=settings.extraction,
+                )
+                extraction = _merge_extraction(extraction, extra_extraction)
+        except Exception as e:
+            _errors.append({"stage": "adaptive_search", "error": str(e)})
 
     # Stage 3: Writing
-    brief = await run_instructions_agent(
-        extraction,
-        topic=topic,
-        domain=domain,
-        config=settings.instructions,
-    )
-    article = await run_writer_agent(
-        brief,
-        topic=topic,
-        domain=domain,
-        config=settings.writer,
-    )
-
-    # Stage 4: Reflection
-    if settings.pipeline.reflection:
-        feedback = await run_reflection_agent(
-            article,
+    try:
+        brief = await run_instructions_agent(
+            extraction,
             topic=topic,
             domain=domain,
-            config=settings.reflection,
+            config=settings.instructions,
+            additional_instructions=additional_instructions,
         )
+    except Exception as e:
+        _errors.append({"stage": "instructions", "error": str(e)})
+        brief = WritingBrief(selected_facts=[], selected_quotes=[], writing_instructions="")
+
+    try:
         article = await run_writer_agent(
             brief,
             topic=topic,
             domain=domain,
             config=settings.writer,
-            reflection_feedback=feedback,
+            additional_instructions=additional_instructions,
         )
+    except Exception as e:
+        _errors.append({"stage": "writer", "error": str(e)})
+        article = ArticleHtml(html="")
+
+    # Stage 4: Reflection
+    if settings.pipeline.reflection:
+        try:
+            feedback = await run_reflection_agent(
+                article,
+                topic=topic,
+                domain=domain,
+                config=settings.reflection,
+            )
+            article = await run_writer_agent(
+                brief,
+                topic=topic,
+                domain=domain,
+                config=settings.writer,
+                reflection_feedback=feedback,
+                additional_instructions=additional_instructions,
+            )
+        except Exception as e:
+            _errors.append({"stage": "reflection", "error": str(e)})
 
     # Stage 5: Follow-up
     if settings.pipeline.followup:
-        return await run_followup_agent(
-            article,
-            topic=topic,
-            extraction_result=extraction,
-            config=settings.followup,
-        )
+        try:
+            from dataclasses import replace as _replace
+            result = await run_followup_agent(
+                article,
+                topic=topic,
+                extraction_result=extraction,
+                config=settings.followup,
+            )
+            return _replace(
+                result,
+                sources=result.sources or scraped_urls,
+                scraped_urls=scraped_urls,
+                errors=_errors,
+            )
+        except Exception as e:
+            _errors.append({"stage": "followup", "error": str(e)})
 
     sources = list(
-        {f.source_url for f in extraction.facts} | {q.source_url for q in extraction.quotes}
-    )
+        {f.source_url for f in extraction.facts if f.source_url}
+        | {q.source_url for q in extraction.quotes if q.source_url}
+    ) or scraped_urls
     return ArticleOutput(
         html=article.html,
         alternative_titles=[],
@@ -135,6 +199,8 @@ async def run_pipeline(
         used_facts=[],
         used_quotes=[],
         sources=sources,
+        scraped_urls=scraped_urls,
+        errors=_errors,
     )
 
 

@@ -60,3 +60,5 @@ class ArticleOutput:
     used_facts: list[str] = field(default_factory=list)
     used_quotes: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)
+    scraped_urls: list[str] = field(default_factory=list)
+    errors: list[dict[str, str]] = field(default_factory=list)
