@@ -1,7 +1,7 @@
 # agents/pipeline/runner.py
 from __future__ import annotations
 
-from agents._base.types import ArticleOutput
+from agents._base.types import ArticleOutput, ParsedArticle
 from agents.extraction.agent import ExtractionResult, run_extraction_agent
 from agents.search.agent import run_search_agent
 from agents.scraping.agent import run_scraping_agent
@@ -69,6 +69,15 @@ async def run_pipeline(
         _errors.append({"stage": "parsing", "error": str(e)})
         articles = []
         scraped_urls = []
+
+    _date_reasons: dict[str, str] = {}
+    if settings.pipeline.cutoff_days > 0:
+        articles, _date_reasons = _filter_by_date(
+            articles,
+            cutoff_days=settings.pipeline.cutoff_days,
+            manual_urls=set(urls or []),
+        )
+        scraped_urls = [a.url for a in articles if a.url]
 
     try:
         extraction = await run_extraction_agent(
@@ -202,6 +211,34 @@ async def run_pipeline(
         scraped_urls=scraped_urls,
         errors=_errors,
     )
+
+
+def _filter_by_date(
+    articles: list[ParsedArticle],
+    cutoff_days: int,
+    manual_urls: set[str],
+) -> tuple[list[ParsedArticle], dict[str, str]]:
+    from datetime import datetime, timedelta
+    cutoff = datetime.now().date() - timedelta(days=cutoff_days)
+    kept: list[ParsedArticle] = []
+    reasons: dict[str, str] = {}
+    for article in articles:
+        if article.url in manual_urls:
+            kept.append(article)
+            continue
+        if article.publication_date is None:
+            kept.append(article)
+            continue
+        try:
+            pub = datetime.fromisoformat(article.publication_date).date()
+        except ValueError:
+            kept.append(article)
+            continue
+        if pub < cutoff:
+            reasons[article.url] = f"Too old: {pub}"
+        else:
+            kept.append(article)
+    return kept, reasons
 
 
 def _merge_extraction(base: ExtractionResult, extra: ExtractionResult) -> ExtractionResult:

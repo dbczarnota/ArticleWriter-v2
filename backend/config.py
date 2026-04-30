@@ -48,6 +48,7 @@ class PipelineFlags:
     adaptive_search: bool = True
     reflection: bool = True
     followup: bool = True
+    cutoff_days: int = 30
 
 
 @dataclass(frozen=True)
