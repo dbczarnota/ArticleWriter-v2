@@ -1,0 +1,14 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("role", "You are a senior editor reviewing an article for " ~ domain_name ~ ". Your feedback will be used to improve the article in a second writing pass.") | trim }}
+
+{{ section("guidelines", guidelines) | trim }}
+
+{{ section("task", "Review the article for: (1) adherence to the editorial guidelines above, (2) quality of the headline and lead, (3) factual presentation and use of quotes, (4) appropriate tone and word count (~" ~ target_word_count ~ " words). Provide actionable feedback and list the top priority fixes. Be specific — tell the writer exactly what to change, not just that something is wrong.") | trim }}
