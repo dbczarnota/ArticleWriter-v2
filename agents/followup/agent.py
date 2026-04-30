@@ -15,8 +15,6 @@ _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
 class FollowUpOutput(BaseModel):
     alternative_titles: list[str]
     followup_topics: list[str]
-    used_facts: list[str]
-    used_quotes: list[str]
 
 
 async def run_followup_agent(
@@ -63,7 +61,7 @@ async def run_followup_agent(
         html=article.html,
         alternative_titles=output.alternative_titles,
         followup_topics=output.followup_topics,
-        used_facts=output.used_facts,
-        used_quotes=output.used_quotes,
+        used_facts=[],
+        used_quotes=[],
         sources=sources,
     )

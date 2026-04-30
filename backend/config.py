@@ -12,6 +12,7 @@ from agents._base.config import (
     WriterAgentConfig,
     ReflectionAgentConfig,
     FollowUpAgentConfig,
+    UsageTrackingAgentConfig,
 )
 
 if TYPE_CHECKING:
@@ -39,6 +40,7 @@ _AGENT_FIELD_MAP: dict[str, str] = {
     "writer": "writer",
     "reflection": "reflection",
     "followup": "followup",
+    "usage_tracking": "usage_tracking",
 }
 
 
@@ -63,6 +65,7 @@ class AppSettings:
     writer: WriterAgentConfig = field(default_factory=WriterAgentConfig)
     reflection: ReflectionAgentConfig = field(default_factory=ReflectionAgentConfig)
     followup: FollowUpAgentConfig = field(default_factory=FollowUpAgentConfig)
+    usage_tracking: UsageTrackingAgentConfig = field(default_factory=UsageTrackingAgentConfig)
     pipeline: PipelineFlags = field(default_factory=PipelineFlags)
 
     @classmethod

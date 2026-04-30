@@ -67,3 +67,8 @@ class FollowUpAgentConfig(AgentConfig):
     model: str = "google-gla:gemini-2.5-flash"
     num_titles: int = 10
     num_topics: int = 5
+
+
+@dataclass(frozen=True)
+class UsageTrackingAgentConfig(AgentConfig):
+    model: str = "google-gla:gemini-2.5-flash"

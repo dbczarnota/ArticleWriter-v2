@@ -11,6 +11,7 @@ from agents.instructions.agent import WritingBrief, run_instructions_agent
 from agents.writer.agent import ArticleHtml, run_writer_agent
 from agents.reflection.agent import run_reflection_agent
 from agents.followup.agent import run_followup_agent
+from agents.usage_tracking.agent import run_usage_tracking_agent
 from backend.config import AppSettings
 from domains._base.config import DomainConfig
 from toolsets.scraping.serper import search as serper_search
@@ -190,8 +191,19 @@ async def run_pipeline(
                 extraction_result=extraction,
                 config=settings.followup,
             )
+            try:
+                used_facts, used_quotes = await run_usage_tracking_agent(
+                    article,
+                    extraction_result=extraction,
+                    config=settings.usage_tracking,
+                )
+            except Exception as e:
+                _errors.append({"stage": "usage_tracking", "error": str(e)})
+                used_facts, used_quotes = [], []
             return _replace(
                 result,
+                used_facts=used_facts,
+                used_quotes=used_quotes,
                 sources=result.sources or scraped_urls,
                 scraped_urls=scraped_urls,
                 errors=_errors,
