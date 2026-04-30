@@ -44,6 +44,13 @@ async def run_pipeline(
             search=dc_replace(settings.search, search_freshness=domain.default_search_freshness),
         )
 
+    # Apply domain news_search default
+    if not settings.search.news_search and domain.news_search:
+        settings = dc_replace(
+            settings,
+            search=dc_replace(settings.search, news_search=True),
+        )
+
     # Stage 1: Research
     log.search_start(topic, settings.search.num_queries, settings.search.max_results,
                      settings.search.search_freshness)

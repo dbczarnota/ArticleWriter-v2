@@ -1,12 +1,13 @@
 # agents/search/agent.py
 from __future__ import annotations
+import asyncio
 import pathlib
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from agents._base.config import SearchAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents._base.types import SearchResult
-from toolsets.scraping.serper import search as serper_search
+from toolsets.scraping.serper import search as serper_search, search_news as serper_search_news
 
 _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
 
@@ -25,7 +26,8 @@ async def run_search_agent(
 ) -> list[SearchResult]:
     """Generate search queries via LLM, fetch results from Serper for each query.
 
-    Deduplicates URLs across queries — same article from multiple queries counted once.
+    When config.news_search=True, also fetches Google News results in parallel.
+    Deduplicates URLs across all queries and sources.
     """
     agent = _agent or Agent(
         config.model,
@@ -43,16 +45,19 @@ async def run_search_agent(
 
     all_results: list[SearchResult] = []
     seen_urls: set[str] = set()
+
     for query in result.output.queries:
-        for r in await serper_search(
-            query,
-            num=config.max_results,
-            freshness=config.search_freshness,
-            language=domain_language,
-            api_key=serper_api_key,
-        ):
-            if r.url not in seen_urls:
-                seen_urls.add(r.url)
-                all_results.append(r)
+        coros = [serper_search(query, num=config.max_results,
+                               freshness=config.search_freshness,
+                               language=domain_language, api_key=serper_api_key)]
+        if config.news_search:
+            coros.append(serper_search_news(query, num=config.max_results,
+                                            language=domain_language, api_key=serper_api_key))
+        batches = await asyncio.gather(*coros)
+        for batch in batches:
+            for r in batch:
+                if r.url not in seen_urls:
+                    seen_urls.add(r.url)
+                    all_results.append(r)
 
     return all_results

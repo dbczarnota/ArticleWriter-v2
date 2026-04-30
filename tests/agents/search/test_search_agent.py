@@ -97,3 +97,30 @@ async def test_run_search_agent_calls_serper_for_each_query():
     )
 
     assert call_count == 3
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_search_agent_calls_news_when_enabled():
+    """When news_search=True, agent fetches both /search and /news per query."""
+    respx.post("https://google.serper.dev/search").mock(
+        return_value=httpx.Response(200, json={
+            "organic": [{"link": "https://web.com/1", "title": "Web", "snippet": "s"}]
+        })
+    )
+    respx.post("https://google.serper.dev/news").mock(
+        return_value=httpx.Response(200, json={
+            "news": [{"link": "https://news.com/1", "title": "News", "snippet": "n"}]
+        })
+    )
+
+    results = await run_search_agent(
+        "topic",
+        config=SearchAgentConfig(news_search=True, num_queries=1, max_results=5),
+        domain_language="pl",
+        serper_api_key="k",
+        _agent=_make_test_agent(["query1"]),
+    )
+    urls = [r.url for r in results]
+    assert "https://web.com/1" in urls
+    assert "https://news.com/1" in urls
