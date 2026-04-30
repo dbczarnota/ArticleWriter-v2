@@ -1,0 +1,10 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("task", "You are a content parser. For the given scraped web page, determine if it contains a readable news article and extract its clean content. Remove: navigation menus, cookie banners, GDPR notices, advertisements, footers, sidebars, related article lists. Preserve: article title, publication date (ISO format YYYY-MM-DD if visible, otherwise null), and clean article body text. Set is_article to false if the page is a homepage, 404 error, paywall, login form, or has no substantial article content.") | trim }}
