@@ -107,7 +107,9 @@ async def run_pipeline(
     # Promote social media URLs discovered via organic search to embed_candidates
     # and remove them from the scraping list (they don't scrape usefully).
     search_results, _search_embeds = _extract_social_from_search(search_results)
-    embed_candidates = embed_candidates + _search_embeds
+    _all_embeds = embed_candidates + _search_embeds
+    seen: set[str] = set()
+    embed_candidates = [e for e in _all_embeds if not (e.url in seen or seen.add(e.url))]
 
     log.scraping_start(len(search_results), len(urls or []))
     _stage_t0 = time.perf_counter()
@@ -296,7 +298,6 @@ async def run_pipeline(
     with logfire.span("pipeline.stage.followup", domain=domain.name):
         if settings.pipeline.followup:
             try:
-                from dataclasses import replace as _replace
                 result = await run_followup_agent(
                     article,
                     topic=topic,
@@ -319,9 +320,9 @@ async def run_pipeline(
                 _timing["followup"] = (time.perf_counter() - _stage_t0) * 1000
                 record_stage("followup", _timing["followup"], domain.name)
                 _total_ms = (time.perf_counter() - _pipeline_t0) * 1000
-                record_pipeline_run(domain.name, "ok", _total_ms)
+                record_pipeline_run(domain.name, "error" if _errors else "ok", _total_ms)
                 log.done(len(result.sources or scraped_urls), len(_errors))
-                return _replace(
+                return dc_replace(
                     result,
                     used_facts=used_facts,
                     used_quotes=used_quotes,
