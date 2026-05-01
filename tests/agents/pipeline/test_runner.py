@@ -228,6 +228,36 @@ async def test_pipeline_passes_embed_candidates_to_output(mocked_agents):
     assert result.embed_candidates[0].source == "youtube"
 
 
+@pytest.mark.asyncio
+async def test_pipeline_output_has_timing(mocked_agents):
+    from agents.pipeline.runner import run_pipeline
+
+    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False))
+    result = await run_pipeline(
+        "Dawid Podsiadło",
+        settings=settings,
+        domain=_DOMAIN,
+        serper_api_key="key",
+    )
+    assert isinstance(result.timing, dict)
+    assert "research" in result.timing
+    assert result.timing["research"] >= 0.0
+
+
+@pytest.mark.asyncio
+async def test_pipeline_output_has_token_usage(mocked_agents):
+    from agents.pipeline.runner import run_pipeline
+
+    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False))
+    result = await run_pipeline(
+        "Dawid Podsiadło",
+        settings=settings,
+        domain=_DOMAIN,
+        serper_api_key="key",
+    )
+    assert isinstance(result.token_usage, list)
+
+
 def test_merge_extraction_deduplicates_by_text():
     from agents.pipeline.runner import _merge_extraction
 
