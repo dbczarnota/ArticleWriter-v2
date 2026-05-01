@@ -64,3 +64,20 @@ def test_followup_config_defaults():
     cfg = FollowUpAgentConfig()
     assert cfg.num_titles == 10
     assert cfg.num_topics == 5
+
+
+def test_agent_config_has_fallback_models_field():
+    cfg = SearchAgentConfig()
+    assert hasattr(cfg, "fallback_models")
+    assert cfg.fallback_models == ()
+
+
+def test_agent_config_fallback_models_is_tuple():
+    cfg = WriterAgentConfig(fallback_models=("openai:gpt-4o", "anthropic:claude-haiku-4-5"))
+    assert cfg.fallback_models == ("openai:gpt-4o", "anthropic:claude-haiku-4-5")
+
+
+def test_scraping_config_has_filter_fallback_models():
+    cfg = ScrapingConfig()
+    assert hasattr(cfg, "filter_fallback_models")
+    assert cfg.filter_fallback_models == ()

@@ -10,6 +10,7 @@ class AgentConfig:
     thinking: Literal["off", "minimal", "low", "medium", "high"] = "off"
     tool_call_budget: int = 3
     max_tokens: int | None = None
+    fallback_models: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,7 @@ class ScrapingConfig:
     httpx_timeout: float = 15.0
     jina_timeout: float = 30.0
     filter_model: str = "google-gla:gemini-2.5-flash"
+    filter_fallback_models: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
