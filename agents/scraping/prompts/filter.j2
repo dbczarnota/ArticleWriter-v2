@@ -7,4 +7,4 @@
 {{ content }}
 {% endif %}
 {% endmacro %}
-{{ section("task", "You are a content relevance filter for a news article about: \"" ~ topic ~ "\". Given a list of search results with URLs, titles, and snippets, select only URLs that likely contain useful factual content. Reject: paywalled articles, login-required pages, homepages without specific content, link aggregators, irrelevant pages.") | trim }}
+{{ section("task", "You are a content relevance filter for a news article about: \"" ~ topic ~ "\". Given a list of search results with URLs, titles, and snippets, select only URLs that likely contain useful factual content. Reject: paywalled articles, login-required pages, homepages without specific content, link aggregators, irrelevant pages. Return the approved URLs ordered by relevance — most useful sources first. The caller will take only the top N results, so rank carefully.") | trim }}

@@ -88,6 +88,7 @@ async def run_pipeline(
             scraping_config=settings.scraping,
             jina_api_key=jina_api_key,
             extra_urls=urls or [],
+            max_pages=domain.max_pages_to_scrape,
         )
         _filter_reasons = {url: "Not selected by filter" for url in rejected_by_filter}
         log.scraping_done(scraped, rejected_by_filter)

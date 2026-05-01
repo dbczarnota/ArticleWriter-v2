@@ -22,6 +22,7 @@ async def run_scraping_agent(
     scraping_config: ScrapingConfig,
     jina_api_key: str | None,
     extra_urls: list[str] | None = None,
+    max_pages: int = 10,
     _filter_agent: Agent | None = None,
 ) -> tuple[list[ScrapedPage], list[str]]:
     """LLM snippet pre-filter, then scrape approved URLs via tiered orchestrator.
@@ -51,7 +52,7 @@ async def run_scraping_agent(
     )
 
     filter_result = await filter_agent.run(results_text)
-    approved_urls = filter_result.output.urls
+    approved_urls = filter_result.output.urls[:max_pages]
 
     all_candidate_urls = [r.url for r in search_results] + list(extra_urls or [])
     approved_set = set(approved_urls)

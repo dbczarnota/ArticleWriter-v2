@@ -13,6 +13,7 @@ class DomainConfig:
     default_search_freshness: str = "qdr:w"
     default_num_queries: int = 3
     default_max_results: int = 5
+    max_pages_to_scrape: int = 10
     youtube_search: bool = False
     twitter_search: bool = False
     facebook_search: bool = False
