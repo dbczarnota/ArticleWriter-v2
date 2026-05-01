@@ -70,7 +70,7 @@ async def run_pipeline(
                 topic,
                 domain=domain,
                 serper_api_key=serper_api_key,
-                freshness=domain.default_search_freshness,
+                freshness=settings.search.search_freshness,
                 log=log,
             ),
         )
