@@ -1,8 +1,10 @@
 from __future__ import annotations
 import asyncio
+import time
 from typing import TYPE_CHECKING
 from pydantic import BaseModel
 from pydantic_ai import Agent
+from agents._base.run_context import record_agent_call
 from agents._base.types import EmbedCandidate
 from domains._base.config import DomainConfig
 from toolsets.scraping.serper import search_images, search_reddit, search_site, search_videos
@@ -48,7 +50,11 @@ async def _formulate_queries(
             "For non-English languages, use the native-language form of the keywords."
         ),
     )
+    _t0 = time.perf_counter()
     result = await agent.run(f"Topic: {topic}\nLanguages: {lang_list}")
+    _u = result.usage()
+    record_agent_call("media_search_formulate", model, _u.input_tokens or 0, _u.output_tokens or 0,
+                      (time.perf_counter() - _t0) * 1000)
     return [
         " ".join(f'"{kw}"' for kw in lq.keywords[:4])
         for lq in result.output.queries

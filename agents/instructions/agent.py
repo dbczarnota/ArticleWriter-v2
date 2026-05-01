@@ -1,9 +1,11 @@
 from __future__ import annotations
 import pathlib
+import time
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from agents._base.config import InstructionsAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
+from agents._base.run_context import record_agent_call
 from agents.extraction.agent import ExtractionResult
 from domains._base.config import DomainConfig
 
@@ -60,5 +62,9 @@ async def run_instructions_agent(
         ),
     )
 
+    _t0 = time.perf_counter()
     result = await agent.run(material)
+    _u = result.usage()
+    record_agent_call("instructions", config.model, _u.input_tokens or 0, _u.output_tokens or 0,
+                      (time.perf_counter() - _t0) * 1000)
     return result.output

@@ -1,11 +1,13 @@
 from __future__ import annotations
 import pathlib
+import time
 from typing import TYPE_CHECKING
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
 from agents._base.config import WriterAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
+from agents._base.run_context import record_agent_call
 from agents.instructions.agent import WritingBrief
 from domains._base.config import DomainConfig
 
@@ -65,5 +67,9 @@ async def run_writer_agent(
         ),
     )
 
+    _t0 = time.perf_counter()
     result = await agent.run(user_prompt)
+    _u = result.usage()
+    record_agent_call("writer", config.model, _u.input_tokens or 0, _u.output_tokens or 0,
+                      (time.perf_counter() - _t0) * 1000)
     return result.output, list(result.all_messages())

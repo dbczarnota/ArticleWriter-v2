@@ -1,8 +1,10 @@
 # agents/usage_tracking/agent.py
 from __future__ import annotations
+import time
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from agents._base.config import UsageTrackingAgentConfig
+from agents._base.run_context import record_agent_call
 from agents.extraction.agent import ExtractionResult
 from agents.writer.agent import ArticleHtml
 
@@ -42,5 +44,9 @@ async def run_usage_tracking_agent(
         ),
     )
 
+    _t0 = time.perf_counter()
     result = await agent.run(user_prompt)
+    _u = result.usage()
+    record_agent_call("usage_tracking", config.model, _u.input_tokens or 0, _u.output_tokens or 0,
+                      (time.perf_counter() - _t0) * 1000)
     return result.output.used_facts, result.output.used_quotes

@@ -1,10 +1,12 @@
 # agents/followup/agent.py
 from __future__ import annotations
 import pathlib
+import time
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from agents._base.config import FollowUpAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
+from agents._base.run_context import record_agent_call
 from agents._base.types import ArticleOutput
 from agents.extraction.agent import ExtractionResult
 from agents.writer.agent import ArticleHtml
@@ -51,7 +53,11 @@ async def run_followup_agent(
         ),
     )
 
+    _t0 = time.perf_counter()
     result = await agent.run(user_prompt)
+    _u = result.usage()
+    record_agent_call("followup", config.model, _u.input_tokens or 0, _u.output_tokens or 0,
+                      (time.perf_counter() - _t0) * 1000)
     output = result.output
 
     sources = list({f.source_url for f in extraction_result.facts if f.source_url}

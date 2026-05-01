@@ -1,10 +1,12 @@
 # agents/adaptive_search/agent.py
 from __future__ import annotations
 import pathlib
+import time
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from agents._base.config import AdaptiveSearchAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
+from agents._base.run_context import record_agent_call
 from agents.extraction.agent import ExtractionResult
 
 _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
@@ -53,5 +55,9 @@ async def run_adaptive_search_agent(
         ),
     )
 
+    _t0 = time.perf_counter()
     result = await agent.run(summary)
+    _u = result.usage()
+    record_agent_call("adaptive_search", config.model, _u.input_tokens or 0, _u.output_tokens or 0,
+                      (time.perf_counter() - _t0) * 1000)
     return result.output
