@@ -110,14 +110,14 @@ async def run_media_search(
         if getattr(domain, flag, False):
             for i, mq in enumerate(media_queries):
                 query = f"{site_prefix} {mq}"
-                coros.append(search_images(query, num=num, api_key=serper_api_key))
+                coros.append(search_images(query, num=num, freshness=freshness, api_key=serper_api_key))
                 labels.append(f"{flag.replace('_search', '')}@{i}")
 
     if domain.reddit_search:
         # Reddit is English-dominant — use first query (expected to be English)
         first_query = media_queries[0] if media_queries else topic
         reddit_query = " ".join(kw.strip('"') for kw in first_query.split())
-        coros.append(search_reddit(reddit_query, num=num, freshness=freshness))
+        coros.append(search_reddit(reddit_query, num=num))
         labels.append("reddit")
 
     batches = await asyncio.gather(*coros, return_exceptions=True)

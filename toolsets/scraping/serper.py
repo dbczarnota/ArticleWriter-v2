@@ -87,10 +87,13 @@ async def search_images(
     query: str,
     *,
     num: int = 5,
+    freshness: str = "",
     api_key: str,
 ) -> list[EmbedCandidate]:
     """Google Images via Serper /images — useful for finding Instagram/TikTok thumbnails."""
-    payload = {"q": query, "num": num}
+    payload: dict = {"q": query, "num": num}
+    if freshness:
+        payload["tbs"] = freshness
     headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.post(f"{_BASE}/images", json=payload, headers=headers)
@@ -118,21 +121,14 @@ async def search_images(
     return results
 
 
-_REDDIT_TIME: dict[str, str] = {
-    "qdr:h": "hour", "qdr:d": "day", "qdr:w": "week", "qdr:m": "month", "qdr:y": "year",
-}
-
-
 async def search_reddit(
     query: str,
     *,
     num: int = 5,
-    freshness: str = "",
     api_key: str = "",  # unused, Reddit JSON API needs no auth
 ) -> list[EmbedCandidate]:
     """Reddit search via Reddit's public JSON API — no auth required."""
-    t = _REDDIT_TIME.get(freshness, "week")
-    params = {"q": query, "sort": "top", "t": t, "limit": num, "type": "link"}
+    params = {"q": query, "sort": "top", "t": "week", "limit": num, "type": "link"}
     headers = {"User-Agent": "articlewriter/1.0"}
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(
