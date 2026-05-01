@@ -57,11 +57,19 @@ async def search_videos(
     query: str,
     *,
     num: int = 5,
+    sort_by_date: bool = False,
     _language: str = "pl",
     api_key: str,
 ) -> list[EmbedCandidate]:
-    """YouTube video search via Serper /videos endpoint. tbs not supported by this endpoint."""
+    """YouTube video search via Serper /videos endpoint.
+
+    sort_by_date=True adds tbs=sbd:1 (Google sort-by-date). tbs freshness
+    filtering is not supported by this endpoint.
+    Only youtube.com and youtu.be results are returned.
+    """
     payload: dict = {"q": query, "num": num}
+    if sort_by_date:
+        payload["tbs"] = "sbd:1"
     headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.post(f"{_BASE}/videos", json=payload, headers=headers)
@@ -77,6 +85,7 @@ async def search_videos(
             channel=item.get("channel", ""),
         )
         for item in data.get("videos", [])
+        if "youtube.com" in item.get("link", "") or "youtu.be" in item.get("link", "")
     ]
 
 

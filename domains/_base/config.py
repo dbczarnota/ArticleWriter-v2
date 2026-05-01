@@ -15,6 +15,7 @@ class DomainConfig:
     default_max_results: int = 5
     max_pages_to_scrape: int = 10
     youtube_search: bool = False
+    youtube_sort_by_date: bool = True
     twitter_search: bool = False
     facebook_search: bool = False
     news_search: bool = False

@@ -96,7 +96,8 @@ async def run_media_search(
     labels: list[str] = []
 
     if domain.youtube_search:
-        coros.append(search_videos(topic, num=num, api_key=serper_api_key))
+        coros.append(search_videos(topic, num=num, sort_by_date=domain.youtube_sort_by_date,
+                                   api_key=serper_api_key))
         labels.append("youtube")
 
     for flag, (site, source) in _SITE_MAP.items():
