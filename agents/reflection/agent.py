@@ -55,6 +55,7 @@ async def run_reflection_agent(
             agent_factory=_factory,
             user_prompt=_user_prompt,
             message_history=message_history,
+            agent_name="reflection",
         )
     _u = result.usage()
     record_agent_call("reflection", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,

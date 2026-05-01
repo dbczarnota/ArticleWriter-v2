@@ -55,6 +55,7 @@ async def run_parsing_agent(
                 (config.model, *config.fallback_models),
                 agent_factory=_factory,
                 user_prompt=f"URL: {page.url}\nTitle: {page.title}\n\n{page.content}",
+                agent_name="parsing",
             )
         _u = result.usage()
         record_agent_call("parsing", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,

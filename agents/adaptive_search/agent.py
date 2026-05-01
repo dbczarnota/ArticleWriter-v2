@@ -66,6 +66,7 @@ async def run_adaptive_search_agent(
             (config.model, *config.fallback_models),
             agent_factory=_factory,
             user_prompt=summary,
+            agent_name="adaptive_search",
         )
     _u = result.usage()
     record_agent_call("adaptive_search", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,

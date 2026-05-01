@@ -73,6 +73,7 @@ async def run_instructions_agent(
             (config.model, *config.fallback_models),
             agent_factory=_factory,
             user_prompt=material,
+            agent_name="instructions",
         )
     _u = result.usage()
     record_agent_call("instructions", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,

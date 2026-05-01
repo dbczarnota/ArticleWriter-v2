@@ -78,6 +78,7 @@ async def run_extraction_agent(
             (config.model, *config.fallback_models),
             agent_factory=_factory,
             user_prompt=articles_text,
+            agent_name="extraction",
         )
     _u = result.usage()
     record_agent_call("extraction", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,

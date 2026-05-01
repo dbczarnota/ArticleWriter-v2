@@ -6,7 +6,7 @@ import time
 
 import logfire
 
-from agents._base.run_context import init_collector
+from agents._base.run_context import init_collector, get_fallback_events
 from agents._base.types import ArticleOutput, ParsedArticle
 from agents.extraction.agent import ExtractionResult, run_extraction_agent
 from agents.search.agent import run_search_agent
@@ -332,6 +332,11 @@ async def run_pipeline(
                          "duration_ms": round(r.duration_ms, 1)}
                         for r in _token_records
                     ],
+                    fallback_events=[
+                        {"agent": e.agent, "failed_model": e.failed_model,
+                         "error_type": e.error_type, "error_message": e.error_message}
+                        for e in get_fallback_events()
+                    ],
                 )
             except Exception as e:
                 _errors.append({"stage": "followup", "error": str(e)})
@@ -366,6 +371,11 @@ async def run_pipeline(
              "input_tokens": r.input_tokens, "output_tokens": r.output_tokens,
              "duration_ms": round(r.duration_ms, 1)}
             for r in _token_records
+        ],
+        fallback_events=[
+            {"agent": e.agent, "failed_model": e.failed_model,
+             "error_type": e.error_type, "error_message": e.error_message}
+            for e in get_fallback_events()
         ],
     )
 

@@ -78,6 +78,7 @@ async def run_writer_agent(
             (config.model, *config.fallback_models),
             agent_factory=_factory,
             user_prompt=user_prompt,
+            agent_name="writer",
         )
     _u = result.usage()
     record_agent_call("writer", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,

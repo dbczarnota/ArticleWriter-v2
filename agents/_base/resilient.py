@@ -7,6 +7,8 @@ import logfire
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
 
+from agents._base.run_context import record_fallback
+
 
 class AllModelsFailedError(Exception):
     """Raised when every model in the fallback list fails."""
@@ -24,6 +26,7 @@ async def run_with_fallback(
     user_prompt: str,
     message_history: list[ModelMessage] | None = None,
     timeout: float = 300.0,
+    agent_name: str = "",
 ) -> tuple[Any, str]:
     """Try each model in order. Return (RunResult, model_used) on first success.
 
@@ -42,10 +45,12 @@ async def run_with_fallback(
             return result, model
         except Exception as exc:
             errors.append((model, exc))
+            record_fallback(agent_name, model, type(exc).__name__, str(exc))
             remaining = len(model_list) - len(errors)
             if remaining > 0:
                 logfire.warn(
                     "agent_fallback",
+                    agent=agent_name,
                     failed_model=model,
                     error_type=type(exc).__name__,
                     models_remaining=remaining,

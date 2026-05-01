@@ -76,3 +76,4 @@ class ArticleOutput:
     embed_candidates: list[EmbedCandidate] = field(default_factory=list)
     timing: dict[str, float] = field(default_factory=dict)
     token_usage: list[dict] = field(default_factory=list)
+    fallback_events: list[dict] = field(default_factory=list)

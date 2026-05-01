@@ -63,6 +63,7 @@ async def run_scraping_agent(
             (scraping_config.filter_model, *scraping_config.filter_fallback_models),
             agent_factory=_factory,
             user_prompt=results_text,
+            agent_name="scraping_filter",
         )
     _u = filter_result.usage()
     record_agent_call("scraping_filter", _filter_model_used, _u.input_tokens or 0, _u.output_tokens or 0,
