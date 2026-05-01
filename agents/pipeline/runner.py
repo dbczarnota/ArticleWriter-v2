@@ -7,7 +7,7 @@ import time
 import logfire
 
 from agents._base.run_context import init_collector, get_fallback_events
-from agents._base.types import ArticleOutput, ParsedArticle
+from agents._base.types import ArticleOutput, EmbedCandidate, ParsedArticle
 from agents.extraction.agent import ExtractionResult, run_extraction_agent
 from agents.search.agent import run_search_agent
 from agents.scraping.agent import run_scraping_agent
@@ -103,6 +103,11 @@ async def run_pipeline(
     else:
         embed_candidates, media_errors = _media_result
         log.media_search_done(embed_candidates, media_errors)
+
+    # Promote social media URLs discovered via organic search to embed_candidates
+    # and remove them from the scraping list (they don't scrape usefully).
+    search_results, _search_embeds = _extract_social_from_search(search_results)
+    embed_candidates = embed_candidates + _search_embeds
 
     log.scraping_start(len(search_results), len(urls or []))
     _stage_t0 = time.perf_counter()
@@ -406,6 +411,48 @@ def _filter_by_date(
         else:
             kept.append(article)
     return kept, reasons
+
+
+_SOCIAL_DOMAINS: dict[str, str] = {
+    "youtube.com": "youtube",
+    "youtu.be": "youtube",
+    "twitter.com": "twitter",
+    "x.com": "twitter",
+    "tiktok.com": "tiktok",
+    "instagram.com": "instagram",
+    "facebook.com": "facebook",
+    "reddit.com": "reddit",
+}
+
+
+def _extract_social_from_search(
+    results: list,
+) -> tuple[list, list[EmbedCandidate]]:
+    """Split search results into (scrapable, social_embed_candidates).
+
+    Social media URLs are useless to scrape but valuable as embeds.
+    """
+    from urllib.parse import urlparse
+
+    scrapable: list = []
+    embeds: list[EmbedCandidate] = []
+    for r in results:
+        host = urlparse(r.url).netloc.lstrip("www.")
+        source = next(
+            (src for domain, src in _SOCIAL_DOMAINS.items()
+             if host == domain or host.endswith("." + domain)),
+            None,
+        )
+        if source:
+            embeds.append(EmbedCandidate(
+                url=r.url,
+                title=r.title,
+                source=source,
+                description=r.snippet or None,
+            ))
+        else:
+            scrapable.append(r)
+    return scrapable, embeds
 
 
 def _merge_extraction(base: ExtractionResult, extra: ExtractionResult) -> ExtractionResult:
