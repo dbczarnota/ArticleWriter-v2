@@ -278,3 +278,24 @@ def test_merge_extraction_deduplicates_by_text():
     assert len(merged.facts) == 2  # A + B, not duplicate A
     assert len(merged.quotes) == 2
     assert merged.keywords == ["kw1", "kw2"]
+
+
+@pytest.mark.asyncio
+async def test_pipeline_applies_domain_num_queries(mocked_agents):
+    """domain.default_num_queries overrides the SearchAgentConfig default when domain differs."""
+    from agents.pipeline.runner import run_pipeline
+
+    domain = DomainConfig(
+        name="test_q",
+        description="Test",
+        language="pl",
+        guidelines="g",
+        default_num_queries=7,
+        default_max_results=12,
+    )
+    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False))
+    await run_pipeline("topic", settings=settings, domain=domain, serper_api_key="k")
+    call_kwargs = mocked_agents["search"].call_args
+    cfg_passed = call_kwargs.kwargs.get("config") or call_kwargs.args[1]
+    assert cfg_passed.num_queries == 7
+    assert cfg_passed.max_results == 12

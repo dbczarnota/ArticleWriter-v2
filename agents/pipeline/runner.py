@@ -63,6 +63,18 @@ async def run_pipeline(
             search=dc_replace(settings.search, news_search=True),
         )
 
+    # Apply domain search volume defaults when caller hasn't overridden them
+    if settings.search.num_queries == SearchAgentConfig().num_queries and domain.default_num_queries != SearchAgentConfig().num_queries:
+        settings = dc_replace(
+            settings,
+            search=dc_replace(settings.search, num_queries=domain.default_num_queries),
+        )
+    if settings.search.max_results == SearchAgentConfig().max_results and domain.default_max_results != SearchAgentConfig().max_results:
+        settings = dc_replace(
+            settings,
+            search=dc_replace(settings.search, max_results=domain.default_max_results),
+        )
+
     # Stage 1: Research
     log.search_start(topic, settings.search.num_queries, settings.search.max_results,
                      settings.search.search_freshness, news_search=settings.search.news_search)
