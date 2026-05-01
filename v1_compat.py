@@ -26,25 +26,29 @@ _CSS = (
     ".models-table th,.models-table td{text-align:left;padding:4px 10px;border-bottom:1px solid #eee}"
     ".models-table th{color:#555;font-weight:bold}"
     ".stage-ok{color:#2a8a2a}.stage-err{color:#c00;font-weight:bold}"
-    ".embeds-grid{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}"
-    ".embed-card{border:1px solid #ddd;border-radius:6px;padding:10px;max-width:280px;"
-    "background:#fff;display:flex;flex-direction:column;gap:4px}"
-    ".embed-thumb{width:100%;height:auto;border-radius:4px;max-height:150px;object-fit:cover}"
-    ".embed-title{font-weight:bold;font-size:0.9em;color:#1a0dab;text-decoration:none}"
+    ".embeds-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));"
+    "gap:10px;margin-top:8px;align-items:start}"
+    ".embed-card{border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#fff}"
+    ".embed-thumb-wrap{height:130px;overflow:hidden;background:#f0f0f0}"
+    ".embed-thumb{width:100%;height:100%;object-fit:cover;display:block}"
+    ".embed-body{padding:8px 10px;display:flex;flex-direction:column;gap:3px}"
+    ".embed-title{font-weight:600;font-size:0.85em;color:#1a0dab;text-decoration:none;"
+    "line-height:1.35;display:block}"
     ".embed-title:hover{text-decoration:underline}"
-    ".embed-channel{font-size:0.8em;color:#555}"
-    ".embed-desc{font-size:0.8em;color:#666}"
-    ".embed-source-yt{border-left:3px solid #ff0000}"
-    ".embed-source-twitter{border-left:3px solid #1da1f2}"
-    ".embed-source-tiktok{border-left:3px solid #010101}"
-    ".embed-source-instagram{border-left:3px solid #c13584}"
-    ".embed-source-facebook{border-left:3px solid #1877f2}"
+    ".embed-channel{font-size:0.78em;color:#555}"
+    ".embed-desc{font-size:0.78em;color:#666;line-height:1.3}"
+    ".embed-source-youtube{border-top:3px solid #ff0000}"
+    ".embed-source-twitter{border-top:3px solid #1da1f2}"
+    ".embed-source-tiktok{border-top:3px solid #010101}"
+    ".embed-source-instagram{border-top:3px solid #c13584}"
+    ".embed-source-facebook{border-top:3px solid #1877f2}"
+    ".embed-source-reddit{border-top:3px solid #ff4500}"
 )
 
 
 _SOURCE_LABELS = {
-    "youtube": "YouTube", "twitter": "Twitter / X",
-    "tiktok": "TikTok", "instagram": "Instagram", "facebook": "Facebook",
+    "youtube": "YouTube", "twitter": "Twitter / X", "tiktok": "TikTok",
+    "instagram": "Instagram", "facebook": "Facebook", "reddit": "Reddit",
 }
 
 
@@ -58,13 +62,17 @@ def _embeds_section(candidates: list) -> str:
     html = "<section><h2>Media do osadzenia</h2>"
     for source, items in by_source.items():
         label = _SOURCE_LABELS.get(source, source)
+        safe_source = escape(source)
         html += f"<h3>{escape(label)}</h3><div class='embeds-grid'>"
         for c in items:
-            safe_source = escape(source)
-            css = f"embed-card embed-source-{safe_source}"
-            card = f'<div class="{css}">'
+            card = f'<div class="embed-card embed-source-{safe_source}">'
             if c.thumbnail_url:
-                card += f'<img src="{escape(c.thumbnail_url)}" class="embed-thumb" loading="lazy" />'
+                card += (
+                    f'<div class="embed-thumb-wrap">'
+                    f'<img src="{escape(c.thumbnail_url)}" class="embed-thumb" loading="lazy">'
+                    f'</div>'
+                )
+            card += '<div class="embed-body">'
             card += (
                 f'<a href="{escape(c.url)}" target="_blank" class="embed-title">'
                 f'{escape(c.title)}</a>'
@@ -73,7 +81,7 @@ def _embeds_section(candidates: list) -> str:
                 card += f'<span class="embed-channel">{escape(c.channel)}</span>'
             if c.description:
                 card += f'<span class="embed-desc">{escape(c.description[:120])}</span>'
-            card += "</div>"
+            card += '</div></div>'
             html += card
         html += "</div>"
     html += "</section>"
