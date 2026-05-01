@@ -117,7 +117,7 @@ async def run_media_search(
         # Reddit is English-dominant — use first query (expected to be English)
         first_query = media_queries[0] if media_queries else topic
         reddit_query = " ".join(kw.strip('"') for kw in first_query.split())
-        coros.append(search_reddit(reddit_query, num=num))
+        coros.append(search_reddit(reddit_query, num=num, freshness=freshness))
         labels.append("reddit")
 
     batches = await asyncio.gather(*coros, return_exceptions=True)

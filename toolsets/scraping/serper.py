@@ -121,14 +121,19 @@ async def search_images(
     return results
 
 
+_REDDIT_TIME = {"qdr:h": "hour", "qdr:d": "day", "qdr:w": "week", "qdr:m": "month", "qdr:y": "year"}
+
+
 async def search_reddit(
     query: str,
     *,
     num: int = 5,
+    freshness: str = "",
     api_key: str = "",  # unused, Reddit JSON API needs no auth
 ) -> list[EmbedCandidate]:
     """Reddit search via Reddit's public JSON API — no auth required."""
-    params = {"q": query, "sort": "top", "t": "week", "limit": num, "type": "link"}
+    params = {"q": query, "sort": "top", "t": _REDDIT_TIME.get(freshness, "week"),
+              "limit": num, "type": "link"}
     headers = {"User-Agent": "articlewriter/1.0"}
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(
