@@ -2,7 +2,9 @@ from pathlib import Path
 from domains._base.config import DomainConfig
 from domains.styl_fm.examples import EXAMPLE_ARTICLES
 
-_GUIDELINES_PATH = Path(__file__).parent / "guidelines.md"
+_DIR = Path(__file__).parent
+_GUIDELINES = (_DIR / "guidelines.md").read_text(encoding="utf-8")
+_REFLECTION_STANCE = (_DIR / "reflection_stance.md").read_text(encoding="utf-8")
 
 STYL_FM_DOMAIN = DomainConfig(
     name="styl_fm",
@@ -23,11 +25,22 @@ STYL_FM_DOMAIN = DomainConfig(
     reddit_search=True,
     media_search_languages=("en", "pl"),
     media_search_num=5,
-    guidelines=_GUIDELINES_PATH.read_text(encoding="utf-8"),
+    guidelines=_GUIDELINES,
     html_format=(
-        "Use <h1> for the main title, <h2> for section headings, <p> for paragraphs. "
-        "Wrap direct quotes from people in <blockquote>. "
-        "No <html>, <head>, or <body> tags — article content only."
+        "Article structure:\n"
+        "- <h1>: Main clickbait title. Exactly one. Visual tags like [zdjęcia] or [wideo] go HERE and ONLY here.\n"
+        "- <h2>: Section headings. At least 2. Must be factual, SEO-friendly, keyword-rich. NO clickbait. NO quotes inside <h2>. NO visual tags inside <h2>.\n"
+        "- <p>: Body paragraphs. 3–5 sentences each.\n"
+        "- <blockquote>: Direct quotes from named people.\n"
+        "- <strong>: Emphasis within paragraphs — use sparingly.\n"
+        "\n"
+        "Hard rules:\n"
+        "- Visual tags ([zdjęcia], [wideo], [galeria], [porównujemy zdjęcia]) appear ONLY in the <h1> title.\n"
+        "- Never place a direct quote inside an <h2> heading.\n"
+        "- Never include the publication date anywhere in the article.\n"
+        "- No <html>, <head>, or <body> wrapper tags — article content only.\n"
+        "- No markdown — HTML tags only."
     ),
+    reflection_stance=_REFLECTION_STANCE,
     example_articles=tuple(EXAMPLE_ARTICLES),
 )

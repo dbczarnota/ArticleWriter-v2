@@ -26,4 +26,5 @@ class DomainConfig:
     media_search_num: int = 5
     guidelines: str = ""
     html_format: str = ""
+    reflection_stance: str = ""
     example_articles: tuple[str, ...] = ()

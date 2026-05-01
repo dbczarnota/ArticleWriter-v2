@@ -15,4 +15,6 @@
 {{ section("examples", example_articles | join("\n\n---\n\n")) | trim }}
 
 {% endif %}
-{{ section("format", (html_format ~ " " if html_format else "") ~ "Target: " ~ target_word_count ~ " words. Language: " ~ language ~ ".") | trim }}
+{{ section("format", (html_format ~ "\n" if html_format else "") ~ "Target: " ~ target_word_count ~ " words. Language: " ~ language ~ ".") | trim }}
+
+{{ section("rules", "- Do not invent facts — use only the provided facts verbatim.\n- Do not invent quotes — use only the provided quotes verbatim, word for word.\n- Output only HTML — no markdown, no code fences, no extra commentary.") | trim }}

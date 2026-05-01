@@ -45,6 +45,7 @@ async def run_reflection_agent(
                     _PROMPTS_DIR / "reflection.j2",
                     domain_name=domain.name,
                     guidelines=domain.guidelines,
+                    reflection_stance=domain.reflection_stance,
                     target_word_count=domain.target_word_count,
                     format_style=model_format_style(m),
                 ),
