@@ -74,3 +74,5 @@ class ArticleOutput:
     errors: list[dict[str, str]] = field(default_factory=list)
     filter_reasons: dict[str, str] = field(default_factory=dict)
     embed_candidates: list[EmbedCandidate] = field(default_factory=list)
+    timing: dict[str, float] = field(default_factory=dict)
+    token_usage: list[dict] = field(default_factory=list)

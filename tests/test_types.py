@@ -74,3 +74,15 @@ def test_article_output_has_embed_candidates():
     from agents._base.types import ArticleOutput
     o = ArticleOutput(html="<p>x</p>")
     assert o.embed_candidates == []
+
+
+def test_article_output_has_timing_field():
+    output = ArticleOutput(html="<p>hi</p>")
+    assert isinstance(output.timing, dict)
+    assert output.timing == {}
+
+
+def test_article_output_has_token_usage_field():
+    output = ArticleOutput(html="<p>hi</p>")
+    assert isinstance(output.token_usage, list)
+    assert output.token_usage == []
