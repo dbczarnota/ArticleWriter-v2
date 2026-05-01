@@ -58,28 +58,36 @@ async def run_pipeline(
     # Stage 1: Research
     log.search_start(topic, settings.search.num_queries, settings.search.max_results,
                      settings.search.search_freshness, news_search=settings.search.news_search)
-    try:
-        search_results, (embed_candidates, media_errors) = await asyncio.gather(
-            run_search_agent(
-                topic,
-                config=settings.search,
-                domain_language=domain.language,
-                serper_api_key=serper_api_key,
-            ),
-            run_media_search(
-                topic,
-                domain=domain,
-                serper_api_key=serper_api_key,
-                freshness=settings.search.search_freshness,
-                log=log,
-            ),
-        )
-        log.search_done(search_results)
-        log.media_search_done(embed_candidates, media_errors)
-    except Exception as e:
-        _errors.append({"stage": "search", "error": str(e)})
-        log.error("search", e)
+    _search_result, _media_result = await asyncio.gather(
+        run_search_agent(
+            topic,
+            config=settings.search,
+            domain_language=domain.language,
+            serper_api_key=serper_api_key,
+        ),
+        run_media_search(
+            topic,
+            domain=domain,
+            serper_api_key=serper_api_key,
+            freshness=settings.search.search_freshness,
+            log=log,
+        ),
+        return_exceptions=True,
+    )
+    if isinstance(_search_result, Exception):
+        _errors.append({"stage": "search", "error": str(_search_result)})
+        log.error("search", _search_result)
         search_results = []
+    else:
+        search_results = _search_result
+        log.search_done(search_results)
+
+    if isinstance(_media_result, Exception):
+        _errors.append({"stage": "media_search", "error": str(_media_result)})
+        log.error("media_search", _media_result)
+    else:
+        embed_candidates, media_errors = _media_result
+        log.media_search_done(embed_candidates, media_errors)
 
     log.scraping_start(len(search_results), len(urls or []))
     try:
