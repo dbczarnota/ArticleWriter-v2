@@ -1,3 +1,6 @@
+import logfire
+logfire.configure(send_to_logfire="never", console=False)
+
 import pytest
 from backend.api.schemas import ArticleRequest
 from backend.config import AppSettings
