@@ -70,9 +70,8 @@ async def run_scraping_agent(
                       (time.perf_counter() - _t0) * 1000)
     approved_urls = filter_result.output.urls[:max_pages]
 
-    all_candidate_urls = [r.url for r in search_results] + list(extra_urls or [])
     approved_set = set(approved_urls)
-    rejected_urls = [u for u in all_candidate_urls if u not in approved_set]
+    rejected_urls = [r.url for r in search_results if r.url not in approved_set]
 
     # User-supplied URLs bypass the LLM filter but still go through scraping
     if extra_urls:

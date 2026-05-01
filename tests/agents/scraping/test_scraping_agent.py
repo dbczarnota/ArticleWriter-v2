@@ -107,3 +107,34 @@ async def test_run_scraping_agent_passes_jina_key_to_orchestrator():
 
     _, kwargs = mock_scrape.call_args
     assert kwargs["jina_api_key"] == "my-jina-key"
+
+
+@pytest.mark.asyncio
+async def test_extra_urls_not_in_rejected():
+    """User-supplied extra_urls bypass the LLM filter and must NOT appear in rejected_urls."""
+    search_results = [_make_search_result("https://example.com/a")]
+    extra = ["https://manual.com/article"]
+
+    filter_agent = Agent(
+        TestModel(custom_output_args={"urls": ["https://example.com/a"]}),
+        output_type=ApprovedUrlsResult,
+    )
+
+    with patch(
+        "agents.scraping.agent.scrape_urls", new_callable=AsyncMock
+    ) as mock_scrape:
+        mock_scrape.return_value = [
+            _make_scraped_page("https://example.com/a"),
+            _make_scraped_page("https://manual.com/article"),
+        ]
+
+        _, rejected = await run_scraping_agent(
+            search_results,
+            "topic",
+            scraping_config=ScrapingConfig(),
+            jina_api_key=None,
+            extra_urls=extra,
+            _filter_agent=filter_agent,
+        )
+
+    assert "https://manual.com/article" not in rejected
