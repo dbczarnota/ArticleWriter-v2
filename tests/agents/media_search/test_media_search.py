@@ -29,8 +29,8 @@ def test_returns_empty_when_all_flags_off():
 @pytest.mark.asyncio
 async def test_aggregates_results_from_enabled_sources():
     with (
-        patch("agents.media_search.agent._formulate_query", new_callable=AsyncMock,
-              return_value='"Melania Trump"'),
+        patch("agents.media_search.agent._formulate_queries", new_callable=AsyncMock,
+              return_value=['"Melania Trump"']),
         patch("agents.media_search.agent.search_videos", new_callable=AsyncMock, return_value=[_YT]),
         patch("agents.media_search.agent.search_site", new_callable=AsyncMock, return_value=[_TW]),
         patch("agents.media_search.agent.search_images", new_callable=AsyncMock, return_value=[]),
@@ -49,8 +49,8 @@ async def test_aggregates_results_from_enabled_sources():
 @pytest.mark.asyncio
 async def test_reddit_included_when_flag_on():
     with (
-        patch("agents.media_search.agent._formulate_query", new_callable=AsyncMock,
-              return_value='"keyword"'),
+        patch("agents.media_search.agent._formulate_queries", new_callable=AsyncMock,
+              return_value=['"keyword"']),
         patch("agents.media_search.agent.search_videos", new_callable=AsyncMock, return_value=[]),
         patch("agents.media_search.agent.search_site", new_callable=AsyncMock, return_value=[]),
         patch("agents.media_search.agent.search_images", new_callable=AsyncMock, return_value=[]),
@@ -66,8 +66,8 @@ async def test_reddit_included_when_flag_on():
 async def test_deduplicates_urls():
     dup = EmbedCandidate(url="https://youtube.com/watch?v=1", title="dup", source="youtube")
     with (
-        patch("agents.media_search.agent._formulate_query", new_callable=AsyncMock,
-              return_value='"kw"'),
+        patch("agents.media_search.agent._formulate_queries", new_callable=AsyncMock,
+              return_value=['"kw"']),
         patch("agents.media_search.agent.search_videos", new_callable=AsyncMock, return_value=[_YT, dup]),
         patch("agents.media_search.agent.search_site", new_callable=AsyncMock, return_value=[]),
         patch("agents.media_search.agent.search_images", new_callable=AsyncMock, return_value=[]),
@@ -82,8 +82,8 @@ async def test_deduplicates_urls():
 @pytest.mark.asyncio
 async def test_skips_failed_source_silently():
     with (
-        patch("agents.media_search.agent._formulate_query", new_callable=AsyncMock,
-              return_value='"kw"'),
+        patch("agents.media_search.agent._formulate_queries", new_callable=AsyncMock,
+              return_value=['"kw"']),
         patch("agents.media_search.agent.search_videos", new_callable=AsyncMock,
               side_effect=Exception("network error")),
         patch("agents.media_search.agent.search_site", new_callable=AsyncMock, return_value=[_TW]),

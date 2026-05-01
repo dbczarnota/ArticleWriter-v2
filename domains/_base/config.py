@@ -20,6 +20,8 @@ class DomainConfig:
     tiktok_search: bool = False
     instagram_search: bool = False
     reddit_search: bool = False
+    media_search_languages: tuple[str, ...] = ("en",)
+    media_search_num: int = 5
     guidelines: str = ""
     html_format: str = ""
     example_articles: tuple[str, ...] = ()
