@@ -57,14 +57,11 @@ async def search_videos(
     query: str,
     *,
     num: int = 5,
-    freshness: str = "",
     _language: str = "pl",
     api_key: str,
 ) -> list[EmbedCandidate]:
-    """YouTube video search via Serper /videos endpoint. No language restriction — YouTube is global."""
+    """YouTube video search via Serper /videos endpoint. tbs not supported by this endpoint."""
     payload: dict = {"q": query, "num": num}
-    if freshness:
-        payload["tbs"] = freshness
     headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.post(f"{_BASE}/videos", json=payload, headers=headers)
