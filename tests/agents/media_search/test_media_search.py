@@ -17,8 +17,9 @@ _TW = EmbedCandidate(url="https://x.com/u/status/1", title="Tweet", source="twit
 
 
 def test_returns_empty_when_all_flags_off():
-    result = asyncio.run(run_media_search("topic", domain=_DOMAIN_NONE, serper_api_key="k"))
-    assert result == []
+    candidates, errors = asyncio.run(run_media_search("topic", domain=_DOMAIN_NONE, serper_api_key="k"))
+    assert candidates == []
+    assert errors == {}
 
 
 @pytest.mark.asyncio
@@ -31,12 +32,13 @@ async def test_aggregates_results_from_enabled_sources():
         m_site.return_value = [_TW]
 
         domain = DomainConfig(name="t", description="t", youtube_search=True, twitter_search=True)
-        results = await run_media_search("topic", domain=domain, serper_api_key="k")
+        candidates, errors = await run_media_search("topic", domain=domain, serper_api_key="k")
 
-    assert len(results) == 2
-    sources = {r.source for r in results}
+    assert len(candidates) == 2
+    sources = {r.source for r in candidates}
     assert "youtube" in sources
     assert "twitter" in sources
+    assert errors == {}
 
 
 @pytest.mark.asyncio
@@ -50,9 +52,9 @@ async def test_deduplicates_urls():
         m_site.return_value = []
 
         domain = DomainConfig(name="t", description="t", youtube_search=True, twitter_search=True)
-        results = await run_media_search("topic", domain=domain, serper_api_key="k")
+        candidates, _ = await run_media_search("topic", domain=domain, serper_api_key="k")
 
-    assert len(results) == 1
+    assert len(candidates) == 1
 
 
 @pytest.mark.asyncio
@@ -65,7 +67,9 @@ async def test_skips_failed_source_silently():
         m_site.return_value = [_TW]
 
         domain = DomainConfig(name="t", description="t", youtube_search=True, twitter_search=True)
-        results = await run_media_search("topic", domain=domain, serper_api_key="k")
+        candidates, errors = await run_media_search("topic", domain=domain, serper_api_key="k")
 
-    assert len(results) == 1
-    assert results[0].source == "twitter"
+    assert len(candidates) == 1
+    assert candidates[0].source == "twitter"
+    assert "youtube" in errors
+    assert "network error" in errors["youtube"]

@@ -57,11 +57,11 @@ async def search_videos(
     query: str,
     *,
     num: int = 5,
-    language: str = "pl",
+    _language: str = "pl",
     api_key: str,
 ) -> list[EmbedCandidate]:
-    """YouTube video search via Serper /videos endpoint."""
-    payload = {"q": query, "num": num, **_lang_payload(language)}
+    """YouTube video search via Serper /videos endpoint. No language restriction — YouTube is global."""
+    payload = {"q": query, "num": num}
     headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.post(f"{_BASE}/videos", json=payload, headers=headers)
@@ -86,11 +86,11 @@ async def search_site(
     site: str,
     source: str,
     num: int = 5,
-    language: str = "pl",
+    _language: str = "pl",
     api_key: str,
 ) -> list[EmbedCandidate]:
-    """Web search filtered to a specific site (Twitter, TikTok, Instagram, Facebook)."""
-    payload = {"q": f"site:{site} {query}", "num": num, **_lang_payload(language)}
+    """Web search filtered to a specific site (Twitter, TikTok, Instagram, Facebook). No language restriction."""
+    payload = {"q": f"site:{site} {query}", "num": num}
     headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.post(f"{_BASE}/search", json=payload, headers=headers)

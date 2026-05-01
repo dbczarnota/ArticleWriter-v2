@@ -71,7 +71,7 @@ def mocked_agents():
         m_reflect.return_value = _REFLECTION
         m_followup.return_value = _ARTICLE_OUTPUT
         m_serper.return_value = []
-        m_media.return_value = [_EMBED]
+        m_media.return_value = ([_EMBED], {})
         yield {
             "search": m_search,
             "scraping": m_scrape,

@@ -57,9 +57,9 @@ async def run_pipeline(
 
     # Stage 1: Research
     log.search_start(topic, settings.search.num_queries, settings.search.max_results,
-                     settings.search.search_freshness)
+                     settings.search.search_freshness, news_search=settings.search.news_search)
     try:
-        search_results, embed_candidates = await asyncio.gather(
+        search_results, (embed_candidates, media_errors) = await asyncio.gather(
             run_search_agent(
                 topic,
                 config=settings.search,
@@ -73,6 +73,7 @@ async def run_pipeline(
             ),
         )
         log.search_done(search_results)
+        log.media_search_done(embed_candidates, media_errors)
     except Exception as e:
         _errors.append({"stage": "search", "error": str(e)})
         log.error("search", e)

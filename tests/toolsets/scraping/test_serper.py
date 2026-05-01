@@ -124,7 +124,7 @@ async def test_search_videos_returns_embed_candidates():
             ]
         })
     )
-    results = await search_videos("Melania", num=5, language="pl", api_key="k")
+    results = await search_videos("Melania", num=5, api_key="k")
     assert len(results) == 1
     assert isinstance(results[0], EmbedCandidate)
     assert results[0].source == "youtube"
@@ -143,7 +143,7 @@ async def test_search_site_returns_embed_candidates():
         })
     )
     results = await search_site("Melania", site="x.com", source="twitter",
-                                num=5, language="pl", api_key="k")
+                                num=5, api_key="k")
     assert len(results) == 1
     assert results[0].source == "twitter"
     assert results[0].url == "https://x.com/user/status/1"

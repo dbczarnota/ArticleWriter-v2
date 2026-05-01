@@ -1,7 +1,10 @@
 """Quick e2e test — edit TOPIC and DOMAIN, then: uv run python run.py"""
 import asyncio
 import os
+import sys
 from dotenv import load_dotenv
+
+sys.stdout.reconfigure(encoding="utf-8")
 
 load_dotenv()
 
@@ -80,6 +83,14 @@ async def main() -> None:
     print(f"Alternative titles: {result.alternative_titles}")
     print(f"Followup topics:    {result.followup_topics}")
     print(f"Sources ({len(result.sources)}): {result.sources[:3]}")
+    if result.embed_candidates:
+        from collections import Counter
+        counts = Counter(c.source for c in result.embed_candidates)
+        print(f"Embed candidates ({len(result.embed_candidates)}): {dict(counts)}")
+        for c in result.embed_candidates[:5]:
+            print(f"  [{c.source}] {c.title[:60]} — {c.url[:70]}")
+    else:
+        print("Embed candidates: none found")
     if result.errors:
         print(f"Errors: {result.errors}")
 

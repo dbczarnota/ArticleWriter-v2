@@ -16,8 +16,10 @@ class PipelineLogger:
     def __init__(self, enabled: bool = True) -> None:
         self._enabled = enabled
         if enabled:
+            import sys, io
             from rich.console import Console
-            self._c = Console(highlight=False)
+            utf8_out = io.open(sys.stdout.fileno(), mode="w", encoding="utf-8", closefd=False)
+            self._c = Console(highlight=False, file=utf8_out)
         self._stage = 0
 
     # ── internal helpers ──────────────────────────────────────────────────
@@ -59,11 +61,32 @@ class PipelineLogger:
 
     # ── public stage methods ───────────────────────────────────────────────
 
-    def search_start(self, topic: str, num_queries: int, max_results: int, freshness: str) -> None:
+    def search_start(self, topic: str, num_queries: int, max_results: int, freshness: str,
+                     news_search: bool = False) -> None:
         if not self._enabled: return
         self._next("SEARCH", "cyan")
         self._kv(topic=self._head(topic, 80), queries=num_queries,
                  max_results=max_results, freshness=freshness)
+        if news_search:
+            self._ok("news_search=True — /news runs in parallel with /search per query")
+
+    def media_search_done(self, candidates: list, errors: dict[str, str] | None = None) -> None:
+        if not self._enabled: return
+        self._next("MEDIA SEARCH", "cyan")
+        if errors:
+            for src, msg in errors.items():
+                self._warn(f"{src} failed: {msg[:100]}")
+        if not candidates:
+            self._warn("no embed candidates found")
+            return
+        from collections import Counter
+        counts = Counter(c.source for c in candidates)
+        summary = "  ".join(f"{src}: {n}" for src, n in counts.items())
+        self._ok(f"{len(candidates)} candidates  ({summary})")
+        self._table(
+            ["Source", "Title", "URL"],
+            [[c.source, c.title[:45], c.url[:55]] for c in candidates],
+        )
 
     def search_done(self, results: list[SearchResult]) -> None:
         if not self._enabled: return
