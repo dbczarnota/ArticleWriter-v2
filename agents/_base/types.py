@@ -56,7 +56,7 @@ class VideoResult:
 class EmbedCandidate:
     url: str
     title: str
-    source: Literal["youtube", "twitter", "tiktok", "instagram", "facebook"]
+    source: Literal["youtube", "twitter", "tiktok", "instagram", "facebook", "reddit"]
     thumbnail_url: str | None = None
     description: str | None = None
     channel: str | None = None

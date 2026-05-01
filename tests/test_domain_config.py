@@ -50,3 +50,4 @@ def test_domain_config_new_flags():
     assert d.news_search is False
     assert d.tiktok_search is False
     assert d.instagram_search is False
+    assert d.reddit_search is False

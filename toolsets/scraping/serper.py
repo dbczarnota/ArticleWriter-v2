@@ -80,6 +80,77 @@ async def search_videos(
     ]
 
 
+async def search_images(
+    query: str,
+    *,
+    num: int = 5,
+    api_key: str,
+) -> list[EmbedCandidate]:
+    """Google Images via Serper /images — useful for finding Instagram/TikTok thumbnails."""
+    payload = {"q": query, "num": num}
+    headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.post(f"{_BASE}/images", json=payload, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+
+    results = []
+    for item in data.get("images", []):
+        link = item.get("link", "")
+        source: str
+        if "instagram.com" in link:
+            source = "instagram"
+        elif "tiktok.com" in link:
+            source = "tiktok"
+        elif "x.com" in link or "twitter.com" in link:
+            source = "twitter"
+        else:
+            continue  # skip non-social images
+        results.append(EmbedCandidate(
+            url=link,
+            title=item.get("title", ""),
+            source=source,  # type: ignore[arg-type]
+            thumbnail_url=item.get("imageUrl"),
+        ))
+    return results
+
+
+async def search_reddit(
+    query: str,
+    *,
+    num: int = 5,
+    api_key: str = "",  # unused, Reddit JSON API needs no auth
+) -> list[EmbedCandidate]:
+    """Reddit search via Reddit's public JSON API — no auth required."""
+    params = {"q": query, "sort": "top", "t": "week", "limit": num, "type": "link"}
+    headers = {"User-Agent": "articlewriter/1.0"}
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(
+            "https://www.reddit.com/search.json",
+            params=params,
+            headers=headers,
+        )
+        response.raise_for_status()
+        data = response.json()
+
+    results = []
+    for child in data.get("data", {}).get("children", []):
+        post = child.get("data", {})
+        url = post.get("url", "")
+        if not url:
+            continue
+        title = post.get("title", "")
+        subreddit = post.get("subreddit_name_prefixed", "")
+        permalink = f"https://reddit.com{post.get('permalink', '')}"
+        results.append(EmbedCandidate(
+            url=permalink,
+            title=title,
+            source="reddit",  # type: ignore[arg-type]
+            description=f"{subreddit} · {post.get('score', 0)} points",
+        ))
+    return results
+
+
 async def search_site(
     query: str,
     *,

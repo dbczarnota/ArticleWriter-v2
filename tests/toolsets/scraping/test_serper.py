@@ -2,7 +2,7 @@ import pytest
 import respx
 import httpx
 from agents._base.types import SearchResult, EmbedCandidate
-from toolsets.scraping.serper import search, search_news, search_videos, search_site
+from toolsets.scraping.serper import search, search_news, search_videos, search_site, search_images, search_reddit
 
 
 @pytest.mark.asyncio
@@ -157,3 +157,49 @@ async def test_search_news_empty_returns_empty():
     )
     results = await search_news("test", num=5, language="pl", api_key="k")
     assert results == []
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_search_images_filters_social_only():
+    respx.post("https://google.serper.dev/images").mock(
+        return_value=httpx.Response(200, json={
+            "images": [
+                {"title": "IG Reel", "imageUrl": "https://cdn.ig.com/1.jpg",
+                 "link": "https://www.instagram.com/reel/abc/", "source": "instagram.com"},
+                {"title": "Random blog", "imageUrl": "https://blog.com/img.jpg",
+                 "link": "https://blog.com/post", "source": "blog.com"},
+            ]
+        })
+    )
+    results = await search_images("Melania Trump", num=5, api_key="k")
+    assert len(results) == 1
+    assert results[0].source == "instagram"
+    assert results[0].thumbnail_url == "https://cdn.ig.com/1.jpg"
+
+
+@pytest.mark.asyncio
+async def test_search_reddit_returns_embed_candidates():
+    import respx as r
+    import httpx as h
+    with r.mock:
+        r.get("https://www.reddit.com/search.json").mock(
+            return_value=h.Response(200, json={
+                "data": {
+                    "children": [
+                        {"data": {
+                            "url": "https://example.com/article",
+                            "title": "Melania scolded Trump",
+                            "subreddit_name_prefixed": "r/politics",
+                            "permalink": "/r/politics/comments/abc/",
+                            "score": 1234,
+                        }}
+                    ]
+                }
+            })
+        )
+        results = await search_reddit("Melania Trump", num=5)
+    assert len(results) == 1
+    assert results[0].source == "reddit"
+    assert "reddit.com" in results[0].url
+    assert "1234" in results[0].description

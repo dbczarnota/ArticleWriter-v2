@@ -20,6 +20,7 @@ STYL_FM_DOMAIN = DomainConfig(
     news_search=True,
     tiktok_search=True,
     instagram_search=True,
+    reddit_search=False,
     guidelines=_GUIDELINES_PATH.read_text(encoding="utf-8"),
     html_format=(
         "Use <h1> for the main title, <h2> for section headings, <p> for paragraphs. "

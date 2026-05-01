@@ -19,6 +19,7 @@ class DomainConfig:
     news_search: bool = False
     tiktok_search: bool = False
     instagram_search: bool = False
+    reddit_search: bool = False
     guidelines: str = ""
     html_format: str = ""
     example_articles: tuple[str, ...] = ()
