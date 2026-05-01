@@ -2,7 +2,7 @@
 from __future__ import annotations
 import pathlib
 import time
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from pydantic_ai import Agent
 from agents._base.config import FollowUpAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
@@ -18,6 +18,15 @@ _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
 class FollowUpOutput(BaseModel):
     alternative_titles: list[str]
     followup_topics: list[str]
+
+    @field_validator("alternative_titles", "followup_topics", mode="before")
+    @classmethod
+    def _clean(cls, v: list) -> list:
+        return [
+            " ".join(s.split())
+            for item in v
+            if isinstance(item, str) and (s := item.strip())
+        ]
 
 
 async def run_followup_agent(
