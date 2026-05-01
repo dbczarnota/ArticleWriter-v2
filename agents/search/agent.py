@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 from agents._base.config import SearchAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
+from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
 from agents._base.types import SearchResult
 from toolsets.scraping.serper import search as serper_search, search_news as serper_search_news
@@ -31,22 +32,31 @@ async def run_search_agent(
     When config.news_search=True, also fetches Google News results in parallel.
     Deduplicates URLs across all queries and sources.
     """
-    agent = _agent or Agent(
-        config.model,
-        output_type=SearchQueriesResult,
-        system_prompt=render_prompt(
-            _PROMPTS_DIR / "search.j2",
-            num_queries=config.num_queries,
-            format_style=model_format_style(config.model),
-        ),
-    )
+    _user_prompt = f"Topic: {topic}\nGenerate all queries in language: {domain_language}"
 
-    _t0 = time.perf_counter()
-    result = await agent.run(
-        f"Topic: {topic}\nGenerate all queries in language: {domain_language}"
-    )
+    if _agent is not None:
+        _t0 = time.perf_counter()
+        result = await _agent.run(_user_prompt)
+        _model_used = config.model
+    else:
+        def _factory(m: str) -> Agent:
+            return Agent(
+                m,
+                output_type=SearchQueriesResult,
+                system_prompt=render_prompt(
+                    _PROMPTS_DIR / "search.j2",
+                    num_queries=config.num_queries,
+                    format_style=model_format_style(m),
+                ),
+            )
+        _t0 = time.perf_counter()
+        result, _model_used = await run_with_fallback(
+            (config.model, *config.fallback_models),
+            agent_factory=_factory,
+            user_prompt=_user_prompt,
+        )
     _u = result.usage()
-    record_agent_call("search", config.model, _u.input_tokens or 0, _u.output_tokens or 0,
+    record_agent_call("search", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
                       (time.perf_counter() - _t0) * 1000)
 
     all_results: list[SearchResult] = []

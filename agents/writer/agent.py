@@ -7,6 +7,7 @@ from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
 from agents._base.config import WriterAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
+from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
 from agents.instructions.agent import WritingBrief
 from domains._base.config import DomainConfig
@@ -52,24 +53,33 @@ async def run_writer_agent(
             f"\n\nPRIORITY FIXES:\n{fixes}"
         )
 
-    agent = _agent or Agent(
-        config.model,
-        output_type=ArticleHtml,
-        system_prompt=render_prompt(
-            _PROMPTS_DIR / "writer.j2",
-            domain_name=domain.name,
-            guidelines=domain.guidelines,
-            html_format=domain.html_format,
-            example_articles=list(domain.example_articles),
-            target_word_count=domain.target_word_count,
-            language=domain.language,
-            format_style=model_format_style(config.model),
-        ),
-    )
-
-    _t0 = time.perf_counter()
-    result = await agent.run(user_prompt)
+    if _agent is not None:
+        _t0 = time.perf_counter()
+        result = await _agent.run(user_prompt)
+        _model_used = config.model
+    else:
+        def _factory(m: str) -> Agent:
+            return Agent(
+                m,
+                output_type=ArticleHtml,
+                system_prompt=render_prompt(
+                    _PROMPTS_DIR / "writer.j2",
+                    domain_name=domain.name,
+                    guidelines=domain.guidelines,
+                    html_format=domain.html_format,
+                    example_articles=list(domain.example_articles),
+                    target_word_count=domain.target_word_count,
+                    language=domain.language,
+                    format_style=model_format_style(m),
+                ),
+            )
+        _t0 = time.perf_counter()
+        result, _model_used = await run_with_fallback(
+            (config.model, *config.fallback_models),
+            agent_factory=_factory,
+            user_prompt=user_prompt,
+        )
     _u = result.usage()
-    record_agent_call("writer", config.model, _u.input_tokens or 0, _u.output_tokens or 0,
+    record_agent_call("writer", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
                       (time.perf_counter() - _t0) * 1000)
     return result.output, list(result.all_messages())

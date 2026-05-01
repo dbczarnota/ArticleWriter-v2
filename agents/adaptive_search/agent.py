@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 from agents._base.config import AdaptiveSearchAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
+from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
 from agents.extraction.agent import ExtractionResult
 
@@ -45,19 +46,28 @@ async def run_adaptive_search_agent(
     )
     summary = f"FACTS ({len(extraction_result.facts)}):\n{facts_text}\n\nQUOTES ({len(extraction_result.quotes)}):\n{quotes_text}"
 
-    agent = _agent or Agent(
-        config.model,
-        output_type=AdaptiveSearchDecision,
-        system_prompt=render_prompt(
-            _PROMPTS_DIR / "adaptive.j2",
-            topic=topic,
-            format_style=model_format_style(config.model),
-        ),
-    )
-
-    _t0 = time.perf_counter()
-    result = await agent.run(summary)
+    if _agent is not None:
+        _t0 = time.perf_counter()
+        result = await _agent.run(summary)
+        _model_used = config.model
+    else:
+        def _factory(m: str) -> Agent:
+            return Agent(
+                m,
+                output_type=AdaptiveSearchDecision,
+                system_prompt=render_prompt(
+                    _PROMPTS_DIR / "adaptive.j2",
+                    topic=topic,
+                    format_style=model_format_style(m),
+                ),
+            )
+        _t0 = time.perf_counter()
+        result, _model_used = await run_with_fallback(
+            (config.model, *config.fallback_models),
+            agent_factory=_factory,
+            user_prompt=summary,
+        )
     _u = result.usage()
-    record_agent_call("adaptive_search", config.model, _u.input_tokens or 0, _u.output_tokens or 0,
+    record_agent_call("adaptive_search", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
                       (time.perf_counter() - _t0) * 1000)
     return result.output

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 from agents._base.config import InstructionsAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
+from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
 from agents.extraction.agent import ExtractionResult
 from domains._base.config import DomainConfig
@@ -47,24 +48,33 @@ async def run_instructions_agent(
     if additional_instructions:
         material += f"\n\n### Additional Instructions and Context:\n{additional_instructions}\nThey are very important and must be included."
 
-    agent = _agent or Agent(
-        config.model,
-        output_type=WritingBrief,
-        system_prompt=render_prompt(
-            _PROMPTS_DIR / "instructions.j2",
-            domain_name=domain.name,
-            guidelines=domain.guidelines,
-            max_facts=domain.max_facts_in_article,
-            max_quotes=domain.max_quotes_in_article,
-            target_word_count=domain.target_word_count,
-            language=domain.language,
-            format_style=model_format_style(config.model),
-        ),
-    )
-
-    _t0 = time.perf_counter()
-    result = await agent.run(material)
+    if _agent is not None:
+        _t0 = time.perf_counter()
+        result = await _agent.run(material)
+        _model_used = config.model
+    else:
+        def _factory(m: str) -> Agent:
+            return Agent(
+                m,
+                output_type=WritingBrief,
+                system_prompt=render_prompt(
+                    _PROMPTS_DIR / "instructions.j2",
+                    domain_name=domain.name,
+                    guidelines=domain.guidelines,
+                    max_facts=domain.max_facts_in_article,
+                    max_quotes=domain.max_quotes_in_article,
+                    target_word_count=domain.target_word_count,
+                    language=domain.language,
+                    format_style=model_format_style(m),
+                ),
+            )
+        _t0 = time.perf_counter()
+        result, _model_used = await run_with_fallback(
+            (config.model, *config.fallback_models),
+            agent_factory=_factory,
+            user_prompt=material,
+        )
     _u = result.usage()
-    record_agent_call("instructions", config.model, _u.input_tokens or 0, _u.output_tokens or 0,
+    record_agent_call("instructions", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
                       (time.perf_counter() - _t0) * 1000)
     return result.output

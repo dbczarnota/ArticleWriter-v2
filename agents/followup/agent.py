@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 from agents._base.config import FollowUpAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
+from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
 from agents._base.types import ArticleOutput
 from agents.extraction.agent import ExtractionResult
@@ -42,21 +43,30 @@ async def run_followup_agent(
         f"SOURCE QUOTES:\n{quotes_text or '(none)'}"
     )
 
-    agent = _agent or Agent(
-        config.model,
-        output_type=FollowUpOutput,
-        system_prompt=render_prompt(
-            _PROMPTS_DIR / "followup.j2",
-            num_titles=config.num_titles,
-            num_topics=config.num_topics,
-            format_style=model_format_style(config.model),
-        ),
-    )
-
-    _t0 = time.perf_counter()
-    result = await agent.run(user_prompt)
+    if _agent is not None:
+        _t0 = time.perf_counter()
+        result = await _agent.run(user_prompt)
+        _model_used = config.model
+    else:
+        def _factory(m: str) -> Agent:
+            return Agent(
+                m,
+                output_type=FollowUpOutput,
+                system_prompt=render_prompt(
+                    _PROMPTS_DIR / "followup.j2",
+                    num_titles=config.num_titles,
+                    num_topics=config.num_topics,
+                    format_style=model_format_style(m),
+                ),
+            )
+        _t0 = time.perf_counter()
+        result, _model_used = await run_with_fallback(
+            (config.model, *config.fallback_models),
+            agent_factory=_factory,
+            user_prompt=user_prompt,
+        )
     _u = result.usage()
-    record_agent_call("followup", config.model, _u.input_tokens or 0, _u.output_tokens or 0,
+    record_agent_call("followup", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
                       (time.perf_counter() - _t0) * 1000)
     output = result.output
 

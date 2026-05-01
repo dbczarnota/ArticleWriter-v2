@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 from agents._base.config import ExtractionAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
+from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
 from agents._base.types import Fact, ParsedArticle, Quote
 
@@ -56,21 +57,30 @@ async def run_extraction_agent(
         f"Source: {a.url}\nTitle: {a.title}\n\n{a.content}" for a in articles
     )
 
-    agent = _agent or Agent(
-        config.model,
-        output_type=ExtractionOutput,
-        system_prompt=render_prompt(
-            _PROMPTS_DIR / "extract.j2",
-            topic=topic,
-            language=language,
-            format_style=model_format_style(config.model),
-        ),
-    )
-
-    _t0 = time.perf_counter()
-    result = await agent.run(articles_text)
+    if _agent is not None:
+        _t0 = time.perf_counter()
+        result = await _agent.run(articles_text)
+        _model_used = config.model
+    else:
+        def _factory(m: str) -> Agent:
+            return Agent(
+                m,
+                output_type=ExtractionOutput,
+                system_prompt=render_prompt(
+                    _PROMPTS_DIR / "extract.j2",
+                    topic=topic,
+                    language=language,
+                    format_style=model_format_style(m),
+                ),
+            )
+        _t0 = time.perf_counter()
+        result, _model_used = await run_with_fallback(
+            (config.model, *config.fallback_models),
+            agent_factory=_factory,
+            user_prompt=articles_text,
+        )
     _u = result.usage()
-    record_agent_call("extraction", config.model, _u.input_tokens or 0, _u.output_tokens or 0,
+    record_agent_call("extraction", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
                       (time.perf_counter() - _t0) * 1000)
 
     return ExtractionResult(
