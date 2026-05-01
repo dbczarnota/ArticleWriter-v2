@@ -94,6 +94,25 @@ async def main() -> None:
     if result.errors:
         print(f"Errors: {result.errors}")
 
+    print(f"\n--- Token usage ({len(result.token_usage)} agent calls) ---")
+    total_in = total_out = 0
+    for r in result.token_usage:
+        print(f"  {r['agent']:20s} {r['model']:45s}  in={r['input_tokens']:6d}  out={r['output_tokens']:5d}  {r['duration_ms']:7.0f}ms")
+        total_in += r['input_tokens']
+        total_out += r['output_tokens']
+    print(f"  {'TOTAL':20s} {'':45s}  in={total_in:6d}  out={total_out:5d}")
+
+    print(f"\n--- Timing ---")
+    for stage, ms in result.timing.items():
+        print(f"  {stage:20s} {ms:8.0f}ms")
+
+    if result.fallback_events:
+        print(f"\n--- Fallback events ({len(result.fallback_events)}) ---")
+        for e in result.fallback_events:
+            print(f"  [{e['agent']}] {e['failed_model']} failed: {e['error_type']}: {e['error_message'][:80]}")
+    else:
+        print("\nFallback events: none (all primary models succeeded)")
+
     if MAKE_WEBHOOK_URL:
         import httpx
         payload = {"ID": JOB_ID, "article_text": html_out, "topic": TOPIC}
