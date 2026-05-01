@@ -337,8 +337,9 @@ async def run_pipeline(
                 _errors.append({"stage": "followup", "error": str(e)})
                 log.error("followup", e)
                 record_error("followup")
-    _timing["followup"] = (time.perf_counter() - _stage_t0) * 1000
-    record_stage("followup", _timing["followup"], domain.name)
+    if settings.pipeline.followup:
+        _timing["followup"] = (time.perf_counter() - _stage_t0) * 1000
+        record_stage("followup", _timing["followup"], domain.name)
 
     sources = list(
         {f.source_url for f in extraction.facts if f.source_url}
