@@ -100,3 +100,30 @@ async def test_run_with_fallback_passes_message_history():
         message_history=[sentinel],
     )
     assert sentinel in received_history
+
+
+async def test_run_with_fallback_timeout_triggers_fallback():
+    import asyncio
+
+    async def _slow(*args, **kwargs):
+        await asyncio.sleep(999)
+
+    call_count = 0
+
+    def _factory(_m: str) -> Agent:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            agent = MagicMock(spec=Agent)
+            agent.run = _slow
+            return agent
+        return Agent(TestModel(custom_output_args={"value": "after_timeout"}), output_type=_Out)
+
+    result, model_used = await run_with_fallback(
+        ["slow-model", "fast-model"],
+        agent_factory=_factory,
+        user_prompt="hello",
+        timeout=0.05,  # 50ms — times out the 999s sleep but allows TestModel to respond
+    )
+    assert result.output.value == "after_timeout"
+    assert model_used == "fast-model"

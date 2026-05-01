@@ -5,6 +5,7 @@ from typing import Any, Callable, Sequence
 
 import logfire
 from pydantic_ai import Agent
+from pydantic_ai.messages import ModelMessage
 
 
 class AllModelsFailedError(Exception):
@@ -21,7 +22,7 @@ async def run_with_fallback(
     *,
     agent_factory: Callable[[str], Agent],
     user_prompt: str,
-    message_history: list | None = None,
+    message_history: list[ModelMessage] | None = None,
     timeout: float = 300.0,
 ) -> tuple[Any, str]:
     """Try each model in order. Return (RunResult, model_used) on first success.
