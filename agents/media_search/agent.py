@@ -1,10 +1,14 @@
 from __future__ import annotations
 import asyncio
+from typing import TYPE_CHECKING
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from agents._base.types import EmbedCandidate
 from domains._base.config import DomainConfig
 from toolsets.scraping.serper import search_images, search_reddit, search_site, search_videos
+
+if TYPE_CHECKING:
+    from agents._base.debug_log import PipelineLogger
 
 
 _SITE_MAP: dict[str, tuple[str, str]] = {
@@ -58,6 +62,7 @@ async def run_media_search(
     serper_api_key: str,
     max_per_source: int | None = None,
     query_model: str = "google-gla:gemini-2.5-flash-lite",
+    log: PipelineLogger | None = None,
 ) -> tuple[list[EmbedCandidate], dict[str, str]]:
     """Search for embed candidates (YouTube, social media, Reddit) in parallel.
 
@@ -77,6 +82,14 @@ async def run_media_search(
 
     num = max_per_source if max_per_source is not None else domain.media_search_num
     media_queries = await _formulate_queries(topic, query_model, domain.media_search_languages)
+
+    if log:
+        active = (
+            [f for f in ("youtube", "twitter", "facebook") if getattr(domain, f"{f}_search", False)]
+            + [f for f in ("instagram", "tiktok") if getattr(domain, f"{f}_search", False)]
+            + (["reddit"] if domain.reddit_search else [])
+        )
+        log.media_search_start(domain.media_search_languages, active, media_queries)
 
     coros: list = []
     labels: list[str] = []

@@ -70,6 +70,14 @@ class PipelineLogger:
         if news_search:
             self._ok("news_search=True — /news runs in parallel with /search per query")
 
+    def media_search_start(self, languages: tuple, flags: list[str], queries: list[str]) -> None:
+        if not self._enabled: return
+        self._next("MEDIA SEARCH", "cyan")
+        self._kv(languages=list(languages), sources=flags)
+        for i, q in enumerate(queries):
+            lang = languages[i] if i < len(languages) else "?"
+            self._ok(f"[{lang}] {q}")
+
     def media_search_done(self, candidates: list, errors: dict[str, str] | None = None) -> None:
         if not self._enabled: return
         self._next("MEDIA SEARCH", "cyan")

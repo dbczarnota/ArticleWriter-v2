@@ -70,6 +70,7 @@ async def run_pipeline(
                 topic,
                 domain=domain,
                 serper_api_key=serper_api_key,
+                log=log,
             ),
         )
         log.search_done(search_results)
