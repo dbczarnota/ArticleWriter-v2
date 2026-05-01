@@ -61,6 +61,7 @@ async def run_media_search(
     domain: DomainConfig,
     serper_api_key: str,
     max_per_source: int | None = None,
+    freshness: str = "",
     query_model: str = "google-gla:gemini-2.5-flash-lite",
     log: PipelineLogger | None = None,
 ) -> tuple[list[EmbedCandidate], dict[str, str]]:
@@ -95,13 +96,14 @@ async def run_media_search(
     labels: list[str] = []
 
     if domain.youtube_search:
-        coros.append(search_videos(topic, num=num, api_key=serper_api_key))
+        coros.append(search_videos(topic, num=num, freshness=freshness, api_key=serper_api_key))
         labels.append("youtube")
 
     for flag, (site, source) in _SITE_MAP.items():
         if getattr(domain, flag, False):
             for i, mq in enumerate(media_queries):
-                coros.append(search_site(mq, site=site, source=source, num=num, api_key=serper_api_key))
+                coros.append(search_site(mq, site=site, source=source, num=num,
+                                         freshness=freshness, api_key=serper_api_key))
                 labels.append(f"{source}@{i}")
 
     for flag, site_prefix in _IMAGE_SITE_MAP.items():
@@ -115,7 +117,7 @@ async def run_media_search(
         # Reddit is English-dominant — use first query (expected to be English)
         first_query = media_queries[0] if media_queries else topic
         reddit_query = " ".join(kw.strip('"') for kw in first_query.split())
-        coros.append(search_reddit(reddit_query, num=num))
+        coros.append(search_reddit(reddit_query, num=num, freshness=freshness))
         labels.append("reddit")
 
     batches = await asyncio.gather(*coros, return_exceptions=True)
