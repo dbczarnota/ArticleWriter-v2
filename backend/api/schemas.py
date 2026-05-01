@@ -27,6 +27,7 @@ class ArticleRequest(BaseModel):
     def _validate_additional_instructions(cls, v: str | None) -> str | None:
         if v is None:
             return v
+        v = v.strip()
         if len(v) > 2000:
             raise ValueError("additional_instructions must be at most 2000 characters")
-        return v
+        return v or None
