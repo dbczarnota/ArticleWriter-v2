@@ -19,7 +19,7 @@ ADDITIONAL_INSTRUCTIONS: str | None = None
 
 # Search freshness — leave None to use domain default (styl_fm = qdr:d = last 24h)
 # Options: "qdr:h" (hour), "qdr:d" (day), "qdr:w" (week), "qdr:m" (month), "qdr:y" (year)
-SEARCH_FRESHNESS: str | None = "qdr:3d"
+SEARCH_FRESHNESS: str | None = "qdr:5d"
 
 DEBUG = True  # rich pipeline logs in terminal
 
