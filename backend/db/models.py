@@ -20,7 +20,8 @@ Status values for Article:
   insufficient_sources   — guardrail tripped; insufficient_sources_detail populated
 """
 
-from __future__ import annotations
+# NOTE: do NOT add `from __future__ import annotations` — it stringifies all annotations
+# and SQLModel/SQLAlchemy 2.0 can't resolve the Relationship target classes from strings.
 
 from datetime import UTC, datetime
 from typing import Any
@@ -113,14 +114,16 @@ class Article(SQLModel, table=True):
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
 
-    # Children (1:N, lazy-loaded via repository methods)
-    facts: list[Fact] = Relationship(back_populates="article", cascade_delete=True)
-    quotes: list[Quote] = Relationship(back_populates="article", cascade_delete=True)
-    embed_candidates: list[EmbedCandidate] = Relationship(
+    # Children (1:N, lazy-loaded via repository methods).
+    # String forward refs are required because the child classes are defined below;
+    # SQLAlchemy resolves them at mapper-configure time via the SQLModel class registry.
+    facts: list["Fact"] = Relationship(back_populates="article", cascade_delete=True)
+    quotes: list["Quote"] = Relationship(back_populates="article", cascade_delete=True)
+    embed_candidates: list["EmbedCandidate"] = Relationship(
         back_populates="article", cascade_delete=True
     )
-    usage_events: list[UsageEvent] = Relationship(back_populates="article", cascade_delete=True)
-    fallback_events: list[FallbackEvent] = Relationship(
+    usage_events: list["UsageEvent"] = Relationship(back_populates="article", cascade_delete=True)
+    fallback_events: list["FallbackEvent"] = Relationship(
         back_populates="article", cascade_delete=True
     )
 
