@@ -52,6 +52,7 @@ class PipelineFlags:
     reflection: bool = True
     followup: bool = True
     cutoff_days: int = 30
+    min_source_signals: int = 1  # raise InsufficientSourcesError if facts+quotes below this
 
 
 _FALLBACK: tuple[str, ...] = ("groq:openai/gpt-oss-120b",)

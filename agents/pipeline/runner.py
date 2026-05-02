@@ -7,6 +7,7 @@ from typing import Literal
 
 import logfire
 
+from agents._base.resilient import InsufficientSourcesError
 from agents._base.run_context import get_fallback_events, init_collector
 from agents._base.types import ArticleOutput, EmbedCandidate, ParsedArticle
 from agents.adaptive_search.agent import run_adaptive_search_agent
@@ -298,6 +299,25 @@ async def _run_pipeline_inner(
                 record_error("adaptive_search")
         _timing["adaptive_search"] = (time.perf_counter() - _stage_t0) * 1000
         record_stage("adaptive_search", _timing["adaptive_search"], domain.name)
+
+    # Gate: refuse to run writer if extraction is empty.
+    # All upstream failures (Serper auth/credits, Jina credits/timeouts, parser yielding 0
+    # articles, extraction LLM error) collapse here. Writer must NOT run on no source material.
+    _signal_count = len(extraction.facts) + len(extraction.quotes)
+    if _signal_count < settings.pipeline.min_source_signals:
+        with logfire.span(
+            "pipeline.guardrail.insufficient_sources",
+            facts=len(extraction.facts),
+            quotes=len(extraction.quotes),
+            min_required=settings.pipeline.min_source_signals,
+        ):
+            log.error("guardrail", RuntimeError("insufficient_sources"))
+            raise InsufficientSourcesError(
+                facts_count=len(extraction.facts),
+                quotes_count=len(extraction.quotes),
+                min_required=settings.pipeline.min_source_signals,
+                upstream_errors=list(_errors),
+            )
 
     # Stage 3: Writing
     _stage_t0 = time.perf_counter()

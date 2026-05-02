@@ -5,7 +5,7 @@ import dataclasses
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from agents._base.resilient import AllModelsFailedError
+from agents._base.resilient import AllModelsFailedError, InsufficientSourcesError
 from agents.pipeline.runner import run_pipeline
 from backend.api.schemas import ArticleRequest
 from backend.config import AppSettings
@@ -35,6 +35,21 @@ async def write_article(
             urls=req.urls or None,
             additional_instructions=req.additional_instructions,
         )
+    except InsufficientSourcesError as exc:
+        # 422 unprocessable: pipeline ran but couldn't gather enough source material
+        # to ground the article (Serper/Jina credit issues, all sources rejected, etc.).
+        # Refusing to return a hallucinated article is the correct behavior.
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "insufficient_sources",
+                "message": str(exc),
+                "facts_count": exc.facts_count,
+                "quotes_count": exc.quotes_count,
+                "min_required": exc.min_required,
+                "upstream_errors": exc.upstream_errors,
+            },
+        ) from exc
     except AllModelsFailedError as exc:
         raise HTTPException(status_code=503, detail=f"All LLM models failed: {exc}") from exc
     return dataclasses.asdict(result)

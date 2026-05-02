@@ -22,6 +22,43 @@ class AllModelsFailedError(Exception):
         super().__init__(f"All {len(errors)} model(s) failed — {summary}")
 
 
+class InsufficientSourcesError(Exception):
+    """Raised when the pipeline produced too few extracted facts/quotes to write a grounded article.
+
+    Trips on any upstream collapse: Serper (search API) credits exhausted or auth failed,
+    Jina (scraper) credits exhausted or timed out for all URLs, parser yielded 0 articles,
+    extraction returned empty. The pipeline bails BEFORE the writer is invoked, rather
+    than letting it hallucinate from no source material.
+
+    `upstream_errors` lists the per-stage errors collected during the run so the caller can
+    distinguish "Serper auth failed" from "all pages timed out in Jina" etc.
+    """
+
+    def __init__(
+        self,
+        facts_count: int,
+        quotes_count: int,
+        min_required: int,
+        upstream_errors: list[dict[str, str]] | None = None,
+    ) -> None:
+        self.facts_count = facts_count
+        self.quotes_count = quotes_count
+        self.min_required = min_required
+        self.upstream_errors = upstream_errors or []
+        upstream_summary = (
+            "; ".join(f"{e.get('stage', '?')}: {e.get('error', '')}" for e in self.upstream_errors)
+            if self.upstream_errors
+            else "no upstream errors recorded — extraction likely returned empty"
+        )
+        super().__init__(
+            f"Insufficient source material to write article: "
+            f"{facts_count} facts + {quotes_count} quotes "
+            f"(required at least {min_required} signal). "
+            f"Refusing to invoke writer to prevent hallucination. "
+            f"Upstream: {upstream_summary}"
+        )
+
+
 async def run_with_fallback(
     model_list: Sequence[str],
     *,
