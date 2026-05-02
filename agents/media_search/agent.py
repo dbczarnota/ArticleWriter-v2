@@ -65,17 +65,33 @@ async def _formulate_queries(
             "specific names, dates, places, the exact incident — and use those in tier 0. Without "
             "this context the topic line alone often produces too generic queries; with it you should "
             "produce queries that pin the unique event.\n\n"
-            "Tier 0 (NARROW): 4-6 keywords that pin the unique event — main people + the specific incident "
-            "or location/time anchor (e.g. for 'Melania Trump nie wytrzymała przy królu Karolu' with article "
-            "context revealing a White House dinner — [\"Melania Trump\", \"król Karol\", \"Biały Dom\", "
-            "\"upomniała\", \"kolacja\"]).\n"
-            "Tier 1 (MID): 2-3 keywords focused on main entity + topic category, dropping specific incident "
-            "details (e.g. [\"Melania Trump\", \"król Karol\", \"wizyta\"]).\n"
-            "Tier 2 (BROAD, optional): 1-2 keywords — just the primary subject (e.g. [\"Melania Trump\"]). "
-            "Include this tier only when the narrow tiers might genuinely miss content; skip it for niche topics.\n\n"
+            "Each keyword you pick will be ANDed with all the others by the search engine (Serper "
+            "treats quoted phrases as required). This means EVERY keyword you add narrows the result "
+            "set further. Pick fewer, sharper keywords rather than many generic ones.\n\n"
+            "Tier 0 (NARROW) — 3-5 keywords that pin the SUBJECT + the SPECIFIC INCIDENT:\n"
+            "  • The MAIN entity (the person/organization the story is ABOUT, not background figures)\n"
+            "  • The OTHER primary entity if the story is about an interaction (e.g. who they confronted, "
+            "    visited, met) — but only if they are also a primary actor, not a tangential mention\n"
+            "  • A unique incident anchor: the specific action, gesture, location, or named event that makes "
+            "    THIS story different from any other story involving the same people\n"
+            "  AVOID in tier 0:\n"
+            "  • Background figures who happen to be present (e.g. a spouse who isn't the actor in the story)\n"
+            "  • Generic event-type words that match too much (\"meeting\", \"visit\", \"confrontation\", \"interview\", "
+            "    \"appearance\") unless paired with a unique modifier\n"
+            "  • Adjectives or feelings (\"shocked\", \"furious\", \"emotional\") — they rarely appear verbatim in "
+            "    social-media post text\n"
+            "  Example: topic 'Melania Trump nie wytrzymała przy królu Karolu' with article context revealing a "
+            "April 2026 White House dinner: GOOD tier 0 = [\"Melania Trump\", \"król Karol\", \"Biały Dom\", \"kolacja\"]. "
+            "BAD tier 0 = [\"Melania Trump\", \"król Karol\", \"Biały Dom\", \"Donald Trump\", \"konfrontacja\"] — Donald "
+            "is background, 'konfrontacja' is generic. Removing those gives a sharper search.\n\n"
+            "Tier 1 (MID) — 2-3 keywords: drop the unique-incident anchor, keep main entity + one strong context "
+            "word (location OR event-category), e.g. [\"Melania Trump\", \"król Karol\", \"wizyta\"].\n\n"
+            "Tier 2 (BROAD, optional) — 1-2 keywords, just the primary subject. Include only when narrow tiers "
+            "might miss content for a niche topic; skip otherwise. Tier 2 will pull in many off-topic results, so "
+            "it's a last-resort fallback.\n\n"
             f"Languages: [{lang_list}]. Use BCP-47 language codes (en, pl, …). For non-English languages, "
-            "render keywords in their native language. Return proper nouns and key concepts only — no filler words "
-            "and no trailing punctuation."
+            "render keywords in their native language. Return proper nouns and concrete concepts only — no "
+            "filler words, no adjectives of feeling, no trailing punctuation."
         ),
     )
     user_msg = f"Topic: {topic}\nLanguages: {lang_list}"
@@ -177,12 +193,24 @@ async def run_media_search(
     labels: list[str] = []
 
     if domain.youtube_search:
-        coros.append(
-            search_videos(
-                topic, num=num, sort_by_date=domain.youtube_sort_by_date, api_key=serper_api_key
+        # YouTube uses the same tier-fallback pattern as twitter/facebook/etc. so the search
+        # leverages the article-context-grounded keywords instead of the raw topic line.
+        # Iterate per language because YouTube has substantial multilingual content for
+        # international stories (e.g. en + pl coverage of the same event).
+        for i, (_lang, tiers) in enumerate(queries_per_lang):
+            tier_queries = tiers[:max_tiers]
+            coros.append(
+                _try_with_tier_fallback(
+                    lambda q: search_videos(
+                        q,
+                        num=num,
+                        sort_by_date=domain.youtube_sort_by_date,
+                        api_key=serper_api_key,
+                    ),
+                    tier_queries,
+                )
             )
-        )
-        labels.append("youtube")
+            labels.append(f"youtube@{i}")
 
     for flag, (site, source) in _SITE_MAP.items():
         if getattr(domain, flag, False):
@@ -222,9 +250,10 @@ async def run_media_search(
         en_tiers = next(
             (tiers for lang, tiers in queries_per_lang if lang == "en"), None
         ) or (queries_per_lang[0][1] if queries_per_lang else [topic])
-        reddit_tier_queries = [
-            " ".join(kw.strip('"') for kw in q.split()) for q in en_tiers[:max_tiers]
-        ]
+        # Keep the quoted-phrase form: a previous version split on whitespace and stripped quotes,
+        # which broke multi-word entities ("Melania Trump" → "Melania" "Trump") and forced Reddit's
+        # search into OR-mode across loose tokens, returning posts about either entity in isolation.
+        reddit_tier_queries = list(en_tiers[:max_tiers])
         coros.append(
             _try_with_tier_fallback(
                 lambda q: search_reddit(q, num=num, freshness=freshness),
