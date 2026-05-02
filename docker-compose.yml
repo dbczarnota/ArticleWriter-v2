@@ -1,0 +1,21 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: articlewriter-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: articlewriter
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+      POSTGRES_DB: articlewriter
+    ports:
+      - "5432:5432"
+    volumes:
+      - articlewriter-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U articlewriter -d articlewriter"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  articlewriter-pgdata:
