@@ -1,6 +1,6 @@
 {
   "include": ["agents", "backend", "domains", "toolsets", "tests", "run.py"],
-  "exclude": ["**/__pycache__", ".venv", ".pytest_cache", "node_modules", "docs"],
+  "exclude": ["**/__pycache__", ".venv", ".pytest_cache", "node_modules", "docs", "migrations/versions"],
   "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.12",
