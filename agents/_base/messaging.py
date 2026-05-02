@@ -43,5 +43,17 @@ def prepend_system(
     system_prompt: str,
     history: list[ModelMessage] | None = None,
 ) -> list[ModelMessage]:
-    """Build [sys_msg, *history]. Pass the result as `message_history=` to agent.run()."""
-    return [build_system_message(system_prompt), *(history or [])]
+    """Build [sys_msg, *history]. Pass the result as `message_history=` to agent.run().
+
+    If `history` already begins with a system-prompt-only ModelRequest (e.g. it's the
+    `result.all_messages()` from a PRIOR run of the same agent — happens in writer-reflection
+    revision rounds), drop that leading message before prepending the new sys_msg. Otherwise
+    every revision round would compound an extra system prompt and waste input tokens
+    proportionally to the round count.
+    """
+    history = list(history or [])
+    if history and isinstance(history[0], ModelRequest):
+        first_parts = history[0].parts
+        if first_parts and all(isinstance(p, SystemPromptPart) for p in first_parts):
+            history = history[1:]
+    return [build_system_message(system_prompt), *history]
