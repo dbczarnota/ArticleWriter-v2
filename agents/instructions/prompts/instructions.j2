@@ -12,3 +12,7 @@
 {{ section("guidelines", guidelines) | trim }}
 
 {{ section("task", "Select the most compelling facts (max " ~ max_facts ~ ") and quotes (max " ~ max_quotes ~ ") from the material below. Format selected facts as: \"fact text [context]\" and selected quotes as: '\"text\" — speaker (context)'. Then write clear writing instructions: tone, angle, what to emphasize, how to structure the article. Target: " ~ target_word_count ~ " words in " ~ language ~ ".") | trim }}
+
+{{ section("preserve_context_verbatim", "When you copy a fact or quote into the brief, COPY ITS FULL CONTEXT VERBATIM from the source material. Do NOT summarize, abbreviate, or paraphrase the context field. The writer needs every detail in the context (date, location, occasion, participants, surrounding circumstances) to keep facts from different events separate. A trimmed context like \"during the visit\" is dangerous: if the article also has another fact \"during the visit\" from a different visit a year earlier, the writer will fuse them. Always include the full anchoring text as it came from extraction.") | trim }}
+
+{{ section("flag_event_diversity", "If the selected facts span MULTIPLE distinct events (different dates, different occasions), state this explicitly in the writing instructions. Tell the journalist: \"these facts come from different events — A on [date], B on [date]. Do not fuse them. Use explicit time markers when transitioning.\" This is especially important when several facts are about the same people but from different occasions.") | trim }}
