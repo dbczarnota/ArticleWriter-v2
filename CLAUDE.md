@@ -88,6 +88,6 @@ KINDE_AUDIENCE        (produkcja)
 LOGFIRE_TOKEN         (produkcja)
 ```
 
-## Non-breaking changes — strategia wdrożenia
+## Status produkcji
 
-Stary endpoint `/write_article` działa równolegle do refaktoru. Nowy endpoint pod `/v2/write_article`. Cutover = zmiana webhooków w Make.com.
+ArticleWriter-v2 to fork z v1 (osobne repo `ArticleWriter`). v2 nie jest jeszcze na produkcji — produkcja nadal hosted z v1. Cutover na v2 = nowy Dockerfile + zmiana webhooków Make.com na endpoint `backend/main.py`.
