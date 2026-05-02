@@ -12,6 +12,8 @@ from agents._base.config import ReflectionAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
+from agents._base.types import ParsedArticle
+from agents.extraction.agent import ExtractionResult
 from agents.writer.agent import ArticleHtml
 from domains._base.config import DomainConfig
 
@@ -29,10 +31,50 @@ async def run_reflection_agent(
     topic: str,
     domain: DomainConfig,
     config: ReflectionAgentConfig,
+    extraction: ExtractionResult | None = None,
+    context_articles: list[ParsedArticle] | None = None,
     _agent: Agent[Any, Any] | None = None,
 ) -> ReflectionFeedback:
-    """Review article quality against domain guidelines and return actionable feedback."""
+    """Review article quality against domain guidelines and return actionable feedback.
+
+    `extraction` (when provided) is the SOURCE OF TRUTH for fact-checking. The reviewer
+    must validate the article against these extracted facts/quotes from real sources —
+    NOT against its own training data, which is months old and outdated for current news.
+
+    `context_articles` (when provided) are competitor articles covering the same story.
+    They're shown to the reviewer for tone/comprehensiveness reference, NEVER passed to
+    the writer (which avoids plagiarism). Reviewer is instructed in reflection.j2 to use
+    them as context only.
+    """
     _user_prompt = f"TOPIC: {topic}\n\nARTICLE TO REVIEW:\n{article.html}"
+
+    if extraction is not None:
+        facts_block = "\n".join(
+            f"- {f.text} (context: {f.context}; source: {f.source_url})" for f in extraction.facts
+        )
+        quotes_block = "\n".join(
+            f'- "{q.text}" — {q.speaker} (context: {q.context}; source: {q.source_url})'
+            for q in extraction.quotes
+        )
+        _user_prompt += (
+            "\n\n--- EXTRACTED SOURCE MATERIAL (THIS IS GROUND TRUTH FOR FACT-CHECKING) ---\n\n"
+            f"FACTS:\n{facts_block or '(none)'}\n\n"
+            f"QUOTES:\n{quotes_block or '(none)'}"
+        )
+
+    if context_articles:
+        articles_block = "\n\n".join(
+            f"### Competitor article {i + 1}\n"
+            f"Source: {a.url}\n"
+            f"Title: {a.title}\n"
+            f"Published: {a.publication_date or 'unknown'}\n\n"
+            f"{a.content}"
+            for i, a in enumerate(context_articles)
+        )
+        _user_prompt += (
+            "\n\n--- COMPETITOR COVERAGE (CONTEXT ONLY — DO NOT INSTRUCT WRITER TO COPY) ---\n\n"
+            f"{articles_block}"
+        )
 
     if _agent is not None:
         _t0 = time.perf_counter()

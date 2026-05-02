@@ -14,6 +14,7 @@ class DomainConfig:
     default_search_freshness: str = "qdr:w"
     default_num_queries: int = 3
     default_max_results: int = 5
+    default_reflection_context_articles: int = 2  # parsed articles fed to reviewer as competitor context
     max_pages_to_scrape: int = 10
     youtube_search: bool = False
     youtube_sort_by_date: bool = True

@@ -113,6 +113,22 @@ async def _run_pipeline_inner(
             search=dc_replace(settings.search, max_results=domain.default_max_results),
         )
 
+    # Apply domain default for reviewer's competitor-coverage slice when caller hasn't overridden it
+    from agents._base.config import ReflectionAgentConfig
+
+    if (
+        settings.reflection.context_articles_count == ReflectionAgentConfig().context_articles_count
+        and domain.default_reflection_context_articles
+        != ReflectionAgentConfig().context_articles_count
+    ):
+        settings = dc_replace(
+            settings,
+            reflection=dc_replace(
+                settings.reflection,
+                context_articles_count=domain.default_reflection_context_articles,
+            ),
+        )
+
     # Stage 1: Research
     log.search_start(
         topic,
@@ -267,6 +283,7 @@ async def _run_pipeline_inner(
                         jina_api_key=jina_api_key,
                     )
                     extra_articles = await run_parsing_agent(extra_scraped, config=settings.parsing)
+                    articles = articles + extra_articles  # extend pool for downstream rerank/context
                     extra_extraction = await run_extraction_agent(
                         extra_articles,
                         topic=topic,
@@ -336,11 +353,16 @@ async def _run_pipeline_inner(
                 for _round in range(settings.reflection.max_rounds):
                     round_n = _round + 1
                     with logfire.span("reflection.review", round=round_n):
+                        ranked_articles = _rank_articles_by_extraction(articles, extraction)
                         feedback = await run_reflection_agent(
                             article,
                             topic=topic,
                             domain=domain,
                             config=settings.reflection,
+                            extraction=extraction,
+                            context_articles=ranked_articles[
+                                : settings.reflection.context_articles_count
+                            ],
                         )
                         log.reflection_done(feedback, round_n=round_n)
                     with logfire.span("writer.revise", round=round_n):
@@ -546,6 +568,26 @@ def _extract_social_from_search(
         else:
             scrapable.append(r)
     return scrapable, embeds
+
+
+def _rank_articles_by_extraction(
+    articles: list[ParsedArticle], extraction: ExtractionResult
+) -> list[ParsedArticle]:
+    """Sort parsed articles by how much they contributed to the extraction.
+
+    A fact counts twice as much as a quote (facts are more directly load-bearing for
+    fact-checking; quotes are also ranked but less aggressively). Articles that didn't
+    contribute anything fall to the end in their original order. Reviewer's competitor
+    coverage is taken from the top of this list.
+    """
+    from collections import Counter
+
+    score: Counter[str] = Counter()
+    for f in extraction.facts:
+        score[f.source_url] += 2
+    for q in extraction.quotes:
+        score[q.source_url] += 1
+    return sorted(articles, key=lambda a: score[a.url], reverse=True)
 
 
 def _merge_extraction(base: ExtractionResult, extra: ExtractionResult) -> ExtractionResult:

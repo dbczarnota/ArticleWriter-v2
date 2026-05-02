@@ -66,6 +66,7 @@ class WriterAgentConfig(AgentConfig):
 class ReflectionAgentConfig(AgentConfig):
     model: str = "google-gla:gemini-2.5-flash"
     max_rounds: int = 1
+    context_articles_count: int = 2  # parsed articles passed to reviewer as competitor coverage
 
 
 @dataclass(frozen=True)
