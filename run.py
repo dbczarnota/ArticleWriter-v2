@@ -4,11 +4,27 @@ import asyncio
 import os
 import sys
 
+import logfire
 from dotenv import load_dotenv
 
 sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 load_dotenv()
+
+def _scrub_callback(m: logfire.ScrubMatch):
+    # The parser prompt mentions "cookie banners" — let it through.
+    if m.pattern_match.group(0).lower() == "cookie":
+        return m.value
+    return None
+
+
+logfire.configure(
+    send_to_logfire="if-token-present",
+    service_name="articlewriter-v2-cli",
+    console=logfire.ConsoleOptions(min_log_level="warn"),
+    scrubbing=logfire.ScrubbingOptions(callback=_scrub_callback),
+)
+logfire.instrument_pydantic_ai()
 
 TOPIC = "Melania Trump nie wytrzymała przy królu Karolu. Upomniała męża,"
 DOMAIN = "styl_fm"

@@ -54,16 +54,13 @@ async def run_scraping_agent(
         _filter_model_used = scraping_config.filter_model
     else:
 
-        def _factory(m: str):
-            return Agent(
-                m,
-                output_type=ApprovedUrlsResult,
-                system_prompt=render_prompt(
-                    _PROMPTS_DIR / "filter.j2",
-                    topic=topic,
-                    format_style=model_format_style(m),
-                ),
+        def _factory(m: str) -> tuple[Agent[Any, Any], str]:
+            sys_prompt = render_prompt(
+                _PROMPTS_DIR / "filter.j2",
+                topic=topic,
+                format_style=model_format_style(m),
             )
+            return Agent(m, output_type=ApprovedUrlsResult), sys_prompt
 
         filter_result, _filter_model_used = await run_with_fallback(
             (scraping_config.filter_model, *scraping_config.filter_fallback_models),

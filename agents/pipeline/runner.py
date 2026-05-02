@@ -37,6 +37,36 @@ async def run_pipeline(
     additional_instructions: str | None = None,
     debug: bool = False,
 ) -> ArticleOutput:
+    with logfire.span(
+        "pipeline.run",
+        topic=topic,
+        domain=domain.name,
+        urls_count=len(urls) if urls else 0,
+        has_additional_instructions=bool(additional_instructions),
+    ):
+        return await _run_pipeline_inner(
+            topic=topic,
+            settings=settings,
+            domain=domain,
+            serper_api_key=serper_api_key,
+            jina_api_key=jina_api_key,
+            urls=urls,
+            additional_instructions=additional_instructions,
+            debug=debug,
+        )
+
+
+async def _run_pipeline_inner(
+    *,
+    topic: str,
+    settings: AppSettings,
+    domain: DomainConfig,
+    serper_api_key: str,
+    jina_api_key: str | None,
+    urls: list[str] | None,
+    additional_instructions: str | None,
+    debug: bool,
+) -> ArticleOutput:
     from dataclasses import replace as dc_replace
 
     from agents._base.config import SearchAgentConfig
@@ -273,9 +303,10 @@ async def run_pipeline(
     record_stage("instructions", _timing["instructions"], domain.name)
 
     _stage_t0 = time.perf_counter()
-    with logfire.span("pipeline.stage.writer", domain=domain.name):
+    _writer_messages: list = []  # accumulates across all writer turns for revision rounds
+    with logfire.span("pipeline.stage.writer", domain=domain.name, round=1):
         try:
-            article, _messages = await run_writer_agent(
+            article, _writer_messages = await run_writer_agent(
                 brief,
                 topic=topic,
                 domain=domain,
@@ -288,35 +319,47 @@ async def run_pipeline(
             log.error("writer", e)
             record_error("writer")
             article = ArticleHtml(html="")
-            _messages = []
+    _timing["writer"] = (time.perf_counter() - _stage_t0) * 1000
+    record_stage("writer", _timing["writer"], domain.name)
 
-        # Stage 4: Reflection (inside writer span — revision rounds)
-        if settings.pipeline.reflection:
+    # Stage 4: Reflection — own top-level stage with per-round sub-spans.
+    # Each writer.revise turn receives the FULL accumulated writer history so it
+    # can consciously revise its prior draft instead of regenerating from scratch.
+    if settings.pipeline.reflection:
+        _stage_t0 = time.perf_counter()
+        with logfire.span(
+            "pipeline.stage.reflection",
+            domain=domain.name,
+            max_rounds=settings.reflection.max_rounds,
+        ):
             try:
                 for _round in range(settings.reflection.max_rounds):
-                    feedback = await run_reflection_agent(
-                        article,
-                        topic=topic,
-                        domain=domain,
-                        config=settings.reflection,
-                        message_history=_messages,
-                    )
-                    log.reflection_done(feedback, round_n=_round + 1)
-                    article, _messages = await run_writer_agent(
-                        brief,
-                        topic=topic,
-                        domain=domain,
-                        config=settings.writer,
-                        reflection_feedback=feedback,
-                        additional_instructions=additional_instructions,
-                    )
-                    log.writer_done(article, round_n=_round + 2)
+                    round_n = _round + 1
+                    with logfire.span("reflection.review", round=round_n):
+                        feedback = await run_reflection_agent(
+                            article,
+                            topic=topic,
+                            domain=domain,
+                            config=settings.reflection,
+                        )
+                        log.reflection_done(feedback, round_n=round_n)
+                    with logfire.span("writer.revise", round=round_n):
+                        article, _writer_messages = await run_writer_agent(
+                            brief,
+                            topic=topic,
+                            domain=domain,
+                            config=settings.writer,
+                            reflection_feedback=feedback,
+                            additional_instructions=additional_instructions,
+                            message_history=_writer_messages,
+                        )
+                        log.writer_done(article, round_n=round_n + 1)
             except Exception as e:
                 _errors.append({"stage": "reflection", "error": str(e)})
                 log.error("reflection", e)
                 record_error("reflection")
-    _timing["writer"] = (time.perf_counter() - _stage_t0) * 1000
-    record_stage("writer", _timing["writer"], domain.name)
+        _timing["reflection"] = (time.perf_counter() - _stage_t0) * 1000
+        record_stage("reflection", _timing["reflection"], domain.name)
 
     # Stage 5: Follow-up
     _stage_t0 = time.perf_counter()

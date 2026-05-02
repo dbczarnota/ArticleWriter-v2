@@ -58,21 +58,18 @@ async def run_instructions_agent(
         _model_used = config.model
     else:
 
-        def _factory(m: str):
-            return Agent(
-                m,
-                output_type=WritingBrief,
-                system_prompt=render_prompt(
-                    _PROMPTS_DIR / "instructions.j2",
-                    domain_name=domain.name,
-                    guidelines=domain.guidelines,
-                    max_facts=domain.max_facts_in_article,
-                    max_quotes=domain.max_quotes_in_article,
-                    target_word_count=domain.target_word_count,
-                    language=domain.language,
-                    format_style=model_format_style(m),
-                ),
+        def _factory(m: str) -> tuple[Agent[Any, Any], str]:
+            sys_prompt = render_prompt(
+                _PROMPTS_DIR / "instructions.j2",
+                domain_name=domain.name,
+                guidelines=domain.guidelines,
+                max_facts=domain.max_facts_in_article,
+                max_quotes=domain.max_quotes_in_article,
+                target_word_count=domain.target_word_count,
+                language=domain.language,
+                format_style=model_format_style(m),
             )
+            return Agent(m, output_type=WritingBrief), sys_prompt
 
         _t0 = time.perf_counter()
         result, _model_used = await run_with_fallback(

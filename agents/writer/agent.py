@@ -33,9 +33,15 @@ async def run_writer_agent(
     config: WriterAgentConfig,
     reflection_feedback: ReflectionFeedback | None = None,
     additional_instructions: str | None = None,
+    message_history: list[ModelMessage] | None = None,
     _agent: Agent[Any, Any] | None = None,
 ) -> tuple[ArticleHtml, list[ModelMessage]]:
-    """Write an HTML article from the writing brief. Accepts optional reflection feedback for round 2."""
+    """Write an HTML article from the writing brief.
+
+    `message_history` is the writer's accumulated turns from prior rounds (for the
+    writer→reflection→writer revision loop). When provided, the writer sees its own
+    earlier drafts and can revise consciously rather than regenerate from scratch.
+    """
     facts_block = "\n".join(f"- {f}" for f in brief.selected_facts)
     quotes_block = "\n".join(f"- {q}" for q in brief.selected_quotes)
 
@@ -58,31 +64,29 @@ async def run_writer_agent(
 
     if _agent is not None:
         _t0 = time.perf_counter()
-        result = await _agent.run(user_prompt)
+        result = await _agent.run(user_prompt, message_history=message_history or [])
         _model_used = config.model
     else:
 
-        def _factory(m: str):
-            return Agent(
-                m,
-                output_type=ArticleHtml,
-                system_prompt=render_prompt(
-                    _PROMPTS_DIR / "writer.j2",
-                    domain_name=domain.name,
-                    guidelines=domain.guidelines,
-                    html_format=domain.html_format,
-                    example_articles=list(domain.example_articles),
-                    target_word_count=domain.target_word_count,
-                    language=domain.language,
-                    format_style=model_format_style(m),
-                ),
+        def _factory(m: str) -> tuple[Agent[Any, Any], str]:
+            sys_prompt = render_prompt(
+                _PROMPTS_DIR / "writer.j2",
+                domain_name=domain.name,
+                guidelines=domain.guidelines,
+                html_format=domain.html_format,
+                example_articles=list(domain.example_articles),
+                target_word_count=domain.target_word_count,
+                language=domain.language,
+                format_style=model_format_style(m),
             )
+            return Agent(m, output_type=ArticleHtml), sys_prompt
 
         _t0 = time.perf_counter()
         result, _model_used = await run_with_fallback(
             (config.model, *config.fallback_models),
             agent_factory=_factory,
             user_prompt=user_prompt,
+            message_history=message_history,
             agent_name="writer",
         )
     _u = result.usage()

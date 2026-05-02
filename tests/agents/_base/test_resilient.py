@@ -15,9 +15,12 @@ class _Out(BaseModel):
     value: str
 
 
+_SYS = "you are a test agent"
+
+
 def _make_test_agent(model_str: str):
-    """Factory that ignores model_str and returns a TestModel agent."""
-    return Agent(TestModel(custom_output_args={"value": "ok"}), output_type=_Out)
+    """Factory that ignores model_str and returns (TestModel agent, system_prompt)."""
+    return Agent(TestModel(custom_output_args={"value": "ok"}), output_type=_Out), _SYS
 
 
 async def test_run_with_fallback_succeeds_on_first_model():
@@ -39,8 +42,8 @@ async def test_run_with_fallback_falls_back_on_error():
         if call_count == 1:
             agent = MagicMock(spec=Agent)
             agent.run = AsyncMock(side_effect=ValueError("model overloaded"))
-            return agent
-        return Agent(TestModel(custom_output_args={"value": "fallback_ok"}), output_type=_Out)
+            return agent, _SYS
+        return Agent(TestModel(custom_output_args={"value": "fallback_ok"}), output_type=_Out), _SYS
 
     result, model_used = await run_with_fallback(
         ["bad-model", "good-model"],
@@ -56,7 +59,7 @@ async def test_run_with_fallback_raises_all_models_failed():
     def _failing_factory(m: str):
         agent = MagicMock(spec=Agent)
         agent.run = AsyncMock(side_effect=RuntimeError(f"{m} failed"))
-        return agent
+        return agent, _SYS
 
     with pytest.raises(AllModelsFailedError) as exc_info:
         await run_with_fallback(
@@ -98,7 +101,7 @@ async def test_run_with_fallback_passes_message_history():
             return result
 
         agent.run = _run
-        return agent
+        return agent, _SYS
 
     sentinel = object()
     await run_with_fallback(
@@ -107,6 +110,7 @@ async def test_run_with_fallback_passes_message_history():
         user_prompt="hello",
         message_history=[sentinel],  # type: ignore[list-item] — test sentinel
     )
+    # run_with_fallback prepends a SystemPromptPart message; sentinel is still passed through.
     assert sentinel in received_history
 
 
@@ -124,8 +128,11 @@ async def test_run_with_fallback_timeout_triggers_fallback():
         if call_count == 1:
             agent = MagicMock(spec=Agent)
             agent.run = _slow
-            return agent
-        return Agent(TestModel(custom_output_args={"value": "after_timeout"}), output_type=_Out)
+            return agent, _SYS
+        return (
+            Agent(TestModel(custom_output_args={"value": "after_timeout"}), output_type=_Out),
+            _SYS,
+        )
 
     result, model_used = await run_with_fallback(
         ["slow-model", "fast-model"],

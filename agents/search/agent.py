@@ -45,16 +45,13 @@ async def run_search_agent(
         _model_used = config.model
     else:
 
-        def _factory(m: str):
-            return Agent(
-                m,
-                output_type=SearchQueriesResult,
-                system_prompt=render_prompt(
-                    _PROMPTS_DIR / "search.j2",
-                    num_queries=config.num_queries,
-                    format_style=model_format_style(m),
-                ),
+        def _factory(m: str) -> tuple[Agent[Any, Any], str]:
+            sys_prompt = render_prompt(
+                _PROMPTS_DIR / "search.j2",
+                num_queries=config.num_queries,
+                format_style=model_format_style(m),
             )
+            return Agent(m, output_type=SearchQueriesResult), sys_prompt
 
         _t0 = time.perf_counter()
         result, _model_used = await run_with_fallback(

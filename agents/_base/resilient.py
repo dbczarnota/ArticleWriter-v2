@@ -9,6 +9,7 @@ import logfire
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
 
+from agents._base.messaging import prepend_system
 from agents._base.run_context import record_fallback
 
 
@@ -24,13 +25,18 @@ class AllModelsFailedError(Exception):
 async def run_with_fallback(
     model_list: Sequence[str],
     *,
-    agent_factory: Callable[[str], Agent[Any, Any]],
+    agent_factory: Callable[[str], tuple[Agent[Any, Any], str]],
     user_prompt: str,
     message_history: list[ModelMessage] | None = None,
     timeout: float = 300.0,
     agent_name: str = "",
 ) -> tuple[Any, str]:
     """Try each model in order. Return (RunResult, model_used) on first success.
+
+    `agent_factory(model_name)` must return `(agent, system_prompt)`. The agent
+    must NOT have `system_prompt=` set — we inject it as the first message_history
+    item to avoid pydantic-ai's system-prompt-collision bug when prior history
+    is passed in. See agents/_base/messaging.py for the rationale.
 
     Falls back silently to the next model on any exception.
     Raises AllModelsFailedError only after exhausting the entire list.
@@ -39,9 +45,10 @@ async def run_with_fallback(
 
     for model in model_list:
         try:
-            agent = agent_factory(model)
+            agent, system_prompt = agent_factory(model)
+            full_history = prepend_system(system_prompt, message_history)
             result = await asyncio.wait_for(
-                agent.run(user_prompt, message_history=message_history or []),
+                agent.run(user_prompt, message_history=full_history),
                 timeout=timeout,
             )
             return result, model

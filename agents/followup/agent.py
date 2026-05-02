@@ -54,17 +54,14 @@ async def run_followup_agent(
         _model_used = config.model
     else:
 
-        def _factory(m: str):
-            return Agent(
-                m,
-                output_type=FollowUpOutput,
-                system_prompt=render_prompt(
-                    _PROMPTS_DIR / "followup.j2",
-                    num_titles=config.num_titles,
-                    num_topics=config.num_topics,
-                    format_style=model_format_style(m),
-                ),
+        def _factory(m: str) -> tuple[Agent[Any, Any], str]:
+            sys_prompt = render_prompt(
+                _PROMPTS_DIR / "followup.j2",
+                num_titles=config.num_titles,
+                num_topics=config.num_topics,
+                format_style=model_format_style(m),
             )
+            return Agent(m, output_type=FollowUpOutput), sys_prompt
 
         _t0 = time.perf_counter()
         result, _model_used = await run_with_fallback(

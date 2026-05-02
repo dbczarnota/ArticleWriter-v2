@@ -34,15 +34,12 @@ async def run_parsing_agent(
     if not scraped_pages:
         return []
 
-    def _factory(m: str):
-        return Agent(
-            m,
-            output_type=ParseResult,
-            system_prompt=render_prompt(
-                _PROMPTS_DIR / "parse.j2",
-                format_style=model_format_style(m),
-            ),
+    def _factory(m: str) -> tuple[Agent[Any, Any], str]:
+        sys_prompt = render_prompt(
+            _PROMPTS_DIR / "parse.j2",
+            format_style=model_format_style(m),
         )
+        return Agent(m, output_type=ParseResult), sys_prompt
 
     results: list[ParsedArticle] = []
     for page in scraped_pages:

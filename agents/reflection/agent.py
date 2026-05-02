@@ -7,7 +7,6 @@ from typing import Any
 
 from pydantic import BaseModel
 from pydantic_ai import Agent
-from pydantic_ai.messages import ModelMessage
 
 from agents._base.config import ReflectionAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
@@ -30,7 +29,6 @@ async def run_reflection_agent(
     topic: str,
     domain: DomainConfig,
     config: ReflectionAgentConfig,
-    message_history: list[ModelMessage] | None = None,
     _agent: Agent[Any, Any] | None = None,
 ) -> ReflectionFeedback:
     """Review article quality against domain guidelines and return actionable feedback."""
@@ -38,30 +36,26 @@ async def run_reflection_agent(
 
     if _agent is not None:
         _t0 = time.perf_counter()
-        result = await _agent.run(_user_prompt, message_history=message_history or [])
+        result = await _agent.run(_user_prompt)
         _model_used = config.model
     else:
 
-        def _factory(m: str):
-            return Agent(
-                m,
-                output_type=ReflectionFeedback,
-                system_prompt=render_prompt(
-                    _PROMPTS_DIR / "reflection.j2",
-                    domain_name=domain.name,
-                    guidelines=domain.guidelines,
-                    reflection_stance=domain.reflection_stance,
-                    target_word_count=domain.target_word_count,
-                    format_style=model_format_style(m),
-                ),
+        def _factory(m: str) -> tuple[Agent[Any, Any], str]:
+            sys_prompt = render_prompt(
+                _PROMPTS_DIR / "reflection.j2",
+                domain_name=domain.name,
+                guidelines=domain.guidelines,
+                reflection_stance=domain.reflection_stance,
+                target_word_count=domain.target_word_count,
+                format_style=model_format_style(m),
             )
+            return Agent(m, output_type=ReflectionFeedback), sys_prompt
 
         _t0 = time.perf_counter()
         result, _model_used = await run_with_fallback(
             (config.model, *config.fallback_models),
             agent_factory=_factory,
             user_prompt=_user_prompt,
-            message_history=message_history,
             agent_name="reflection",
         )
     _u = result.usage()
