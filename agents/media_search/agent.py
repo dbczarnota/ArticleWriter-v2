@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 
 from agents._base.run_context import record_agent_call
-from agents._base.types import EmbedCandidate
+from agents._base.types import EmbedCandidate, ParsedArticle
 from domains._base.config import DomainConfig
 from toolsets.scraping.serper import search_images, search_reddit, search_site, search_videos
 
@@ -40,23 +40,35 @@ async def _formulate_queries(
     topic: str,
     model: str,
     languages: tuple[str, ...],
+    context_articles: list[ParsedArticle] | None = None,
 ) -> list[tuple[str, list[str]]]:
     """LLM produces 2-3 tiered keyword sets per language: narrow → broad fallback.
 
+    `context_articles` (when provided) are the top-ranked parsed articles already collected
+    for the topic. The LLM uses them to extract concrete names/dates/places/incidents that
+    a thin topic line wouldn't reveal — e.g. the topic might say "Melania Trump nie
+    wytrzymała przy królu Karolu", but the actual articles reveal it was during the April
+    2026 White House dinner with King Charles III, with specific attendees. Without this
+    context the LLM falls back to generic queries like just "Donald Trump".
+
     Returns: [(lang, [tier0_query, tier1_query, ...]), ...]
-    Each tier is a quoted-keywords string ready for Serper. Caller tries tier0 first per
-    source; if it returns 0 results, tries tier1, etc., up to a configured max.
     """
     lang_list = ", ".join(languages)
     agent = Agent(
         model,
         output_type=_MediaKeywords,
         system_prompt=(
-            "You build social-media search queries from a news topic. For each language requested, "
-            "produce 2-3 query TIERS, ordered from narrow (most specific) to broad (just the main entity).\n\n"
+            "You build social-media search queries from a news topic and (optionally) the actual "
+            "source articles already collected. For each language requested, produce 2-3 query TIERS, "
+            "ordered from narrow (most specific) to broad (just the main entity).\n\n"
+            "When ARTICLE CONTEXT is provided in the user message, mine it for concrete details — "
+            "specific names, dates, places, the exact incident — and use those in tier 0. Without "
+            "this context the topic line alone often produces too generic queries; with it you should "
+            "produce queries that pin the unique event.\n\n"
             "Tier 0 (NARROW): 4-6 keywords that pin the unique event — main people + the specific incident "
-            "or location/time anchor (e.g. for 'Melania Trump nie wytrzymała przy królu Karolu' — "
-            "[\"Melania Trump\", \"król Karol\", \"Biały Dom\", \"upomniała\", \"Trump\"]).\n"
+            "or location/time anchor (e.g. for 'Melania Trump nie wytrzymała przy królu Karolu' with article "
+            "context revealing a White House dinner — [\"Melania Trump\", \"król Karol\", \"Biały Dom\", "
+            "\"upomniała\", \"kolacja\"]).\n"
             "Tier 1 (MID): 2-3 keywords focused on main entity + topic category, dropping specific incident "
             "details (e.g. [\"Melania Trump\", \"król Karol\", \"wizyta\"]).\n"
             "Tier 2 (BROAD, optional): 1-2 keywords — just the primary subject (e.g. [\"Melania Trump\"]). "
@@ -66,8 +78,21 @@ async def _formulate_queries(
             "and no trailing punctuation."
         ),
     )
+    user_msg = f"Topic: {topic}\nLanguages: {lang_list}"
+    if context_articles:
+        articles_block = "\n\n".join(
+            f"### Source article {i + 1}: {a.title}\n"
+            f"URL: {a.url}\n"
+            f"Published: {a.publication_date or 'unknown'}\n\n"
+            f"{a.content[:800]}"
+            for i, a in enumerate(context_articles)
+        )
+        user_msg += (
+            "\n\n--- ARTICLE CONTEXT (top-ranked sources already collected — mine for specifics) ---\n\n"
+            f"{articles_block}"
+        )
     _t0 = time.perf_counter()
-    result = await agent.run(f"Topic: {topic}\nLanguages: {lang_list}")
+    result = await agent.run(user_msg)
     _u = result.usage()
     record_agent_call(
         "media_search_formulate",
@@ -109,11 +134,14 @@ async def run_media_search(
     max_per_source: int | None = None,
     freshness: str = "",
     query_model: str = "google-gla:gemini-2.5-flash-lite",
+    context_articles: list[ParsedArticle] | None = None,
     log: PipelineLogger | None = None,
 ) -> tuple[list[EmbedCandidate], dict[str, str]]:
     """Search for embed candidates (YouTube, social media, Reddit) in parallel.
 
     Queries are formulated in each language listed in domain.media_search_languages.
+    `context_articles` (when provided) feeds top-ranked source articles into the query
+    formulator so it can produce concrete event-specific queries instead of generic ones.
     Returns (candidates, errors) where errors maps source name to error message.
     """
     has_any = (
@@ -129,7 +157,9 @@ async def run_media_search(
 
     num = max_per_source if max_per_source is not None else domain.media_search_num
     max_tiers = domain.media_search_max_query_tiers
-    queries_per_lang = await _formulate_queries(topic, query_model, domain.media_search_languages)
+    queries_per_lang = await _formulate_queries(
+        topic, query_model, domain.media_search_languages, context_articles=context_articles
+    )
     # queries_per_lang: list[(lang, [tier0_q, tier1_q, ...])]
 
     # Flat list (lang_idx, tier-string) for the legacy logger contract — uses tier 0 only.

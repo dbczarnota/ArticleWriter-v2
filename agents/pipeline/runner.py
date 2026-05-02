@@ -1,7 +1,6 @@
 # agents/pipeline/runner.py
 from __future__ import annotations
 
-import asyncio
 import time
 from typing import Literal
 
@@ -77,7 +76,6 @@ async def _run_pipeline_inner(
 
     _errors: list[dict[str, str]] = []
     _filter_reasons: dict[str, str] = {}
-    embed_candidates: list = []
     _timing: dict[str, float] = {}
     _token_records = init_collector()
     _pipeline_t0 = time.perf_counter()
@@ -156,48 +154,26 @@ async def _run_pipeline_inner(
     )
     _stage_t0 = time.perf_counter()
     with logfire.span("pipeline.stage.research", topic=topic, domain=domain.name):
-        _search_result, _media_result = await asyncio.gather(
-            run_search_agent(
+        try:
+            search_results = await run_search_agent(
                 topic,
                 config=settings.search,
                 domain_language=domain.language,
                 serper_api_key=serper_api_key,
-            ),
-            run_media_search(
-                topic,
-                domain=domain,
-                serper_api_key=serper_api_key,
-                freshness=settings.search.search_freshness,
-                log=log,
-            ),
-            return_exceptions=True,
-        )
+            )
+            log.search_done(search_results)
+        except Exception as e:
+            _errors.append({"stage": "search", "error": str(e)})
+            log.error("search", e)
+            record_error("search")
+            search_results = []
     _timing["research"] = (time.perf_counter() - _stage_t0) * 1000
     record_stage("research", _timing["research"], domain.name)
 
-    if isinstance(_search_result, BaseException):
-        _errors.append({"stage": "search", "error": str(_search_result)})
-        log.error("search", _search_result)
-        record_error("search")
-        search_results = []
-    else:
-        search_results = _search_result
-        log.search_done(search_results)
-
-    if isinstance(_media_result, BaseException):
-        _errors.append({"stage": "media_search", "error": str(_media_result)})
-        log.error("media_search", _media_result)
-        record_error("media_search")
-    else:
-        embed_candidates, media_errors = _media_result
-        log.media_search_done(embed_candidates, media_errors)
-
     # Promote social media URLs discovered via organic search to embed_candidates
     # and remove them from the scraping list (they don't scrape usefully).
+    # NB: media_search now runs LATER (post-rerank) so it can see actual article context.
     search_results, _search_embeds = _extract_social_from_search(search_results)
-    _all_embeds = embed_candidates + _search_embeds
-    seen: set[str] = set()
-    embed_candidates = [e for e in _all_embeds if not (e.url in seen or seen.add(e.url))]
 
     log.scraping_start(len(search_results), len(urls or []))
     _stage_t0 = time.perf_counter()
@@ -333,6 +309,41 @@ async def _run_pipeline_inner(
         _timing["adaptive_search"] = (time.perf_counter() - _stage_t0) * 1000
         record_stage("adaptive_search", _timing["adaptive_search"], domain.name)
 
+    # Rerank parsed articles by their contribution to extraction; reused below for both
+    # media_search context AND reviewer's competitor-coverage block.
+    ranked_articles = _rank_articles_by_extraction(articles, extraction)
+
+    # Stage 2.5: Media search — runs AFTER rerank so the query formulator sees the
+    # actual top sources (not just the topic line) and can produce concrete event-specific
+    # queries. This used to run in parallel with web search, but a thin topic line caused
+    # the LLM to fall back to generic queries that pulled in unrelated social content.
+    embed_candidates: list[EmbedCandidate] = []
+    media_errors: dict[str, str] = {}
+    _stage_t0 = time.perf_counter()
+    with logfire.span("pipeline.stage.media_search", domain=domain.name):
+        try:
+            embed_candidates, media_errors = await run_media_search(
+                topic,
+                domain=domain,
+                serper_api_key=serper_api_key,
+                freshness=settings.search.search_freshness,
+                context_articles=ranked_articles[:2],
+                log=log,
+            )
+            log.media_search_done(embed_candidates, media_errors)
+        except Exception as e:
+            _errors.append({"stage": "media_search", "error": str(e)})
+            log.error("media_search", e)
+            record_error("media_search")
+    _timing["media_search"] = (time.perf_counter() - _stage_t0) * 1000
+    record_stage("media_search", _timing["media_search"], domain.name)
+
+    # Combine social embed candidates from the dedicated media_search with social URLs
+    # surfaced by the organic web search (extracted earlier in research stage).
+    _all_embeds = embed_candidates + _search_embeds
+    seen: set[str] = set()
+    embed_candidates = [e for e in _all_embeds if not (e.url in seen or seen.add(e.url))]
+
     # Gate: refuse to run writer if extraction is empty.
     # All upstream failures (Serper auth/credits, Jina credits/timeouts, parser yielding 0
     # articles, extraction LLM error) collapse here. Writer must NOT run on no source material.
@@ -406,7 +417,6 @@ async def _run_pipeline_inner(
                 for _round in range(settings.reflection.max_rounds):
                     round_n = _round + 1
                     with logfire.span("reflection.review", round=round_n):
-                        ranked_articles = _rank_articles_by_extraction(articles, extraction)
                         feedback = await run_reflection_agent(
                             article,
                             topic=topic,
