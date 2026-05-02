@@ -1,9 +1,13 @@
 # backend/main.py
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 import logfire
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.v2 import router as v2_router
+from backend.database import close_db, init_db
 
 _PROMPT_FALSE_POSITIVES = {
     "cookie",  # parser prompt: "remove cookie banners"
@@ -27,7 +31,16 @@ logfire.configure(
 )
 logfire.instrument_pydantic_ai()
 
-app = FastAPI(title="ArticleWriter v2", version="2.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    # Verify DB connectivity at startup when DB_BACKEND=postgres; no-op otherwise.
+    await init_db()
+    yield
+    await close_db()
+
+
+app = FastAPI(title="ArticleWriter v2", version="2.0", lifespan=lifespan)
 logfire.instrument_fastapi(app)
 
 app.add_middleware(
