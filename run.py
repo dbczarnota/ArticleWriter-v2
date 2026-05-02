@@ -11,9 +11,11 @@ sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 load_dotenv()
 
+_PROMPT_FALSE_POSITIVES = {"cookie", "auth"}  # see backend/main.py for rationale
+
+
 def _scrub_callback(m: logfire.ScrubMatch):
-    # The parser prompt mentions "cookie banners" — let it through.
-    if m.pattern_match.group(0).lower() == "cookie":
+    if m.pattern_match.group(0).lower() in _PROMPT_FALSE_POSITIVES:
         return m.value
     return None
 
