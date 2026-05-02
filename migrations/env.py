@@ -36,8 +36,9 @@ if _database_url:
 # migration scripts. Until then it stays None and migrations must be hand-written.
 from sqlmodel import SQLModel  # noqa: E402
 
-# Future imports — uncomment when B1 lands the models:
-# from backend.db import models
+# Importing the models registers their tables in SQLModel.metadata so
+# `alembic revision --autogenerate` can diff them against the live DB.
+from backend.db import models  # noqa: F401, E402
 
 target_metadata = SQLModel.metadata
 
