@@ -44,7 +44,7 @@ async def test_aggregates_results_from_enabled_sources():
         patch(
             "agents.media_search.agent._formulate_queries",
             new_callable=AsyncMock,
-            return_value=['"Melania Trump"'],
+            return_value=[("en", ["\"Melania Trump\""])],
         ),
         patch(
             "agents.media_search.agent.search_videos", new_callable=AsyncMock, return_value=[_YT]
@@ -69,7 +69,7 @@ async def test_reddit_included_when_flag_on():
         patch(
             "agents.media_search.agent._formulate_queries",
             new_callable=AsyncMock,
-            return_value=['"keyword"'],
+            return_value=[("en", ["\"keyword\""])],
         ),
         patch("agents.media_search.agent.search_videos", new_callable=AsyncMock, return_value=[]),
         patch("agents.media_search.agent.search_site", new_callable=AsyncMock, return_value=[]),
@@ -91,7 +91,7 @@ async def test_deduplicates_urls():
         patch(
             "agents.media_search.agent._formulate_queries",
             new_callable=AsyncMock,
-            return_value=['"kw"'],
+            return_value=[("en", ["\"kw\""])],
         ),
         patch(
             "agents.media_search.agent.search_videos",
@@ -114,7 +114,7 @@ async def test_skips_failed_source_silently():
         patch(
             "agents.media_search.agent._formulate_queries",
             new_callable=AsyncMock,
-            return_value=['"kw"'],
+            return_value=[("en", ["\"kw\""])],
         ),
         patch(
             "agents.media_search.agent.search_videos",

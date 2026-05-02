@@ -27,30 +27,43 @@ _IMAGE_SITE_MAP: dict[str, str] = {
 }
 
 
-class _LangQuery(BaseModel):
+class _LangQueryTiers(BaseModel):
     lang: str
-    keywords: list[str]
+    tiers: list[list[str]]  # ordered narrow → broad; each inner list = keywords for one query
 
 
 class _MediaKeywords(BaseModel):
-    queries: list[_LangQuery]
+    queries: list[_LangQueryTiers]
 
 
 async def _formulate_queries(
     topic: str,
     model: str,
     languages: tuple[str, ...],
-) -> list[str]:
-    """LLM extracts 2-4 keywords for each requested language. Returns one quoted query per language."""
+) -> list[tuple[str, list[str]]]:
+    """LLM produces 2-3 tiered keyword sets per language: narrow → broad fallback.
+
+    Returns: [(lang, [tier0_query, tier1_query, ...]), ...]
+    Each tier is a quoted-keywords string ready for Serper. Caller tries tier0 first per
+    source; if it returns 0 results, tries tier1, etc., up to a configured max.
+    """
     lang_list = ", ".join(languages)
     agent = Agent(
         model,
         output_type=_MediaKeywords,
         system_prompt=(
-            f"For each language in [{lang_list}], extract 2-4 short keywords from the topic "
-            "for social media search. Return proper nouns and key concepts only — no filler words. "
-            "Use the BCP-47 language code as the lang field (e.g. 'en', 'pl'). "
-            "For non-English languages, use the native-language form of the keywords."
+            "You build social-media search queries from a news topic. For each language requested, "
+            "produce 2-3 query TIERS, ordered from narrow (most specific) to broad (just the main entity).\n\n"
+            "Tier 0 (NARROW): 4-6 keywords that pin the unique event — main people + the specific incident "
+            "or location/time anchor (e.g. for 'Melania Trump nie wytrzymała przy królu Karolu' — "
+            "[\"Melania Trump\", \"król Karol\", \"Biały Dom\", \"upomniała\", \"Trump\"]).\n"
+            "Tier 1 (MID): 2-3 keywords focused on main entity + topic category, dropping specific incident "
+            "details (e.g. [\"Melania Trump\", \"król Karol\", \"wizyta\"]).\n"
+            "Tier 2 (BROAD, optional): 1-2 keywords — just the primary subject (e.g. [\"Melania Trump\"]). "
+            "Include this tier only when the narrow tiers might genuinely miss content; skip it for niche topics.\n\n"
+            f"Languages: [{lang_list}]. Use BCP-47 language codes (en, pl, …). For non-English languages, "
+            "render keywords in their native language. Return proper nouns and key concepts only — no filler words "
+            "and no trailing punctuation."
         ),
     )
     _t0 = time.perf_counter()
@@ -63,9 +76,29 @@ async def _formulate_queries(
         _u.output_tokens or 0,
         (time.perf_counter() - _t0) * 1000,
     )
-    return [" ".join(f'"{kw}"' for kw in lq.keywords[:4]) for lq in result.output.queries] or [
-        topic
-    ]
+    out: list[tuple[str, list[str]]] = []
+    for lq in result.output.queries:
+        tier_strings = [
+            " ".join(f'"{kw}"' for kw in tier[:6]) for tier in lq.tiers if tier
+        ]
+        if tier_strings:
+            out.append((lq.lang, tier_strings))
+    if not out:
+        # Defensive fallback: if the LLM returned nothing usable, use the raw topic for each language.
+        out = [(lang, [topic]) for lang in languages]
+    return out
+
+
+async def _try_with_tier_fallback(
+    search_fn,  # async callable taking one str query, returning list of results
+    queries: list[str],
+) -> list:
+    """Try each query in order; return the first non-empty result list, else []."""
+    for q in queries:
+        results = await search_fn(q)
+        if results:
+            return results
+    return []
 
 
 async def run_media_search(
@@ -95,7 +128,12 @@ async def run_media_search(
         return [], {}
 
     num = max_per_source if max_per_source is not None else domain.media_search_num
-    media_queries = await _formulate_queries(topic, query_model, domain.media_search_languages)
+    max_tiers = domain.media_search_max_query_tiers
+    queries_per_lang = await _formulate_queries(topic, query_model, domain.media_search_languages)
+    # queries_per_lang: list[(lang, [tier0_q, tier1_q, ...])]
+
+    # Flat list (lang_idx, tier-string) for the legacy logger contract — uses tier 0 only.
+    media_queries_flat = [tiers[0] for _, tiers in queries_per_lang]
 
     if log:
         active = (
@@ -103,7 +141,7 @@ async def run_media_search(
             + [f for f in ("instagram", "tiktok") if getattr(domain, f"{f}_search", False)]
             + (["reddit"] if domain.reddit_search else [])
         )
-        log.media_search_start(domain.media_search_languages, active, media_queries)
+        log.media_search_start(domain.media_search_languages, active, media_queries_flat)
 
     coros: list = []
     labels: list[str] = []
@@ -118,33 +156,51 @@ async def run_media_search(
 
     for flag, (site, source) in _SITE_MAP.items():
         if getattr(domain, flag, False):
-            for i, mq in enumerate(media_queries):
+            for i, (_lang, tiers) in enumerate(queries_per_lang):
+                tier_queries = tiers[:max_tiers]
                 coros.append(
-                    search_site(
-                        mq,
-                        site=site,
-                        source=source,
-                        num=num,
-                        freshness=freshness,
-                        api_key=serper_api_key,
+                    _try_with_tier_fallback(
+                        lambda q, _site=site, _source=source: search_site(
+                            q,
+                            site=_site,
+                            source=_source,
+                            num=num,
+                            freshness=freshness,
+                            api_key=serper_api_key,
+                        ),
+                        tier_queries,
                     )
                 )
                 labels.append(f"{source}@{i}")
 
     for flag, site_prefix in _IMAGE_SITE_MAP.items():
         if getattr(domain, flag, False):
-            for i, mq in enumerate(media_queries):
-                query = f"{site_prefix} {mq}"
+            for i, (_lang, tiers) in enumerate(queries_per_lang):
+                tier_queries = [f"{site_prefix} {t}" for t in tiers[:max_tiers]]
                 coros.append(
-                    search_images(query, num=num, freshness=freshness, api_key=serper_api_key)
+                    _try_with_tier_fallback(
+                        lambda q: search_images(
+                            q, num=num, freshness=freshness, api_key=serper_api_key
+                        ),
+                        tier_queries,
+                    )
                 )
                 labels.append(f"{flag.replace('_search', '')}@{i}")
 
     if domain.reddit_search:
-        # Reddit is English-dominant — use first query (expected to be English)
-        first_query = media_queries[0] if media_queries else topic
-        reddit_query = " ".join(kw.strip('"') for kw in first_query.split())
-        coros.append(search_reddit(reddit_query, num=num, freshness=freshness))
+        # Reddit is English-dominant — use the English-language tier set if present, else the first.
+        en_tiers = next(
+            (tiers for lang, tiers in queries_per_lang if lang == "en"), None
+        ) or (queries_per_lang[0][1] if queries_per_lang else [topic])
+        reddit_tier_queries = [
+            " ".join(kw.strip('"') for kw in q.split()) for q in en_tiers[:max_tiers]
+        ]
+        coros.append(
+            _try_with_tier_fallback(
+                lambda q: search_reddit(q, num=num, freshness=freshness),
+                reddit_tier_queries,
+            )
+        )
         labels.append("reddit")
 
     batches = await asyncio.gather(*coros, return_exceptions=True)

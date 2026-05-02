@@ -27,6 +27,7 @@ class DomainConfig:
     reddit_search: bool = False
     media_search_languages: tuple[str, ...] = ("en",)
     media_search_num: int = 5
+    media_search_max_query_tiers: int = 2  # narrow→broad fallback budget per (source, lang)
     guidelines: str = ""
     html_format: str = ""
     reflection_stance: str = ""
