@@ -42,25 +42,32 @@ async def run_writer_agent(
     writer→reflection→writer revision loop). When provided, the writer sees its own
     earlier drafts and can revise consciously rather than regenerate from scratch.
     """
-    facts_block = "\n".join(f"- {f}" for f in brief.selected_facts)
-    quotes_block = "\n".join(f"- {q}" for q in brief.selected_quotes)
+    is_revision = reflection_feedback is not None
 
-    user_prompt = (
-        f"TOPIC: {topic}\n\n"
-        f"WRITING INSTRUCTIONS:\n{brief.writing_instructions}\n\n"
-        f"FACTS TO USE:\n{facts_block}\n\n"
-        f"QUOTES TO USE:\n{quotes_block}"
-    )
-
-    if additional_instructions:
-        user_prompt += f"\n\n### Additional Instructions and Context:\n{additional_instructions}"
-
-    if reflection_feedback:
+    if is_revision:
+        # Revision round: the original brief, facts, and quotes are already in message_history
+        # from round 1. Repeating them would just waste input tokens linearly with round count.
+        # The user prompt becomes just the editor's review to apply.
         fixes = "\n".join(f"- {f}" for f in reflection_feedback.priority_fixes)
-        user_prompt += (
-            f"\n\n--- REVISION FEEDBACK ---\n{reflection_feedback.feedback}"
-            f"\n\nPRIORITY FIXES:\n{fixes}"
+        user_prompt = (
+            "Apply the editor's review below to your previous draft. Keep what works; "
+            "modify only what the review calls out. Output the full revised HTML article.\n\n"
+            f"--- REVIEW FEEDBACK ---\n{reflection_feedback.feedback}\n\n"
+            f"PRIORITY FIXES:\n{fixes}"
         )
+    else:
+        facts_block = "\n".join(f"- {f}" for f in brief.selected_facts)
+        quotes_block = "\n".join(f"- {q}" for q in brief.selected_quotes)
+        user_prompt = (
+            f"TOPIC: {topic}\n\n"
+            f"WRITING INSTRUCTIONS:\n{brief.writing_instructions}\n\n"
+            f"FACTS TO USE:\n{facts_block}\n\n"
+            f"QUOTES TO USE:\n{quotes_block}"
+        )
+        if additional_instructions:
+            user_prompt += (
+                f"\n\n### Additional Instructions and Context:\n{additional_instructions}"
+            )
 
     if _agent is not None:
         _t0 = time.perf_counter()
@@ -78,6 +85,7 @@ async def run_writer_agent(
                 target_word_count=domain.target_word_count,
                 language=domain.language,
                 format_style=model_format_style(m),
+                is_revision=is_revision,
             )
             return Agent(m, output_type=ArticleHtml), sys_prompt
 
