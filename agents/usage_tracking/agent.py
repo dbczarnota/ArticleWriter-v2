@@ -1,8 +1,12 @@
 # agents/usage_tracking/agent.py
 from __future__ import annotations
+
 import time
+from typing import Any
+
 from pydantic import BaseModel
 from pydantic_ai import Agent
+
 from agents._base.config import UsageTrackingAgentConfig
 from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
@@ -20,7 +24,7 @@ async def run_usage_tracking_agent(
     *,
     extraction_result: ExtractionResult,
     config: UsageTrackingAgentConfig,
-    _agent: Agent | None = None,
+    _agent: Agent[Any, Any] | None = None,
 ) -> tuple[list[str], list[str]]:
     """Identify which facts and quotes from extraction actually appear in the article."""
     if not extraction_result.facts and not extraction_result.quotes:
@@ -46,8 +50,10 @@ async def run_usage_tracking_agent(
         result = await _agent.run(user_prompt)
         _model_used = config.model
     else:
-        def _factory(m: str) -> Agent:
+
+        def _factory(m: str):
             return Agent(m, output_type=_UsageOutput, system_prompt=_SYSTEM_PROMPT)
+
         _t0 = time.perf_counter()
         result, _model_used = await run_with_fallback(
             (config.model, *config.fallback_models),
@@ -56,6 +62,11 @@ async def run_usage_tracking_agent(
             agent_name="usage_tracking",
         )
     _u = result.usage()
-    record_agent_call("usage_tracking", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
-                      (time.perf_counter() - _t0) * 1000)
+    record_agent_call(
+        "usage_tracking",
+        _model_used,
+        _u.input_tokens or 0,
+        _u.output_tokens or 0,
+        (time.perf_counter() - _t0) * 1000,
+    )
     return result.output.used_facts, result.output.used_quotes

@@ -1,8 +1,10 @@
 """Convert ArticleOutput (v2 JSON) to the single-HTML-blob format that v1 sent to Make.com."""
-from __future__ import annotations
-from html import escape
-from agents._base.types import ArticleOutput
 
+from __future__ import annotations
+
+from html import escape
+
+from agents._base.types import ArticleOutput
 
 _CSS = (
     "body{font-family:sans-serif;margin:20px}"
@@ -46,8 +48,12 @@ _CSS = (
 
 
 _SOURCE_LABELS = {
-    "youtube": "YouTube", "twitter": "Twitter / X", "tiktok": "TikTok",
-    "instagram": "Instagram", "facebook": "Facebook", "reddit": "Reddit",
+    "youtube": "YouTube",
+    "twitter": "Twitter / X",
+    "tiktok": "TikTok",
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "reddit": "Reddit",
 }
 
 
@@ -69,18 +75,18 @@ def _embeds_section(candidates: list) -> str:
                 card += (
                     f'<div class="embed-thumb-wrap">'
                     f'<img src="{escape(c.thumbnail_url)}" class="embed-thumb" loading="lazy">'
-                    f'</div>'
+                    f"</div>"
                 )
             card += '<div class="embed-body">'
             card += (
                 f'<a href="{escape(c.url)}" target="_blank" class="embed-title">'
-                f'{escape(c.title)}</a>'
+                f"{escape(c.title)}</a>"
             )
             if c.channel:
                 card += f'<span class="embed-channel">{escape(c.channel)}</span>'
             if c.description:
                 card += f'<span class="embed-desc">{escape(c.description[:120])}</span>'
-            card += '</div></div>'
+            card += "</div></div>"
             html += card
         html += "</div>"
     html += "</section>"
@@ -109,14 +115,19 @@ def _used_section(title: str, items: list[str]) -> str:
 def _errors_section(errors: list[dict]) -> str:
     if not errors:
         return ""
-    items = [f"<li><strong>{escape(e.get('stage','?'))}</strong>: {escape(e.get('error','?'))}</li>" for e in errors]
+    items = [
+        f"<li><strong>{escape(e.get('stage', '?'))}</strong>: {escape(e.get('error', '?'))}</li>"
+        for e in errors
+    ]
     content = f"<ul>{''.join(items)}</ul>"
     return f"<section class='error-report'><h2>Execution Errors</h2>{content}</section>"
 
 
 def _sources_section(output: ArticleOutput) -> str:
     included = set(output.sources)
-    all_urls = list(dict.fromkeys(output.scraped_urls + output.sources + list(output.filter_reasons)))
+    all_urls = list(
+        dict.fromkeys(output.scraped_urls + output.sources + list(output.filter_reasons))
+    )
 
     if not all_urls:
         return "<section><h2>Źródła i Status Przetwarzania</h2><ul><li>Brak danych.</li></ul></section>"

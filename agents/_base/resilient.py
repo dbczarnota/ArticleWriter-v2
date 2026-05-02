@@ -1,7 +1,9 @@
 # agents/_base/resilient.py
 from __future__ import annotations
+
 import asyncio
-from typing import Any, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any
 
 import logfire
 from pydantic_ai import Agent
@@ -22,7 +24,7 @@ class AllModelsFailedError(Exception):
 async def run_with_fallback(
     model_list: Sequence[str],
     *,
-    agent_factory: Callable[[str], Agent],
+    agent_factory: Callable[[str], Agent[Any, Any]],
     user_prompt: str,
     message_history: list[ModelMessage] | None = None,
     timeout: float = 300.0,

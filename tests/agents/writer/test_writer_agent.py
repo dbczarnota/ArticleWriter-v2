@@ -1,12 +1,12 @@
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
+
 from agents._base.config import WriterAgentConfig
 from agents.instructions.agent import WritingBrief
 from agents.reflection.agent import ReflectionFeedback
 from agents.writer.agent import ArticleHtml, run_writer_agent
 from domains._base.config import DomainConfig
-
 
 _DOMAIN = DomainConfig(
     name="test_domain",
@@ -26,7 +26,7 @@ _BRIEF = WritingBrief(
 _HTML = "<h1>Dawid zarobił miliony</h1><p>Artysta odniósł ogromny sukces.</p>"
 
 
-def _make_writer_agent(html: str = _HTML) -> Agent:
+def _make_writer_agent(html: str = _HTML):
     return Agent(
         TestModel(custom_output_args={"html": html}),
         output_type=ArticleHtml,

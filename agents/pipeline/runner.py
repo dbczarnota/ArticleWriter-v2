@@ -3,24 +3,25 @@ from __future__ import annotations
 
 import asyncio
 import time
+from typing import Literal
 
 import logfire
 
-from agents._base.run_context import init_collector, get_fallback_events
+from agents._base.run_context import get_fallback_events, init_collector
 from agents._base.types import ArticleOutput, EmbedCandidate, ParsedArticle
-from agents.extraction.agent import ExtractionResult, run_extraction_agent
-from agents.search.agent import run_search_agent
-from agents.scraping.agent import run_scraping_agent
-from agents.parsing.agent import run_parsing_agent
 from agents.adaptive_search.agent import run_adaptive_search_agent
-from agents.instructions.agent import WritingBrief, run_instructions_agent
-from agents.writer.agent import ArticleHtml, run_writer_agent
-from agents.reflection.agent import run_reflection_agent
+from agents.extraction.agent import ExtractionResult, run_extraction_agent
 from agents.followup.agent import run_followup_agent
-from agents.usage_tracking.agent import run_usage_tracking_agent
+from agents.instructions.agent import WritingBrief, run_instructions_agent
 from agents.media_search.agent import run_media_search
+from agents.parsing.agent import run_parsing_agent
+from agents.reflection.agent import run_reflection_agent
+from agents.scraping.agent import run_scraping_agent
+from agents.search.agent import run_search_agent
+from agents.usage_tracking.agent import run_usage_tracking_agent
+from agents.writer.agent import ArticleHtml, run_writer_agent
 from backend.config import AppSettings
-from backend.services.metrics import record_pipeline_run, record_stage, record_error
+from backend.services.metrics import record_error, record_pipeline_run, record_stage
 from domains._base.config import DomainConfig
 from toolsets.scraping.serper import search as serper_search
 
@@ -37,6 +38,7 @@ async def run_pipeline(
     debug: bool = False,
 ) -> ArticleOutput:
     from dataclasses import replace as dc_replace
+
     from agents._base.config import SearchAgentConfig
     from agents._base.debug_log import PipelineLogger
 
@@ -64,20 +66,31 @@ async def run_pipeline(
         )
 
     # Apply domain search volume defaults when caller hasn't overridden them
-    if settings.search.num_queries == SearchAgentConfig().num_queries and domain.default_num_queries != SearchAgentConfig().num_queries:
+    if (
+        settings.search.num_queries == SearchAgentConfig().num_queries
+        and domain.default_num_queries != SearchAgentConfig().num_queries
+    ):
         settings = dc_replace(
             settings,
             search=dc_replace(settings.search, num_queries=domain.default_num_queries),
         )
-    if settings.search.max_results == SearchAgentConfig().max_results and domain.default_max_results != SearchAgentConfig().max_results:
+    if (
+        settings.search.max_results == SearchAgentConfig().max_results
+        and domain.default_max_results != SearchAgentConfig().max_results
+    ):
         settings = dc_replace(
             settings,
             search=dc_replace(settings.search, max_results=domain.default_max_results),
         )
 
     # Stage 1: Research
-    log.search_start(topic, settings.search.num_queries, settings.search.max_results,
-                     settings.search.search_freshness, news_search=settings.search.news_search)
+    log.search_start(
+        topic,
+        settings.search.num_queries,
+        settings.search.max_results,
+        settings.search.search_freshness,
+        news_search=settings.search.news_search,
+    )
     _stage_t0 = time.perf_counter()
     with logfire.span("pipeline.stage.research", topic=topic, domain=domain.name):
         _search_result, _media_result = await asyncio.gather(
@@ -99,7 +112,7 @@ async def run_pipeline(
     _timing["research"] = (time.perf_counter() - _stage_t0) * 1000
     record_stage("research", _timing["research"], domain.name)
 
-    if isinstance(_search_result, Exception):
+    if isinstance(_search_result, BaseException):
         _errors.append({"stage": "search", "error": str(_search_result)})
         log.error("search", _search_result)
         record_error("search")
@@ -108,7 +121,7 @@ async def run_pipeline(
         search_results = _search_result
         log.search_done(search_results)
 
-    if isinstance(_media_result, Exception):
+    if isinstance(_media_result, BaseException):
         _errors.append({"stage": "media_search", "error": str(_media_result)})
         log.error("media_search", _media_result)
         record_error("media_search")
@@ -345,14 +358,22 @@ async def run_pipeline(
                     embed_candidates=embed_candidates,
                     timing=_timing,
                     token_usage=[
-                        {"agent": r.agent, "model": r.model,
-                         "input_tokens": r.input_tokens, "output_tokens": r.output_tokens,
-                         "duration_ms": round(r.duration_ms, 1)}
+                        {
+                            "agent": r.agent,
+                            "model": r.model,
+                            "input_tokens": r.input_tokens,
+                            "output_tokens": r.output_tokens,
+                            "duration_ms": round(r.duration_ms, 1),
+                        }
                         for r in _token_records
                     ],
                     fallback_events=[
-                        {"agent": e.agent, "failed_model": e.failed_model,
-                         "error_type": e.error_type, "error_message": e.error_message}
+                        {
+                            "agent": e.agent,
+                            "failed_model": e.failed_model,
+                            "error_type": e.error_type,
+                            "error_message": e.error_message,
+                        }
                         for e in get_fallback_events()
                     ],
                 )
@@ -364,10 +385,13 @@ async def run_pipeline(
         _timing["followup"] = (time.perf_counter() - _stage_t0) * 1000
         record_stage("followup", _timing["followup"], domain.name)
 
-    sources = list(
-        {f.source_url for f in extraction.facts if f.source_url}
-        | {q.source_url for q in extraction.quotes if q.source_url}
-    ) or scraped_urls
+    sources = (
+        list(
+            {f.source_url for f in extraction.facts if f.source_url}
+            | {q.source_url for q in extraction.quotes if q.source_url}
+        )
+        or scraped_urls
+    )
     _total_ms = (time.perf_counter() - _pipeline_t0) * 1000
     _status = "error" if _errors else "ok"
     record_pipeline_run(domain.name, _status, _total_ms)
@@ -385,14 +409,22 @@ async def run_pipeline(
         embed_candidates=embed_candidates,
         timing=_timing,
         token_usage=[
-            {"agent": r.agent, "model": r.model,
-             "input_tokens": r.input_tokens, "output_tokens": r.output_tokens,
-             "duration_ms": round(r.duration_ms, 1)}
+            {
+                "agent": r.agent,
+                "model": r.model,
+                "input_tokens": r.input_tokens,
+                "output_tokens": r.output_tokens,
+                "duration_ms": round(r.duration_ms, 1),
+            }
             for r in _token_records
         ],
         fallback_events=[
-            {"agent": e.agent, "failed_model": e.failed_model,
-             "error_type": e.error_type, "error_message": e.error_message}
+            {
+                "agent": e.agent,
+                "failed_model": e.failed_model,
+                "error_type": e.error_type,
+                "error_message": e.error_message,
+            }
             for e in get_fallback_events()
         ],
     )
@@ -404,6 +436,7 @@ def _filter_by_date(
     manual_urls: set[str],
 ) -> tuple[list[ParsedArticle], dict[str, str]]:
     from datetime import datetime, timedelta
+
     cutoff = datetime.now().date() - timedelta(days=cutoff_days)
     kept: list[ParsedArticle] = []
     reasons: dict[str, str] = {}
@@ -426,7 +459,9 @@ def _filter_by_date(
     return kept, reasons
 
 
-_SOCIAL_DOMAINS: dict[str, str] = {
+_SocialSource = Literal["youtube", "twitter", "tiktok", "instagram", "facebook", "reddit"]
+
+_SOCIAL_DOMAINS: dict[str, _SocialSource] = {
     "youtube.com": "youtube",
     "youtu.be": "youtube",
     "twitter.com": "twitter",
@@ -450,19 +485,21 @@ def _extract_social_from_search(
     scrapable: list = []
     embeds: list[EmbedCandidate] = []
     for r in results:
-        host = urlparse(r.url).netloc.lstrip("www.")
-        source = next(
-            (src for domain, src in _SOCIAL_DOMAINS.items()
-             if host == domain or host.endswith("." + domain)),
-            None,
-        )
+        host = urlparse(r.url).netloc.removeprefix("www.")
+        source: _SocialSource | None = None
+        for domain, src in _SOCIAL_DOMAINS.items():
+            if host == domain or host.endswith("." + domain):
+                source = src
+                break
         if source:
-            embeds.append(EmbedCandidate(
-                url=r.url,
-                title=r.title,
-                source=source,
-                description=r.snippet or None,
-            ))
+            embeds.append(
+                EmbedCandidate(
+                    url=r.url,
+                    title=r.title,
+                    source=source,
+                    description=r.snippet or None,
+                )
+            )
         else:
             scrapable.append(r)
     return scrapable, embeds

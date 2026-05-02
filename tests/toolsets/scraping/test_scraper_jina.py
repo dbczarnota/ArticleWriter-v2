@@ -1,6 +1,7 @@
+import httpx
 import pytest
 import respx
-import httpx
+
 from toolsets.scraping.rate_limiter import reset_jina_semaphore
 from toolsets.scraping.scraper_jina import scrape_with_jina
 
@@ -23,9 +24,7 @@ def reset_sem():
 @respx.mock
 async def test_scrape_with_jina_returns_scraped_page():
     url = "https://example.com/artykul"
-    respx.get(f"https://r.jina.ai/{url}").mock(
-        return_value=httpx.Response(200, text=_JINA_CONTENT)
-    )
+    respx.get(f"https://r.jina.ai/{url}").mock(return_value=httpx.Response(200, text=_JINA_CONTENT))
     page = await scrape_with_jina(url, api_key="test-key")
     assert page is not None
     assert page.url == url
@@ -37,9 +36,7 @@ async def test_scrape_with_jina_returns_scraped_page():
 @respx.mock
 async def test_scrape_with_jina_works_without_api_key():
     url = "https://example.com/artykul"
-    respx.get(f"https://r.jina.ai/{url}").mock(
-        return_value=httpx.Response(200, text=_JINA_CONTENT)
-    )
+    respx.get(f"https://r.jina.ai/{url}").mock(return_value=httpx.Response(200, text=_JINA_CONTENT))
     page = await scrape_with_jina(url, api_key=None)
     assert page is not None
     assert page.scrape_tier == "jina"
@@ -49,9 +46,7 @@ async def test_scrape_with_jina_works_without_api_key():
 @respx.mock
 async def test_scrape_with_jina_returns_none_on_http_error():
     url = "https://example.com/blocked"
-    respx.get(f"https://r.jina.ai/{url}").mock(
-        return_value=httpx.Response(422)
-    )
+    respx.get(f"https://r.jina.ai/{url}").mock(return_value=httpx.Response(422))
     page = await scrape_with_jina(url, api_key="key")
     assert page is None
 
@@ -60,9 +55,7 @@ async def test_scrape_with_jina_returns_none_on_http_error():
 @respx.mock
 async def test_scrape_with_jina_returns_none_on_empty_content():
     url = "https://example.com/empty"
-    respx.get(f"https://r.jina.ai/{url}").mock(
-        return_value=httpx.Response(200, text="krótki")
-    )
+    respx.get(f"https://r.jina.ai/{url}").mock(return_value=httpx.Response(200, text="krótki"))
     page = await scrape_with_jina(url, api_key="key")
     assert page is None
 

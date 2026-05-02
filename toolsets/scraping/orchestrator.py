@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import asyncio
+
 from agents._base.config import ScrapingConfig
 from agents._base.types import ScrapedPage
 from toolsets.scraping.scraper_httpx import scrape_with_httpx

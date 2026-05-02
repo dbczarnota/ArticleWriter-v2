@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -6,7 +7,7 @@ from typing import Literal
 @dataclass
 class Fact:
     text: str
-    context: str          # kto/co/kiedy — żeby agent pisząc artykuł wiedział czego używa
+    context: str  # kto/co/kiedy — żeby agent pisząc artykuł wiedział czego używa
     source_url: str
     source_title: str
 
@@ -15,7 +16,7 @@ class Fact:
 class Quote:
     text: str
     speaker: str
-    context: str          # przy jakiej okazji, w jakim wywiadzie
+    context: str  # przy jakiej okazji, w jakim wywiadzie
     source_url: str
 
 
@@ -23,7 +24,7 @@ class Quote:
 class ScrapedPage:
     url: str
     title: str
-    content: str          # Markdown
+    content: str  # Markdown
     scrape_tier: Literal["httpx", "jina", "firecrawl"]
 
 
@@ -31,8 +32,8 @@ class ScrapedPage:
 class ParsedArticle:
     url: str
     title: str
-    content: str          # wyczyszczony Markdown (bez RODO, reklam, nawigacji)
-    publication_date: str | None = None   # ISO date string lub None
+    content: str  # wyczyszczony Markdown (bez RODO, reklam, nawigacji)
+    publication_date: str | None = None  # ISO date string lub None
 
 
 @dataclass

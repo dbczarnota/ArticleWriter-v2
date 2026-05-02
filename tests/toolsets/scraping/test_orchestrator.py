@@ -1,9 +1,10 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from agents._base.config import ScrapingConfig
 from agents._base.types import ScrapedPage
 from toolsets.scraping.orchestrator import scrape_url, scrape_urls
-
 
 _PAGE_HTTPX = ScrapedPage(
     url="https://example.com/art",
@@ -23,11 +24,17 @@ _PAGE_JINA = ScrapedPage(
 @pytest.mark.asyncio
 async def test_scrape_url_returns_httpx_when_tier1_succeeds():
     with (
-        patch("toolsets.scraping.orchestrator.scrape_with_httpx", new_callable=AsyncMock) as mock_httpx,
-        patch("toolsets.scraping.orchestrator.scrape_with_jina", new_callable=AsyncMock) as mock_jina,
+        patch(
+            "toolsets.scraping.orchestrator.scrape_with_httpx", new_callable=AsyncMock
+        ) as mock_httpx,
+        patch(
+            "toolsets.scraping.orchestrator.scrape_with_jina", new_callable=AsyncMock
+        ) as mock_jina,
     ):
         mock_httpx.return_value = _PAGE_HTTPX
-        page = await scrape_url("https://example.com/art", config=ScrapingConfig(), jina_api_key=None)
+        page = await scrape_url(
+            "https://example.com/art", config=ScrapingConfig(), jina_api_key=None
+        )
 
     assert page is not None
     assert page.scrape_tier == "httpx"
@@ -37,12 +44,18 @@ async def test_scrape_url_returns_httpx_when_tier1_succeeds():
 @pytest.mark.asyncio
 async def test_scrape_url_falls_back_to_jina_when_tier1_fails():
     with (
-        patch("toolsets.scraping.orchestrator.scrape_with_httpx", new_callable=AsyncMock) as mock_httpx,
-        patch("toolsets.scraping.orchestrator.scrape_with_jina", new_callable=AsyncMock) as mock_jina,
+        patch(
+            "toolsets.scraping.orchestrator.scrape_with_httpx", new_callable=AsyncMock
+        ) as mock_httpx,
+        patch(
+            "toolsets.scraping.orchestrator.scrape_with_jina", new_callable=AsyncMock
+        ) as mock_jina,
     ):
         mock_httpx.return_value = None
         mock_jina.return_value = _PAGE_JINA
-        page = await scrape_url("https://example.com/art", config=ScrapingConfig(), jina_api_key="key")
+        page = await scrape_url(
+            "https://example.com/art", config=ScrapingConfig(), jina_api_key="key"
+        )
 
     assert page is not None
     assert page.scrape_tier == "jina"
@@ -53,12 +66,18 @@ async def test_scrape_url_falls_back_to_jina_when_tier1_fails():
 @pytest.mark.asyncio
 async def test_scrape_url_returns_none_when_both_fail():
     with (
-        patch("toolsets.scraping.orchestrator.scrape_with_httpx", new_callable=AsyncMock) as mock_httpx,
-        patch("toolsets.scraping.orchestrator.scrape_with_jina", new_callable=AsyncMock) as mock_jina,
+        patch(
+            "toolsets.scraping.orchestrator.scrape_with_httpx", new_callable=AsyncMock
+        ) as mock_httpx,
+        patch(
+            "toolsets.scraping.orchestrator.scrape_with_jina", new_callable=AsyncMock
+        ) as mock_jina,
     ):
         mock_httpx.return_value = None
         mock_jina.return_value = None
-        page = await scrape_url("https://example.com/art", config=ScrapingConfig(), jina_api_key="key")
+        page = await scrape_url(
+            "https://example.com/art", config=ScrapingConfig(), jina_api_key="key"
+        )
 
     assert page is None
 

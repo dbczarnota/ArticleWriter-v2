@@ -1,17 +1,24 @@
 # tests/agents/pipeline/test_runner.py
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from agents._base.types import (
-    ArticleOutput, EmbedCandidate, Fact, Quote, SearchResult, ScrapedPage, ParsedArticle,
+    ArticleOutput,
+    EmbedCandidate,
+    Fact,
+    ParsedArticle,
+    Quote,
+    ScrapedPage,
+    SearchResult,
 )
-from agents.extraction.agent import ExtractionResult
 from agents.adaptive_search.agent import AdaptiveSearchDecision
+from agents.extraction.agent import ExtractionResult
 from agents.instructions.agent import WritingBrief
 from agents.reflection.agent import ReflectionFeedback
 from agents.writer.agent import ArticleHtml
 from backend.config import AppSettings, PipelineFlags
 from domains._base.config import DomainConfig
-
 
 _DOMAIN = DomainConfig(
     name="test",
@@ -22,7 +29,9 @@ _DOMAIN = DomainConfig(
 
 _SEARCH_RESULTS = [SearchResult(url="https://e.com/1", title="T1", snippet="S1", source="web")]
 _SCRAPED = [ScrapedPage(url="https://e.com/1", title="T1", content="Content", scrape_tier="httpx")]
-_ARTICLES = [ParsedArticle(url="https://e.com/1", title="T1", content="Content", publication_date=None)]
+_ARTICLES = [
+    ParsedArticle(url="https://e.com/1", title="T1", content="Content", publication_date=None)
+]
 _EXTRACTION = ExtractionResult(
     facts=[Fact("Fakt 1", "ctx", "https://e.com/1", "T1")],
     quotes=[Quote("Cytat 1", "Ktoś", "ctx", "https://e.com/1")],
@@ -53,7 +62,9 @@ def mocked_agents():
         patch("agents.pipeline.runner.run_scraping_agent", new_callable=AsyncMock) as m_scrape,
         patch("agents.pipeline.runner.run_parsing_agent", new_callable=AsyncMock) as m_parse,
         patch("agents.pipeline.runner.run_extraction_agent", new_callable=AsyncMock) as m_extract,
-        patch("agents.pipeline.runner.run_adaptive_search_agent", new_callable=AsyncMock) as m_adaptive,
+        patch(
+            "agents.pipeline.runner.run_adaptive_search_agent", new_callable=AsyncMock
+        ) as m_adaptive,
         patch("agents.pipeline.runner.run_instructions_agent", new_callable=AsyncMock) as m_instr,
         patch("agents.pipeline.runner.run_writer_agent", new_callable=AsyncMock) as m_writer,
         patch("agents.pipeline.runner.run_reflection_agent", new_callable=AsyncMock) as m_reflect,
@@ -91,7 +102,9 @@ def mocked_agents():
 async def test_full_pipeline_returns_article_output(mocked_agents):
     from agents.pipeline.runner import run_pipeline
 
-    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=True, followup=True))
+    settings = AppSettings(
+        pipeline=PipelineFlags(adaptive_search=False, reflection=True, followup=True)
+    )
     result = await run_pipeline(
         "Dawid Podsiadło",
         settings=settings,
@@ -106,7 +119,9 @@ async def test_full_pipeline_returns_article_output(mocked_agents):
 async def test_pipeline_calls_all_stages(mocked_agents):
     from agents.pipeline.runner import run_pipeline
 
-    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=True, followup=True))
+    settings = AppSettings(
+        pipeline=PipelineFlags(adaptive_search=False, reflection=True, followup=True)
+    )
     await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
     mocked_agents["search"].assert_called_once()
     mocked_agents["scraping"].assert_called_once()
@@ -122,7 +137,9 @@ async def test_pipeline_calls_all_stages(mocked_agents):
 async def test_pipeline_skips_reflection(mocked_agents):
     from agents.pipeline.runner import run_pipeline
 
-    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=True))
+    settings = AppSettings(
+        pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=True)
+    )
     await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
     mocked_agents["reflection"].assert_not_called()
     assert mocked_agents["writer"].call_count == 1  # only draft, no revision
@@ -132,7 +149,9 @@ async def test_pipeline_skips_reflection(mocked_agents):
 async def test_pipeline_skips_followup_returns_minimal_output(mocked_agents):
     from agents.pipeline.runner import run_pipeline
 
-    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False))
+    settings = AppSettings(
+        pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False)
+    )
     result = await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
     mocked_agents["followup"].assert_not_called()
     assert isinstance(result, ArticleOutput)
@@ -168,7 +187,9 @@ async def test_pipeline_runs_extra_search_round(mocked_agents):
         ParsedArticle(url="https://e.com/2", title="T2", content="Extra", publication_date=None)
     ]
 
-    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=True, reflection=False, followup=False))
+    settings = AppSettings(
+        pipeline=PipelineFlags(adaptive_search=True, reflection=False, followup=False)
+    )
     await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
     assert mocked_agents["serper"].call_count == 1
     assert mocked_agents["extraction"].call_count == 2
@@ -184,7 +205,9 @@ async def test_pipeline_adaptive_skips_when_no_queries(mocked_agents):
         additional_queries=[],
     )
 
-    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=True, reflection=False, followup=False))
+    settings = AppSettings(
+        pipeline=PipelineFlags(adaptive_search=True, reflection=False, followup=False)
+    )
     await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
     mocked_agents["serper"].assert_not_called()
     mocked_agents["extraction"].assert_called_once()
@@ -193,9 +216,10 @@ async def test_pipeline_adaptive_skips_when_no_queries(mocked_agents):
 @pytest.mark.asyncio
 async def test_pipeline_adaptive_respects_max_rounds(mocked_agents):
     """max_additional_rounds=1: only one extra round even if more could be done."""
-    from agents.pipeline.runner import run_pipeline
-    from agents._base.config import AdaptiveSearchAgentConfig
     import dataclasses
+
+    from agents._base.config import AdaptiveSearchAgentConfig
+    from agents.pipeline.runner import run_pipeline
 
     mocked_agents["adaptive"].return_value = AdaptiveSearchDecision(
         needs_more_research=True,
@@ -210,7 +234,9 @@ async def test_pipeline_adaptive_respects_max_rounds(mocked_agents):
     ]
 
     settings = AppSettings(
-        adaptive_search_agent=dataclasses.replace(AdaptiveSearchAgentConfig(), max_additional_rounds=1),
+        adaptive_search_agent=dataclasses.replace(
+            AdaptiveSearchAgentConfig(), max_additional_rounds=1
+        ),
         pipeline=PipelineFlags(adaptive_search=True, reflection=False, followup=False),
     )
     await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
@@ -222,7 +248,9 @@ async def test_pipeline_adaptive_respects_max_rounds(mocked_agents):
 async def test_pipeline_passes_embed_candidates_to_output(mocked_agents):
     from agents.pipeline.runner import run_pipeline
 
-    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False))
+    settings = AppSettings(
+        pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False)
+    )
     result = await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
     assert len(result.embed_candidates) == 1
     assert result.embed_candidates[0].source == "youtube"
@@ -232,7 +260,9 @@ async def test_pipeline_passes_embed_candidates_to_output(mocked_agents):
 async def test_pipeline_output_has_timing(mocked_agents):
     from agents.pipeline.runner import run_pipeline
 
-    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False))
+    settings = AppSettings(
+        pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False)
+    )
     result = await run_pipeline(
         "Dawid Podsiadło",
         settings=settings,
@@ -248,7 +278,9 @@ async def test_pipeline_output_has_timing(mocked_agents):
 async def test_pipeline_output_has_token_usage(mocked_agents):
     from agents.pipeline.runner import run_pipeline
 
-    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False))
+    settings = AppSettings(
+        pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False)
+    )
     result = await run_pipeline(
         "Dawid Podsiadło",
         settings=settings,
@@ -293,7 +325,9 @@ async def test_pipeline_applies_domain_num_queries(mocked_agents):
         default_num_queries=7,
         default_max_results=12,
     )
-    settings = AppSettings(pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False))
+    settings = AppSettings(
+        pipeline=PipelineFlags(adaptive_search=False, reflection=False, followup=False)
+    )
     await run_pipeline("topic", settings=settings, domain=domain, serper_api_key="k")
     call_kwargs = mocked_agents["search"].call_args
     cfg_passed = call_kwargs.kwargs.get("config") or call_kwargs.args[1]

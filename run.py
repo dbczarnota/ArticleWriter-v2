@@ -1,10 +1,12 @@
 """Quick e2e test — edit TOPIC and DOMAIN, then: uv run python run.py"""
+
 import asyncio
 import os
 import sys
+
 from dotenv import load_dotenv
 
-sys.stdout.reconfigure(encoding="utf-8")
+sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
 load_dotenv()
 
@@ -12,7 +14,9 @@ TOPIC = "Melania Trump nie wytrzymała przy królu Karolu. Upomniała męża,"
 DOMAIN = "styl_fm"
 
 # Optional: paste URLs to scrape in addition to search results
-URLS: list[str] = ["https://wydarzenia.styl.fm/921530.melania-trump-nie-wytrzymala-przy-krolu-karolu-upomniala-meza-a-ekspertka-ujawnila-jego-bezczelna-odpowiedz"]
+URLS: list[str] = [
+    "https://wydarzenia.styl.fm/921530.melania-trump-nie-wytrzymala-przy-krolu-karolu-upomniala-meza-a-ekspertka-ujawnila-jego-bezczelna-odpowiedz"
+]
 
 # Optional: extra guidance for the writing agents
 ADDITIONAL_INSTRUCTIONS: str | None = None
@@ -33,16 +37,17 @@ JOB_ID: str = "test-1"
 
 
 async def main() -> None:
+    from agents._base.config import SearchAgentConfig
+    from agents.pipeline.runner import run_pipeline
     from backend.config import AppSettings
     from domains.registry import load_domain
-    from agents.pipeline.runner import run_pipeline
 
-    from agents._base.config import SearchAgentConfig
-    search_cfg = SearchAgentConfig(search_freshness=SEARCH_FRESHNESS) if SEARCH_FRESHNESS else SearchAgentConfig()
     settings = AppSettings(
-    domain=DOMAIN,
-    search=SearchAgentConfig(max_results=10, num_queries=5, search_freshness=SEARCH_FRESHNESS or "qdr:w"),
-)
+        domain=DOMAIN,
+        search=SearchAgentConfig(
+            max_results=10, num_queries=5, search_freshness=SEARCH_FRESHNESS or "qdr:w"
+        ),
+    )
 
     domain = load_domain(DOMAIN)
 
@@ -62,19 +67,20 @@ async def main() -> None:
     )
 
     agent_models = {
-        "search":         settings.search.model,
+        "search": settings.search.model,
         "scraping_filter": settings.scraping.filter_model,
-        "parsing":        settings.parsing.model,
-        "extraction":     settings.extraction.model,
+        "parsing": settings.parsing.model,
+        "extraction": settings.extraction.model,
         "adaptive_search": settings.adaptive_search_agent.model,
-        "instructions":   settings.instructions.model,
-        "writer":         settings.writer.model,
-        "reflection":     settings.reflection.model,
+        "instructions": settings.instructions.model,
+        "writer": settings.writer.model,
+        "reflection": settings.reflection.model,
         "usage_tracking": settings.usage_tracking.model,
-        "followup":       settings.followup.model,
+        "followup": settings.followup.model,
     }
 
     from v1_compat import to_v1_html
+
     html_out = to_v1_html(result, agent_models=agent_models)
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write(html_out)
@@ -85,6 +91,7 @@ async def main() -> None:
     print(f"Sources ({len(result.sources)}): {result.sources[:3]}")
     if result.embed_candidates:
         from collections import Counter
+
         counts = Counter(c.source for c in result.embed_candidates)
         print(f"Embed candidates ({len(result.embed_candidates)}): {dict(counts)}")
         for c in result.embed_candidates[:5]:
@@ -97,24 +104,29 @@ async def main() -> None:
     print(f"\n--- Token usage ({len(result.token_usage)} agent calls) ---")
     total_in = total_out = 0
     for r in result.token_usage:
-        print(f"  {r['agent']:20s} {r['model']:45s}  in={r['input_tokens']:6d}  out={r['output_tokens']:5d}  {r['duration_ms']:7.0f}ms")
-        total_in += r['input_tokens']
-        total_out += r['output_tokens']
+        print(
+            f"  {r['agent']:20s} {r['model']:45s}  in={r['input_tokens']:6d}  out={r['output_tokens']:5d}  {r['duration_ms']:7.0f}ms"
+        )
+        total_in += r["input_tokens"]
+        total_out += r["output_tokens"]
     print(f"  {'TOTAL':20s} {'':45s}  in={total_in:6d}  out={total_out:5d}")
 
-    print(f"\n--- Timing ---")
+    print("\n--- Timing ---")
     for stage, ms in result.timing.items():
         print(f"  {stage:20s} {ms:8.0f}ms")
 
     if result.fallback_events:
         print(f"\n--- Fallback events ({len(result.fallback_events)}) ---")
         for e in result.fallback_events:
-            print(f"  [{e['agent']}] {e['failed_model']} failed: {e['error_type']}: {e['error_message'][:80]}")
+            print(
+                f"  [{e['agent']}] {e['failed_model']} failed: {e['error_type']}: {e['error_message'][:80]}"
+            )
     else:
         print("\nFallback events: none (all primary models succeeded)")
 
     if MAKE_WEBHOOK_URL:
         import httpx
+
         payload = {"ID": JOB_ID, "article_text": html_out, "topic": TOPIC}
         async with httpx.AsyncClient() as client:
             resp = await client.post(MAKE_WEBHOOK_URL, json=payload, timeout=30)

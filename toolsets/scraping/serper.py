@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import httpx
+
 from agents._base.types import EmbedCandidate, SearchResult
 
 _BASE = "https://google.serper.dev"
@@ -26,8 +28,9 @@ async def search(
         response.raise_for_status()
         data = response.json()
     return [
-        SearchResult(url=item["link"], title=item["title"],
-                     snippet=item.get("snippet", ""), source="web")
+        SearchResult(
+            url=item["link"], title=item["title"], snippet=item.get("snippet", ""), source="web"
+        )
         for item in data.get("organic", [])
     ]
 
@@ -47,8 +50,9 @@ async def search_news(
         response.raise_for_status()
         data = response.json()
     return [
-        SearchResult(url=item["link"], title=item["title"],
-                     snippet=item.get("snippet", ""), source="web")
+        SearchResult(
+            url=item["link"], title=item["title"], snippet=item.get("snippet", ""), source="web"
+        )
         for item in data.get("news", [])
     ]
 
@@ -118,12 +122,14 @@ async def search_images(
             source = "twitter"
         else:
             continue  # skip non-social images
-        results.append(EmbedCandidate(
-            url=link,
-            title=item.get("title", ""),
-            source=source,  # type: ignore[arg-type]
-            thumbnail_url=item.get("imageUrl"),
-        ))
+        results.append(
+            EmbedCandidate(
+                url=link,
+                title=item.get("title", ""),
+                source=source,  # type: ignore[arg-type]
+                thumbnail_url=item.get("imageUrl"),
+            )
+        )
     return results
 
 
@@ -138,8 +144,13 @@ async def search_reddit(
     api_key: str = "",  # unused, Reddit JSON API needs no auth
 ) -> list[EmbedCandidate]:
     """Reddit search via Reddit's public JSON API — no auth required."""
-    params = {"q": query, "sort": "top", "t": _REDDIT_TIME.get(freshness, "week"),
-              "limit": num, "type": "link"}
+    params = {
+        "q": query,
+        "sort": "top",
+        "t": _REDDIT_TIME.get(freshness, "week"),
+        "limit": num,
+        "type": "link",
+    }
     headers = {"User-Agent": "articlewriter/1.0"}
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(
@@ -159,12 +170,14 @@ async def search_reddit(
         title = post.get("title", "")
         subreddit = post.get("subreddit_name_prefixed", "")
         permalink = f"https://reddit.com{post.get('permalink', '')}"
-        results.append(EmbedCandidate(
-            url=permalink,
-            title=title,
-            source="reddit",  # type: ignore[arg-type]
-            description=f"{subreddit} · {post.get('score', 0)} points",
-        ))
+        results.append(
+            EmbedCandidate(
+                url=permalink,
+                title=title,
+                source="reddit",  # type: ignore[arg-type]
+                description=f"{subreddit} · {post.get('score', 0)} points",
+            )
+        )
     return results
 
 

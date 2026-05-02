@@ -2,9 +2,10 @@
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
+
 from agents._base.config import ExtractionAgentConfig
 from agents._base.types import Fact, ParsedArticle, Quote
-from agents.extraction.agent import ExtractionOutput, ExtractionResult, run_extraction_agent
+from agents.extraction.agent import ExtractionOutput, run_extraction_agent
 
 
 def _make_parsed_article(url: str = "https://example.com/art") -> ParsedArticle:
@@ -19,7 +20,7 @@ def _make_extraction_agent(
     facts: list[dict] | None = None,
     quotes: list[dict] | None = None,
     keywords: list[str] | None = None,
-) -> Agent:
+):
     if facts is None:
         facts = [
             {

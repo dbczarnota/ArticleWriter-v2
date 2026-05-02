@@ -1,12 +1,12 @@
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
+
 from agents._base.config import InstructionsAgentConfig
 from agents._base.types import Fact, Quote
 from agents.extraction.agent import ExtractionResult
 from agents.instructions.agent import WritingBrief, run_instructions_agent
 from domains._base.config import DomainConfig
-
 
 _DOMAIN = DomainConfig(
     name="test_domain",
@@ -35,12 +35,14 @@ def _make_instructions_agent(
     selected_facts: list[str] | None = None,
     selected_quotes: list[str] | None = None,
     writing_instructions: str = "Napisz emocjonalny artykuł.",
-) -> Agent:
+):
     return Agent(
         TestModel(
             custom_output_args={
-                "selected_facts": selected_facts or ["Zarobił 2 mln zł [Dawid Podsiadło, trasa 2025]"],
-                "selected_quotes": selected_quotes or ['"To był najpiękniejszy rok" — Dawid Podsiadło (o trasie)'],
+                "selected_facts": selected_facts
+                or ["Zarobił 2 mln zł [Dawid Podsiadło, trasa 2025]"],
+                "selected_quotes": selected_quotes
+                or ['"To był najpiękniejszy rok" — Dawid Podsiadło (o trasie)'],
                 "writing_instructions": writing_instructions,
             }
         ),
@@ -85,6 +87,6 @@ async def test_run_instructions_agent_respects_max_facts():
         topic="topic",
         domain=_DOMAIN,
         config=InstructionsAgentConfig(),
-        _agent=_make_instructions_agent(selected_facts=many_facts[:_DOMAIN.max_facts_in_article]),
+        _agent=_make_instructions_agent(selected_facts=many_facts[: _DOMAIN.max_facts_in_article]),
     )
     assert len(brief.selected_facts) <= _DOMAIN.max_facts_in_article

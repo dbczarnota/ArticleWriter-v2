@@ -1,15 +1,16 @@
 # tests/agents/search/test_search_agent.py
+import httpx
 import pytest
 import respx
-import httpx
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
+
 from agents._base.config import SearchAgentConfig
 from agents._base.types import SearchResult
 from agents.search.agent import SearchQueriesResult, run_search_agent
 
 
-def _make_test_agent(queries: list[str]) -> Agent:
+def _make_test_agent(queries: list[str]):
     """Return Agent backed by TestModel that returns the given queries."""
     return Agent(
         TestModel(custom_output_args={"queries": queries}),
@@ -56,9 +57,7 @@ async def test_run_search_agent_returns_search_results():
 async def test_run_search_agent_deduplicates_urls():
     """Same URL from two queries appears only once in results."""
     respx.post("https://google.serper.dev/search").mock(
-        return_value=httpx.Response(
-            200, json=_serper_response("https://example.com/same-url")
-        )
+        return_value=httpx.Response(200, json=_serper_response("https://example.com/same-url"))
     )
 
     results = await run_search_agent(
@@ -82,9 +81,7 @@ async def test_run_search_agent_calls_serper_for_each_query():
     def count_calls(request):
         nonlocal call_count
         call_count += 1
-        return httpx.Response(
-            200, json=_serper_response(f"https://example.com/{call_count}")
-        )
+        return httpx.Response(200, json=_serper_response(f"https://example.com/{call_count}"))
 
     respx.post("https://google.serper.dev/search").mock(side_effect=count_calls)
 
@@ -104,14 +101,14 @@ async def test_run_search_agent_calls_serper_for_each_query():
 async def test_search_agent_calls_news_when_enabled():
     """When news_search=True, agent fetches both /search and /news per query."""
     respx.post("https://google.serper.dev/search").mock(
-        return_value=httpx.Response(200, json={
-            "organic": [{"link": "https://web.com/1", "title": "Web", "snippet": "s"}]
-        })
+        return_value=httpx.Response(
+            200, json={"organic": [{"link": "https://web.com/1", "title": "Web", "snippet": "s"}]}
+        )
     )
     respx.post("https://google.serper.dev/news").mock(
-        return_value=httpx.Response(200, json={
-            "news": [{"link": "https://news.com/1", "title": "News", "snippet": "n"}]
-        })
+        return_value=httpx.Response(
+            200, json={"news": [{"link": "https://news.com/1", "title": "News", "snippet": "n"}]}
+        )
     )
 
     results = await run_search_agent(

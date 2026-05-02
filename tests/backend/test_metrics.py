@@ -1,8 +1,8 @@
 # tests/backend/test_metrics.py
 from backend.services.metrics import (
+    record_error,
     record_pipeline_run,
     record_stage,
-    record_error,
 )
 
 

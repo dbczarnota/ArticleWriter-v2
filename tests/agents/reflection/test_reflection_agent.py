@@ -1,11 +1,11 @@
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
+
 from agents._base.config import ReflectionAgentConfig
 from agents.reflection.agent import ReflectionFeedback, run_reflection_agent
 from agents.writer.agent import ArticleHtml
 from domains._base.config import DomainConfig
-
 
 _DOMAIN = DomainConfig(
     name="test_domain",
@@ -21,7 +21,7 @@ _ARTICLE = ArticleHtml(html="<h1>Dawid</h1><p>Krótki artykuł bez emocji.</p>")
 def _make_reflection_agent(
     feedback: str = "Dodaj więcej emocji.",
     priority_fixes: list[str] | None = None,
-) -> Agent:
+):
     return Agent(
         TestModel(
             custom_output_args={

@@ -1,5 +1,4 @@
 # tests/agents/test_prompt_renderer.py
-import pytest
 from agents._base.prompt_renderer import model_format_style, render_prompt
 
 

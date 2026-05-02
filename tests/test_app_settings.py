@@ -1,5 +1,7 @@
-import pytest
 from dataclasses import replace
+
+import pytest
+
 from backend.config import AppSettings, PipelineFlags
 
 
@@ -14,8 +16,9 @@ def test_pipeline_flags_defaults():
 def test_pipeline_flags_is_frozen():
     flags = PipelineFlags()
     from dataclasses import FrozenInstanceError
+
     with pytest.raises(FrozenInstanceError):
-        flags.reflection = False
+        flags.reflection = False  # type: ignore[misc] — testing frozen behavior
 
 
 def test_app_settings_defaults():
@@ -29,8 +32,9 @@ def test_app_settings_defaults():
 def test_app_settings_is_frozen():
     s = AppSettings()
     from dataclasses import FrozenInstanceError
+
     with pytest.raises(FrozenInstanceError):
-        s.domain = "other"
+        s.domain = "other"  # type: ignore[misc] — testing frozen behavior
 
 
 def test_app_settings_replace_writer_model():
@@ -43,12 +47,14 @@ def test_app_settings_replace_writer_model():
 
 def test_available_models_not_empty():
     from backend.config import AVAILABLE_MODELS
+
     assert len(AVAILABLE_MODELS) >= 4
     assert all("id" in m and "label" in m for m in AVAILABLE_MODELS)
 
 
 def test_from_request_empty_overrides():
     from backend.api.schemas import ArticleRequest
+
     req = ArticleRequest(id="test-1", topic="Dawid Podsiadło")
     s = AppSettings.from_request(req)
     assert s.domain == "styl_fm"
@@ -57,6 +63,7 @@ def test_from_request_empty_overrides():
 
 def test_from_request_model_override():
     from backend.api.schemas import ArticleRequest
+
     req = ArticleRequest(
         id="test-2",
         topic="Test",
@@ -69,6 +76,7 @@ def test_from_request_model_override():
 
 def test_from_request_pipeline_override():
     from backend.api.schemas import ArticleRequest
+
     req = ArticleRequest(
         id="test-3",
         topic="Test",
@@ -81,6 +89,7 @@ def test_from_request_pipeline_override():
 
 def test_from_request_domain_override():
     from backend.api.schemas import ArticleRequest
+
     req = ArticleRequest(id="test-4", topic="Test", domain="the_economist")
     s = AppSettings.from_request(req)
     assert s.domain == "the_economist"
@@ -88,6 +97,7 @@ def test_from_request_domain_override():
 
 def test_from_request_invalid_agent_fields_ignored():
     from backend.api.schemas import ArticleRequest
+
     req = ArticleRequest(
         id="test-5",
         topic="Test",

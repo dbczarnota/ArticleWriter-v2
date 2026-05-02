@@ -1,6 +1,7 @@
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
+
 from agents._base.config import AdaptiveSearchAgentConfig
 from agents._base.types import Fact, Quote
 from agents.adaptive_search.agent import AdaptiveSearchDecision, run_adaptive_search_agent
@@ -29,7 +30,7 @@ def _make_extraction_result(num_facts: int = 5, num_quotes: int = 2) -> Extracti
     return ExtractionResult(facts=facts, quotes=quotes, keywords=["kw1"])
 
 
-def _make_adaptive_agent(needs_more: bool, queries: list[str] | None = None) -> Agent:
+def _make_adaptive_agent(needs_more: bool, queries: list[str] | None = None):
     return Agent(
         TestModel(
             custom_output_args={

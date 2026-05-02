@@ -1,6 +1,7 @@
+import httpx
 import pytest
 import respx
-import httpx
+
 from toolsets.scraping.scraper_httpx import scrape_with_httpx
 
 _ARTICLE_HTML = """
@@ -38,9 +39,7 @@ async def test_scrape_with_httpx_returns_scraped_page():
 @pytest.mark.asyncio
 @respx.mock
 async def test_scrape_with_httpx_returns_none_on_404():
-    respx.get("https://example.com/not-found").mock(
-        return_value=httpx.Response(404)
-    )
+    respx.get("https://example.com/not-found").mock(return_value=httpx.Response(404))
     page = await scrape_with_httpx("https://example.com/not-found")
     assert page is None
 

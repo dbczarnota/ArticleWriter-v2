@@ -1,10 +1,13 @@
 # tests/agents/_base/test_resilient.py
 from __future__ import annotations
-import pytest
+
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
-from pydantic import BaseModel
+
 from agents._base.resilient import AllModelsFailedError, run_with_fallback
 
 
@@ -12,7 +15,7 @@ class _Out(BaseModel):
     value: str
 
 
-def _make_test_agent(model_str: str) -> Agent:
+def _make_test_agent(model_str: str):
     """Factory that ignores model_str and returns a TestModel agent."""
     return Agent(TestModel(custom_output_args={"value": "ok"}), output_type=_Out)
 
@@ -30,7 +33,7 @@ async def test_run_with_fallback_succeeds_on_first_model():
 async def test_run_with_fallback_falls_back_on_error():
     call_count = 0
 
-    def _factory(m: str) -> Agent:
+    def _factory(m: str):
         nonlocal call_count
         call_count += 1
         if call_count == 1:
@@ -50,7 +53,7 @@ async def test_run_with_fallback_falls_back_on_error():
 
 
 async def test_run_with_fallback_raises_all_models_failed():
-    def _failing_factory(m: str) -> Agent:
+    def _failing_factory(m: str):
         agent = MagicMock(spec=Agent)
         agent.run = AsyncMock(side_effect=RuntimeError(f"{m} failed"))
         return agent
@@ -70,7 +73,10 @@ async def test_run_with_fallback_raises_all_models_failed():
 
 
 async def test_all_models_failed_error_message_contains_model_names():
-    errors = [("model-a", ValueError("err a")), ("model-b", ValueError("err b"))]
+    errors: list[tuple[str, Exception]] = [
+        ("model-a", ValueError("err a")),
+        ("model-b", ValueError("err b")),
+    ]
     exc = AllModelsFailedError(errors)
     msg = str(exc)
     assert "model-a" in msg
@@ -80,8 +86,9 @@ async def test_all_models_failed_error_message_contains_model_names():
 async def test_run_with_fallback_passes_message_history():
     received_history = []
 
-    def _factory(m: str) -> Agent:
+    def _factory(m: str):
         agent = MagicMock(spec=Agent)
+
         async def _run(prompt, message_history=None, **kwargs):
             received_history.extend(message_history or [])
             result = MagicMock()
@@ -89,6 +96,7 @@ async def test_run_with_fallback_passes_message_history():
             result.usage = MagicMock(return_value=MagicMock(input_tokens=1, output_tokens=1))
             result.all_messages = MagicMock(return_value=[])
             return result
+
         agent.run = _run
         return agent
 
@@ -97,7 +105,7 @@ async def test_run_with_fallback_passes_message_history():
         ["model-a"],
         agent_factory=_factory,
         user_prompt="hello",
-        message_history=[sentinel],
+        message_history=[sentinel],  # type: ignore[list-item] — test sentinel
     )
     assert sentinel in received_history
 
@@ -110,7 +118,7 @@ async def test_run_with_fallback_timeout_triggers_fallback():
 
     call_count = 0
 
-    def _factory(_m: str) -> Agent:
+    def _factory(_m: str):
         nonlocal call_count
         call_count += 1
         if call_count == 1:

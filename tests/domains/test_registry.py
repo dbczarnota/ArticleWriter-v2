@@ -1,7 +1,8 @@
 # tests/domains/test_registry.py
 import pytest
-from domains.registry import load_domain
+
 from domains._base.config import DomainConfig
+from domains.registry import load_domain
 
 
 def test_load_domain_returns_styl_fm():

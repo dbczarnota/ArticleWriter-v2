@@ -1,9 +1,11 @@
 import logfire
-logfire.configure(send_to_logfire="never", console=False)
 
-import pytest
-from backend.api.schemas import ArticleRequest
-from backend.config import AppSettings
+logfire.configure(send_to_logfire=False, console=False)
+
+import pytest  # noqa: E402 — must follow logfire.configure()
+
+from backend.api.schemas import ArticleRequest  # noqa: E402
+from backend.config import AppSettings  # noqa: E402
 
 
 @pytest.fixture

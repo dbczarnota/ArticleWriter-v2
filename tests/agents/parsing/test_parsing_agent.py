@@ -2,6 +2,7 @@
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
+
 from agents._base.config import ParsingAgentConfig
 from agents._base.types import ParsedArticle, ScrapedPage
 from agents.parsing.agent import ParseResult, run_parsing_agent
@@ -21,7 +22,7 @@ def _make_parse_agent(
     title: str = "Dawid Podsiadło trasa 2025",
     content: str = "Czysty tekst artykułu.",
     publication_date: str | None = "2025-04-15",
-) -> Agent:
+):
     return Agent(
         TestModel(
             custom_output_args={

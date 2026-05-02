@@ -1,16 +1,21 @@
 # agents/search/agent.py
 from __future__ import annotations
+
 import asyncio
 import pathlib
 import time
+from typing import Any
+
 from pydantic import BaseModel
 from pydantic_ai import Agent
+
 from agents._base.config import SearchAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
 from agents._base.types import SearchResult
-from toolsets.scraping.serper import search as serper_search, search_news as serper_search_news
+from toolsets.scraping.serper import search as serper_search
+from toolsets.scraping.serper import search_news as serper_search_news
 
 _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
 
@@ -25,7 +30,7 @@ async def run_search_agent(
     config: SearchAgentConfig,
     domain_language: str,
     serper_api_key: str,
-    _agent: Agent | None = None,
+    _agent: Agent[Any, Any] | None = None,
 ) -> list[SearchResult]:
     """Generate search queries via LLM, fetch results from Serper for each query.
 
@@ -39,7 +44,8 @@ async def run_search_agent(
         result = await _agent.run(_user_prompt)
         _model_used = config.model
     else:
-        def _factory(m: str) -> Agent:
+
+        def _factory(m: str):
             return Agent(
                 m,
                 output_type=SearchQueriesResult,
@@ -49,6 +55,7 @@ async def run_search_agent(
                     format_style=model_format_style(m),
                 ),
             )
+
         _t0 = time.perf_counter()
         result, _model_used = await run_with_fallback(
             (config.model, *config.fallback_models),
@@ -57,19 +64,33 @@ async def run_search_agent(
             agent_name="search",
         )
     _u = result.usage()
-    record_agent_call("search", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
-                      (time.perf_counter() - _t0) * 1000)
+    record_agent_call(
+        "search",
+        _model_used,
+        _u.input_tokens or 0,
+        _u.output_tokens or 0,
+        (time.perf_counter() - _t0) * 1000,
+    )
 
     all_results: list[SearchResult] = []
     seen_urls: set[str] = set()
 
     for query in result.output.queries:
-        coros = [serper_search(query, num=config.max_results,
-                               freshness=config.search_freshness,
-                               language=domain_language, api_key=serper_api_key)]
+        coros = [
+            serper_search(
+                query,
+                num=config.max_results,
+                freshness=config.search_freshness,
+                language=domain_language,
+                api_key=serper_api_key,
+            )
+        ]
         if config.news_search:
-            coros.append(serper_search_news(query, num=config.max_results,
-                                            language=domain_language, api_key=serper_api_key))
+            coros.append(
+                serper_search_news(
+                    query, num=config.max_results, language=domain_language, api_key=serper_api_key
+                )
+            )
         batches = await asyncio.gather(*coros)
         for batch in batches:
             for r in batch:

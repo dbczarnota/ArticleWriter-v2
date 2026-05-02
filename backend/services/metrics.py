@@ -1,5 +1,6 @@
 # backend/services/metrics.py
 from __future__ import annotations
+
 import logfire
 
 _pipeline_runs = logfire.metric_counter(

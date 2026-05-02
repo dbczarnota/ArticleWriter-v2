@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from domains._base.config import DomainConfig
 from domains.styl_fm.examples import EXAMPLE_ARTICLES
 

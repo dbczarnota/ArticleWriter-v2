@@ -1,9 +1,13 @@
 # agents/followup/agent.py
 from __future__ import annotations
+
 import pathlib
 import time
+from typing import Any
+
 from pydantic import BaseModel, field_validator
 from pydantic_ai import Agent
+
 from agents._base.config import FollowUpAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents._base.resilient import run_with_fallback
@@ -22,11 +26,7 @@ class FollowUpOutput(BaseModel):
     @field_validator("alternative_titles", "followup_topics", mode="before")
     @classmethod
     def _clean(cls, v: list) -> list:
-        return [
-            " ".join(s.split())
-            for item in v
-            if isinstance(item, str) and (s := item.strip())
-        ]
+        return [" ".join(s.split()) for item in v if isinstance(item, str) and (s := item.strip())]
 
 
 async def run_followup_agent(
@@ -35,15 +35,11 @@ async def run_followup_agent(
     topic: str,
     extraction_result: ExtractionResult,
     config: FollowUpAgentConfig,
-    _agent: Agent | None = None,
+    _agent: Agent[Any, Any] | None = None,
 ) -> ArticleOutput:
     """Generate alternative titles, follow-up topics, and track used facts/quotes."""
-    facts_text = "\n".join(
-        f"- {f.text} [{f.context}]" for f in extraction_result.facts
-    )
-    quotes_text = "\n".join(
-        f'- "{q.text}" — {q.speaker}' for q in extraction_result.quotes
-    )
+    facts_text = "\n".join(f"- {f.text} [{f.context}]" for f in extraction_result.facts)
+    quotes_text = "\n".join(f'- "{q.text}" — {q.speaker}' for q in extraction_result.quotes)
 
     user_prompt = (
         f"TOPIC: {topic}\n\n"
@@ -57,7 +53,8 @@ async def run_followup_agent(
         result = await _agent.run(user_prompt)
         _model_used = config.model
     else:
-        def _factory(m: str) -> Agent:
+
+        def _factory(m: str):
             return Agent(
                 m,
                 output_type=FollowUpOutput,
@@ -68,6 +65,7 @@ async def run_followup_agent(
                     format_style=model_format_style(m),
                 ),
             )
+
         _t0 = time.perf_counter()
         result, _model_used = await run_with_fallback(
             (config.model, *config.fallback_models),
@@ -76,12 +74,19 @@ async def run_followup_agent(
             agent_name="followup",
         )
     _u = result.usage()
-    record_agent_call("followup", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
-                      (time.perf_counter() - _t0) * 1000)
+    record_agent_call(
+        "followup",
+        _model_used,
+        _u.input_tokens or 0,
+        _u.output_tokens or 0,
+        (time.perf_counter() - _t0) * 1000,
+    )
     output = result.output
 
-    sources = list({f.source_url for f in extraction_result.facts if f.source_url}
-                   | {q.source_url for q in extraction_result.quotes if q.source_url})
+    sources = list(
+        {f.source_url for f in extraction_result.facts if f.source_url}
+        | {q.source_url for q in extraction_result.quotes if q.source_url}
+    )
 
     return ArticleOutput(
         html=article.html,

@@ -1,7 +1,10 @@
 # backend/api/v2.py
 from __future__ import annotations
+
 import dataclasses
+
 from fastapi import APIRouter, Depends, HTTPException
+
 from agents._base.resilient import AllModelsFailedError
 from agents.pipeline.runner import run_pipeline
 from backend.api.schemas import ArticleRequest
@@ -21,7 +24,7 @@ async def write_article(
     try:
         domain = load_domain(app_settings.domain)
     except KeyError as exc:
-        raise HTTPException(status_code=422, detail=exc.args[0])
+        raise HTTPException(status_code=422, detail=exc.args[0]) from exc
     try:
         result = await run_pipeline(
             req.topic,

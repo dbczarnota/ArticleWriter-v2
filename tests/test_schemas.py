@@ -1,5 +1,6 @@
 import pytest
 from pydantic import ValidationError
+
 from backend.api.schemas import ArticleRequest
 
 
@@ -15,10 +16,10 @@ def test_article_request_minimal():
 
 def test_article_request_requires_id_and_topic():
     with pytest.raises(ValidationError):
-        ArticleRequest(topic="Test")
+        ArticleRequest(topic="Test")  # type: ignore[call-arg] — testing missing id
 
     with pytest.raises(ValidationError):
-        ArticleRequest(id="test-1")
+        ArticleRequest(id="test-1")  # type: ignore[call-arg] — testing missing topic
 
 
 def test_article_request_with_overrides():

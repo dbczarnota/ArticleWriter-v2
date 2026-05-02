@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import httpx
 import trafilatura
+
 from agents._base.types import ScrapedPage
 
 _HEADERS = {

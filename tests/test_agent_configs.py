@@ -1,16 +1,14 @@
+from dataclasses import FrozenInstanceError, replace
+
 import pytest
-from dataclasses import replace, FrozenInstanceError
+
 from agents._base.config import (
     AgentConfig,
-    SearchAgentConfig,
-    ScrapingConfig,
-    ParsingAgentConfig,
-    ExtractionAgentConfig,
-    AdaptiveSearchAgentConfig,
-    InstructionsAgentConfig,
-    WriterAgentConfig,
-    ReflectionAgentConfig,
     FollowUpAgentConfig,
+    ReflectionAgentConfig,
+    ScrapingConfig,
+    SearchAgentConfig,
+    WriterAgentConfig,
 )
 
 
@@ -25,7 +23,7 @@ def test_agent_config_defaults():
 def test_agent_config_is_frozen():
     cfg = AgentConfig(model="google-gla:gemini-2.5-flash")
     with pytest.raises(FrozenInstanceError):
-        cfg.model = "other"
+        cfg.model = "other"  # type: ignore[misc] — testing frozen behavior
 
 
 def test_replace_creates_new_instance():

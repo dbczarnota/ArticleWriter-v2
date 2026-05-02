@@ -1,9 +1,13 @@
 # agents/parsing/agent.py
 from __future__ import annotations
+
 import pathlib
 import time
+from typing import Any
+
 from pydantic import BaseModel
 from pydantic_ai import Agent
+
 from agents._base.config import ParsingAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents._base.resilient import run_with_fallback
@@ -24,30 +28,27 @@ async def run_parsing_agent(
     scraped_pages: list[ScrapedPage],
     *,
     config: ParsingAgentConfig,
-    _agent: Agent | None = None,
+    _agent: Agent[Any, Any] | None = None,
 ) -> list[ParsedArticle]:
     """Classify and clean each scraped page. Returns only pages identified as articles."""
     if not scraped_pages:
         return []
 
-    if _agent is None:
-        def _factory(m: str) -> Agent:
-            return Agent(
-                m,
-                output_type=ParseResult,
-                system_prompt=render_prompt(
-                    _PROMPTS_DIR / "parse.j2",
-                    format_style=model_format_style(m),
-                ),
-            )
+    def _factory(m: str):
+        return Agent(
+            m,
+            output_type=ParseResult,
+            system_prompt=render_prompt(
+                _PROMPTS_DIR / "parse.j2",
+                format_style=model_format_style(m),
+            ),
+        )
 
     results: list[ParsedArticle] = []
     for page in scraped_pages:
         if _agent is not None:
             _t0 = time.perf_counter()
-            result = await _agent.run(
-                f"URL: {page.url}\nTitle: {page.title}\n\n{page.content}"
-            )
+            result = await _agent.run(f"URL: {page.url}\nTitle: {page.title}\n\n{page.content}")
             _model_used = config.model
         else:
             _t0 = time.perf_counter()
@@ -58,8 +59,13 @@ async def run_parsing_agent(
                 agent_name="parsing",
             )
         _u = result.usage()
-        record_agent_call("parsing", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
-                          (time.perf_counter() - _t0) * 1000)
+        record_agent_call(
+            "parsing",
+            _model_used,
+            _u.input_tokens or 0,
+            _u.output_tokens or 0,
+            (time.perf_counter() - _t0) * 1000,
+        )
         if result.output.is_article:
             results.append(
                 ParsedArticle(

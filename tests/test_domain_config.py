@@ -1,5 +1,7 @@
-import pytest
 from dataclasses import FrozenInstanceError
+
+import pytest
+
 from domains._base.config import DomainConfig
 from domains.styl_fm.config import STYL_FM_DOMAIN
 
@@ -32,7 +34,7 @@ def test_styl_fm_has_example_articles():
 def test_domain_config_is_frozen():
     d = DomainConfig(name="test", description="Test")
     with pytest.raises(FrozenInstanceError):
-        d.target_word_count = 999
+        d.target_word_count = 999  # type: ignore[misc] — testing frozen behavior
 
 
 def test_domain_config_language_default():
@@ -46,6 +48,7 @@ def test_styl_fm_language_is_polish():
 
 def test_domain_config_new_flags():
     from domains._base.config import DomainConfig
+
     d = DomainConfig(name="test", description="t")
     assert d.news_search is False
     assert d.tiktok_search is False

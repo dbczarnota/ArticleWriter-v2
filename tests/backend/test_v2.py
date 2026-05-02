@@ -1,10 +1,11 @@
 # tests/backend/test_v2.py
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
+
 from agents._base.types import ArticleOutput
 from backend.settings import Settings, get_settings
-
 
 _MOCK_OUTPUT = ArticleOutput(
     html="<h1>Test</h1><p>Content</p>",
@@ -21,6 +22,7 @@ _FAKE_SETTINGS = Settings(serper_api_key="test-serper-key", jina_api_key=None)
 @pytest.fixture(autouse=True)
 def override_settings():
     from backend.main import app
+
     app.dependency_overrides[get_settings] = lambda: _FAKE_SETTINGS
     yield
     app.dependency_overrides.clear()
@@ -28,6 +30,7 @@ def override_settings():
 
 def test_write_article_returns_200():
     from backend.main import app
+
     with patch("backend.api.v2.run_pipeline", new_callable=AsyncMock) as mock_pipeline:
         mock_pipeline.return_value = _MOCK_OUTPUT
         client = TestClient(app)
@@ -44,6 +47,7 @@ def test_write_article_returns_200():
 
 def test_write_article_unknown_domain_returns_422():
     from backend.main import app
+
     with patch("backend.api.v2.run_pipeline", new_callable=AsyncMock):
         client = TestClient(app)
         response = client.post(
@@ -56,6 +60,7 @@ def test_write_article_unknown_domain_returns_422():
 
 def test_write_article_passes_topic_to_pipeline():
     from backend.main import app
+
     with patch("backend.api.v2.run_pipeline", new_callable=AsyncMock) as mock_pipeline:
         mock_pipeline.return_value = _MOCK_OUTPUT
         client = TestClient(app)

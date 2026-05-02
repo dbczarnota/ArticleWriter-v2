@@ -1,8 +1,10 @@
 # tests/agents/scraping/test_scraping_agent.py
 from unittest.mock import AsyncMock, patch
+
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
+
 from agents._base.config import ScrapingConfig
 from agents._base.types import ScrapedPage, SearchResult
 from agents.scraping.agent import ApprovedUrlsResult, run_scraping_agent
@@ -16,7 +18,7 @@ def _make_scraped_page(url: str) -> ScrapedPage:
     return ScrapedPage(url=url, title="T", content="c " * 60, scrape_tier="httpx")
 
 
-def _make_filter_agent(approved_urls: list[str]) -> Agent:
+def _make_filter_agent(approved_urls: list[str]):
     return Agent(
         TestModel(custom_output_args={"urls": approved_urls}),
         output_type=ApprovedUrlsResult,
@@ -30,9 +32,7 @@ async def test_run_scraping_agent_scrapes_approved_urls():
     urls = ["https://a.com/art", "https://b.com/art"]
     search_results = [_make_search_result(url) for url in urls]
 
-    with patch(
-        "agents.scraping.agent.scrape_urls", new_callable=AsyncMock
-    ) as mock_scrape:
+    with patch("agents.scraping.agent.scrape_urls", new_callable=AsyncMock) as mock_scrape:
         mock_scrape.return_value = [_make_scraped_page(u) for u in urls]
 
         pages, rejected = await run_scraping_agent(
@@ -53,9 +53,7 @@ async def test_run_scraping_agent_skips_rejected_urls():
     """If LLM rejects all URLs, return empty list without scraping."""
     search_results = [_make_search_result("https://bad.com")]
 
-    with patch(
-        "agents.scraping.agent.scrape_urls", new_callable=AsyncMock
-    ) as mock_scrape:
+    with patch("agents.scraping.agent.scrape_urls", new_callable=AsyncMock) as mock_scrape:
         pages, rejected = await run_scraping_agent(
             search_results,
             topic="topic",
@@ -72,9 +70,7 @@ async def test_run_scraping_agent_skips_rejected_urls():
 @pytest.mark.asyncio
 async def test_run_scraping_agent_empty_input_returns_empty():
     """No search results → no scraping."""
-    with patch(
-        "agents.scraping.agent.scrape_urls", new_callable=AsyncMock
-    ) as mock_scrape:
+    with patch("agents.scraping.agent.scrape_urls", new_callable=AsyncMock) as mock_scrape:
         pages, rejected = await run_scraping_agent(
             [],
             topic="topic",
@@ -92,9 +88,7 @@ async def test_run_scraping_agent_passes_jina_key_to_orchestrator():
     """jina_api_key forwarded to scrape_urls."""
     url = "https://example.com/art"
 
-    with patch(
-        "agents.scraping.agent.scrape_urls", new_callable=AsyncMock
-    ) as mock_scrape:
+    with patch("agents.scraping.agent.scrape_urls", new_callable=AsyncMock) as mock_scrape:
         mock_scrape.return_value = [_make_scraped_page(url)]
 
         _pages, _rejected = await run_scraping_agent(
@@ -120,9 +114,7 @@ async def test_extra_urls_not_in_rejected():
         output_type=ApprovedUrlsResult,
     )
 
-    with patch(
-        "agents.scraping.agent.scrape_urls", new_callable=AsyncMock
-    ) as mock_scrape:
+    with patch("agents.scraping.agent.scrape_urls", new_callable=AsyncMock) as mock_scrape:
         mock_scrape.return_value = [
             _make_scraped_page("https://example.com/a"),
             _make_scraped_page("https://manual.com/article"),

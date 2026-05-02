@@ -1,8 +1,16 @@
+import httpx
 import pytest
 import respx
-import httpx
-from agents._base.types import SearchResult, EmbedCandidate
-from toolsets.scraping.serper import search, search_news, search_videos, search_site, search_images, search_reddit
+
+from agents._base.types import EmbedCandidate, SearchResult
+from toolsets.scraping.serper import (
+    search,
+    search_images,
+    search_news,
+    search_reddit,
+    search_site,
+    search_videos,
+)
 
 
 @pytest.mark.asyncio
@@ -58,11 +66,7 @@ async def test_search_missing_snippet_uses_empty_string():
     respx.post("https://google.serper.dev/search").mock(
         return_value=httpx.Response(
             200,
-            json={
-                "organic": [
-                    {"link": "https://example.com", "title": "Tytuł"}
-                ]
-            },
+            json={"organic": [{"link": "https://example.com", "title": "Tytuł"}]},
         )
     )
     results = await search("test", num=5, freshness="qdr:w", language="pl", api_key="key")
@@ -87,6 +91,7 @@ async def test_search_includes_language_restriction():
     )
     await search("test", num=5, freshness="qdr:d", language="pl", api_key="k")
     import json
+
     body = json.loads(route.calls[0].request.content)
     assert body["lr"] == "lang_pl"
 
@@ -95,12 +100,15 @@ async def test_search_includes_language_restriction():
 @respx.mock
 async def test_search_news_returns_search_results():
     respx.post("https://google.serper.dev/news").mock(
-        return_value=httpx.Response(200, json={
-            "news": [
-                {"link": "https://plotek.pl/1", "title": "News 1", "snippet": "Snip 1"},
-                {"link": "https://plotek.pl/2", "title": "News 2", "snippet": "Snip 2"},
-            ]
-        })
+        return_value=httpx.Response(
+            200,
+            json={
+                "news": [
+                    {"link": "https://plotek.pl/1", "title": "News 1", "snippet": "Snip 1"},
+                    {"link": "https://plotek.pl/2", "title": "News 2", "snippet": "Snip 2"},
+                ]
+            },
+        )
     )
     results = await search_news("Melania", num=5, language="pl", api_key="k")
     assert len(results) == 2
@@ -112,17 +120,20 @@ async def test_search_news_returns_search_results():
 @respx.mock
 async def test_search_videos_returns_embed_candidates():
     respx.post("https://google.serper.dev/videos").mock(
-        return_value=httpx.Response(200, json={
-            "videos": [
-                {
-                    "link": "https://www.youtube.com/watch?v=abc123",
-                    "title": "Melania wywiad",
-                    "snippet": "Opis",
-                    "imageUrl": "https://i.ytimg.com/vi/abc123/hq.jpg",
-                    "channel": "TVN24",
-                }
-            ]
-        })
+        return_value=httpx.Response(
+            200,
+            json={
+                "videos": [
+                    {
+                        "link": "https://www.youtube.com/watch?v=abc123",
+                        "title": "Melania wywiad",
+                        "snippet": "Opis",
+                        "imageUrl": "https://i.ytimg.com/vi/abc123/hq.jpg",
+                        "channel": "TVN24",
+                    }
+                ]
+            },
+        )
     )
     results = await search_videos("Melania", num=5, api_key="k")
     assert len(results) == 1
@@ -136,14 +147,16 @@ async def test_search_videos_returns_embed_candidates():
 @respx.mock
 async def test_search_site_returns_embed_candidates():
     respx.post("https://google.serper.dev/search").mock(
-        return_value=httpx.Response(200, json={
-            "organic": [
-                {"link": "https://x.com/user/status/1", "title": "Tweet 1", "snippet": "Treść"},
-            ]
-        })
+        return_value=httpx.Response(
+            200,
+            json={
+                "organic": [
+                    {"link": "https://x.com/user/status/1", "title": "Tweet 1", "snippet": "Treść"},
+                ]
+            },
+        )
     )
-    results = await search_site("Melania", site="x.com", source="twitter",
-                                num=5, api_key="k")
+    results = await search_site("Melania", site="x.com", source="twitter", num=5, api_key="k")
     assert len(results) == 1
     assert results[0].source == "twitter"
     assert results[0].url == "https://x.com/user/status/1"
@@ -163,14 +176,25 @@ async def test_search_news_empty_returns_empty():
 @respx.mock
 async def test_search_images_filters_social_only():
     respx.post("https://google.serper.dev/images").mock(
-        return_value=httpx.Response(200, json={
-            "images": [
-                {"title": "IG Reel", "imageUrl": "https://cdn.ig.com/1.jpg",
-                 "link": "https://www.instagram.com/reel/abc/", "source": "instagram.com"},
-                {"title": "Random blog", "imageUrl": "https://blog.com/img.jpg",
-                 "link": "https://blog.com/post", "source": "blog.com"},
-            ]
-        })
+        return_value=httpx.Response(
+            200,
+            json={
+                "images": [
+                    {
+                        "title": "IG Reel",
+                        "imageUrl": "https://cdn.ig.com/1.jpg",
+                        "link": "https://www.instagram.com/reel/abc/",
+                        "source": "instagram.com",
+                    },
+                    {
+                        "title": "Random blog",
+                        "imageUrl": "https://blog.com/img.jpg",
+                        "link": "https://blog.com/post",
+                        "source": "blog.com",
+                    },
+                ]
+            },
+        )
     )
     results = await search_images("Melania Trump", num=5, api_key="k")
     assert len(results) == 1
@@ -180,26 +204,32 @@ async def test_search_images_filters_social_only():
 
 @pytest.mark.asyncio
 async def test_search_reddit_returns_embed_candidates():
-    import respx as r
     import httpx as h
+    import respx as r
+
     with r.mock:
         r.get("https://www.reddit.com/search.json").mock(
-            return_value=h.Response(200, json={
-                "data": {
-                    "children": [
-                        {"data": {
-                            "url": "https://example.com/article",
-                            "title": "Melania scolded Trump",
-                            "subreddit_name_prefixed": "r/politics",
-                            "permalink": "/r/politics/comments/abc/",
-                            "score": 1234,
-                        }}
-                    ]
-                }
-            })
+            return_value=h.Response(
+                200,
+                json={
+                    "data": {
+                        "children": [
+                            {
+                                "data": {
+                                    "url": "https://example.com/article",
+                                    "title": "Melania scolded Trump",
+                                    "subreddit_name_prefixed": "r/politics",
+                                    "permalink": "/r/politics/comments/abc/",
+                                    "score": 1234,
+                                }
+                            }
+                        ]
+                    }
+                },
+            )
         )
         results = await search_reddit("Melania Trump", num=5)
     assert len(results) == 1
     assert results[0].source == "reddit"
     assert "reddit.com" in results[0].url
-    assert "1234" in results[0].description
+    assert results[0].description and "1234" in results[0].description

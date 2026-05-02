@@ -1,12 +1,12 @@
 import pytest
 from pydantic_ai import Agent
 from pydantic_ai.models.test import TestModel
+
 from agents._base.config import FollowUpAgentConfig
 from agents._base.types import ArticleOutput, Fact, Quote
 from agents.extraction.agent import ExtractionResult
 from agents.followup.agent import run_followup_agent
 from agents.writer.agent import ArticleHtml
-
 
 _ARTICLE = ArticleHtml(html="<h1>Dawid zarobił miliony</h1><p>Treść artykułu.</p>")
 
@@ -29,17 +29,20 @@ def _make_followup_agent(
     followup_topics: list[str] | None = None,
     used_facts: list[str] | None = None,
     used_quotes: list[str] | None = None,
-) -> Agent:
+):
     from agents.followup.agent import FollowUpOutput
+
     return Agent(
         TestModel(
             custom_output_args={
-                "alternative_titles": alternative_titles or [
+                "alternative_titles": alternative_titles
+                or [
                     "Dawid Podsiadło: miliony na koncie",
                     "Wielki sukces Podsiadły",
                     "Trasa roku zakończona",
                 ],
-                "followup_topics": followup_topics or [
+                "followup_topics": followup_topics
+                or [
                     "Dawid Podsiadło dyskografia",
                     "Polscy artyści vs zagranica",
                 ],

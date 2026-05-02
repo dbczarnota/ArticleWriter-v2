@@ -1,9 +1,13 @@
 # agents/scraping/agent.py
 from __future__ import annotations
+
 import pathlib
 import time
+from typing import Any
+
 from pydantic import BaseModel
 from pydantic_ai import Agent
+
 from agents._base.config import ScrapingConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents._base.resilient import run_with_fallback
@@ -26,7 +30,7 @@ async def run_scraping_agent(
     jina_api_key: str | None,
     extra_urls: list[str] | None = None,
     max_pages: int = 10,
-    _filter_agent: Agent | None = None,
+    _filter_agent: Agent[Any, Any] | None = None,
 ) -> tuple[list[ScrapedPage], list[str]]:
     """LLM snippet pre-filter, then scrape approved URLs via tiered orchestrator.
 
@@ -49,7 +53,8 @@ async def run_scraping_agent(
         filter_result = await _filter_agent.run(results_text)
         _filter_model_used = scraping_config.filter_model
     else:
-        def _factory(m: str) -> Agent:
+
+        def _factory(m: str):
             return Agent(
                 m,
                 output_type=ApprovedUrlsResult,
@@ -59,6 +64,7 @@ async def run_scraping_agent(
                     format_style=model_format_style(m),
                 ),
             )
+
         filter_result, _filter_model_used = await run_with_fallback(
             (scraping_config.filter_model, *scraping_config.filter_fallback_models),
             agent_factory=_factory,
@@ -66,8 +72,13 @@ async def run_scraping_agent(
             agent_name="scraping_filter",
         )
     _u = filter_result.usage()
-    record_agent_call("scraping_filter", _filter_model_used, _u.input_tokens or 0, _u.output_tokens or 0,
-                      (time.perf_counter() - _t0) * 1000)
+    record_agent_call(
+        "scraping_filter",
+        _filter_model_used,
+        _u.input_tokens or 0,
+        _u.output_tokens or 0,
+        (time.perf_counter() - _t0) * 1000,
+    )
     approved_urls = filter_result.output.urls[:max_pages]
 
     approved_set = set(approved_urls)

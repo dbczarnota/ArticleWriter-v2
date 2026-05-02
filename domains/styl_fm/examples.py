@@ -16,7 +16,6 @@ Na nagraniu widzimy urywki codzienności Dody, w których opowiada, z czym obecn
 
 Tuż przed festiwalem w Opolu <strong>Doda</strong> dostała najpiękniejszy prezent, o jakim tylko mogła marzyć. Okazało się, że wygrała z chorobą. Teraz chce uświadamiać ludzi o niebezpieczeństwach związanych z korzystaniem z solarium i o tym, jak ważna jest profilaktyka.
 <blockquote>Obiecałam sobie, że jak wyjdę z tego, zrobię wszystko, żeby ludziom uświadomić, jak ważna jest profilaktyka w badaniu skóry oraz kategoryczne unikanie solarium i ograniczanie opalania na słońcu jak „skwarka". Pamiętajcie o filtrach mineralnych i dbajcie o siebie.</blockquote>""",
-
     """<h1>Zenon Martyniuk dziś świętuje urodziny. Ten przystojniak wcale nie wygląda na swój wiek [dużo zdjęć]</h1>
 <strong>Zenon Martyniuk dokładnie dziś świętuje urodziny i wciąż zachwyca formą, której mógłby pozazdrościć mu niejeden młodszy kolega. Król disco polo nie tylko nie zwalnia tempa, ale z roku na rok wygląda coraz lepiej. Aż trudno uwierzyć, że ten przystojniak ma już tyle wiosen na karku.</strong>
 <h2>Zenon Martyniuk dziś świętuje urodziny</h2>
@@ -32,7 +31,6 @@ Ale nie samą muzyką Zenon żyje. Od lat jest wiernym mężem Danuty Martyniuk 
 Nie bez znaczenia jest też fakt, że <strong>Zenon Martyniuk r</strong>aczej stroni od skandali i celebryckiego zgiełku. Choć jego syn nie raz dostarczał tematów mediom, sam Martyniuk pozostaje oazą spokoju. Być może to jego przepis na młodzieńczy wygląd.
 
 Z okazji urodzin składamy najserdeczniejsze życzenia.""",
-
     """<h1>Sara Boruc pokazała 15-letnią córkę i 6-letniego syna. Amelia to urodzona modelka, a Noah łamacz serc</h1>
 <strong>Sara Boruc pochwaliła się w sieci zdjęciami swoich dzieci. Amelia i Noah to owoc jej miłości z Arturem Borucem. Trzeba przyznać, że dzieci rosną jak na drożdżach i są bardzo podobni do znanych rodziców.</strong>
 <h2>Dzieci Sary Boruc i Artura Boruca</h2>
@@ -46,7 +44,6 @@ A fani w komentarzach komplementują nie tylko dzieci Boruców, ale również pi
 <blockquote>Wygląda pani rewelacyjnie.</blockquote>
 <blockquote>Dzieci odziedziczyły urodę po rodzicach. Wszyscy wyglądacie cudownie.</blockquote>
 A poniżej przedstawiamy jeszcze więcej kadrów, które opublikowała <strong>Sara Boruc</strong>. Dzieci są doskonałą mieszanką znanych rodziców.""",
-
     """<h1>"To jest skandal!" Miał zamiatać ulice, ale PAD go ułaskawił. Komentarze mówią wszystko o... Dudzie</h1>
 <strong>Decyzja prezydenta Andrzeja Dudy o ułaskawieniu Roberta Bąkiewicza, skazanego za napaść na aktywistkę znaną jako "Babcia Kasia", rozpętała prawdziwą polityczną burzę. Błyskawicznie zareagował premier Donald Tusk, nazywając decyzję "skandalem". Na odpowiedź głowy państwa nie trzeba było długo czekać, a ostra wojna na słowa między najważniejszymi politykami w kraju rozgrzała internet do czerwoności.</strong>
 
@@ -87,7 +84,6 @@ To nie pierwszy raz, gdy <strong>prawo łaski</strong> stosowane przez Andrzeja 
 Opinia publiczna była również wstrząśnięta, gdy w 2020 roku prezydent ułaskawił mężczyznę skazanego za przestępstwa seksualne wobec własnej córki. Mimo że decyzja zapadła na prośbę samej ofiary, która chciała odbudować relacje z ojcem, wywołała ona falę krytyki i debatę na temat granic prezydenckiego prawa.
 Całą sprawę najmocniej podsumowała jednak sama pokrzywdzona, <strong>"Babcia Kasia"</strong>. W emocjonalnym wpisie zwróciła się bezpośrednio do prezydenta:
 <blockquote>Andrzej Duda! Jesteś najgorszym... (słowo nienadające się do cytowania - przyp. red.), jakiego ziemia nosi. Obyś sczezł!</blockquote>""",
-
     """<h1>Jakimowicz publicznie kpi z polskiego astronauty. Lektor z Google'a zgasił go jak peta. "Nie baw się patyczkami do uszu"</h1>
 
 <strong>Podczas gdy cała Polska pękała z dumy po historycznym locie Sławosza Uznańskiego-Wiśniewskiego, Jarosław Jakimowicz postanowił popłynąć pod prąd. Były gwiazdor TVP publicznie zasugerował, że cała polska misja kosmiczna to jedna wielka mistyfikacja nagrana w studiu. Jego absurdalne teorie spiskowe wywołały burzę, a na ziemię sprowadził go Jarosław Juszkiewicz, którego głos zna każdy kierowca w Polsce. To nie było miękkie lądowanie.</strong>

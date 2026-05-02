@@ -1,18 +1,19 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from agents._base.config import (
-    SearchAgentConfig,
-    ScrapingConfig,
-    ParsingAgentConfig,
-    ExtractionAgentConfig,
     AdaptiveSearchAgentConfig,
-    InstructionsAgentConfig,
-    WriterAgentConfig,
-    ReflectionAgentConfig,
+    ExtractionAgentConfig,
     FollowUpAgentConfig,
+    InstructionsAgentConfig,
+    ParsingAgentConfig,
+    ReflectionAgentConfig,
+    ScrapingConfig,
+    SearchAgentConfig,
     UsageTrackingAgentConfig,
+    WriterAgentConfig,
 )
 
 if TYPE_CHECKING:
@@ -59,21 +60,42 @@ _FALLBACK: tuple[str, ...] = ("groq:openai/gpt-oss-120b",)
 @dataclass(frozen=True)
 class AppSettings:
     domain: str = "styl_fm"
-    search: SearchAgentConfig = field(default_factory=lambda: SearchAgentConfig(fallback_models=_FALLBACK))
-    scraping: ScrapingConfig = field(default_factory=lambda: ScrapingConfig(filter_fallback_models=_FALLBACK))
-    parsing: ParsingAgentConfig = field(default_factory=lambda: ParsingAgentConfig(fallback_models=_FALLBACK))
-    extraction: ExtractionAgentConfig = field(default_factory=lambda: ExtractionAgentConfig(fallback_models=_FALLBACK))
-    adaptive_search_agent: AdaptiveSearchAgentConfig = field(default_factory=lambda: AdaptiveSearchAgentConfig(fallback_models=_FALLBACK))
-    instructions: InstructionsAgentConfig = field(default_factory=lambda: InstructionsAgentConfig(fallback_models=_FALLBACK))
-    writer: WriterAgentConfig = field(default_factory=lambda: WriterAgentConfig(fallback_models=_FALLBACK))
-    reflection: ReflectionAgentConfig = field(default_factory=lambda: ReflectionAgentConfig(fallback_models=_FALLBACK))
-    followup: FollowUpAgentConfig = field(default_factory=lambda: FollowUpAgentConfig(fallback_models=_FALLBACK))
-    usage_tracking: UsageTrackingAgentConfig = field(default_factory=lambda: UsageTrackingAgentConfig(fallback_models=_FALLBACK))
+    search: SearchAgentConfig = field(
+        default_factory=lambda: SearchAgentConfig(fallback_models=_FALLBACK)
+    )
+    scraping: ScrapingConfig = field(
+        default_factory=lambda: ScrapingConfig(filter_fallback_models=_FALLBACK)
+    )
+    parsing: ParsingAgentConfig = field(
+        default_factory=lambda: ParsingAgentConfig(fallback_models=_FALLBACK)
+    )
+    extraction: ExtractionAgentConfig = field(
+        default_factory=lambda: ExtractionAgentConfig(fallback_models=_FALLBACK)
+    )
+    adaptive_search_agent: AdaptiveSearchAgentConfig = field(
+        default_factory=lambda: AdaptiveSearchAgentConfig(fallback_models=_FALLBACK)
+    )
+    instructions: InstructionsAgentConfig = field(
+        default_factory=lambda: InstructionsAgentConfig(fallback_models=_FALLBACK)
+    )
+    writer: WriterAgentConfig = field(
+        default_factory=lambda: WriterAgentConfig(fallback_models=_FALLBACK)
+    )
+    reflection: ReflectionAgentConfig = field(
+        default_factory=lambda: ReflectionAgentConfig(fallback_models=_FALLBACK)
+    )
+    followup: FollowUpAgentConfig = field(
+        default_factory=lambda: FollowUpAgentConfig(fallback_models=_FALLBACK)
+    )
+    usage_tracking: UsageTrackingAgentConfig = field(
+        default_factory=lambda: UsageTrackingAgentConfig(fallback_models=_FALLBACK)
+    )
     pipeline: PipelineFlags = field(default_factory=PipelineFlags)
 
     @classmethod
     def from_request(cls, req: ArticleRequest) -> AppSettings:
-        from dataclasses import fields, replace as dc_replace
+        from dataclasses import fields
+        from dataclasses import replace as dc_replace
 
         defaults = cls(domain=req.domain)
 

@@ -1,15 +1,17 @@
 # tests/agents/_base/test_run_context.py
-import pytest
 import asyncio
+
+import pytest
+
 from agents._base.run_context import (
+    AgentCallRecord,
+    FallbackEvent,
+    _collector,
+    _fallback_collector,
+    get_fallback_events,
     init_collector,
     record_agent_call,
-    AgentCallRecord,
-    _collector,
     record_fallback,
-    get_fallback_events,
-    FallbackEvent,
-    _fallback_collector,
 )
 
 

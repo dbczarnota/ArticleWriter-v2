@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import pathlib
 from typing import Literal
+
 from jinja2 import Environment, FileSystemLoader
 
 

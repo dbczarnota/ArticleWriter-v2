@@ -7,6 +7,7 @@ def test_get_settings_reads_env_vars(monkeypatch):
     monkeypatch.setenv("JINA_API_KEY", "jina-test-key")
 
     from backend.settings import get_settings
+
     get_settings.cache_clear()
     settings = get_settings()
     assert settings.serper_api_key == "serper-test-key"
@@ -19,6 +20,7 @@ def test_get_settings_jina_optional(monkeypatch):
     monkeypatch.delenv("JINA_API_KEY", raising=False)
 
     from backend.settings import get_settings
+
     get_settings.cache_clear()
     settings = get_settings()
     assert settings.jina_api_key is None
@@ -29,6 +31,7 @@ def test_get_settings_raises_without_serper_key(monkeypatch):
     monkeypatch.delenv("SERPER_API_KEY", raising=False)
 
     from backend.settings import get_settings
+
     get_settings.cache_clear()
     with pytest.raises(RuntimeError, match="SERPER_API_KEY"):
         get_settings()

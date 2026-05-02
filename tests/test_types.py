@@ -1,5 +1,4 @@
-from dataclasses import fields
-from agents._base.types import Fact, Quote, ScrapedPage, ParsedArticle, SearchResult, VideoResult, ArticleOutput
+from agents._base.types import ArticleOutput, Fact, Quote, ScrapedPage, SearchResult
 
 
 def test_fact_has_required_context_field():
@@ -56,8 +55,14 @@ def test_article_output_defaults():
 
 def test_embed_candidate_fields():
     from agents._base.types import EmbedCandidate
-    c = EmbedCandidate(url="https://youtube.com/watch?v=x", title="T", source="youtube",
-                       thumbnail_url="https://i.ytimg.com/x.jpg", channel="Ch")
+
+    c = EmbedCandidate(
+        url="https://youtube.com/watch?v=x",
+        title="T",
+        source="youtube",
+        thumbnail_url="https://i.ytimg.com/x.jpg",
+        channel="Ch",
+    )
     assert c.url == "https://youtube.com/watch?v=x"
     assert c.source == "youtube"
     assert c.channel == "Ch"
@@ -65,13 +70,19 @@ def test_embed_candidate_fields():
 
 def test_embed_candidate_reddit_source():
     from agents._base.types import EmbedCandidate
-    c = EmbedCandidate(url="https://reddit.com/r/news/abc", title="Post", source="reddit",
-                       description="r/news · 500 points")
+
+    c = EmbedCandidate(
+        url="https://reddit.com/r/news/abc",
+        title="Post",
+        source="reddit",
+        description="r/news · 500 points",
+    )
     assert c.source == "reddit"
 
 
 def test_article_output_has_embed_candidates():
     from agents._base.types import ArticleOutput
+
     o = ArticleOutput(html="<p>x</p>")
     assert o.embed_candidates == []
 

@@ -1,8 +1,12 @@
 from __future__ import annotations
+
 import pathlib
 import time
+from typing import Any
+
 from pydantic import BaseModel
 from pydantic_ai import Agent
+
 from agents._base.config import InstructionsAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents._base.resilient import run_with_fallback
@@ -26,7 +30,7 @@ async def run_instructions_agent(
     domain: DomainConfig,
     config: InstructionsAgentConfig,
     additional_instructions: str | None = None,
-    _agent: Agent | None = None,
+    _agent: Agent[Any, Any] | None = None,
 ) -> WritingBrief:
     """Select best facts/quotes and create writing instructions for WriterAgent."""
     facts_text = "\n".join(
@@ -53,7 +57,8 @@ async def run_instructions_agent(
         result = await _agent.run(material)
         _model_used = config.model
     else:
-        def _factory(m: str) -> Agent:
+
+        def _factory(m: str):
             return Agent(
                 m,
                 output_type=WritingBrief,
@@ -68,6 +73,7 @@ async def run_instructions_agent(
                     format_style=model_format_style(m),
                 ),
             )
+
         _t0 = time.perf_counter()
         result, _model_used = await run_with_fallback(
             (config.model, *config.fallback_models),
@@ -76,6 +82,11 @@ async def run_instructions_agent(
             agent_name="instructions",
         )
     _u = result.usage()
-    record_agent_call("instructions", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
-                      (time.perf_counter() - _t0) * 1000)
+    record_agent_call(
+        "instructions",
+        _model_used,
+        _u.input_tokens or 0,
+        _u.output_tokens or 0,
+        (time.perf_counter() - _t0) * 1000,
+    )
     return result.output

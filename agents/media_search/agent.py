@@ -1,9 +1,12 @@
 from __future__ import annotations
+
 import asyncio
 import time
 from typing import TYPE_CHECKING
+
 from pydantic import BaseModel
 from pydantic_ai import Agent
+
 from agents._base.run_context import record_agent_call
 from agents._base.types import EmbedCandidate
 from domains._base.config import DomainConfig
@@ -14,13 +17,13 @@ if TYPE_CHECKING:
 
 
 _SITE_MAP: dict[str, tuple[str, str]] = {
-    "twitter_search":   ("x.com",           "twitter"),
-    "facebook_search":  ("facebook.com",     "facebook"),
+    "twitter_search": ("x.com", "twitter"),
+    "facebook_search": ("facebook.com", "facebook"),
 }
 
 _IMAGE_SITE_MAP: dict[str, str] = {
     "instagram_search": "site:instagram.com/reel/",
-    "tiktok_search":    "site:tiktok.com/video/",
+    "tiktok_search": "site:tiktok.com/video/",
 }
 
 
@@ -53,12 +56,16 @@ async def _formulate_queries(
     _t0 = time.perf_counter()
     result = await agent.run(f"Topic: {topic}\nLanguages: {lang_list}")
     _u = result.usage()
-    record_agent_call("media_search_formulate", model, _u.input_tokens or 0, _u.output_tokens or 0,
-                      (time.perf_counter() - _t0) * 1000)
-    return [
-        " ".join(f'"{kw}"' for kw in lq.keywords[:4])
-        for lq in result.output.queries
-    ] or [topic]
+    record_agent_call(
+        "media_search_formulate",
+        model,
+        _u.input_tokens or 0,
+        _u.output_tokens or 0,
+        (time.perf_counter() - _t0) * 1000,
+    )
+    return [" ".join(f'"{kw}"' for kw in lq.keywords[:4]) for lq in result.output.queries] or [
+        topic
+    ]
 
 
 async def run_media_search(
@@ -102,22 +109,35 @@ async def run_media_search(
     labels: list[str] = []
 
     if domain.youtube_search:
-        coros.append(search_videos(topic, num=num, sort_by_date=domain.youtube_sort_by_date,
-                                   api_key=serper_api_key))
+        coros.append(
+            search_videos(
+                topic, num=num, sort_by_date=domain.youtube_sort_by_date, api_key=serper_api_key
+            )
+        )
         labels.append("youtube")
 
     for flag, (site, source) in _SITE_MAP.items():
         if getattr(domain, flag, False):
             for i, mq in enumerate(media_queries):
-                coros.append(search_site(mq, site=site, source=source, num=num,
-                                         freshness=freshness, api_key=serper_api_key))
+                coros.append(
+                    search_site(
+                        mq,
+                        site=site,
+                        source=source,
+                        num=num,
+                        freshness=freshness,
+                        api_key=serper_api_key,
+                    )
+                )
                 labels.append(f"{source}@{i}")
 
     for flag, site_prefix in _IMAGE_SITE_MAP.items():
         if getattr(domain, flag, False):
             for i, mq in enumerate(media_queries):
                 query = f"{site_prefix} {mq}"
-                coros.append(search_images(query, num=num, freshness=freshness, api_key=serper_api_key))
+                coros.append(
+                    search_images(query, num=num, freshness=freshness, api_key=serper_api_key)
+                )
                 labels.append(f"{flag.replace('_search', '')}@{i}")
 
     if domain.reddit_search:
@@ -132,9 +152,9 @@ async def run_media_search(
     candidates: list[EmbedCandidate] = []
     errors: dict[str, str] = {}
     seen_urls: set[str] = set()
-    for label, batch in zip(labels, batches):
+    for label, batch in zip(labels, batches, strict=True):
         source_name = label.split("@")[0]
-        if isinstance(batch, Exception):
+        if isinstance(batch, BaseException):
             errors[source_name] = str(batch)
             continue
         for c in batch:

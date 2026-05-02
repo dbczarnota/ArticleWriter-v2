@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Literal
 
@@ -25,6 +26,7 @@ class SearchAgentConfig(AgentConfig):
 @dataclass(frozen=True)
 class ScrapingConfig:
     """Nie jest agentycznym węzłem LLM — konfiguracja toolsetu scrapingu."""
+
     max_concurrent_jina: int = 8
     httpx_timeout: float = 15.0
     jina_timeout: float = 30.0

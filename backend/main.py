@@ -2,6 +2,7 @@
 import logfire
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from backend.api.v2 import router as v2_router
 
 logfire.configure(

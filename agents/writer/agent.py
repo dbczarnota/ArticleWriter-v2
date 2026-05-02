@@ -1,10 +1,13 @@
 from __future__ import annotations
+
 import pathlib
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
+
 from agents._base.config import WriterAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents._base.resilient import run_with_fallback
@@ -30,7 +33,7 @@ async def run_writer_agent(
     config: WriterAgentConfig,
     reflection_feedback: ReflectionFeedback | None = None,
     additional_instructions: str | None = None,
-    _agent: Agent | None = None,
+    _agent: Agent[Any, Any] | None = None,
 ) -> tuple[ArticleHtml, list[ModelMessage]]:
     """Write an HTML article from the writing brief. Accepts optional reflection feedback for round 2."""
     facts_block = "\n".join(f"- {f}" for f in brief.selected_facts)
@@ -58,7 +61,8 @@ async def run_writer_agent(
         result = await _agent.run(user_prompt)
         _model_used = config.model
     else:
-        def _factory(m: str) -> Agent:
+
+        def _factory(m: str):
             return Agent(
                 m,
                 output_type=ArticleHtml,
@@ -73,6 +77,7 @@ async def run_writer_agent(
                     format_style=model_format_style(m),
                 ),
             )
+
         _t0 = time.perf_counter()
         result, _model_used = await run_with_fallback(
             (config.model, *config.fallback_models),
@@ -81,6 +86,11 @@ async def run_writer_agent(
             agent_name="writer",
         )
     _u = result.usage()
-    record_agent_call("writer", _model_used, _u.input_tokens or 0, _u.output_tokens or 0,
-                      (time.perf_counter() - _t0) * 1000)
+    record_agent_call(
+        "writer",
+        _model_used,
+        _u.input_tokens or 0,
+        _u.output_tokens or 0,
+        (time.perf_counter() - _t0) * 1000,
+    )
     return result.output, list(result.all_messages())
