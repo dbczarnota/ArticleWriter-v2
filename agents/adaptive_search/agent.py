@@ -28,11 +28,15 @@ async def run_adaptive_search_agent(
     *,
     topic: str,
     config: AdaptiveSearchAgentConfig,
+    target_signals: int = 1,
     _agent: Agent[Any, Any] | None = None,
 ) -> AdaptiveSearchDecision:
     """Evaluate coverage and decide whether another search round is needed.
 
-    Short-circuits to needs_more_research=True when extraction is empty — no LLM call needed.
+    `target_signals` is the minimum number of (facts + quotes) the pipeline wants
+    before it's willing to write the article (PipelineFlags.min_source_signals).
+    The agent uses it in two ways: short-circuits to needs_more_research=True if
+    we're under the target, and the LLM prompt is told the gap to close.
     """
     if not extraction_result.facts and not extraction_result.quotes:
         return AdaptiveSearchDecision(
@@ -45,7 +49,15 @@ async def run_adaptive_search_agent(
     quotes_text = "\n".join(
         f'- "{q.text}" — {q.speaker} ({q.context})' for q in extraction_result.quotes
     )
-    summary = f"FACTS ({len(extraction_result.facts)}):\n{facts_text}\n\nQUOTES ({len(extraction_result.quotes)}):\n{quotes_text}"
+    current = len(extraction_result.facts) + len(extraction_result.quotes)
+    gap = max(0, target_signals - current)
+    summary = (
+        f"COVERAGE TARGET: {target_signals} signals (facts + quotes)\n"
+        f"CURRENTLY HAVE: {current} ({len(extraction_result.facts)} facts, {len(extraction_result.quotes)} quotes)\n"
+        f"GAP TO CLOSE: {gap}\n\n"
+        f"FACTS ({len(extraction_result.facts)}):\n{facts_text}\n\n"
+        f"QUOTES ({len(extraction_result.quotes)}):\n{quotes_text}"
+    )
 
     if _agent is not None:
         _t0 = time.perf_counter()

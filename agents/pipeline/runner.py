@@ -130,6 +130,22 @@ async def _run_pipeline_inner(
             ),
         )
 
+    # Apply domain default for min_source_signals (gate floor + adaptive_search target).
+    # Per-domain because different editorial brands need different evidentiary depth.
+    from backend.config import PipelineFlags
+
+    if (
+        settings.pipeline.min_source_signals == PipelineFlags().min_source_signals
+        and domain.default_min_source_signals != PipelineFlags().min_source_signals
+    ):
+        settings = dc_replace(
+            settings,
+            pipeline=dc_replace(
+                settings.pipeline,
+                min_source_signals=domain.default_min_source_signals,
+            ),
+        )
+
     # Stage 1: Research
     log.search_start(
         topic,
@@ -251,18 +267,32 @@ async def _run_pipeline_inner(
     # Stage 2: Adaptive search loop
     if settings.pipeline.adaptive_search:
         _stage_t0 = time.perf_counter()
-        with logfire.span("pipeline.stage.adaptive_search", domain=domain.name):
+        _target = settings.pipeline.min_source_signals
+        with logfire.span(
+            "pipeline.stage.adaptive_search",
+            domain=domain.name,
+            target_signals=_target,
+            initial_signals=len(extraction.facts) + len(extraction.quotes),
+            max_rounds_budget=settings.adaptive_search_agent.max_additional_rounds,
+        ):
             try:
                 seen_urls: set[str] = {r.url for r in search_results}
                 for _round in range(settings.adaptive_search_agent.max_additional_rounds):
+                    current = len(extraction.facts) + len(extraction.quotes)
                     decision = await run_adaptive_search_agent(
                         extraction,
                         topic=topic,
                         config=settings.adaptive_search_agent,
+                        target_signals=_target,
                     )
                     log.adaptive_search_done(decision, _round + 1)
-                    if not decision.needs_more_research or not decision.additional_queries:
+                    # Stop if agent is satisfied AND we've met the floor.
+                    if (
+                        not decision.needs_more_research or not decision.additional_queries
+                    ) and current >= _target:
                         break
+                    if not decision.additional_queries:
+                        break  # nothing to query, agent gave up
                     extra_results = []
                     for query in decision.additional_queries:
                         for r in await serper_search(
@@ -293,6 +323,9 @@ async def _run_pipeline_inner(
                     )
                     extraction = _merge_extraction(extraction, extra_extraction)
                     log.extraction_done(extraction)
+                    # Early exit if we hit the floor — don't waste a budget on another LLM call.
+                    if len(extraction.facts) + len(extraction.quotes) >= _target:
+                        break
             except Exception as e:
                 _errors.append({"stage": "adaptive_search", "error": str(e)})
                 log.error("adaptive_search", e)

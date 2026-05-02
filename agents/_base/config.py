@@ -47,7 +47,10 @@ class ExtractionAgentConfig(AgentConfig):
 @dataclass(frozen=True)
 class AdaptiveSearchAgentConfig(AgentConfig):
     model: str = "google-gla:gemini-2.5-flash"
-    max_additional_rounds: int = 1
+    max_additional_rounds: int = 3
+    """Hard cap on extra search rounds. Pipeline early-exits as soon as
+    PipelineFlags.min_source_signals is met, so this is just the budget ceiling
+    for cases where queries don't yield enough new sources fast enough."""
 
 
 @dataclass(frozen=True)

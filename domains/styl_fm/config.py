@@ -17,6 +17,7 @@ STYL_FM_DOMAIN = DomainConfig(
     default_search_freshness="qdr:w",
     default_num_queries=3,
     default_max_results=5,
+    default_min_source_signals=4,  # require ≥4 facts+quotes; adaptive_search will keep digging until reached
     youtube_search=True,
     twitter_search=True,
     facebook_search=False,

@@ -13,17 +13,25 @@ from agents._base.types import EmbedCandidate
 from agents.extraction.agent import ExtractionResult
 from agents.pipeline.runner import run_pipeline
 from backend.config import AppSettings
-from domains.registry import load_domain
+from domains._base.config import DomainConfig
 
 
 @pytest.fixture
 def styl_fm_settings():
-    return AppSettings(domain="styl_fm")
+    # AppSettings is fine — its pipeline.min_source_signals defaults to 1.
+    # We bypass the domain-level override by using a fixture-built domain in tests
+    # (see `domain` fixture below) instead of loading styl_fm, which has min=4.
+    return AppSettings(domain="test_domain")
 
 
-async def test_gate_raises_when_extraction_is_empty(styl_fm_settings):
+@pytest.fixture
+def domain():
+    # Test domain with default_min_source_signals=1 so the gate trips on 0 (not 4 like styl_fm).
+    return DomainConfig(name="test_domain", description="test")
+
+
+async def test_gate_raises_when_extraction_is_empty(styl_fm_settings, domain):
     """Empty extraction (0 facts + 0 quotes) must raise InsufficientSourcesError."""
-    domain = load_domain(styl_fm_settings.domain)
 
     with (
         patch("agents.pipeline.runner.run_search_agent", new_callable=AsyncMock, return_value=[]),
@@ -57,7 +65,7 @@ async def test_gate_raises_when_extraction_is_empty(styl_fm_settings):
     assert err.min_required == 1
 
 
-async def test_gate_threshold_configurable(styl_fm_settings):
+async def test_gate_threshold_configurable(styl_fm_settings, domain):
     """min_source_signals=3 fails on 2 quotes alone (below threshold)."""
     from dataclasses import replace
 
@@ -65,7 +73,6 @@ async def test_gate_threshold_configurable(styl_fm_settings):
         styl_fm_settings,
         pipeline=replace(styl_fm_settings.pipeline, min_source_signals=3),
     )
-    domain = load_domain(settings.domain)
 
     with (
         patch("agents.pipeline.runner.run_search_agent", new_callable=AsyncMock, return_value=[]),
@@ -96,9 +103,8 @@ async def test_gate_threshold_configurable(styl_fm_settings):
     assert exc_info.value.min_required == 3
 
 
-async def test_gate_includes_upstream_errors(styl_fm_settings):
+async def test_gate_includes_upstream_errors(styl_fm_settings, domain):
     """When search fails, the upstream_errors list captures the stage error for diagnosis."""
-    domain = load_domain(styl_fm_settings.domain)
 
     with (
         patch(
@@ -139,7 +145,7 @@ async def test_gate_includes_upstream_errors(styl_fm_settings):
 
 
 # Sanity: pipeline DOES proceed past the gate when there's at least one fact
-async def test_gate_passes_with_at_least_one_fact(styl_fm_settings):
+async def test_gate_passes_with_at_least_one_fact(styl_fm_settings, domain):
     """One fact is enough to not trip the default gate (min_source_signals=1).
 
     Verifies the gate is permissive — does NOT raise — when there's source material.
@@ -148,7 +154,6 @@ async def test_gate_passes_with_at_least_one_fact(styl_fm_settings):
     """
     from agents._base.types import Fact
 
-    domain = load_domain(styl_fm_settings.domain)
     fact = Fact(
         text="Sample fact",
         context="test",
