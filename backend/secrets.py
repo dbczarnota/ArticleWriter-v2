@@ -1,4 +1,4 @@
-# backend/settings.py
+# backend/secrets.py
 from __future__ import annotations
 
 import os
@@ -11,17 +11,17 @@ load_dotenv()
 
 
 @dataclass(frozen=True)
-class Settings:
+class Secrets:
     serper_api_key: str
     jina_api_key: str | None = None
 
 
 @lru_cache(maxsize=1)
-def get_settings() -> Settings:
+def get_secrets() -> Secrets:
     serper_key = os.environ.get("SERPER_API_KEY", "")
     if not serper_key:
         raise RuntimeError("SERPER_API_KEY environment variable is required")
-    return Settings(
+    return Secrets(
         serper_api_key=serper_key,
         jina_api_key=os.environ.get("JINA_API_KEY") or None,
     )

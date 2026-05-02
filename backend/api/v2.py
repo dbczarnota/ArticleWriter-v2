@@ -9,7 +9,7 @@ from agents._base.resilient import AllModelsFailedError
 from agents.pipeline.runner import run_pipeline
 from backend.api.schemas import ArticleRequest
 from backend.config import AppSettings
-from backend.settings import Settings, get_settings
+from backend.secrets import Secrets, get_secrets
 from domains.registry import load_domain
 
 router = APIRouter(prefix="/v2")
@@ -18,7 +18,7 @@ router = APIRouter(prefix="/v2")
 @router.post("/write_article")
 async def write_article(
     req: ArticleRequest,
-    cfg: Settings = Depends(get_settings),
+    cfg: Secrets = Depends(get_secrets),
 ) -> dict:
     app_settings = AppSettings.from_request(req)
     try:

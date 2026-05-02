@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agents._base.types import ArticleOutput
-from backend.settings import Settings, get_settings
+from backend.secrets import Secrets, get_secrets
 
 _MOCK_OUTPUT = ArticleOutput(
     html="<h1>Test</h1><p>Content</p>",
@@ -16,14 +16,14 @@ _MOCK_OUTPUT = ArticleOutput(
     sources=["https://example.com"],
 )
 
-_FAKE_SETTINGS = Settings(serper_api_key="test-serper-key", jina_api_key=None)
+_FAKE_SECRETS = Secrets(serper_api_key="test-serper-key", jina_api_key=None)
 
 
 @pytest.fixture(autouse=True)
-def override_settings():
+def override_secrets():
     from backend.main import app
 
-    app.dependency_overrides[get_settings] = lambda: _FAKE_SETTINGS
+    app.dependency_overrides[get_secrets] = lambda: _FAKE_SECRETS
     yield
     app.dependency_overrides.clear()
 
