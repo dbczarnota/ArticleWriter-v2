@@ -45,15 +45,6 @@ class SearchResult:
 
 
 @dataclass
-class VideoResult:
-    url: str
-    title: str
-    description: str
-    channel: str
-    source: Literal["youtube"]
-
-
-@dataclass
 class EmbedCandidate:
     url: str
     title: str
