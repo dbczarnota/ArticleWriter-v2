@@ -54,10 +54,14 @@ class Org(SQLModel, table=True):
     """Kinde-side org identifier; nullable for the local-dev seed."""
 
     created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
     )
     updated_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
+        default_factory=_utcnow,
+        sa_column=Column(
+            DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+        ),
     )
 
 
@@ -102,7 +106,8 @@ class Article(SQLModel, table=True):
     )
 
     created_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
     )
     completed_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
@@ -220,7 +225,8 @@ class UsageEvent(SQLModel, table=True):
     output_tokens: int
     duration_ms: float
     occurred_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
     )
 
     article: Article = Relationship(back_populates="usage_events")
@@ -244,7 +250,8 @@ class FallbackEvent(SQLModel, table=True):
     error_type: str = Field(max_length=128)
     error_message: str = Field(sa_column=Column(String, nullable=False))
     occurred_at: datetime = Field(
-        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow)
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
     )
 
     article: Article = Relationship(back_populates="fallback_events")
