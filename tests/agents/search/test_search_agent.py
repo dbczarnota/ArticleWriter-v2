@@ -26,7 +26,7 @@ def _serper_response(url: str, title: str = "T", snippet: str = "S") -> dict:
 @pytest.mark.asyncio
 @respx.mock
 async def test_run_search_agent_returns_search_results():
-    """Each query hits Serper and returns a SearchResult."""
+    """Each query (including the raw topic, prepended automatically) hits Serper and returns a SearchResult."""
     call_n = 0
 
     def side_effect(request):
@@ -47,7 +47,8 @@ async def test_run_search_agent_returns_search_results():
         _agent=_make_test_agent(["Dawid Podsiadło 2025", "Podsiadło trasa"]),
     )
 
-    assert len(results) == 2
+    # Topic prepended → 3 unique queries → 3 unique URL results from the mock.
+    assert len(results) == 3
     assert all(isinstance(r, SearchResult) for r in results)
     assert results[0].source == "web"
 
@@ -75,7 +76,7 @@ async def test_run_search_agent_deduplicates_urls():
 @pytest.mark.asyncio
 @respx.mock
 async def test_run_search_agent_calls_serper_for_each_query():
-    """Serper called once per query."""
+    """Serper called once per query (raw topic + LLM-generated queries, deduped)."""
     call_count = 0
 
     def count_calls(request):
@@ -93,7 +94,8 @@ async def test_run_search_agent_calls_serper_for_each_query():
         _agent=_make_test_agent(["q1", "q2", "q3"]),
     )
 
-    assert call_count == 3
+    # Topic ("topic") is automatically prepended to the LLM queries (q1, q2, q3) → 4 unique queries.
+    assert call_count == 4
 
 
 @pytest.mark.asyncio

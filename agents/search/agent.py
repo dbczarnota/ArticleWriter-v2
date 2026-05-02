@@ -72,7 +72,19 @@ async def run_search_agent(
     all_results: list[SearchResult] = []
     seen_urls: set[str] = set()
 
-    for query in result.output.queries:
+    # Always include the editor's raw topic as a query — they may have phrased it
+    # in the most precise way for the story, and the LLM-generated queries can drift.
+    # Place it first so its results land before the LLM-generated ones; dedupe afterwards.
+    seen_queries: set[str] = set()
+    queries: list[str] = []
+    for q in [topic, *result.output.queries]:
+        q_norm = q.strip()
+        q_key = q_norm.lower()
+        if q_norm and q_key not in seen_queries:
+            seen_queries.add(q_key)
+            queries.append(q_norm)
+
+    for query in queries:
         coros = [
             serper_search(
                 query,
