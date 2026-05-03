@@ -82,6 +82,7 @@ async def _run_pipeline_inner(
 
     from agents._base.config import SearchAgentConfig
     from agents._base.debug_log import PipelineLogger
+    from backend.repositories import get_article_repo
 
     log = PipelineLogger(enabled=debug)
 
@@ -90,6 +91,16 @@ async def _run_pipeline_inner(
     _timing: dict[str, float] = {}
     _token_records = init_collector()
     _pipeline_t0 = time.perf_counter()
+
+    # Persist a 'running' Article row up-front so failures still produce a record.
+    # Repo is Null when DB_BACKEND=null (run.py default), Postgres when configured.
+    _article_repo = get_article_repo()
+    _article_id = await _article_repo.create_running(
+        org_code=org_code,
+        author_user_id=author_user_id,
+        domain_name=domain.name,
+        topic=topic,
+    )
 
     # Apply domain freshness default when the caller hasn't explicitly overridden it
     if settings.search.search_freshness == SearchAgentConfig().search_freshness:
