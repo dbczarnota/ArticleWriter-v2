@@ -29,7 +29,7 @@ def test_run_py_deferred_imports_resolve():
     from agents._base.config import SearchAgentConfig  # noqa: F401
     from agents.pipeline.runner import run_pipeline  # noqa: F401
     from backend.config import AppSettings  # noqa: F401
-    from domains.registry import load_domain  # noqa: F401
+    from backend.domain import get_domain_config  # noqa: F401
 
 
 def test_run_py_offline_uses_null_repos(monkeypatch):

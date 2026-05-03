@@ -22,7 +22,6 @@ from jwt.algorithms import RSAAlgorithm
 from backend.auth.kinde import KindeAuthenticator
 from backend.auth.protocols import NullAuthenticator
 
-
 # ---------------------------------------------------------------------------
 # NullAuthenticator
 # ---------------------------------------------------------------------------

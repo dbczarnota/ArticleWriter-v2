@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# ruff: noqa: I001
 """Seed org_configs for all styl_fm orgs from current Python config files.
 
 Run once before deploying the H6 changes. Idempotent — uses upsert (session.merge).
@@ -17,7 +18,7 @@ from sqlmodel import select
 
 from backend.database import get_session_maker
 from backend.db.models import Org, OrgConfig
-from domains.styl_fm.config import STYL_FM_DOMAIN
+from domains.styl_fm.config import STYL_FM_DOMAIN  # type: ignore[import]  # domains/ deleted post-seed
 
 
 async def main() -> None:

@@ -4,13 +4,11 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
 from backend.db.models import Org, OrgConfig
 from backend.main import app
-from backend.auth.deps import get_current_org, get_current_user
 from backend.repositories import get_org_config_repo, reset_repo_cache
-from backend.repositories.protocols import OrgConfigRepository
-
 
 _ORG = Org(
     code="test-org",
