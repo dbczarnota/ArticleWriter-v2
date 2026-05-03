@@ -5,7 +5,7 @@ import pytest
 
 from agents._base.types import EmbedCandidate
 from agents.media_search.agent import run_media_search
-from domains._base.config import DomainConfig
+from backend.domain import DomainConfig
 
 _DOMAIN_ALL = DomainConfig(
     name="test",

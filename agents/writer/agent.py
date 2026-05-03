@@ -13,7 +13,7 @@ from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
 from agents.instructions.agent import WritingBrief
-from domains._base.config import DomainConfig
+from backend.domain import DomainConfig
 
 if TYPE_CHECKING:
     from agents.reflection.agent import ReflectionFeedback

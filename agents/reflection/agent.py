@@ -15,7 +15,7 @@ from agents._base.run_context import record_agent_call
 from agents._base.types import ParsedArticle
 from agents.extraction.agent import ExtractionResult
 from agents.writer.agent import ArticleHtml
-from domains._base.config import DomainConfig
+from backend.domain import DomainConfig
 
 _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
 

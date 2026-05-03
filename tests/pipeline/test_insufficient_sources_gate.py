@@ -13,7 +13,7 @@ from agents._base.types import EmbedCandidate
 from agents.extraction.agent import ExtractionResult
 from agents.pipeline.runner import run_pipeline
 from backend.config import AppSettings
-from domains._base.config import DomainConfig
+from backend.domain import DomainConfig
 
 
 @pytest.fixture

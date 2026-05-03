@@ -18,7 +18,7 @@ from agents.instructions.agent import WritingBrief
 from agents.reflection.agent import ReflectionFeedback
 from agents.writer.agent import ArticleHtml
 from backend.config import AppSettings, PipelineFlags
-from domains._base.config import DomainConfig
+from backend.domain import DomainConfig
 
 _DOMAIN = DomainConfig(
     name="test",

@@ -9,7 +9,7 @@ from pydantic_ai import Agent
 
 from agents._base.run_context import record_agent_call
 from agents._base.types import EmbedCandidate, ParsedArticle
-from domains._base.config import DomainConfig
+from backend.domain import DomainConfig
 from toolsets.scraping.serper import search_images, search_reddit, search_site, search_videos
 
 if TYPE_CHECKING:

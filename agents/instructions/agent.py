@@ -12,7 +12,7 @@ from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
 from agents.extraction.agent import ExtractionResult
-from domains._base.config import DomainConfig
+from backend.domain import DomainConfig
 
 _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
 

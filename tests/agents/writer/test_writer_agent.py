@@ -6,7 +6,7 @@ from agents._base.config import WriterAgentConfig
 from agents.instructions.agent import WritingBrief
 from agents.reflection.agent import ReflectionFeedback
 from agents.writer.agent import ArticleHtml, run_writer_agent
-from domains._base.config import DomainConfig
+from backend.domain import DomainConfig
 
 _DOMAIN = DomainConfig(
     name="test_domain",

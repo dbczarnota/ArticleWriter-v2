@@ -21,8 +21,8 @@ from agents.search.agent import run_search_agent
 from agents.usage_tracking.agent import run_usage_tracking_agent
 from agents.writer.agent import ArticleHtml, run_writer_agent
 from backend.config import AppSettings
+from backend.domain import DomainConfig
 from backend.services.metrics import record_error, record_pipeline_run, record_stage
-from domains._base.config import DomainConfig
 from toolsets.scraping.serper import search as serper_search
 
 

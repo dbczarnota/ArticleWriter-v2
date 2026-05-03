@@ -5,7 +5,7 @@ from pydantic_ai.models.test import TestModel
 from agents._base.config import ReflectionAgentConfig
 from agents.reflection.agent import ReflectionFeedback, run_reflection_agent
 from agents.writer.agent import ArticleHtml
-from domains._base.config import DomainConfig
+from backend.domain import DomainConfig
 
 _DOMAIN = DomainConfig(
     name="test_domain",

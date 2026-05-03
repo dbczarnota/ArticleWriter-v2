@@ -6,7 +6,7 @@ from agents._base.config import InstructionsAgentConfig
 from agents._base.types import Fact, Quote
 from agents.extraction.agent import ExtractionResult
 from agents.instructions.agent import WritingBrief, run_instructions_agent
-from domains._base.config import DomainConfig
+from backend.domain import DomainConfig
 
 _DOMAIN = DomainConfig(
     name="test_domain",
