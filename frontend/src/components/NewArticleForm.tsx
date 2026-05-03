@@ -12,9 +12,6 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
   const [instructions, setInstructions] = useState("");
   const [urlsText, setUrlsText] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [maxResults, setMaxResults] = useState(5);
-  const [numQueries, setNumQueries] = useState(3);
-  const [freshness, setFreshness] = useState("qdr:w");
   const [writerModel, setWriterModel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,30 +103,9 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
             Zaawansowane
           </button>
           {advancedOpen && (
-            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12, paddingLeft: 16 }}>
-              <div style={{ display: "flex", gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 4 }}>Max wyników</label>
-                  <input type="number" value={maxResults} onChange={(e) => setMaxResults(+e.target.value)} min={1} max={20} style={{ ...inputStyle }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 4 }}>Liczba zapytań</label>
-                  <input type="number" value={numQueries} onChange={(e) => setNumQueries(+e.target.value)} min={1} max={10} style={{ ...inputStyle }} />
-                </div>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 4 }}>Świeżość wyników</label>
-                <select value={freshness} onChange={(e) => setFreshness(e.target.value)} style={inputStyle}>
-                  <option value="qdr:d">Ostatni dzień</option>
-                  <option value="qdr:w">Ostatni tydzień</option>
-                  <option value="qdr:m">Ostatni miesiąc</option>
-                  <option value="qdr:y">Ostatni rok</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 4 }}>Model pisarza</label>
-                <input value={writerModel} onChange={(e) => setWriterModel(e.target.value)} placeholder="np. gemini-2.0-flash (domyślny)" style={inputStyle} />
-              </div>
+            <div style={{ marginTop: 12, paddingLeft: 16 }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 4 }}>Model pisarza</label>
+              <input value={writerModel} onChange={(e) => setWriterModel(e.target.value)} placeholder="np. gemini-2.0-flash (domyślny)" style={inputStyle} />
             </div>
           )}
         </div>
