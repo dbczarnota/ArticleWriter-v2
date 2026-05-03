@@ -6,6 +6,12 @@ import os
 # call later sees no token and runs offline — no spans ship to the Logfire backend.
 os.environ["LOGFIRE_TOKEN"] = ""
 
+# Force DB_BACKEND=null and clear DATABASE_URL so tests use NullArticleRepository
+# regardless of what's in .env. Without this, every pipeline test would try to open
+# asyncpg connections to localhost:5432 and crash with "Event loop is closed" at teardown.
+os.environ["DB_BACKEND"] = "null"
+os.environ["DATABASE_URL"] = ""
+
 import logfire
 
 logfire.configure(send_to_logfire=False, console=False)
