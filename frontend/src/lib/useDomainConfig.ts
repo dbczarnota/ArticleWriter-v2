@@ -6,7 +6,7 @@ import type { DomainConfigData } from "../types";
 export function useDomainConfig() {
   const { request } = useApi();
   const [config, setConfig] = useState<DomainConfigData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

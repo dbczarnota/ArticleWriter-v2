@@ -105,6 +105,18 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
               <label style={labelStyle}>Max stron do scrapowania</label>
               <input type="number" value={form.max_pages_to_scrape} onChange={(e) => set("max_pages_to_scrape", +e.target.value)} min={1} max={50} style={inputStyle} />
             </div>
+            <div>
+              <label style={labelStyle}>Max faktów w artykule</label>
+              <input type="number" value={form.max_facts} onChange={(e) => set("max_facts", +e.target.value)} min={1} max={50} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Max cytatów w artykule</label>
+              <input type="number" value={form.max_quotes} onChange={(e) => set("max_quotes", +e.target.value)} min={0} max={20} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Artykuły kontekstowe (refleksja)</label>
+              <input type="number" value={form.reflection_context_articles} onChange={(e) => set("reflection_context_articles", +e.target.value)} min={0} max={10} style={inputStyle} />
+            </div>
           </div>
         </section>
 
@@ -136,6 +148,34 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
                 {label}
               </label>
             ))}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
+            <div>
+              <label style={labelStyle}>Języki media search (po przecinku)</label>
+              <input
+                value={form.media_search_languages.join(", ")}
+                onChange={(e) => set("media_search_languages", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
+                placeholder="en, pl"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Liczba wyników media search</label>
+              <input type="number" value={form.media_search_num} onChange={(e) => set("media_search_num", +e.target.value)} min={1} max={20} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Max tiers zapytań media</label>
+              <input type="number" value={form.media_search_max_query_tiers} onChange={(e) => set("media_search_max_query_tiers", +e.target.value)} min={1} max={5} style={inputStyle} />
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", paddingTop: 20 }}>
+              <input
+                type="checkbox"
+                checked={form.youtube_sort_by_date}
+                onChange={(e) => set("youtube_sort_by_date", e.target.checked)}
+                style={{ accentColor: "var(--accent)" }}
+              />
+              Sortuj YouTube po dacie
+            </label>
           </div>
         </section>
 
