@@ -1,4 +1,17 @@
-"""Quick e2e test — edit TOPIC and DOMAIN, then: uv run python run.py"""
+"""Quick e2e test — edit TOPIC and DOMAIN, then: uv run python run.py.
+
+Persistence (optional):
+    By default DB_BACKEND=null and articles are NOT persisted (NullArticleRepository
+    just logs a summary line). To persist into local Postgres:
+
+        docker compose up -d db
+        DB_BACKEND=postgres uv run python -m backend.scripts.seed_local_dev_org   # one-time
+        DB_BACKEND=postgres uv run python run.py
+
+    Migration to managed Postgres (Neon/Atlas/etc.) later: change DATABASE_URL,
+    re-run the seed script and `alembic upgrade head` against the new instance.
+    No code changes.
+"""
 
 import asyncio
 import os
