@@ -36,11 +36,18 @@ async def run_pipeline(
     urls: list[str] | None = None,
     additional_instructions: str | None = None,
     debug: bool = False,
+    org_code: str = "__local_dev__",
+    author_user_id: str = "local-dev",
 ) -> ArticleOutput:
+    """Pipeline entry. `org_code` + `author_user_id` are persistence context;
+    they identify which Kinde org owns the article and which user authored it.
+    Defaults match the run.py local-dev path so existing callers keep working;
+    backend/api/v2.py overrides them from the JWT + X-Org-Code header."""
     with logfire.span(
         "pipeline.run",
         topic=topic,
         domain=domain.name,
+        org_code=org_code,
         urls_count=len(urls) if urls else 0,
         has_additional_instructions=bool(additional_instructions),
     ):
@@ -53,6 +60,8 @@ async def run_pipeline(
             urls=urls,
             additional_instructions=additional_instructions,
             debug=debug,
+            org_code=org_code,
+            author_user_id=author_user_id,
         )
 
 
@@ -66,6 +75,8 @@ async def _run_pipeline_inner(
     urls: list[str] | None,
     additional_instructions: str | None,
     debug: bool,
+    org_code: str,
+    author_user_id: str,
 ) -> ArticleOutput:
     from dataclasses import replace as dc_replace
 
