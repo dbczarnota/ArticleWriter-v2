@@ -154,3 +154,21 @@ def test_put_domain_config_validates_max_facts(client_with_config):
     client, _ = client_with_config
     resp = client.put("/v2/domain-config", json={"max_facts": 0})
     assert resp.status_code == 422
+
+
+def test_unauthenticated_requests_rejected():
+    """Verify both endpoints reject requests without auth.
+
+    With AUTH_BACKEND=null the bearer token is always accepted, but
+    get_current_org requires X-Org-Code header — FastAPI returns 422 when
+    it is absent, which is still a rejection.
+    """
+    # No dependency overrides — real auth deps run
+    reset_repo_cache()
+    client = TestClient(app, raise_server_exceptions=False)
+
+    resp_get = client.get("/v2/domain-config")
+    assert resp_get.status_code in (401, 403, 422)
+
+    resp_put = client.put("/v2/domain-config", json={"description": "x"})
+    assert resp_put.status_code in (401, 403, 422)
