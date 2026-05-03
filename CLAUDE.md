@@ -16,8 +16,26 @@ Aktualnie działa jako produkcja dla **Styl.fm** (clickbait/lifestyle). Po refak
 - **Scraping tier-3**: Firecrawl — placeholder, nie implementujemy na start
 - **Rate limiting**: globalny `asyncio.Semaphore` dla Jiny (proces-level singleton, dzielony między userami)
 - **Auth**: Kinde (OIDC JWT) — wzorzec z prawnik-ai-v2
+- **Persistence**: PostgreSQL 16 + pgvector, SQLModel + SQLAlchemy 2.0 async + asyncpg, Alembic
 - **Observability**: Logfire (OTEL metrics + spans)
-- **Testy**: pytest + pytest-asyncio + respx
+- **Testy**: pytest + pytest-asyncio + respx + testcontainers[postgres]
+
+## Trzy ortogonalne pivoty (env)
+
+| Env | Wartości | Default | Co przełącza |
+|-----|----------|---------|--------------|
+| `DB_BACKEND` | `null` / `postgres` | `null` | `NullArticleRepository` vs `PostgresArticleRepository` |
+| `AUTH_BACKEND` | `null` / `kinde` | `null` | `NullAuthenticator` (local-dev user) vs `KindeAuthenticator` (JWT) |
+| `LOGFIRE_TOKEN` | string / unset | unset | Wysyłka spanów do Logfire (offline jeśli nieustawiony) |
+
+Każda kombinacja jest poprawna. `run.py` używa null/null. Pełen serwer prod = kinde/postgres.
+
+## Multi-tenancy
+
+- Orgi mapują się 1:1 na **domeny redakcyjne** (`org.domain_name`).
+- Frontend przesyła `Authorization: Bearer <jwt>` + `X-Org-Code: <org>` — `get_current_org` waliduje przynależność (JWT claim `org_codes`).
+- Wszystkie repository methods filtrują po `org_code` — żadnego ad-hoc zapytania w warstwie API.
+- Nowe orgi auto-syncują się z Kinde Management API przy pierwszym requeście; mapowanie na `domain_name` operator robi raz przez `backend/scripts/set_org_domain.py`.
 
 ## Wzorce — kopiujemy z prawnik-ai-v2
 
