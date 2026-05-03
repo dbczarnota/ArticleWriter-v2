@@ -4,6 +4,7 @@ import { useArticles } from "./lib/useArticles";
 import { LoginGate } from "./components/LoginGate";
 import { Topbar } from "./components/Topbar";
 import { Sidebar } from "./components/Sidebar";
+import { ArticleView } from "./components/ArticleView";
 
 type View = "list" | "article" | "new" | "settings";
 
@@ -42,7 +43,7 @@ export default function App() {
             </p>
           )}
           {view === "article" && selectedArticleId && (
-            <div>ArticleView placeholder — id: {selectedArticleId}</div>
+            <ArticleView articleId={selectedArticleId} />
           )}
           {view === "new" && <div>NewArticleForm placeholder</div>}
           {view === "settings" && <div>SettingsView placeholder</div>}
