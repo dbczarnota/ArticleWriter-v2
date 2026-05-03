@@ -78,7 +78,7 @@ async def main() -> None:
     settings = AppSettings(
         domain=DOMAIN,
         search=SearchAgentConfig(
-            max_results=10, num_queries=3, search_freshness=SEARCH_FRESHNESS or "qdr:w"
+            max_results=10, num_queries=5, search_freshness=SEARCH_FRESHNESS or "qdr:w"
         ),
     )
 
