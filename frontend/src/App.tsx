@@ -6,6 +6,7 @@ import { Topbar } from "./components/Topbar";
 import { Sidebar } from "./components/Sidebar";
 import { ArticleView } from "./components/ArticleView";
 import { NewArticleForm } from "./components/NewArticleForm";
+import { SettingsView } from "./components/SettingsView";
 
 type View = "list" | "article" | "new" | "settings";
 
@@ -54,7 +55,7 @@ export default function App() {
               }}
             />
           )}
-          {view === "settings" && <div>SettingsView placeholder</div>}
+          {view === "settings" && <SettingsView />}
         </main>
       </div>
     </div>
