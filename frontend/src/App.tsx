@@ -5,6 +5,7 @@ import { LoginGate } from "./components/LoginGate";
 import { Topbar } from "./components/Topbar";
 import { Sidebar } from "./components/Sidebar";
 import { ArticleView } from "./components/ArticleView";
+import { NewArticleForm } from "./components/NewArticleForm";
 
 type View = "list" | "article" | "new" | "settings";
 
@@ -45,7 +46,14 @@ export default function App() {
           {view === "article" && selectedArticleId && (
             <ArticleView articleId={selectedArticleId} />
           )}
-          {view === "new" && <div>NewArticleForm placeholder</div>}
+          {view === "new" && (
+            <NewArticleForm
+              onCreated={(id) => {
+                refresh();
+                selectArticle(id);
+              }}
+            />
+          )}
           {view === "settings" && <div>SettingsView placeholder</div>}
         </main>
       </div>
