@@ -28,6 +28,7 @@ export function ArticleView({ articleId }: ArticleViewProps) {
   const usedQuotes = article.quotes.filter((q) => q.was_used);
   const rejectedQuotes = article.quotes.filter((q) => !q.was_used);
   const usedSources = article.sources;
+  // TODO(sources): approximate — only covers fact.source_url, not quote.source_url
   const unusedSourceUrls = article.facts
     .filter((f) => !f.was_used && f.source_url)
     .map((f) => f.source_url as string)
@@ -35,11 +36,12 @@ export function ArticleView({ articleId }: ArticleViewProps) {
   const uniqueUnused = [...new Set(unusedSourceUrls)];
 
   function handleExport() {
-    const blob = new Blob([article!.html ?? ""], { type: "text/html" });
+    const a0 = article;
+    const blob = new Blob([a0.html ?? ""], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${article!.topic.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.html`;
+    a.download = `${a0.topic.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.html`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -73,6 +75,7 @@ export function ArticleView({ articleId }: ArticleViewProps) {
       {/* Article HTML */}
       {article.html && (
         <div
+          className="article-html"
           dangerouslySetInnerHTML={{ __html: article.html }}
           style={{
             padding: 20,
