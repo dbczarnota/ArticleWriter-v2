@@ -13,7 +13,14 @@ Pattern:
 
 from __future__ import annotations
 
+import os
+
 import pytest
+
+# Disable testcontainers' Ryuk reaper sidecar — it tries to bind port 8080 and
+# conflicts when other tests in the suite have left state around. Container
+# cleanup still happens via the explicit `container.stop()` in the fixture.
+os.environ.setdefault("TESTCONTAINERS_RYUK_DISABLED", "true")
 
 # Probe Docker once for the entire module. If it's missing/down, skip everything.
 docker = pytest.importorskip("docker", reason="docker SDK not installed")
