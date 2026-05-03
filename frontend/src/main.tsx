@@ -1,10 +1,30 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './styles/tokens.css'
-import App from './App.tsx'
+import { KindeProvider } from "@kinde-oss/kinde-auth-react";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import "./styles/tokens.css";
+import App from "./App";
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+const NULL_AUTH = import.meta.env.VITE_AUTH_BACKEND === "null";
+
+const kindeProps = NULL_AUTH
+  ? {
+      clientId: "null",
+      domain: "https://null.kinde.com",
+      redirectUri: window.location.origin,
+      logoutUri: window.location.origin,
+    }
+  : {
+      clientId: import.meta.env.VITE_KINDE_CLIENT_ID,
+      domain: import.meta.env.VITE_KINDE_DOMAIN,
+      redirectUri: import.meta.env.VITE_KINDE_REDIRECT_URI,
+      logoutUri: import.meta.env.VITE_KINDE_LOGOUT_URI,
+      audience: import.meta.env.VITE_KINDE_AUDIENCE,
+    };
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <KindeProvider {...kindeProps}>
+      <App />
+    </KindeProvider>
+  </React.StrictMode>
+);
