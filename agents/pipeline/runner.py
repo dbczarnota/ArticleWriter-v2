@@ -497,6 +497,23 @@ async def _run_pipeline_inner(
                 _total_ms = (time.perf_counter() - _pipeline_t0) * 1000
                 record_pipeline_run(domain.name, "error" if _errors else "ok", _total_ms)
                 log.done(len(result.sources or scraped_urls), len(_errors))
+                await _persist_article_done(
+                    repo=_article_repo,
+                    article_id=_article_id,
+                    article_html=article.html,
+                    alternative_titles=list(result.alternative_titles),
+                    followup_topics=list(result.followup_topics),
+                    used_facts_texts=list(used_facts),
+                    used_quotes_texts=list(used_quotes),
+                    extraction=extraction,
+                    embed_candidates=embed_candidates,
+                    sources=list(result.sources or scraped_urls),
+                    pipeline_timing=_timing,
+                    errors=_errors,
+                    total_duration_ms=_total_ms,
+                    token_records=_token_records,
+                    fallback_events=get_fallback_events(),
+                )
                 return dc_replace(
                     result,
                     used_facts=used_facts,
@@ -546,6 +563,23 @@ async def _run_pipeline_inner(
     _status = "error" if _errors else "ok"
     record_pipeline_run(domain.name, _status, _total_ms)
     log.done(len(sources), len(_errors))
+    await _persist_article_done(
+        repo=_article_repo,
+        article_id=_article_id,
+        article_html=article.html,
+        alternative_titles=[],
+        followup_topics=[],
+        used_facts_texts=[],
+        used_quotes_texts=[],
+        extraction=extraction,
+        embed_candidates=embed_candidates,
+        sources=sources,
+        pipeline_timing=_timing,
+        errors=_errors,
+        total_duration_ms=_total_ms,
+        token_records=_token_records,
+        fallback_events=get_fallback_events(),
+    )
     return ArticleOutput(
         html=article.html,
         alternative_titles=[],
@@ -577,6 +611,121 @@ async def _run_pipeline_inner(
             }
             for e in get_fallback_events()
         ],
+    )
+
+
+async def _persist_article_done(
+    *,
+    repo,
+    article_id,
+    article_html: str,
+    alternative_titles: list[str],
+    followup_topics: list[str],
+    used_facts_texts: list[str],
+    used_quotes_texts: list[str],
+    extraction: ExtractionResult,
+    embed_candidates: list[EmbedCandidate],
+    sources: list[str],
+    pipeline_timing: dict[str, float],
+    errors: list[dict[str, str]],
+    total_duration_ms: float,
+    token_records,
+    fallback_events,
+) -> None:
+    """Translate agent-level types to DB rows and persist the completed Article.
+
+    Lives at module level so both success-return paths (followup-OK and followup-skipped)
+    use the same translation + write call.
+    """
+    from backend.db.models import (
+        EmbedCandidate as DBEmbed,
+    )
+    from backend.db.models import (
+        Fact as DBFact,
+    )
+    from backend.db.models import (
+        FallbackEvent as DBFallbackEvent,
+    )
+    from backend.db.models import (
+        Quote as DBQuote,
+    )
+    from backend.db.models import (
+        UsageEvent as DBUsageEvent,
+    )
+
+    used_facts_set = set(used_facts_texts)
+    used_quotes_set = set(used_quotes_texts)
+    # article_id is set on each child explicitly so Pydantic-level validation passes;
+    # the repo will overwrite it (no-op since it's the same value).
+    db_facts = [
+        DBFact(
+            article_id=article_id,
+            text=f.text,
+            context=f.context,
+            source_url=f.source_url,
+            source_title=f.source_title,
+            was_used=f.text in used_facts_set,
+        )
+        for f in extraction.facts
+    ]
+    db_quotes = [
+        DBQuote(
+            article_id=article_id,
+            text=q.text,
+            speaker=q.speaker,
+            context=q.context,
+            source_url=q.source_url,
+            was_used=q.text in used_quotes_set,
+        )
+        for q in extraction.quotes
+    ]
+    db_embeds = [
+        DBEmbed(
+            article_id=article_id,
+            url=e.url,
+            title=e.title,
+            source=e.source,
+            thumbnail_url=e.thumbnail_url,
+            description=e.description,
+            channel=e.channel,
+        )
+        for e in embed_candidates
+    ]
+    db_usage = [
+        DBUsageEvent(
+            article_id=article_id,
+            agent_name=r.agent,
+            model=r.model,
+            input_tokens=r.input_tokens,
+            output_tokens=r.output_tokens,
+            duration_ms=r.duration_ms,
+        )
+        for r in token_records
+    ]
+    db_fallbacks = [
+        DBFallbackEvent(
+            article_id=article_id,
+            agent_name=e.agent,
+            failed_model=e.failed_model,
+            error_type=e.error_type,
+            error_message=e.error_message,
+        )
+        for e in fallback_events
+    ]
+    await repo.complete(
+        article_id,
+        html=article_html or "",
+        alternative_titles=alternative_titles,
+        followup_topics=followup_topics,
+        sources=sources,
+        facts=db_facts,
+        quotes=db_quotes,
+        embed_candidates=db_embeds,
+        usage_events=db_usage,
+        fallback_events=db_fallbacks,
+        pipeline_timing=pipeline_timing,
+        errors=errors,
+        total_duration_ms=total_duration_ms,
     )
 
 
