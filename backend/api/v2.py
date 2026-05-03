@@ -8,13 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from agents._base.resilient import AllModelsFailedError, InsufficientSourcesError
 from agents.pipeline.runner import run_pipeline
-from backend.api.schemas import ArticleRequest
+from backend.api.schemas import ArticleRequest, DomainConfigUpdate
 from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
 from backend.config import AppSettings
-from backend.db.models import Org
-from backend.repositories import get_article_repo, get_org_repo
-from backend.repositories.protocols import ArticleRepository, OrgRepository
+from backend.db.models import Org, OrgConfig
+from backend.repositories import get_article_repo, get_org_config_repo, get_org_repo
+from backend.repositories.protocols import ArticleRepository, OrgConfigRepository, OrgRepository
 from backend.secrets import Secrets, get_secrets
 from domains.registry import load_domain
 
@@ -219,4 +219,61 @@ async def get_article(
             }
             for fe in article.fallback_events
         ],
+    }
+
+
+@router.get("/domain-config")
+async def get_domain_config_endpoint(
+    org: Org = Depends(get_current_org),
+    org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
+) -> dict:
+    """Return the current org's domain config. 404 if not yet configured."""
+    config = await org_config_repo.get(org.code)
+    if config is None:
+        raise HTTPException(status_code=404, detail="Domain config not found for this org")
+    return _org_config_to_dict(config)
+
+
+@router.put("/domain-config")
+async def put_domain_config_endpoint(
+    body: DomainConfigUpdate,
+    org: Org = Depends(get_current_org),
+    org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
+) -> dict:
+    """Upsert the org's domain config. Returns the saved config."""
+    config = OrgConfig(org_code=org.code, **body.model_dump())
+    saved = await org_config_repo.upsert(config)
+    return _org_config_to_dict(saved)
+
+
+def _org_config_to_dict(config: OrgConfig) -> dict:
+    return {
+        "org_code": config.org_code,
+        "description": config.description,
+        "language": config.language,
+        "target_word_count": config.target_word_count,
+        "max_facts": config.max_facts,
+        "max_quotes": config.max_quotes,
+        "search_freshness": config.search_freshness,
+        "num_queries": config.num_queries,
+        "max_results": config.max_results,
+        "min_source_signals": config.min_source_signals,
+        "max_pages_to_scrape": config.max_pages_to_scrape,
+        "youtube_search": config.youtube_search,
+        "twitter_search": config.twitter_search,
+        "facebook_search": config.facebook_search,
+        "news_search": config.news_search,
+        "tiktok_search": config.tiktok_search,
+        "instagram_search": config.instagram_search,
+        "reddit_search": config.reddit_search,
+        "media_search_languages": config.media_search_languages,
+        "media_search_num": config.media_search_num,
+        "media_search_max_query_tiers": config.media_search_max_query_tiers,
+        "youtube_sort_by_date": config.youtube_sort_by_date,
+        "reflection_context_articles": config.reflection_context_articles,
+        "guidelines": config.guidelines,
+        "html_format": config.html_format,
+        "reflection_stance": config.reflection_stance,
+        "example_articles": config.example_articles,
+        "updated_at": config.updated_at.isoformat() if config.updated_at else None,
     }
