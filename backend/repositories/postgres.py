@@ -19,6 +19,7 @@ from backend.db.models import (
     Fact,
     FallbackEvent,
     Org,
+    OrgConfig,
     Quote,
     UsageEvent,
 )
@@ -199,3 +200,20 @@ class PostgresOrgRepository:
             stmt = select(Org).where(Org.code.in_(user_org_codes)).order_by(Org.name)  # type: ignore[attr-defined]
             result = await session.execute(stmt)
             return list(result.scalars().all())
+
+
+class PostgresOrgConfigRepository:
+    def __init__(self, session_maker: async_sessionmaker[AsyncSession]) -> None:
+        self._sm = session_maker
+
+    async def get(self, org_code: str) -> OrgConfig | None:
+        async with self._sm() as session:
+            return await session.get(OrgConfig, org_code)
+
+    async def upsert(self, config: OrgConfig) -> OrgConfig:
+        config.updated_at = _utcnow()
+        async with self._sm() as session:
+            merged = await session.merge(config)
+            await session.commit()
+            await session.refresh(merged)
+            return merged

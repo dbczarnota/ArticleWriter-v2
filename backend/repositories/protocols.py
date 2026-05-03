@@ -21,6 +21,7 @@ from backend.db.models import (
     Fact,
     FallbackEvent,
     Org,
+    OrgConfig,
     Quote,
     UsageEvent,
 )
@@ -126,4 +127,16 @@ class OrgRepository(Protocol):
     async def list_for_user(self, user_org_codes: list[str]) -> list[Org]:
         """Fetch all orgs whose code appears in the user's JWT org_codes claim.
         Used for `GET /v2/orgs`. Order: by name."""
+        ...
+
+
+class OrgConfigRepository(Protocol):
+    """Domain config per org. One row per org, upserted via Settings UI."""
+
+    async def get(self, org_code: str) -> OrgConfig | None:
+        """Return config row for this org, or None if not yet configured."""
+        ...
+
+    async def upsert(self, config: OrgConfig) -> OrgConfig:
+        """Insert or replace the config row; sets updated_at to now. Returns saved row."""
         ...

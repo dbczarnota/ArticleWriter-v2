@@ -19,6 +19,7 @@ from backend.db.models import (
     Fact,
     FallbackEvent,
     Org,
+    OrgConfig,
     Quote,
     UsageEvent,
 )
@@ -159,3 +160,45 @@ class NullOrgRepository:
         if LOCAL_DEV_ORG_CODE in user_org_codes:
             return [self._local_dev]
         return []
+
+
+class NullOrgConfigRepository:
+    """Returns hardcoded styl_fm defaults for offline run.py path.
+
+    Text fields (guidelines, html_format, reflection_stance) are empty because
+    offline runs don't need them — the pipeline produces output with bare defaults.
+    """
+
+    async def get(self, org_code: str) -> OrgConfig | None:
+        return OrgConfig(
+            org_code=org_code,
+            description="Polski portal lifestyle/celebryci. Clickbait, emocje, krótkie artykuły.",
+            language="pl",
+            target_word_count=600,
+            max_facts=8,
+            max_quotes=3,
+            search_freshness="qdr:w",
+            num_queries=3,
+            max_results=5,
+            min_source_signals=4,
+            max_pages_to_scrape=10,
+            youtube_search=True,
+            twitter_search=True,
+            facebook_search=False,
+            news_search=True,
+            tiktok_search=True,
+            instagram_search=True,
+            reddit_search=True,
+            media_search_languages=["en", "pl"],
+            media_search_num=5,
+            media_search_max_query_tiers=2,
+            youtube_sort_by_date=True,
+            reflection_context_articles=2,
+            guidelines="",
+            html_format="",
+            reflection_stance="",
+            example_articles=[],
+        )
+
+    async def upsert(self, config: OrgConfig) -> OrgConfig:
+        return config
