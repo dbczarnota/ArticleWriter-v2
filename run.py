@@ -43,6 +43,7 @@ logfire.instrument_pydantic_ai()
 
 TOPIC = "Melania Trump nie wytrzymała przy królu Karolu. Upomniała męża,"
 DOMAIN = "styl_fm"
+ORG_CODE: str = os.environ.get("ORG_CODE", "__local_dev__")
 
 # Optional: paste URLs to scrape in addition to search results
 URLS: list[str] = [
@@ -71,16 +72,20 @@ async def main() -> None:
     from agents._base.config import SearchAgentConfig
     from agents.pipeline.runner import run_pipeline
     from backend.config import AppSettings
-    from domains.registry import load_domain
+    from backend.domain import get_domain_config
+    from backend.repositories.null import NullOrgConfigRepository
 
     settings = AppSettings(
         domain=DOMAIN,
         search=SearchAgentConfig(
-            max_results=10, num_queries=5, search_freshness=SEARCH_FRESHNESS or "qdr:w"
+            max_results=10, num_queries=3, search_freshness=SEARCH_FRESHNESS or "qdr:w"
         ),
     )
 
-    domain = load_domain(DOMAIN)
+    domain_repo = NullOrgConfigRepository()
+    domain = await get_domain_config(ORG_CODE, DOMAIN, domain_repo)
+    if domain is None:
+        raise RuntimeError(f"No config found for domain {DOMAIN!r} / org {ORG_CODE!r}")
 
     serper_key = os.environ["SERPER_API_KEY"]
     jina_key = os.environ.get("JINA_API_KEY")

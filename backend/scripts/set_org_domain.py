@@ -9,7 +9,7 @@ B) Create + map at once (org not yet synced from Kinde — uses Kinde Management
    API to fetch metadata, then writes the row with domain_name set).
    uv run python -m backend.scripts.set_org_domain --code org_bfe11034f908 --domain styl_fm --fetch-from-kinde
 
-Validates that --domain exists in domains/registry.py before writing.
+Domain name is stored as-is; config is stored in the org_configs table.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--domain",
         required=True,
-        help="Editorial domain name (must exist in domains/registry.py). E.g. styl_fm",
+        help="Editorial domain name. E.g. styl_fm",
     )
     p.add_argument(
         "--fetch-from-kinde",
@@ -43,22 +43,10 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-async def _validate_domain_exists(domain_name: str) -> None:
-    """Check the domain is registered in domains/registry.py — fail fast otherwise."""
-    from domains.registry import load_domain
-
-    try:
-        load_domain(domain_name)
-    except KeyError:
-        raise SystemExit(
-            f"Unknown domain: {domain_name!r}. Check domains/registry.py for known domain names."
-        ) from None
-
-
 async def main() -> None:
     args = _parse_args()
 
-    await _validate_domain_exists(args.domain)
+    # Domain config is now stored in org_configs table — no static registry to validate against.
 
     from sqlmodel import select
 

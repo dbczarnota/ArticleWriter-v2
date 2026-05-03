@@ -13,10 +13,10 @@ from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
 from backend.config import AppSettings
 from backend.db.models import Org, OrgConfig
+from backend.domain import get_domain_config
 from backend.repositories import get_article_repo, get_org_config_repo, get_org_repo
 from backend.repositories.protocols import ArticleRepository, OrgConfigRepository, OrgRepository
 from backend.secrets import Secrets, get_secrets
-from domains.registry import load_domain
 
 router = APIRouter(prefix="/v2")
 
@@ -27,6 +27,7 @@ async def write_article(
     cfg: Secrets = Depends(get_secrets),
     user: AuthenticatedUser = Depends(get_current_user),
     org: Org = Depends(get_current_org),
+    org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ) -> dict:
     """Generate an article and persist it under the authenticated user's org.
 
@@ -41,13 +42,12 @@ async def write_article(
         from dataclasses import replace
 
         app_settings = replace(app_settings, domain=org.domain_name)
-    try:
-        domain = load_domain(org.domain_name)
-    except KeyError as exc:
+    domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
+    if domain is None:
         raise HTTPException(
-            status_code=500,
-            detail=f"Org maps to unknown domain '{org.domain_name}'",
-        ) from exc
+            status_code=412,
+            detail=f"No domain config found for org '{org.code}'. Run seed script or configure via PUT /v2/domain-config.",
+        )
     try:
         result = await run_pipeline(
             req.topic,
