@@ -27,8 +27,8 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, String
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, DateTime, ForeignKey, Index, String, text
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -258,3 +258,59 @@ class FallbackEvent(SQLModel, table=True):
     )
 
     article: Article = Relationship(back_populates="fallback_events")
+
+
+class OrgConfig(SQLModel, table=True):
+    __tablename__ = "org_configs"  # type: ignore[assignment]
+
+    org_code: str = Field(
+        sa_column=Column(
+            String(128),
+            ForeignKey("orgs.code", ondelete="CASCADE"),
+            primary_key=True,
+        )
+    )
+    description: str = Field(default="")
+    language: str = Field(default="pl", max_length=16)
+    target_word_count: int = Field(default=600)
+    max_facts: int = Field(default=8)
+    max_quotes: int = Field(default=3)
+    search_freshness: str = Field(default="qdr:w", max_length=32)
+    num_queries: int = Field(default=3)
+    max_results: int = Field(default=5)
+    min_source_signals: int = Field(default=1)
+    max_pages_to_scrape: int = Field(default=10)
+    youtube_search: bool = Field(default=False)
+    twitter_search: bool = Field(default=False)
+    facebook_search: bool = Field(default=False)
+    news_search: bool = Field(default=False)
+    tiktok_search: bool = Field(default=False)
+    instagram_search: bool = Field(default=False)
+    reddit_search: bool = Field(default=False)
+    media_search_languages: list[str] = Field(
+        default_factory=lambda: ["en"],
+        sa_column=Column(
+            ARRAY(String()),
+            nullable=False,
+            server_default=text("ARRAY['en'::text]"),
+        ),
+    )
+    media_search_num: int = Field(default=5)
+    media_search_max_query_tiers: int = Field(default=2)
+    youtube_sort_by_date: bool = Field(default=True)
+    reflection_context_articles: int = Field(default=2)
+    guidelines: str = Field(default="")
+    html_format: str = Field(default="")
+    reflection_stance: str = Field(default="")
+    example_articles: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(
+            ARRAY(String()),
+            nullable=False,
+            server_default=text("ARRAY[]::text[]"),
+        ),
+    )
+    updated_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()")),
+    )
