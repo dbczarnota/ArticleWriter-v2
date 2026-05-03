@@ -59,6 +59,7 @@ class PostgresArticleRepository:
         self,
         article_id: UUID,
         *,
+        status: str = "done",
         html: str,
         alternative_titles: list[str],
         followup_topics: list[str],
@@ -76,7 +77,7 @@ class PostgresArticleRepository:
             article = await session.get(Article, article_id)
             if article is None:
                 raise LookupError(f"Article {article_id} not found")
-            article.status = "done"
+            article.status = status
             article.html = html
             article.alternative_titles = alternative_titles
             article.followup_topics = followup_topics

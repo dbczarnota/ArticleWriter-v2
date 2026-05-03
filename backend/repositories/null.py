@@ -57,6 +57,7 @@ class NullArticleRepository:
         self,
         article_id: UUID,
         *,
+        status: str = "done",
         html: str,
         alternative_titles: list[str],
         followup_topics: list[str],
@@ -71,9 +72,10 @@ class NullArticleRepository:
         total_duration_ms: float,
     ) -> None:
         _log.info(
-            "[null-repo] complete article_id=%s html_len=%d facts=%d quotes=%d "
+            "[null-repo] complete article_id=%s status=%s html_len=%d facts=%d quotes=%d "
             "embeds=%d usage=%d fallbacks=%d duration_ms=%.0f",
             article_id,
+            status,
             len(html),
             len(facts),
             len(quotes),

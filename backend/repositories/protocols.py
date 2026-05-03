@@ -52,6 +52,7 @@ class ArticleRepository(Protocol):
         self,
         article_id: UUID,
         *,
+        status: str = "done",
         html: str,
         alternative_titles: list[str],
         followup_topics: list[str],
@@ -65,10 +66,11 @@ class ArticleRepository(Protocol):
         errors: list[dict[str, str]],
         total_duration_ms: float,
     ) -> None:
-        """Mark article as `done` and attach all child rows.
+        """Persist the full article + child rows; set status (default 'done').
 
-        The Fact/Quote/etc. instances must NOT have article_id set; the repo
-        injects it. The repo also sets each child's id (UUID) if not set.
+        Pass status='failed' when stages reported errors but the pipeline still
+        produced output; status='done' when fully clean. The Fact/Quote/etc.
+        instances must NOT have article_id set; the repo injects it.
         """
         ...
 

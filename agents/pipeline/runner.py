@@ -378,6 +378,17 @@ async def _run_pipeline_inner(
             min_required=settings.pipeline.min_source_signals,
         ):
             log.error("guardrail", RuntimeError("insufficient_sources"))
+            await _article_repo.mark_failed(
+                _article_id,
+                error_status="insufficient_sources",
+                errors=_errors,
+                insufficient_sources_detail={
+                    "facts_count": len(extraction.facts),
+                    "quotes_count": len(extraction.quotes),
+                    "min_required": settings.pipeline.min_source_signals,
+                    "upstream_errors": list(_errors),
+                },
+            )
             raise InsufficientSourcesError(
                 facts_count=len(extraction.facts),
                 quotes_count=len(extraction.quotes),
@@ -513,6 +524,7 @@ async def _run_pipeline_inner(
                     total_duration_ms=_total_ms,
                     token_records=_token_records,
                     fallback_events=get_fallback_events(),
+                    status="failed" if _errors else "done",
                 )
                 return dc_replace(
                     result,
@@ -579,6 +591,7 @@ async def _run_pipeline_inner(
         total_duration_ms=_total_ms,
         token_records=_token_records,
         fallback_events=get_fallback_events(),
+        status="failed" if _errors else "done",
     )
     return ArticleOutput(
         html=article.html,
@@ -631,6 +644,7 @@ async def _persist_article_done(
     total_duration_ms: float,
     token_records,
     fallback_events,
+    status: str = "done",
 ) -> None:
     """Translate agent-level types to DB rows and persist the completed Article.
 
@@ -714,6 +728,7 @@ async def _persist_article_done(
     ]
     await repo.complete(
         article_id,
+        status=status,
         html=article_html or "",
         alternative_titles=alternative_titles,
         followup_topics=followup_topics,
