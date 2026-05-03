@@ -85,8 +85,10 @@ async def get_current_org(
     1. Verify org_code is in user.org_codes (the JWT claim) — else 403.
        This is the tenant-isolation gate: a user cannot pivot to an org they
        don't belong to even if they happen to know its code.
-    2. Look the org up via OrgRepository — else 404 (org synced from Kinde
-       in Phase E, or seeded for local-dev via NullOrgRepository).
+    2. Look the org up via OrgRepository.
+       - If absent AND AUTH_BACKEND=kinde: try to bootstrap it from Kinde
+         Management API (sync_org_from_kinde). After sync, re-fetch.
+       - If still absent: 404.
     3. Refuse if org has no domain_name yet — operator must run
        backend.scripts.set_org_domain to map it (412 Precondition Failed).
 
@@ -103,6 +105,12 @@ async def get_current_org(
             detail=f"User does not belong to org '{org_code}'",
         )
     org = await org_repo.get(org_code)
+    if org is None and get_auth_backend() == "kinde":
+        # Bootstrap from Kinde on first request for this org_code.
+        from backend.services.org_sync import sync_org_from_kinde
+
+        if await sync_org_from_kinde(org_code, org_repo):
+            org = await org_repo.get(org_code)
     if org is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
