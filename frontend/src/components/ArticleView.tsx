@@ -6,10 +6,11 @@ import { CollapsibleSection } from "./CollapsibleSection";
 interface ArticleViewProps {
   articleId: string;
   currentUserId?: string;
+  onMarkDone?: (id: string, done: boolean) => Promise<void>;
 }
 
-export function ArticleView({ articleId, currentUserId }: ArticleViewProps) {
-  const { fetchArticle, markDone } = useArticles();
+export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleViewProps) {
+  const { fetchArticle } = useArticles();
   const [article, setArticle] = useState<Article | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,12 +101,16 @@ export function ArticleView({ articleId, currentUserId }: ArticleViewProps) {
               <input
                 type="checkbox"
                 checked={article.marked_done}
-                onChange={(e) => {
+                onChange={async (e) => {
                   const done = e.target.checked;
                   setArticle((a) => a ? { ...a, marked_done: done } : a);
-                  markDone(article.id, done);
+                  try {
+                    await onMarkDone?.(article.id, done);
+                  } catch {
+                    setArticle((a) => a ? { ...a, marked_done: !done } : a);
+                  }
                 }}
-                style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
+                style={{ width: 14, height: 14, accentColor: "#22c55e", cursor: "pointer" }}
               />
               <span style={{ fontWeight: article.marked_done ? 600 : 400, color: article.marked_done ? "#22c55e" : "var(--muted)" }}>
                 {article.marked_done ? "Done ✓" : "Done"}

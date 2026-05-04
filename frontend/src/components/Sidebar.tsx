@@ -132,6 +132,19 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
                 </div>
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, display: "flex", gap: 6, alignItems: "center" }}>
                   <span>{a.created_at ? new Date(a.created_at).toLocaleDateString("pl") : "—"}</span>
+                  {a.marked_done && (
+                    <span style={{
+                      background: "#22c55e",
+                      color: "#fff",
+                      borderRadius: 3,
+                      padding: "0 4px",
+                      fontSize: 10,
+                      fontWeight: 600,
+                      lineHeight: "16px",
+                    }}>
+                      ✓ Done
+                    </span>
+                  )}
                   {isMine && (
                     <span style={{
                       background: "var(--accent)",

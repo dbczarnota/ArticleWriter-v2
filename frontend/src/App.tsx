@@ -17,7 +17,7 @@ export default function App() {
   const [view, setView] = useState<View>("list");
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [newFormKey, setNewFormKey] = useState(0);
-  const { articles, loading, refresh } = useArticles();
+  const { articles, loading, refresh, markDone } = useArticles();
 
   if (!NULL_AUTH) {
     if (isLoading) return <div style={{ padding: 32 }}>Ładowanie…</div>;
@@ -47,7 +47,11 @@ export default function App() {
             </p>
           )}
           {view === "article" && selectedArticleId && (
-            <ArticleView articleId={selectedArticleId} currentUserId={user?.id ?? undefined} />
+            <ArticleView
+              articleId={selectedArticleId}
+              currentUserId={user?.id ?? undefined}
+              onMarkDone={markDone}
+            />
           )}
           {view === "new" && (
             <NewArticleForm
