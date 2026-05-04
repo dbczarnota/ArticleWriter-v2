@@ -86,6 +86,7 @@ async def run_reflection_agent(
             sys_prompt = render_prompt(
                 _PROMPTS_DIR / "reflection.j2",
                 domain_name=domain.name,
+                language=domain.language,
                 guidelines=domain.guidelines,
                 reflection_stance=domain.reflection_stance,
                 target_word_count=domain.target_word_count,
