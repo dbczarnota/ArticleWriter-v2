@@ -16,6 +16,7 @@ export default function App() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [view, setView] = useState<View>("list");
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+  const [newFormKey, setNewFormKey] = useState(0);
   const { articles, loading, refresh } = useArticles();
 
   if (!NULL_AUTH) {
@@ -36,7 +37,7 @@ export default function App() {
           articles={articles}
           selectedId={selectedArticleId}
           onSelect={selectArticle}
-          onNew={() => setView("new")}
+          onNew={() => { setNewFormKey((k) => k + 1); setView("new"); }}
           currentUserId={user?.id ?? undefined}
         />
         <main style={{ flex: 1, overflow: "auto", padding: 24 }}>
@@ -50,6 +51,7 @@ export default function App() {
           )}
           {view === "new" && (
             <NewArticleForm
+              key={newFormKey}
               onCreated={(id) => {
                 refresh();
                 selectArticle(id);
