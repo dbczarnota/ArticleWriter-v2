@@ -1,4 +1,5 @@
 import { UserMenu } from "./UserMenu";
+import { Logo } from "./Logo";
 
 interface TopbarProps {
   onSettings: () => void;
@@ -18,7 +19,7 @@ export function Topbar({ onSettings }: TopbarProps) {
       top: 0,
       zIndex: 50,
     }}>
-      <span style={{ fontWeight: 600, fontSize: 15 }}>ArticleWriter</span>
+      <Logo />
       <UserMenu onSettings={onSettings} />
     </header>
   );

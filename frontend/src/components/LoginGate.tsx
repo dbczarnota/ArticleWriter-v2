@@ -1,4 +1,5 @@
 import { useAuth } from "../lib/useAuth";
+import { Logo } from "./Logo";
 
 export function LoginGate() {
   const { login } = useAuth();
@@ -11,7 +12,7 @@ export function LoginGate() {
       minHeight: "100vh",
       gap: 24,
     }}>
-      <h1 style={{ fontSize: 24, fontWeight: 600 }}>ArticleWriter</h1>
+      <Logo size="lg" />
       <p style={{ color: "var(--muted)" }}>Zaloguj się, aby kontynuować</p>
       <button
         onClick={() => login()}
