@@ -1,3 +1,12 @@
+# BuildKit's SecretsUsedInArgOrEnv heuristic flags any ARG whose name contains
+# "AUTH"/"KINDE" as a potential secret. Our four ARGs below are *public* SPA
+# credentials (Kinde public client_id, domain, audience, plus a "kinde"/"null"
+# auth-backend enum) — they MUST end up in the JS bundle to make OAuth work in
+# the browser, and Kinde itself documents them as non-sensitive. Disabling this
+# specific check; secret rotation is not a defence here because they're not
+# secrets.
+# check=skip=SecretsUsedInArgOrEnv
+
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY frontend/package*.json ./
