@@ -38,16 +38,19 @@ spec:
                 secretKeyRef:
                   name: headlinesforge-secrets
                   key: OPENAI_API_KEY
+                  optional: true
             - name: GROQ_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: headlinesforge-secrets
                   key: GROQ_API_KEY
+                  optional: true
             - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: headlinesforge-secrets
                   key: OPENROUTER_API_KEY
+                  optional: true
             - name: SERPER_API_KEY
               valueFrom:
                 secretKeyRef:
