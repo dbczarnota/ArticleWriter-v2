@@ -148,25 +148,13 @@ class NullOrgRepository:
             updated_at=datetime.now(UTC),
         )
 
-    async def upsert_from_kinde(
-        self,
-        *,
-        kinde_org_id: str,
-        code: str,
-        name: str,
-        domain_name: str,
-    ) -> Org:
-        _log.info(
-            "[null-repo] upsert_from_kinde kinde_id=%s code=%s domain=%s",
-            kinde_org_id,
-            code,
-            domain_name,
-        )
+    async def create_from_jwt(self, *, code: str, name: str) -> Org:
+        _log.info("[null-repo] create_from_jwt code=%s name=%r", code, name)
         return Org(
             code=code,
-            domain_name=domain_name,
+            domain_name=code,
             name=name,
-            kinde_org_id=kinde_org_id,
+            kinde_org_id=code,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )

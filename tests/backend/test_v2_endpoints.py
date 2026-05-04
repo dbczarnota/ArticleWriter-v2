@@ -76,7 +76,7 @@ class _StubOrgRepo:
     async def list_for_user(self, user_org_codes: list[str]) -> list[Org]:
         return [self._by_code[c] for c in user_org_codes if c in self._by_code]
 
-    async def upsert_from_kinde(self, **_kw):  # pragma: no cover
+    async def create_from_jwt(self, **_kw) -> Org:  # pragma: no cover
         raise NotImplementedError
 
 

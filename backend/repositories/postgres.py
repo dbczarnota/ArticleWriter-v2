@@ -190,33 +190,16 @@ class PostgresOrgRepository:
     def __init__(self, session_maker: async_sessionmaker[AsyncSession]) -> None:
         self._session_maker = session_maker
 
-    async def upsert_from_kinde(
-        self,
-        *,
-        kinde_org_id: str,
-        code: str,
-        name: str,
-        domain_name: str,
-    ) -> Org:
+    async def create_from_jwt(self, *, code: str, name: str) -> Org:
         async with self._session_maker() as session:
-            stmt = select(Org).where(Org.kinde_org_id == kinde_org_id)
-            result = await session.execute(stmt)
-            existing = result.scalar_one_or_none()
-            if existing is None:
-                org = Org(
-                    code=code,
-                    domain_name=domain_name,
-                    name=name,
-                    kinde_org_id=kinde_org_id,
-                )
-                session.add(org)
-            else:
-                existing.name = name
-                existing.domain_name = domain_name
-                org = existing
+            existing = await session.get(Org, code)
+            if existing is not None:
+                return existing
+            org = Org(code=code, kinde_org_id=code, name=name, domain_name=code)
+            session.add(org)
             await session.commit()
             await session.refresh(org)
-        return org
+            return org
 
     async def get(self, code: str) -> Org | None:
         async with self._session_maker() as session:

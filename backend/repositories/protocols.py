@@ -119,20 +119,15 @@ class ArticleRepository(Protocol):
 
 
 class OrgRepository(Protocol):
-    """Org CRUD. Synced from Kinde via Management API."""
+    """Org CRUD. Rows are bootstrapped from JWT claims at first request."""
 
-    async def upsert_from_kinde(
-        self,
-        *,
-        kinde_org_id: str,
-        code: str,
-        name: str,
-        domain_name: str,
-    ) -> Org:
-        """Create or update an org row keyed by kinde_org_id.
+    async def create_from_jwt(self, *, code: str, name: str) -> Org:
+        """Insert an org bootstrapped from JWT claims if absent. Idempotent.
 
-        On insert: all fields populated. On update: name and domain_name refreshed.
-        Returns the persisted Org instance.
+        Returns the existing row when one already exists (no name overwrite —
+        the user owns the field via Settings UI). On insert, `kinde_org_id` and
+        `domain_name` both default to `code` so a single Kinde org code is
+        sufficient bootstrap input — no Management API call needed.
         """
         ...
 

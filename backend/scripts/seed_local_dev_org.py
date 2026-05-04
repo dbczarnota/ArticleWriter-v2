@@ -21,7 +21,7 @@ load_dotenv()
 async def main() -> None:
     # Imports happen after load_dotenv() so DATABASE_URL is in env.
     from backend.database import get_session_maker
-    from backend.repositories.null import LOCAL_DEV_DOMAIN, LOCAL_DEV_ORG_CODE
+    from backend.repositories.null import LOCAL_DEV_ORG_CODE
     from backend.repositories.postgres import PostgresOrgRepository
 
     sm = get_session_maker()
@@ -31,15 +31,10 @@ async def main() -> None:
             "DB_BACKEND=null to skip persistence entirely."
         )
     repo = PostgresOrgRepository(sm)
-    org = await repo.upsert_from_kinde(
-        kinde_org_id="kinde_local_dev",
-        code=LOCAL_DEV_ORG_CODE,
-        name="Local Dev",
-        domain_name=LOCAL_DEV_DOMAIN,
-    )
+    org = await repo.create_from_jwt(code=LOCAL_DEV_ORG_CODE, name="Local Dev")
     print(
-        f"OK — org '{org.code}' (domain={org.domain_name}, kinde_id={org.kinde_org_id}) "
-        f"present in DB. run.py with DB_BACKEND=postgres will now persist."
+        f"OK — org '{org.code}' (domain={org.domain_name}) present in DB. "
+        "run.py with DB_BACKEND=postgres will now persist."
     )
 
 

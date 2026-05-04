@@ -110,27 +110,20 @@ async def test_org_upsert_creates_then_updates(session_maker):
     from backend.repositories.postgres import PostgresOrgRepository
 
     repo = PostgresOrgRepository(session_maker)
-    org = await repo.upsert_from_kinde(
-        kinde_org_id="org_test1",
-        code="org_test1",
-        name="Test Org",
-        domain_name="styl_fm",
-    )
+    org = await repo.create_from_jwt(code="org_test1", name="Test Org")
     assert org.code == "org_test1"
     assert org.name == "Test Org"
+    assert org.domain_name == "org_test1"  # auto-mapped to code
+    assert org.kinde_org_id == "org_test1"
 
-    # Update path
-    org2 = await repo.upsert_from_kinde(
-        kinde_org_id="org_test1",
-        code="org_test1",
-        name="Test Org Renamed",
-        domain_name="styl_fm",
-    )
-    assert org2.name == "Test Org Renamed"
+    # Idempotent: second call with a different name returns the existing row
+    # unchanged. Names are user-owned via Settings UI.
+    org2 = await repo.create_from_jwt(code="org_test1", name="Renamed In Kinde")
+    assert org2.name == "Test Org"
 
     fetched = await repo.get("org_test1")
     assert fetched is not None
-    assert fetched.name == "Test Org Renamed"
+    assert fetched.name == "Test Org"
 
 
 async def test_article_lifecycle_create_complete_get(session_maker):
@@ -138,12 +131,7 @@ async def test_article_lifecycle_create_complete_get(session_maker):
     from backend.repositories.postgres import PostgresArticleRepository, PostgresOrgRepository
 
     org_repo = PostgresOrgRepository(session_maker)
-    await org_repo.upsert_from_kinde(
-        kinde_org_id="org_a",
-        code="org_a",
-        name="Org A",
-        domain_name="styl_fm",
-    )
+    await org_repo.create_from_jwt(code="org_a", name="Org A")
 
     repo = PostgresArticleRepository(session_maker)
     article_id = await repo.create_running(
@@ -199,12 +187,8 @@ async def test_article_tenant_isolation(session_maker):
     from backend.repositories.postgres import PostgresArticleRepository, PostgresOrgRepository
 
     org_repo = PostgresOrgRepository(session_maker)
-    await org_repo.upsert_from_kinde(
-        kinde_org_id="org_a", code="org_a", name="Org A", domain_name="styl_fm"
-    )
-    await org_repo.upsert_from_kinde(
-        kinde_org_id="org_b", code="org_b", name="Org B", domain_name="styl_fm"
-    )
+    await org_repo.create_from_jwt(code="org_a", name="Org A")
+    await org_repo.create_from_jwt(code="org_b", name="Org B")
 
     repo = PostgresArticleRepository(session_maker)
     a_id = await repo.create_running(
@@ -228,9 +212,7 @@ async def test_mark_failed_records_status_and_detail(session_maker):
     from backend.repositories.postgres import PostgresArticleRepository, PostgresOrgRepository
 
     org_repo = PostgresOrgRepository(session_maker)
-    await org_repo.upsert_from_kinde(
-        kinde_org_id="org_x", code="org_x", name="Org X", domain_name="styl_fm"
-    )
+    await org_repo.create_from_jwt(code="org_x", name="Org X")
 
     repo = PostgresArticleRepository(session_maker)
     article_id = await repo.create_running(
@@ -263,12 +245,7 @@ async def test_orgconfig_create_default_inserts_row_with_model_defaults(session_
     )
 
     org_repo = PostgresOrgRepository(session_maker)
-    await org_repo.upsert_from_kinde(
-        kinde_org_id="org_cfg_new",
-        code="org_cfg_new",
-        name="New",
-        domain_name="org_cfg_new",
-    )
+    await org_repo.create_from_jwt(code="org_cfg_new", name="New")
 
     cfg_repo = PostgresOrgConfigRepository(session_maker)
     cfg = await cfg_repo.create_default("org_cfg_new")
@@ -289,12 +266,7 @@ async def test_orgconfig_create_default_is_idempotent(session_maker):
     )
 
     org_repo = PostgresOrgRepository(session_maker)
-    await org_repo.upsert_from_kinde(
-        kinde_org_id="org_cfg_idem",
-        code="org_cfg_idem",
-        name="Idem",
-        domain_name="org_cfg_idem",
-    )
+    await org_repo.create_from_jwt(code="org_cfg_idem", name="Idem")
 
     cfg_repo = PostgresOrgConfigRepository(session_maker)
     first = await cfg_repo.create_default("org_cfg_idem")

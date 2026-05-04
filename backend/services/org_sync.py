@@ -53,14 +53,7 @@ async def sync_org_from_kinde(org_code: str, org_repo: OrgRepository) -> bool:
     if kinde_org is None:
         _log.warning("Kinde does not have an organization with code=%s", org_code)
         return False
-    # We pass empty domain_name; PostgresOrgRepository.upsert_from_kinde stores it
-    # as the new value if the row is new, or preserves it on update.
-    await org_repo.upsert_from_kinde(
-        kinde_org_id=kinde_org.code,
-        code=kinde_org.code,
-        name=kinde_org.name,
-        domain_name="",  # operator must set via CLI; get_current_org returns 412 until then
-    )
+    await org_repo.create_from_jwt(code=kinde_org.code, name=kinde_org.name)
     _log.info("Synced org from Kinde: code=%s name=%r", kinde_org.code, kinde_org.name)
     return True
 
