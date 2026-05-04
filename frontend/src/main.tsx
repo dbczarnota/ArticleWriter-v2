@@ -14,11 +14,11 @@ const kindeProps = NULL_AUTH
       logoutUri: window.location.origin,
     }
   : {
-      clientId: import.meta.env.VITE_KINDE_CLIENT_ID,
-      domain: import.meta.env.VITE_KINDE_DOMAIN,
-      redirectUri: import.meta.env.VITE_KINDE_REDIRECT_URI,
-      logoutUri: import.meta.env.VITE_KINDE_LOGOUT_URI,
-      audience: import.meta.env.VITE_KINDE_AUDIENCE,
+      clientId: "5167f046636b4fa4a04c157b7105b9fc",
+      domain: "https://scripts.kinde.com",
+      redirectUri: window.location.origin,
+      logoutUri: window.location.origin,
+      audience: "articlewriter-api",
     };
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
