@@ -1,23 +1,42 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApi } from "./useApi";
 import type { Article, ArticleListItem } from "../types";
 
 export function useArticles() {
-  const { request } = useApi();
+  const { request, authReady } = useApi();
   const [articles, setArticles] = useState<ArticleListItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const data = await request<ArticleListItem[]>("/v2/articles");
       setArticles(data);
+      return data;
     } finally {
       setLoading(false);
     }
   }, [request]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { if (authReady) refresh(); }, [authReady, refresh]);
+
+  // Poll every 4 s while any article is still running
+  useEffect(() => {
+    const hasRunning = articles.some((a) => a.status === "running");
+    if (hasRunning && !pollingRef.current) {
+      pollingRef.current = setInterval(() => { refresh(); }, 4000);
+    } else if (!hasRunning && pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, [articles, refresh]);
 
   async function fetchArticle(id: string): Promise<Article> {
     return request<Article>(`/v2/articles/${id}`);

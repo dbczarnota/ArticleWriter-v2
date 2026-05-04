@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { ArticleListItem } from "../types";
 
 const STATUS_DOT: Record<string, string> = {
@@ -12,9 +13,16 @@ interface SidebarProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onNew: () => void;
+  currentUserId?: string;
 }
 
-export function Sidebar({ articles, selectedId, onSelect, onNew }: SidebarProps) {
+export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }: SidebarProps) {
+  const [onlyMine, setOnlyMine] = useState(false);
+
+  const visible = onlyMine && currentUserId
+    ? articles.filter((a) => a.author_user_id === currentUserId)
+    : articles;
+
   return (
     <aside style={{
       width: "var(--sidebar-width)",
@@ -49,46 +57,84 @@ export function Sidebar({ articles, selectedId, onSelect, onNew }: SidebarProps)
           + Nowy
         </button>
       </div>
-      <div style={{ overflowY: "auto", flex: 1 }}>
-        {articles.length === 0 && (
-          <p style={{ padding: 16, color: "var(--muted)", fontSize: 13 }}>Brak artykułów</p>
-        )}
-        {articles.map((a) => (
+
+      {currentUserId && (
+        <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)" }}>
           <button
-            key={a.id}
-            onClick={() => onSelect(a.id)}
+            onClick={() => setOnlyMine((v) => !v)}
             style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 10,
-              width: "100%",
-              padding: "10px 12px",
-              background: a.id === selectedId ? "var(--accent-lt)" : "transparent",
-              borderLeft: a.id === selectedId ? "3px solid var(--accent)" : "3px solid transparent",
-              border: "none",
-              borderBottom: "1px solid var(--border)",
-              textAlign: "left",
+              background: onlyMine ? "var(--accent)" : "transparent",
+              color: onlyMine ? "var(--white)" : "var(--muted)",
+              border: `1px solid ${onlyMine ? "var(--accent)" : "var(--border)"}`,
+              borderRadius: "var(--radius)",
+              padding: "3px 8px",
+              fontSize: 11,
+              fontWeight: 500,
               cursor: "pointer",
             }}
           >
-            <span style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: STATUS_DOT[a.status] ?? "#94a3b8",
-              flexShrink: 0,
-              marginTop: 5,
-            }} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {a.topic}
-              </div>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                {a.created_at ? new Date(a.created_at).toLocaleDateString("pl") : "—"}
-              </div>
-            </div>
+            Tylko moje
           </button>
-        ))}
+        </div>
+      )}
+
+      <div style={{ overflowY: "auto", flex: 1 }}>
+        {visible.length === 0 && (
+          <p style={{ padding: 16, color: "var(--muted)", fontSize: 13 }}>Brak artykułów</p>
+        )}
+        {visible.map((a) => {
+          const isMine = currentUserId && a.author_user_id === currentUserId;
+          const isSelected = a.id === selectedId;
+          return (
+            <button
+              key={a.id}
+              onClick={() => onSelect(a.id)}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 10,
+                width: "100%",
+                padding: "10px 12px",
+                background: isSelected ? "var(--accent-lt)" : isMine ? "#fff9f5" : "transparent",
+                borderLeft: isSelected ? "3px solid var(--accent)" : "3px solid transparent",
+                border: "none",
+                borderBottom: "1px solid var(--border)",
+                textAlign: "left",
+                cursor: "pointer",
+              }}
+            >
+              <span style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: STATUS_DOT[a.status] ?? "#94a3b8",
+                flexShrink: 0,
+                marginTop: 5,
+              }} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {a.topic}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, display: "flex", gap: 6, alignItems: "center" }}>
+                  <span>{a.created_at ? new Date(a.created_at).toLocaleDateString("pl") : "—"}</span>
+                  {isMine && (
+                    <span style={{
+                      background: "var(--accent)",
+                      color: "var(--white)",
+                      borderRadius: 3,
+                      padding: "0 4px",
+                      fontSize: 10,
+                      fontWeight: 600,
+                      lineHeight: "16px",
+                    }}>
+                      Moje
+                    </span>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
       </div>
     </aside>
   );

@@ -15,13 +15,44 @@ export function ArticleView({ articleId }: ArticleViewProps) {
   useEffect(() => {
     setArticle(null);
     setError(null);
-    fetchArticle(articleId)
-      .then(setArticle)
-      .catch((e: Error) => setError(e.message));
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    async function load() {
+      try {
+        const a = await fetchArticle(articleId);
+        if (cancelled) return;
+        setArticle(a);
+        if (a.status === "running") {
+          timer = setTimeout(load, 4000);
+        }
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [articleId]);
 
   if (error) return <p style={{ color: "#ef4444" }}>Błąd: {error}</p>;
   if (!article) return <p style={{ color: "var(--muted)" }}>Ładowanie…</p>;
+
+  if (article.status === "running") {
+    return (
+      <div>
+        <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>{article.topic}</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--muted)", fontSize: 14 }}>
+          <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid var(--accent)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          Generowanie artykułu…
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   const usedFacts = article.facts.filter((f) => f.was_used);
   const rejectedFacts = article.facts.filter((f) => !f.was_used);
@@ -52,7 +83,7 @@ export function ArticleView({ articleId }: ArticleViewProps) {
   );
 
   return (
-    <div style={{ maxWidth: 820 }}>
+    <div>
       {/* Toolbar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
         <h2 style={{ fontSize: 18, fontWeight: 600 }}>{article.topic}</h2>

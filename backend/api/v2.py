@@ -4,7 +4,7 @@ from __future__ import annotations
 import dataclasses
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from agents._base.resilient import AllModelsFailedError, InsufficientSourcesError
 from agents.pipeline.runner import run_pipeline
@@ -21,35 +21,68 @@ from backend.secrets import Secrets, get_secrets
 router = APIRouter(prefix="/v2")
 
 
-@router.post("/write_article")
+@router.post("/write_article", status_code=202)
 async def write_article(
     req: ArticleRequest,
+    background_tasks: BackgroundTasks,
     cfg: Secrets = Depends(get_secrets),
     user: AuthenticatedUser = Depends(get_current_user),
     org: Org = Depends(get_current_org),
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
+    article_repo: ArticleRepository = Depends(get_article_repo),
 ) -> dict:
-    """Generate an article and persist it under the authenticated user's org.
+    """Start article generation in the background and return immediately.
 
-    Auth: Authorization: Bearer <jwt> + X-Org-Code header.
-    Tenant: org.domain_name (resolved from X-Org-Code via DB) overrides any
-    domain in the request body — operators cannot pivot to other editorial
-    brands by request payload.
+    Returns 202 Accepted with {id, status, topic} so the frontend can navigate
+    to the article and poll GET /v2/articles/{id} until status != 'running'.
     """
-    # Build settings from request body, then force-override domain to the org's domain.
     app_settings = AppSettings.from_request(req)
     if app_settings.domain != org.domain_name:
         from dataclasses import replace
-
         app_settings = replace(app_settings, domain=org.domain_name)
+
     domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
     if domain is None:
         raise HTTPException(
             status_code=412,
             detail=f"No domain config found for org '{org.code}'. Run seed script or configure via PUT /v2/domain-config.",
         )
+
+    article_id = await article_repo.create_running(
+        org_code=org.code,
+        author_user_id=user.id,
+        domain_name=org.domain_name,
+        topic=req.topic,
+    )
+
+    background_tasks.add_task(
+        _run_pipeline_background,
+        article_id=article_id,
+        req=req,
+        app_settings=app_settings,
+        domain=domain,
+        cfg=cfg,
+        org_code=org.code,
+        author_user_id=user.id,
+    )
+
+    return {"id": str(article_id), "status": "running", "topic": req.topic}
+
+
+async def _run_pipeline_background(
+    *,
+    article_id: UUID,
+    req: ArticleRequest,
+    app_settings: AppSettings,
+    domain,
+    cfg: Secrets,
+    org_code: str,
+    author_user_id: str,
+) -> None:
+    """Run the pipeline and persist the result. Errors are swallowed here —
+    runner already marks the article as failed in the DB on exceptions."""
     try:
-        result = await run_pipeline(
+        await run_pipeline(
             req.topic,
             settings=app_settings,
             domain=domain,
@@ -57,29 +90,12 @@ async def write_article(
             jina_api_key=cfg.jina_api_key,
             urls=req.urls or None,
             additional_instructions=req.additional_instructions,
-            org_code=org.code,
-            author_user_id=user.id,
+            org_code=org_code,
+            author_user_id=author_user_id,
+            _article_id=article_id,
         )
-    except InsufficientSourcesError as exc:
-        # 422 unprocessable: pipeline ran but couldn't gather enough source material
-        # to ground the article (Serper/Jina credit issues, all sources rejected, etc.).
-        # Refusing to return a hallucinated article is the correct behavior.
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error": "insufficient_sources",
-                "message": str(exc),
-                "facts_count": exc.facts_count,
-                "quotes_count": exc.quotes_count,
-                "min_required": exc.min_required,
-                "upstream_errors": exc.upstream_errors,
-            },
-        ) from exc
-    except AllModelsFailedError as exc:
-        raise HTTPException(status_code=503, detail=f"All LLM models failed: {exc}") from exc
-    d = dataclasses.asdict(result)
-    d["id"] = d.pop("article_id")
-    return d
+    except Exception:
+        pass  # runner handles DB failure marking internally
 
 
 @router.get("/me")

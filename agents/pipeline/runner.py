@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import time
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+from uuid import UUID
 
 import logfire
 
@@ -38,6 +39,7 @@ async def run_pipeline(
     debug: bool = False,
     org_code: str = "__local_dev__",
     author_user_id: str = "local-dev",
+    _article_id: UUID | None = None,
 ) -> ArticleOutput:
     """Pipeline entry. `org_code` + `author_user_id` are persistence context;
     they identify which Kinde org owns the article and which user authored it.
@@ -62,6 +64,7 @@ async def run_pipeline(
             debug=debug,
             org_code=org_code,
             author_user_id=author_user_id,
+            article_id=_article_id,
         )
 
 
@@ -77,6 +80,7 @@ async def _run_pipeline_inner(
     debug: bool,
     org_code: str,
     author_user_id: str,
+    article_id: UUID | None = None,
 ) -> ArticleOutput:
     from dataclasses import replace as dc_replace
 
@@ -94,13 +98,17 @@ async def _run_pipeline_inner(
 
     # Persist a 'running' Article row up-front so failures still produce a record.
     # Repo is Null when DB_BACKEND=null (run.py default), Postgres when configured.
+    # When called from the API endpoint, article_id is pre-created there (non-blocking flow).
     _article_repo = get_article_repo()
-    _article_id = await _article_repo.create_running(
-        org_code=org_code,
-        author_user_id=author_user_id,
-        domain_name=domain.name,
-        topic=topic,
-    )
+    if article_id is not None:
+        _article_id = article_id
+    else:
+        _article_id = await _article_repo.create_running(
+            org_code=org_code,
+            author_user_id=author_user_id,
+            domain_name=domain.name,
+            topic=topic,
+        )
 
     # Apply domain freshness default when the caller hasn't explicitly overridden it
     if settings.search.search_freshness == SearchAgentConfig().search_freshness:

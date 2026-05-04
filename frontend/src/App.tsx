@@ -13,7 +13,7 @@ type View = "list" | "article" | "new" | "settings";
 const NULL_AUTH = import.meta.env.VITE_AUTH_BACKEND === "null";
 
 export default function App() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [view, setView] = useState<View>("list");
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const { articles, loading, refresh } = useArticles();
@@ -37,6 +37,7 @@ export default function App() {
           selectedId={selectedArticleId}
           onSelect={selectArticle}
           onNew={() => setView("new")}
+          currentUserId={user?.id ?? undefined}
         />
         <main style={{ flex: 1, overflow: "auto", padding: 24 }}>
           {view === "list" && (

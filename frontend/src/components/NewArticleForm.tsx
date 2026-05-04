@@ -31,12 +31,13 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
         urls: urls.length > 0 ? urls : undefined,
         agents: Object.keys(agents).length > 0 ? agents : undefined,
       });
+      // Backend returns 202 immediately — navigate to article and let it poll
       onCreated(result.id);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
       setLoading(false);
     }
+    // Don't setLoading(false) on success — component unmounts when onCreated navigates away
   }
 
   const inputStyle: React.CSSProperties = {
