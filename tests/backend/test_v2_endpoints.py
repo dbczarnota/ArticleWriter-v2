@@ -295,7 +295,7 @@ def test_write_article_response_includes_id(client_as, org_a):
         client = client_as(user=user, org=org_a)
         r = client.post(
             "/v2/write_article",
-            json={"id": "req-1", "topic": "Test topic"},
+            json={"id": "req-1", "topic": "Test topic"},  # id required by current schema; removed in F3
         )
 
     assert r.status_code == 200, r.text
