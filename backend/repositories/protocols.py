@@ -44,6 +44,7 @@ class ArticleRepository(Protocol):
         org_code: str,
         author_user_id: str,
         author_email: str | None = None,
+        author_name: str | None = None,
         domain_name: str,
         topic: str,
     ) -> UUID:

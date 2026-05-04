@@ -41,6 +41,7 @@ class PostgresArticleRepository:
         org_code: str,
         author_user_id: str,
         author_email: str | None = None,
+        author_name: str | None = None,
         domain_name: str,
         topic: str,
     ) -> UUID:
@@ -48,6 +49,7 @@ class PostgresArticleRepository:
             org_code=org_code,
             author_user_id=author_user_id,
             author_email=author_email,
+            author_name=author_name,
             domain_name=domain_name,
             topic=topic,
             status="running",

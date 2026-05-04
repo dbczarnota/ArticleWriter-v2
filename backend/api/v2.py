@@ -58,6 +58,7 @@ async def write_article(
         org_code=org.code,
         author_user_id=user.id,
         author_email=user.email,
+        author_name=(req.author_name or "").strip() or None,
         domain_name=org.domain_name,
         topic=req.topic,
     )
@@ -148,6 +149,7 @@ async def list_articles(
             "domain_name": a.domain_name,
             "author_user_id": a.author_user_id,
             "author_email": a.author_email,
+            "author_name": a.author_name,
             "created_at": a.created_at.isoformat() if a.created_at else None,
             "completed_at": a.completed_at.isoformat() if a.completed_at else None,
             "total_duration_ms": a.total_duration_ms,
@@ -174,6 +176,7 @@ async def get_article(
         "org_code": article.org_code,
         "author_user_id": article.author_user_id,
         "author_email": article.author_email,
+        "author_name": article.author_name,
         "domain_name": article.domain_name,
         "topic": article.topic,
         "status": article.status,

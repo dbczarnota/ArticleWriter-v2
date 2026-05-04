@@ -131,6 +131,12 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             <span>
               {(() => {
                 const isMe = !!currentUserId && article.author_user_id === currentUserId;
+                // Prefer the explicit author_name (full name from Kinde JWT,
+                // sent by the frontend on create). Fall back to the email
+                // local-part for legacy rows. Last resort: 'Inny redaktor'.
+                if (article.author_name) {
+                  return isMe ? `${av.me} (${article.author_name})` : article.author_name;
+                }
                 if (article.author_email) {
                   const handle = article.author_email.split("@")[0];
                   return isMe ? `${av.me} (${handle})` : handle;

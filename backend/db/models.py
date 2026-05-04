@@ -94,6 +94,10 @@ class Article(SQLModel, table=True):
     author_email: str | None = Field(default=None, sa_column=Column(String(256), nullable=True))
     """Kinde user email at write time — denormalized for display; may be None for older rows."""
 
+    author_name: str | None = Field(default=None, sa_column=Column(String(256), nullable=True))
+    """Display name (given + family name from Kinde, or email fallback). Frontend
+    sends it with the create request — same pattern as marked_done_by_name."""
+
     domain_name: str = Field(max_length=64)
     """Snapshot of org.domain_name at write time. Cheap denormalization for reporting."""
 

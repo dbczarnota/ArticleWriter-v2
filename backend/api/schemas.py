@@ -14,6 +14,10 @@ class ArticleRequest(BaseModel):
     agents: dict[str, dict] = {}
     pipeline: dict[str, bool] = {}
     additional_instructions: str | None = None
+    author_name: str | None = None
+    """Display name for the author (given + family from Kinde, or email fallback).
+    Frontend computes and sends it; backend stores verbatim. Mirrors how
+    marked_done_by_name is plumbed."""
     domain_overrides: dict[str, Any] = {}
     """Per-article domain config overrides. Keys match DomainConfigUpdate field names.
     Non-empty values replace the org's saved config for this article run only."""

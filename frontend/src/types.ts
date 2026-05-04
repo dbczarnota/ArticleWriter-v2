@@ -7,6 +7,7 @@ export interface ArticleListItem {
   domain_name: string;
   author_user_id: string;
   author_email: string | null;
+  author_name: string | null;
   created_at: string | null;
   completed_at: string | null;
   total_duration_ms: number | null;

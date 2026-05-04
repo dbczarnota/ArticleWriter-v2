@@ -1,6 +1,7 @@
 // frontend/src/components/NewArticleForm.tsx
 import { useState } from "react";
 import { useArticles } from "../lib/useArticles";
+import { useAuth } from "../lib/useAuth";
 import { useT } from "../i18n";
 import { AVAILABLE_MODELS } from "./DomainConfigForm";
 
@@ -37,6 +38,7 @@ function SubSection({ label, children }: { label: string; children: React.ReactN
 
 export function NewArticleForm({ onCreated }: NewArticleFormProps) {
   const { submitArticle } = useArticles();
+  const { user } = useAuth();
   const t = useT();
   const na = t.newArticle;
 
@@ -117,12 +119,15 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
         }
       }
 
+      const author_name =
+        [user?.givenName, user?.familyName].filter(Boolean).join(" ") || user?.email || undefined;
       const result = await submitArticle({
         topic: topic.trim(),
         additional_instructions: instructions.trim() || undefined,
         urls: urls.length > 0 ? urls : undefined,
         agents: Object.keys(agents).length > 0 ? agents : undefined,
         domain_overrides: Object.keys(ov).length > 0 ? ov : undefined,
+        author_name,
       });
       setLoading(false);
       onCreated(result.id);

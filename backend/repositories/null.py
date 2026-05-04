@@ -42,16 +42,18 @@ class NullArticleRepository:
         org_code: str,
         author_user_id: str,
         author_email: str | None = None,
+        author_name: str | None = None,
         domain_name: str,
         topic: str,
     ) -> UUID:
         article_id = uuid4()
         _log.info(
-            "[null-repo] create_running article_id=%s org=%s user=%s email=%s topic=%r",
+            "[null-repo] create_running article_id=%s org=%s user=%s email=%s name=%r topic=%r",
             article_id,
             org_code,
             author_user_id,
             author_email,
+            author_name,
             topic[:80],
         )
         return article_id
