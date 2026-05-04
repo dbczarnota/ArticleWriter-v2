@@ -1,15 +1,7 @@
-// frontend/src/components/SettingsNav.tsx
-const SECTIONS = [
-  { id: "podstawowe", label: "Podstawowe" },
-  { id: "modele", label: "Wybór modeli" },
-  { id: "wyszukiwanie", label: "Wyszukiwanie" },
-  { id: "media", label: "Media search" },
-  { id: "wytyczne", label: "Wytyczne redakcyjne" },
-  { id: "html", label: "Format HTML" },
-  { id: "stance", label: "Recenzent" },
-  { id: "tytuly", label: "Przykładowe H1" },
-  { id: "przyklady", label: "Przykładowe artykuły" },
-];
+import { useT } from "../i18n";
+
+const SECTION_IDS = ["podstawowe", "modele", "wyszukiwanie", "media", "wytyczne", "html", "stance", "tytuly", "przyklady"] as const;
+type SectionId = typeof SECTION_IDS[number];
 
 interface SettingsNavProps {
   activeSection: string;
@@ -17,30 +9,44 @@ interface SettingsNavProps {
 }
 
 export function SettingsNav({ activeSection, onSelect }: SettingsNavProps) {
+  const t = useT();
+
+  const labels: Record<SectionId, string> = {
+    podstawowe: t.settingsNav.basic,
+    modele: t.settingsNav.models,
+    wyszukiwanie: t.settingsNav.search,
+    media: t.settingsNav.mediaSearch,
+    wytyczne: t.settingsNav.guidelines,
+    html: t.settingsNav.htmlFormat,
+    stance: t.settingsNav.reviewer,
+    tytuly: t.settingsNav.exampleTitles,
+    przyklady: t.settingsNav.exampleArticles,
+  };
+
   return (
     <nav style={{ width: 200, flexShrink: 0 }}>
-      {SECTIONS.map((s) => (
+      {SECTION_IDS.map((id) => (
         <button
-          key={s.id}
-          onClick={() => onSelect(s.id)}
+          key={id}
+          onClick={() => onSelect(id)}
           style={{
             display: "block",
             width: "100%",
             padding: "8px 12px",
             textAlign: "left",
-            background: activeSection === s.id ? "var(--accent-lt)" : "none",
-            borderLeft: activeSection === s.id ? "3px solid var(--accent)" : "3px solid transparent",
+            background: activeSection === id ? "var(--accent-lt)" : "none",
+            borderLeft: activeSection === id ? "3px solid var(--accent)" : "3px solid transparent",
             borderTop: "none",
             borderRight: "none",
             borderBottom: "none",
             fontSize: 13,
-            fontWeight: activeSection === s.id ? 500 : 400,
-            color: activeSection === s.id ? "var(--accent)" : "var(--text)",
+            fontWeight: activeSection === id ? 500 : 400,
+            color: activeSection === id ? "var(--accent)" : "var(--text)",
             cursor: "pointer",
             borderRadius: "0 var(--radius) var(--radius) 0",
           }}
         >
-          {s.label}
+          {labels[id]}
         </button>
       ))}
     </nav>

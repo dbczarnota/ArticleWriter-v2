@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../lib/useAuth";
+import { useT } from "../i18n";
 
 interface UserMenuProps {
   onSettings: () => void;
@@ -7,6 +8,7 @@ interface UserMenuProps {
 
 export function UserMenu({ onSettings }: UserMenuProps) {
   const { user, logout } = useAuth();
+  const t = useT();
   const [open, setOpen] = useState(false);
 
   return (
@@ -22,7 +24,7 @@ export function UserMenu({ onSettings }: UserMenuProps) {
           color: "var(--text)",
         }}
       >
-        {user?.email ?? "konto"} ▾
+        {user?.email ?? t.userMenu.account} ▾
       </button>
       {open && (
         <div style={{
@@ -40,13 +42,13 @@ export function UserMenu({ onSettings }: UserMenuProps) {
             onClick={() => { setOpen(false); onSettings(); }}
             style={{ display: "block", width: "100%", padding: "8px 16px", textAlign: "left", background: "none", border: "none", fontSize: 13 }}
           >
-            Ustawienia
+            {t.userMenu.settings}
           </button>
           <button
             onClick={() => logout()}
             style={{ display: "block", width: "100%", padding: "8px 16px", textAlign: "left", background: "none", border: "none", fontSize: 13, color: "var(--muted)" }}
           >
-            Wyloguj
+            {t.userMenu.logout}
           </button>
         </div>
       )}

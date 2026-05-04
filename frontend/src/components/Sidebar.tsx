@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ArticleListItem } from "../types";
+import { useT, useLang } from "../i18n";
 
 const STATUS_DOT: Record<string, string> = {
   done: "#22c55e",
@@ -19,12 +20,20 @@ interface SidebarProps {
 type DoneFilter = "all" | "undone" | "done";
 
 export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }: SidebarProps) {
+  const t = useT();
+  const { lang } = useLang();
   const [onlyMine, setOnlyMine] = useState(false);
   const [doneFilter, setDoneFilter] = useState<DoneFilter>("all");
 
   const visible = articles
     .filter((a) => !onlyMine || !currentUserId || a.author_user_id === currentUserId)
     .filter((a) => doneFilter === "all" ? true : doneFilter === "done" ? a.marked_done : !a.marked_done);
+
+  const labels: Record<DoneFilter, string> = {
+    all: t.sidebar.filterAll,
+    undone: t.sidebar.filterUndone,
+    done: t.sidebar.filterDone,
+  };
 
   return (
     <aside style={{
@@ -43,7 +52,7 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
         borderBottom: "1px solid var(--border)",
       }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em" }}>
-          Artykuły
+          {t.sidebar.articles}
         </span>
         <button
           onClick={onNew}
@@ -57,13 +66,12 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
             fontWeight: 500,
           }}
         >
-          + Nowy
+          {t.sidebar.newArticle}
         </button>
       </div>
 
       <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", display: "flex", gap: 6, flexWrap: "wrap" }}>
         {(["all", "undone", "done"] as DoneFilter[]).map((f) => {
-          const labels: Record<DoneFilter, string> = { all: "Wszystkie", undone: "Undone", done: "Done" };
           const active = doneFilter === f;
           return (
             <button key={f} onClick={() => setDoneFilter(f)} style={{
@@ -88,13 +96,13 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
             fontSize: 11,
             fontWeight: 500,
             cursor: "pointer",
-          }}>Moje</button>
+          }}>{t.sidebar.filterMine}</button>
         )}
       </div>
 
       <div style={{ overflowY: "auto", flex: 1 }}>
         {visible.length === 0 && (
-          <p style={{ padding: 16, color: "var(--muted)", fontSize: 13 }}>Brak artykułów</p>
+          <p style={{ padding: 16, color: "var(--muted)", fontSize: 13 }}>{t.sidebar.noArticles}</p>
         )}
         {visible.map((a) => {
           const isMine = currentUserId && a.author_user_id === currentUserId;
@@ -136,7 +144,7 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
                   {a.topic}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, display: "flex", gap: 6, alignItems: "center" }}>
-                  <span>{a.created_at ? new Date(a.created_at).toLocaleDateString("pl") : "—"}</span>
+                  <span>{a.created_at ? new Date(a.created_at).toLocaleDateString(lang) : "—"}</span>
                   {isMine && (
                     <span style={{
                       background: "var(--accent)",
@@ -147,7 +155,7 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
                       fontWeight: 600,
                       lineHeight: "16px",
                     }}>
-                      Moje
+                      {t.sidebar.mine}
                     </span>
                   )}
                 </div>

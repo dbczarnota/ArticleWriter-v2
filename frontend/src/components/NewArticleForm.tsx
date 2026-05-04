@@ -1,19 +1,8 @@
 // frontend/src/components/NewArticleForm.tsx
 import { useState } from "react";
 import { useArticles } from "../lib/useArticles";
+import { useT } from "../i18n";
 import { AVAILABLE_MODELS } from "./DomainConfigForm";
-
-const AGENT_DEFS = [
-  { key: "search", label: "Wyszukiwanie" },
-  { key: "scraping", label: "Filtr scrapingu" },
-  { key: "parsing", label: "Parsowanie" },
-  { key: "extraction", label: "Ekstrakcja" },
-  { key: "adaptive_search", label: "Adaptacyjne szukanie" },
-  { key: "instructions", label: "Instrukcje" },
-  { key: "writer", label: "Pisarz" },
-  { key: "reflection", label: "Recenzent" },
-  { key: "followup", label: "Follow-up" },
-];
 
 const MEDIA_KEYS = [
   { key: "youtube_search", label: "YouTube" },
@@ -23,14 +12,6 @@ const MEDIA_KEYS = [
   { key: "reddit_search", label: "Reddit" },
   { key: "news_search", label: "News" },
   { key: "facebook_search", label: "Facebook" },
-];
-
-const FRESHNESS_OPTIONS = [
-  { value: "qdr:h", label: "Ostatnia godzina" },
-  { value: "qdr:d", label: "Ostatni dzień" },
-  { value: "qdr:w", label: "Ostatni tydzień" },
-  { value: "qdr:m", label: "Ostatni miesiąc" },
-  { value: "qdr:y", label: "Ostatni rok" },
 ];
 
 interface NewArticleFormProps {
@@ -56,6 +37,9 @@ function SubSection({ label, children }: { label: string; children: React.ReactN
 
 export function NewArticleForm({ onCreated }: NewArticleFormProps) {
   const { submitArticle } = useArticles();
+  const t = useT();
+  const na = t.newArticle;
+
   const [topic, setTopic] = useState("");
   const [instructions, setInstructions] = useState("");
   const [urlsText, setUrlsText] = useState("");
@@ -69,6 +53,26 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
 
   // Generic domain_overrides dict — keys match DomainConfigUpdate field names
   const [ov, setOv] = useState<Record<string, unknown>>({});
+
+  const AGENT_DEFS = [
+    { key: "search", label: t.agents.search },
+    { key: "scraping", label: t.agents.scraping },
+    { key: "parsing", label: t.agents.parsing },
+    { key: "extraction", label: t.agents.extraction },
+    { key: "adaptive_search", label: t.agents.adaptive_search },
+    { key: "instructions", label: t.agents.instructions },
+    { key: "writer", label: t.agents.writer },
+    { key: "reflection", label: t.agents.reflection },
+    { key: "followup", label: t.agents.followup },
+  ];
+
+  const FRESHNESS_OPTIONS = [
+    { value: "qdr:h", label: na.freshnessHour },
+    { value: "qdr:d", label: na.freshnessDay },
+    { value: "qdr:w", label: na.freshnessWeek },
+    { value: "qdr:m", label: na.freshnessMonth },
+    { value: "qdr:y", label: na.freshnessYear },
+  ];
 
   function set(key: string, value: unknown) {
     if (value === "" || value === null || value === undefined) {
@@ -144,24 +148,24 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
 
   return (
     <div style={{ maxWidth: 620 }}>
-      <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 20 }}>Nowy artykuł</h2>
+      <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 20 }}>{na.heading}</h2>
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Temat *</label>
-          <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="np. Najnowsze plotki o..." required style={inputStyle} />
+          <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{na.topicLabel}</label>
+          <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={na.topicPlaceholder} required style={inputStyle} />
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Dodatkowe wskazówki</label>
-          <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder="Skup się na..." style={{ ...inputStyle, resize: "vertical" }} />
+          <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{na.instructionsLabel}</label>
+          <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder={na.instructionsPlaceholder} style={{ ...inputStyle, resize: "vertical" }} />
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>URL-e (jeden na linię)</label>
-          <textarea value={urlsText} onChange={(e) => setUrlsText(e.target.value)} rows={3} placeholder="https://..." style={{ ...inputStyle, resize: "vertical", fontFamily: "monospace" }} />
+          <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{na.urlsLabel}</label>
+          <textarea value={urlsText} onChange={(e) => setUrlsText(e.target.value)} rows={3} placeholder={na.urlsPlaceholder} style={{ ...inputStyle, resize: "vertical", fontFamily: "monospace" }} />
         </div>
 
-        {/* Zaawansowane */}
+        {/* Advanced */}
         <div>
           <button
             type="button"
@@ -169,145 +173,143 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
             style={{ background: "none", border: "none", fontSize: 13, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}
           >
             <span style={{ fontSize: 10 }}>{advancedOpen ? "▼" : "▶"}</span>
-            Zaawansowane
+            {na.advanced}
           </button>
 
           {advancedOpen && (
             <div style={{ marginTop: 12, paddingLeft: 12, display: "flex", flexDirection: "column", gap: 6, borderLeft: "2px solid var(--border)" }}>
-              <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 4px" }}>
-                Puste pola = domyślne z ustawień domeny.
-              </p>
+              <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 4px" }}>{na.advancedHint}</p>
 
-              {/* Modele */}
-              <SubSection label="Wybór modeli">
+              {/* Models */}
+              <SubSection label={na.sectionModels}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {AGENT_DEFS.map(({ key, label }) => (
                     <div key={key} style={{ display: "grid", gridTemplateColumns: "150px 1fr 1fr", gap: 6, alignItems: "center" }}>
                       <span style={{ fontSize: 12, color: "var(--muted)" }}>{label}</span>
                       <select value={agentModels[key] ?? ""} onChange={(e) => setAgentModels((m) => ({ ...m, [key]: e.target.value }))} style={sm}>
-                        <option value="">— domyślny —</option>
+                        <option value="">{na.defaultModel}</option>
                         {AVAILABLE_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
                       </select>
-                      <input value={agentFallbacks[key] ?? ""} onChange={(e) => setAgentFallbacks((f) => ({ ...f, [key]: e.target.value }))} placeholder="Fallbacki (przecinek)" style={{ ...sm, fontSize: 11, fontFamily: "monospace" }} />
+                      <input value={agentFallbacks[key] ?? ""} onChange={(e) => setAgentFallbacks((f) => ({ ...f, [key]: e.target.value }))} placeholder={na.fallbacksPlaceholder} style={{ ...sm, fontSize: 11, fontFamily: "monospace" }} />
                     </div>
                   ))}
                 </div>
               </SubSection>
 
-              {/* Wyszukiwanie */}
-              <SubSection label="Wyszukiwanie">
+              {/* Search */}
+              <SubSection label={na.sectionSearch}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <div>
-                    <label style={labelSt}>Świeżość wyników</label>
+                    <label style={labelSt}>{na.searchFreshness}</label>
                     <select value={(ov.search_freshness as string) ?? ""} onChange={(e) => set("search_freshness", e.target.value)} style={sm}>
-                      <option value="">— domyślna —</option>
+                      <option value="">{na.defaultFreshness}</option>
                       {FRESHNESS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label style={labelSt}>Długość artykułu (słów)</label>
-                    <input type="number" placeholder="np. 600" min={100} max={5000} style={sm}
+                    <label style={labelSt}>{na.articleLength}</label>
+                    <input type="number" placeholder={na.articleLengthPlaceholder} min={100} max={5000} style={sm}
                       onChange={(e) => num("target_word_count", e.target.value, 100, 5000)} />
                   </div>
                   <div>
-                    <label style={labelSt}>Liczba zapytań</label>
-                    <input type="number" placeholder="np. 3" min={1} max={10} style={sm}
+                    <label style={labelSt}>{na.numQueries}</label>
+                    <input type="number" placeholder={na.numQueriesPlaceholder} min={1} max={10} style={sm}
                       onChange={(e) => num("num_queries", e.target.value, 1, 10)} />
                   </div>
                   <div>
-                    <label style={labelSt}>Max wyników / zapytanie</label>
-                    <input type="number" placeholder="np. 5" min={1} max={20} style={sm}
+                    <label style={labelSt}>{na.maxResults}</label>
+                    <input type="number" placeholder={na.maxResultsPlaceholder} min={1} max={20} style={sm}
                       onChange={(e) => num("max_results", e.target.value, 1, 20)} />
                   </div>
                   <div>
-                    <label style={labelSt}>Maks. faktów</label>
-                    <input type="number" placeholder="np. 8" min={1} max={50} style={sm}
+                    <label style={labelSt}>{na.maxFacts}</label>
+                    <input type="number" placeholder={na.maxFactsPlaceholder} min={1} max={50} style={sm}
                       onChange={(e) => num("max_facts", e.target.value, 1, 50)} />
                   </div>
                   <div>
-                    <label style={labelSt}>Maks. cytatów</label>
-                    <input type="number" placeholder="np. 3" min={0} max={20} style={sm}
+                    <label style={labelSt}>{na.maxQuotes}</label>
+                    <input type="number" placeholder={na.maxQuotesPlaceholder} min={0} max={20} style={sm}
                       onChange={(e) => num("max_quotes", e.target.value, 0, 20)} />
                   </div>
                   <div>
-                    <label style={labelSt}>Min sygnałów źródłowych</label>
-                    <input type="number" placeholder="np. 1" min={0} max={20} style={sm}
+                    <label style={labelSt}>{na.minSourceSignals}</label>
+                    <input type="number" placeholder={na.minSourceSignalsPlaceholder} min={0} max={20} style={sm}
                       onChange={(e) => num("min_source_signals", e.target.value, 0, 20)} />
                   </div>
                   <div>
-                    <label style={labelSt}>Max stron do scrapowania</label>
-                    <input type="number" placeholder="np. 10" min={1} max={50} style={sm}
+                    <label style={labelSt}>{na.maxPages}</label>
+                    <input type="number" placeholder={na.maxPagesPlaceholder} min={1} max={50} style={sm}
                       onChange={(e) => num("max_pages_to_scrape", e.target.value, 1, 50)} />
                   </div>
                   <div>
-                    <label style={labelSt}>Artykuły kontekstowe (refleksja)</label>
-                    <input type="number" placeholder="np. 2" min={0} max={10} style={sm}
+                    <label style={labelSt}>{na.contextArticles}</label>
+                    <input type="number" placeholder={na.contextArticlesPlaceholder} min={0} max={10} style={sm}
                       onChange={(e) => num("reflection_context_articles", e.target.value, 0, 10)} />
                   </div>
                 </div>
               </SubSection>
 
               {/* Media search */}
-              <SubSection label="Media search">
+              <SubSection label={na.sectionMedia}>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 10 }}>
                   {MEDIA_KEYS.map(({ key, label }) => (
                     <div key={key}>
                       <label style={labelSt}>{label}</label>
                       <select value={(ov[key] as string) ?? ""} onChange={(e) => set(key, e.target.value === "" ? null : e.target.value === "true")} style={sm}>
-                        <option value="">— domyślne —</option>
-                        <option value="true">Tak</option>
-                        <option value="false">Nie</option>
+                        <option value="">{na.defaultMedia}</option>
+                        <option value="true">{na.yes}</option>
+                        <option value="false">{na.no}</option>
                       </select>
                     </div>
                   ))}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   <div>
-                    <label style={labelSt}>Języki (po przecinku)</label>
-                    <input placeholder="en, pl" style={sm}
+                    <label style={labelSt}>{na.mediaLanguages}</label>
+                    <input placeholder={na.mediaLanguagesPlaceholder} style={sm}
                       onChange={(e) => {
                         const v = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
                         set("media_search_languages", v.length ? v : null);
                       }} />
                   </div>
                   <div>
-                    <label style={labelSt}>Liczba wyników media</label>
-                    <input type="number" placeholder="np. 5" min={1} max={20} style={sm}
+                    <label style={labelSt}>{na.mediaNumResults}</label>
+                    <input type="number" placeholder={na.mediaNumResultsPlaceholder} min={1} max={20} style={sm}
                       onChange={(e) => num("media_search_num", e.target.value, 1, 20)} />
                   </div>
                   <div>
-                    <label style={labelSt}>Max tiers zapytań</label>
-                    <input type="number" placeholder="np. 2" min={1} max={5} style={sm}
+                    <label style={labelSt}>{na.mediaMaxTiers}</label>
+                    <input type="number" placeholder={na.mediaMaxTiersPlaceholder} min={1} max={5} style={sm}
                       onChange={(e) => num("media_search_max_query_tiers", e.target.value, 1, 5)} />
                   </div>
                   <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: 4 }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, cursor: "pointer" }}>
                       <input type="checkbox" style={{ accentColor: "var(--accent)" }}
                         onChange={(e) => set("youtube_sort_by_date", e.target.checked)} />
-                      Sortuj YouTube po dacie
+                      {na.youtubeSortByDate}
                     </label>
                   </div>
                 </div>
               </SubSection>
 
-              {/* Wytyczne redakcyjne */}
-              <SubSection label="Wytyczne redakcyjne">
-                <textarea rows={8} placeholder="Markdown: zasady dotyczące tonu, struktury, SEO…"
+              {/* Guidelines */}
+              <SubSection label={na.sectionGuidelines}>
+                <textarea rows={8} placeholder={na.guidelinesPlaceholder}
                   style={{ ...sm, resize: "vertical", fontFamily: "monospace", fontSize: 11 }}
                   onChange={(e) => set("guidelines", e.target.value)} />
               </SubSection>
 
-              {/* Format HTML */}
-              <SubSection label="Format HTML">
-                <textarea rows={6} placeholder="Opis struktury HTML artykułu…"
+              {/* HTML format */}
+              <SubSection label={na.sectionHtml}>
+                <textarea rows={6} placeholder={na.htmlPlaceholder}
                   style={{ ...sm, resize: "vertical", fontFamily: "monospace", fontSize: 11 }}
                   onChange={(e) => set("html_format", e.target.value)} />
               </SubSection>
 
-              {/* Recenzent */}
-              <SubSection label="Recenzent">
+              {/* Reviewer */}
+              <SubSection label={na.sectionReviewer}>
                 <label style={{ display: "block", fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>
-                  Liczba rund (1–5)
+                  {na.reviewerRounds}
                 </label>
                 <input type="number" min={1} max={5} defaultValue={1} style={{ ...sm, width: 60, marginBottom: 10 }}
                   onChange={(e) => {
@@ -315,26 +317,28 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
                     if (v !== 1) set("reflection_rounds", v); else set("reflection_rounds", null);
                   }} />
                 <label style={{ display: "block", fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>
-                  Dodatkowe instrukcje dla recenzenta
+                  {na.reviewerInstructions}
                 </label>
-                <textarea rows={4} placeholder="Zostaw puste — używa ustawień domeny"
+                <textarea rows={4} placeholder={na.reviewerInstructionsPlaceholder}
                   style={{ ...sm, resize: "vertical", fontFamily: "monospace", fontSize: 11 }}
                   onChange={(e) => set("reflection_stance", e.target.value)} />
               </SubSection>
 
-              {/* Przykładowe H1 */}
-              <SubSection label="Przykładowe H1">
+              {/* Example H1s */}
+              <SubSection label={na.sectionTitles}>
                 <ExampleList
-                  placeholder="Wzorcowy tytuł artykułu"
+                  placeholder={na.titlePlaceholder}
+                  addLabel={na.addButton}
                   onChange={(titles) => set("example_titles", titles.length ? titles : null)}
                   inputStyle={sm}
                 />
               </SubSection>
 
-              {/* Przykładowe artykuły */}
-              <SubSection label="Przykładowe artykuły">
+              {/* Example articles */}
+              <SubSection label={na.sectionArticles}>
                 <ExampleList
-                  placeholder="URL lub treść artykułu"
+                  placeholder={na.articlePlaceholder}
+                  addLabel={na.addButton}
                   rows={3}
                   onChange={(articles) => set("example_articles", articles.length ? articles : null)}
                   inputStyle={sm}
@@ -361,7 +365,7 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
             cursor: loading || !topic.trim() ? "default" : "pointer",
           }}
         >
-          {loading ? "Generuję artykuł…" : "Generuj"}
+          {loading ? na.generating : na.generate}
         </button>
       </form>
     </div>
@@ -369,8 +373,9 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
 }
 
 // Minimal dynamic list (add/remove rows) for example_titles / example_articles.
-function ExampleList({ placeholder, rows = 1, onChange, inputStyle }: {
+function ExampleList({ placeholder, addLabel, rows = 1, onChange, inputStyle }: {
   placeholder: string;
+  addLabel: string;
   rows?: number;
   onChange: (values: string[]) => void;
   inputStyle: React.CSSProperties;
@@ -401,14 +406,14 @@ function ExampleList({ placeholder, rows = 1, onChange, inputStyle }: {
           {items.length > 1 && (
             <button type="button" onClick={() => remove(i)}
               style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 12, flexShrink: 0, paddingTop: 6 }}>
-              Usuń
+              ✕
             </button>
           )}
         </div>
       ))}
       <button type="button" onClick={() => setItems((p) => [...p, ""])}
         style={{ background: "none", border: "none", fontSize: 12, color: "var(--accent)", cursor: "pointer", textAlign: "left", padding: 0 }}>
-        + Dodaj
+        {addLabel}
       </button>
     </div>
   );

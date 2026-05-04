@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Article, Fact, Quote } from "../types";
 import { useArticles } from "../lib/useArticles";
+import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
 
 interface ArticleViewProps {
@@ -11,6 +12,9 @@ interface ArticleViewProps {
 
 export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleViewProps) {
   const { fetchArticle } = useArticles();
+  const t = useT();
+  const av = t.articleView;
+  const { lang } = useLang();
   const [article, setArticle] = useState<Article | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -41,24 +45,24 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
     };
   }, [articleId]);
 
-  if (error) return <p style={{ color: "#ef4444" }}>Błąd: {error}</p>;
-  if (!article) return <p style={{ color: "var(--muted)" }}>Ładowanie…</p>;
+  if (error) return <p style={{ color: "#ef4444" }}>{av.error}: {error}</p>;
+  if (!article) return <p style={{ color: "var(--muted)" }}>{av.loading}</p>;
 
   const STAGE_LABELS: Record<string, string> = {
-    search: "Wyszukiwanie wyników…",
-    scraping: "Scrapowanie stron…",
-    parsing: "Parsowanie artykułów…",
-    extraction: "Ekstrakcja faktów i cytatów…",
-    adaptive_search: "Dodatkowe wyszukiwanie…",
-    media_search: "Wyszukiwanie social media…",
-    instructions: "Przygotowanie instrukcji…",
-    writer: "Pisanie artykułu…",
-    reflection: "Recenzja i korekta…",
-    followup: "Tematy follow-up…",
+    search: av.stageSearch,
+    scraping: av.stageScraping,
+    parsing: av.stageParsing,
+    extraction: av.stageExtraction,
+    adaptive_search: av.stageAdaptive,
+    media_search: av.stageMedia,
+    instructions: av.stageInstructions,
+    writer: av.stageWriter,
+    reflection: av.stageReflection,
+    followup: av.stageFollowup,
   };
 
   if (article.status === "running") {
-    const stageLabel = article.pipeline_stage ? (STAGE_LABELS[article.pipeline_stage] ?? article.pipeline_stage) : "Generowanie artykułu…";
+    const stageLabel = article.pipeline_stage ? (STAGE_LABELS[article.pipeline_stage] ?? article.pipeline_stage) : av.stageDefault;
     return (
       <div>
         <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>{article.topic}</h2>
@@ -115,11 +119,11 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             <span>
               {article.author_email
                 ? (currentUserId && article.author_user_id === currentUserId
-                    ? `Ty (${article.author_email.split("@")[0]})`
+                    ? `${av.me} (${article.author_email.split("@")[0]})`
                     : article.author_email.split("@")[0])
-                : (currentUserId && article.author_user_id === currentUserId ? "Ty" : "—")}
+                : (currentUserId && article.author_user_id === currentUserId ? av.me : "—")}
             </span>
-            <span>{article.created_at ? new Date(article.created_at).toLocaleString("pl") : "—"}</span>
+            <span>{article.created_at ? new Date(article.created_at).toLocaleString(lang) : "—"}</span>
             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" }}>
               <input
                 type="checkbox"
@@ -136,11 +140,11 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
                 style={{ width: 14, height: 14, accentColor: "#22c55e", cursor: "pointer" }}
               />
               <span style={{ fontWeight: article.marked_done ? 600 : 400, color: article.marked_done ? "#22c55e" : "var(--muted)" }}>
-                {article.marked_done ? "Done ✓" : "Done"}
+                {article.marked_done ? `${av.markDone} ✓` : av.markDone}
               </span>
               {article.marked_done && article.marked_done_by_name && (
                 <span style={{ color: "var(--muted)", fontSize: 11 }}>
-                  przez {article.marked_done_by_name}
+                  {av.markedBy} {article.marked_done_by_name}
                 </span>
               )}
             </label>
@@ -149,7 +153,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
           <button
             onClick={handleCopy}
-            title="Kopiuj HTML do schowka"
+            title={av.copyHtml}
             style={{
               display: "flex",
               alignItems: "center",
@@ -168,7 +172,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
-            {copied ? "Skopiowano!" : "Kopiuj HTML"}
+            {copied ? av.copied : av.copyHtml}
           </button>
           <button
             onClick={handleExport}
@@ -182,7 +186,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
               cursor: "pointer",
             }}
           >
-            Eksport HTML
+            {av.exportHtml}
           </button>
         </div>
       </div>
@@ -205,7 +209,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
       {/* Alternative titles */}
       {article.alternative_titles.length > 0 && (
-        <CollapsibleSection prominent title="Alternatywne tytuły" count={article.alternative_titles.length} defaultOpen>
+        <CollapsibleSection prominent title={av.altTitles} count={article.alternative_titles.length} defaultOpen>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {article.alternative_titles.map((title, i) => (
               <div key={i} style={{ padding: "8px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13 }}>
@@ -218,7 +222,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
       {/* Follow-up topics */}
       {article.followup_topics.length > 0 && (
-        <CollapsibleSection prominent title="Tematy na follow-up" count={article.followup_topics.length} defaultOpen>
+        <CollapsibleSection prominent title={av.followupTopics} count={article.followup_topics.length} defaultOpen>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {article.followup_topics.map((topic, i) => (
               <span key={i} style={{ padding: "5px 10px", background: "var(--accent-lt)", border: "1px solid #fed7aa", borderRadius: 20, fontSize: 12, color: "var(--accent)", fontWeight: 500 }}>
@@ -231,7 +235,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
       {/* Social media embeds */}
       {article.embed_candidates.length > 0 && (
-        <CollapsibleSection prominent title="Social media" count={article.embed_candidates.length}>
+        <CollapsibleSection prominent title={av.socialMedia} count={article.embed_candidates.length}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[...article.embed_candidates].sort((a, b) => (b.competitor_source_url ? 1 : 0) - (a.competitor_source_url ? 1 : 0)).map((e) => (
               <div key={e.id} style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "#fffbeb" : "var(--white)", border: `1px solid ${e.competitor_source_url ? "#f59e0b" : "var(--border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
@@ -242,7 +246,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
                     {e.channel && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {e.channel}</span>}
                     {e.competitor_source_url && (
                       <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#b45309", background: "#fef3c7", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.04em" }}>
-                        ★ u konkurencji
+                        {av.competitorStar}
                       </span>
                     )}
                   </div>
@@ -252,7 +256,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
                   {e.description && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.description}</p>}
                   {e.competitor_source_url && (
                     <p style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
-                      źródło: <a href={e.competitor_source_url} target="_blank" rel="noreferrer" style={{ color: "#92400e", textDecoration: "underline", wordBreak: "break-all" }}>{e.competitor_source_url}</a>
+                      {av.sourceLabel} <a href={e.competitor_source_url} target="_blank" rel="noreferrer" style={{ color: "#92400e", textDecoration: "underline", wordBreak: "break-all" }}>{e.competitor_source_url}</a>
                     </p>
                   )}
                 </div>
@@ -263,11 +267,11 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       )}
 
       {/* Facts */}
-      <CollapsibleSection prominent title="Fakty użyte" count={usedFacts.length} defaultOpen>
+      <CollapsibleSection prominent title={av.factsUsed} count={usedFacts.length} defaultOpen>
         {usedFacts.map((f) => (
           <FactCard key={f.id} fact={f} />
         ))}
-        <CollapsibleSection title="Odrzucone fakty" count={rejectedFacts.length}>
+        <CollapsibleSection title={av.factsRejected} count={rejectedFacts.length}>
           {rejectedFacts.map((f) => (
             <FactCard key={f.id} fact={f} muted />
           ))}
@@ -275,11 +279,11 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       </CollapsibleSection>
 
       {/* Quotes */}
-      <CollapsibleSection prominent title="Cytaty użyte" count={usedQuotes.length} defaultOpen>
+      <CollapsibleSection prominent title={av.quotesUsed} count={usedQuotes.length} defaultOpen>
         {usedQuotes.map((q) => (
           <QuoteCard key={q.id} quote={q} />
         ))}
-        <CollapsibleSection title="Odrzucone cytaty" count={rejectedQuotes.length}>
+        <CollapsibleSection title={av.quotesRejected} count={rejectedQuotes.length}>
           {rejectedQuotes.map((q) => (
             <QuoteCard key={q.id} quote={q} muted />
           ))}
@@ -287,13 +291,13 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       </CollapsibleSection>
 
       {/* Sources */}
-      <CollapsibleSection prominent title="Źródła użyte" count={usedSources.length} defaultOpen>
+      <CollapsibleSection prominent title={av.sourcesUsed} count={usedSources.length} defaultOpen>
         {usedSources.map((url) => (
           <div key={url} style={{ borderLeft: "3px solid #22c55e", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
             <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>{url}</a>
           </div>
         ))}
-        <CollapsibleSection title="Nieużyte źródła" count={uniqueUnused.length}>
+        <CollapsibleSection title={av.sourcesUnused} count={uniqueUnused.length}>
           {uniqueUnused.map((url) => (
             <div key={url} style={{ borderLeft: "3px solid var(--border)", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
               <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--muted)", wordBreak: "break-all" }}>{url}</a>
@@ -303,14 +307,14 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       </CollapsibleSection>
 
       {/* Stats */}
-      <CollapsibleSection prominent title="Statystyki pipeline">
+      <CollapsibleSection prominent title={av.pipelineStats}>
         <div style={{ padding: "8px 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 13 }}>
-          <Stat label="Fakty" value={article.facts.length} />
-          <Stat label="Cytaty" value={article.quotes.length} />
-          <Stat label="Embeds" value={article.embed_candidates.length} />
-          <Stat label="Wywołania agentów" value={article.usage_events.length} />
-          <Stat label="Tokeny" value={totalTokens.toLocaleString()} />
-          <Stat label="Czas (s)" value={article.total_duration_ms != null ? (article.total_duration_ms / 1000).toFixed(1) : "—"} />
+          <Stat label={av.statFacts} value={article.facts.length} />
+          <Stat label={av.statQuotes} value={article.quotes.length} />
+          <Stat label={av.statEmbeds} value={article.embed_candidates.length} />
+          <Stat label={av.statAgentCalls} value={article.usage_events.length} />
+          <Stat label={av.statTokens} value={totalTokens.toLocaleString()} />
+          <Stat label={av.statTime} value={article.total_duration_ms != null ? (article.total_duration_ms / 1000).toFixed(1) : "—"} />
         </div>
       </CollapsibleSection>
     </div>

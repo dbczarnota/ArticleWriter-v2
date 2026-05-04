@@ -1,11 +1,14 @@
 import { UserMenu } from "./UserMenu";
 import { Logo } from "./Logo";
+import { useLang } from "../i18n";
 
 interface TopbarProps {
   onSettings: () => void;
 }
 
 export function Topbar({ onSettings }: TopbarProps) {
+  const { lang, setLang } = useLang();
+
   return (
     <header style={{
       height: 48,
@@ -20,7 +23,28 @@ export function Topbar({ onSettings }: TopbarProps) {
       zIndex: 50,
     }}>
       <Logo />
-      <UserMenu onSettings={onSettings} />
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ display: "flex", gap: 4, fontSize: 12, color: "var(--muted)" }}>
+          {(["pl", "en"] as const).map((l) => (
+            <button
+              key={l}
+              onClick={() => setLang(l)}
+              style={{
+                background: "none",
+                border: "none",
+                padding: "2px 4px",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: lang === l ? 700 : 400,
+                color: lang === l ? "var(--text)" : "var(--muted)",
+              }}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+        <UserMenu onSettings={onSettings} />
+      </div>
     </header>
   );
 }

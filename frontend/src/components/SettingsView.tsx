@@ -1,15 +1,16 @@
-// frontend/src/components/SettingsView.tsx
 import { useState } from "react";
 import { useDomainConfig } from "../lib/useDomainConfig";
 import { SettingsNav } from "./SettingsNav";
 import { DomainConfigForm } from "./DomainConfigForm";
+import { useT } from "../i18n";
 
 export function SettingsView() {
   const { config, loading, saving, error, save } = useDomainConfig();
   const [activeSection, setActiveSection] = useState("podstawowe");
+  const t = useT();
 
-  if (loading) return <p style={{ color: "var(--muted)" }}>Ładowanie ustawień…</p>;
-  if (!config) return <p style={{ color: "#ef4444" }}>Nie znaleziono konfiguracji domeny. Uruchom seed script.</p>;
+  if (loading) return <p style={{ color: "var(--muted)" }}>{t.settings.loading}</p>;
+  if (!config) return <p style={{ color: "#ef4444" }}>{t.settings.notFound}</p>;
 
   return (
     <div style={{ display: "flex", gap: 32, alignItems: "flex-start" }}>
