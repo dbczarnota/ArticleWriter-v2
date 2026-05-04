@@ -528,6 +528,7 @@ async def _run_pipeline_inner(
                 )
                 return dc_replace(
                     result,
+                    article_id=str(_article_id),
                     used_facts=used_facts,
                     used_quotes=used_quotes,
                     sources=result.sources or scraped_urls,
@@ -595,6 +596,7 @@ async def _run_pipeline_inner(
     )
     return ArticleOutput(
         html=article.html,
+        article_id=str(_article_id),
         alternative_titles=[],
         followup_topics=[],
         used_facts=[],

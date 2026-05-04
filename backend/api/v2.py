@@ -77,7 +77,9 @@ async def write_article(
         ) from exc
     except AllModelsFailedError as exc:
         raise HTTPException(status_code=503, detail=f"All LLM models failed: {exc}") from exc
-    return dataclasses.asdict(result)
+    d = dataclasses.asdict(result)
+    d["id"] = d.pop("article_id")
+    return d
 
 
 @router.get("/me")

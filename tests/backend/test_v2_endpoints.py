@@ -8,11 +8,13 @@ required — multi-tenancy is enforced in the route layer, not at the DB.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 
+from agents._base.types import ArticleOutput
 from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
 from backend.db.models import Article, Fact, Org, Quote
@@ -266,3 +268,37 @@ def test_get_article_invalid_uuid_returns_422(client_as, org_a):
     client = client_as(user=user, org=org_a)
     r = client.get("/v2/articles/not-a-uuid")
     assert r.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# /v2/write_article — response shape
+# ---------------------------------------------------------------------------
+
+
+def test_write_article_response_includes_id(client_as, org_a):
+    """write_article must return an 'id' field so the frontend can navigate to the article."""
+    from backend.repositories import get_org_config_repo
+    from backend.repositories.null import NullOrgConfigRepository
+
+    fake_output = ArticleOutput(
+        html="<p>hi</p>",
+        article_id="aaaaaaaa-0000-0000-0000-000000000000",
+    )
+    user = AuthenticatedUser(id="u1", email=None, org_codes=["org_a"])
+    app = __import__("backend.main", fromlist=["app"]).app
+    app.dependency_overrides[get_org_config_repo] = lambda: NullOrgConfigRepository()
+
+    with patch(
+        "backend.api.v2.run_pipeline",
+        new=AsyncMock(return_value=fake_output),
+    ):
+        client = client_as(user=user, org=org_a)
+        r = client.post(
+            "/v2/write_article",
+            json={"id": "req-1", "topic": "Test topic"},
+        )
+
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "id" in body, f"'id' key missing from response: {list(body.keys())}"
+    assert body["id"] == "aaaaaaaa-0000-0000-0000-000000000000"
