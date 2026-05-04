@@ -13,6 +13,20 @@ spec:
       labels:
         app: backend
     spec:
+      initContainers:
+        # Run Alembic migrations before the backend starts. The same image is
+        # used so any migration files baked into the build are available. The
+        # backend pod stays Pending until this container exits 0, which means
+        # the API never serves on a stale schema.
+        - name: migrate
+          image: ghcr.io/dbczarnota/articlewriter-v2/backend:latest
+          command: ["uv", "run", "alembic", "upgrade", "head"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: DATABASE_URL
       containers:
         - name: backend
           image: ghcr.io/dbczarnota/articlewriter-v2/backend:latest
