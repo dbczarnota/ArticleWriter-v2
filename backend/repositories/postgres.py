@@ -90,7 +90,7 @@ class PostgresArticleRepository:
 
             # Attach children. The caller passes child instances WITHOUT article_id /
             # WITHOUT id; we set them here so the runner doesn't need to know schema.
-            for child_list, model_cls in (
+            for child_list, _ in (
                 (facts, Fact),
                 (quotes, Quote),
                 (embed_candidates, EmbedCandidate),
@@ -102,7 +102,6 @@ class PostgresArticleRepository:
                         child.id = uuid4()
                     child.article_id = article_id
                     session.add(child)
-                _ = model_cls  # silence unused-loop-var
 
             await session.commit()
 
