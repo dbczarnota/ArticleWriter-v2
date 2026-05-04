@@ -32,6 +32,12 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlmodel import Field, Relationship, SQLModel
 
+from backend.db.orgconfig_defaults import (
+    DEFAULT_DESCRIPTION,
+    DEFAULT_GUIDELINES,
+    DEFAULT_HTML_FORMAT,
+)
+
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
@@ -286,7 +292,7 @@ class OrgConfig(SQLModel, table=True):
             primary_key=True,
         )
     )
-    description: str = Field(default="")
+    description: str = Field(default=DEFAULT_DESCRIPTION)
     language: str = Field(default="pl", max_length=16)
     target_word_count: int = Field(default=600)
     max_facts: int = Field(default=8)
@@ -315,8 +321,8 @@ class OrgConfig(SQLModel, table=True):
     media_search_max_query_tiers: int = Field(default=2)
     youtube_sort_by_date: bool = Field(default=True)
     reflection_context_articles: int = Field(default=2)
-    guidelines: str = Field(default="")
-    html_format: str = Field(default="")
+    guidelines: str = Field(default=DEFAULT_GUIDELINES)
+    html_format: str = Field(default=DEFAULT_HTML_FORMAT)
     reflection_stance: str = Field(default="")
     reflection_rounds: int = Field(default=1)
     example_articles: list[str] = Field(

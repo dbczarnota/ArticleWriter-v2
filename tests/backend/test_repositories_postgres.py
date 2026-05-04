@@ -252,7 +252,11 @@ async def test_orgconfig_create_default_inserts_row_with_model_defaults(session_
     assert cfg.org_code == "org_cfg_new"
     assert cfg.language == "pl"
     assert cfg.target_word_count == 600
-    assert cfg.guidelines == ""
+    # Polish onboarding defaults — non-empty so the writer can produce
+    # something usable on the very first article without manual setup.
+    assert "Wytyczne redakcyjne" in cfg.guidelines
+    assert "<h1>" in cfg.html_format
+    assert cfg.description.startswith("Polski portal")
 
     fetched = await cfg_repo.get("org_cfg_new")
     assert fetched is not None
