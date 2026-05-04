@@ -57,8 +57,6 @@ def kinde_env(monkeypatch):
     """Set Kinde env vars for KindeAuthenticator construction."""
     monkeypatch.setenv("KINDE_DOMAIN", _DOMAIN)
     monkeypatch.setenv("KINDE_AUDIENCE", _AUDIENCE)
-    monkeypatch.setenv("KINDE_M2M_CLIENT_ID", "test-client-id")
-    monkeypatch.setenv("KINDE_M2M_CLIENT_SECRET", "test-secret")
 
 
 @pytest.fixture

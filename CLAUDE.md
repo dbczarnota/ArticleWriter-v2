@@ -35,7 +35,7 @@ Każda kombinacja jest poprawna. `run.py` używa null/null. Pełen serwer prod =
 - Orgi mapują się 1:1 na **domeny redakcyjne** (`org.domain_name`).
 - Frontend przesyła `Authorization: Bearer <jwt>` + `X-Org-Code: <org>` — `get_current_org` waliduje przynależność (JWT claim `org_codes`).
 - Wszystkie repository methods filtrują po `org_code` — żadnego ad-hoc zapytania w warstwie API.
-- Nowe orgi auto-syncują się z Kinde Management API przy pierwszym requeście; mapowanie na `domain_name` operator robi raz przez `backend/scripts/set_org_domain.py`.
+- Nowe orgi bootstrapują się **automatycznie** przy pierwszym requeście — `get_current_org` tworzy `Org` (z JWT claim `org_name` jako wartość `name`, `domain_name` ustawione na `code`) plus `OrgConfig` z domyślnych wartości modelu. Zero ingerencji operatora. User dalej konfiguruje domenę przez Settings UI.
 
 ## Wzorce — kopiujemy z prawnik-ai-v2
 
