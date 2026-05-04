@@ -36,6 +36,7 @@ class ArticleRequest(BaseModel):
 
 class ArticleUpdate(BaseModel):
     marked_done: bool
+    marked_done_by_name: str | None = None
 
 
 class DomainConfigUpdate(BaseModel):

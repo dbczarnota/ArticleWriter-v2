@@ -98,6 +98,11 @@ class Article(SQLModel, table=True):
     marked_done: bool = Field(default=False)
     """Editorial flag — set by a user to mark the article as reviewed/published."""
 
+    marked_done_by_name: str | None = Field(
+        default=None, sa_column=Column(String(256), nullable=True)
+    )
+    """Full name of the user who last toggled marked_done. Denormalized for display."""
+
     # Output payload (populated by repo.complete()):
     html: str | None = Field(default=None, sa_column=Column(String, nullable=True))
     alternative_titles: list[str] = Field(default_factory=list, sa_column=Column(JSONB))

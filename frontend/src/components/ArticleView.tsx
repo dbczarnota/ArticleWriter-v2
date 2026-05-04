@@ -115,6 +115,11 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
               <span style={{ fontWeight: article.marked_done ? 600 : 400, color: article.marked_done ? "#22c55e" : "var(--muted)" }}>
                 {article.marked_done ? "Done ✓" : "Done"}
               </span>
+              {article.marked_done && article.marked_done_by_name && (
+                <span style={{ color: "var(--muted)", fontSize: 11 }}>
+                  przez {article.marked_done_by_name}
+                </span>
+              )}
             </label>
           </div>
         </div>

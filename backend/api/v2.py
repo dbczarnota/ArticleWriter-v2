@@ -172,6 +172,7 @@ async def get_article(
         "topic": article.topic,
         "status": article.status,
         "marked_done": article.marked_done,
+        "marked_done_by_name": article.marked_done_by_name,
         "html": article.html,
         "alternative_titles": article.alternative_titles,
         "followup_topics": article.followup_topics,
@@ -250,7 +251,12 @@ async def patch_article(
     article_repo: ArticleRepository = Depends(get_article_repo),
 ) -> dict:
     """Partial update — currently only `marked_done` flag."""
-    await article_repo.set_marked_done(article_id, org_code=org.code, marked_done=body.marked_done)
+    await article_repo.set_marked_done(
+        article_id,
+        org_code=org.code,
+        marked_done=body.marked_done,
+        marked_done_by_name=body.marked_done_by_name if body.marked_done else None,
+    )
     return {"ok": True}
 
 

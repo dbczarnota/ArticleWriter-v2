@@ -42,10 +42,10 @@ export function useArticles() {
     return request<Article>(`/v2/articles/${id}`);
   }
 
-  async function markDone(id: string, done: boolean): Promise<void> {
+  async function markDone(id: string, done: boolean, byName?: string): Promise<void> {
     await request<{ ok: boolean }>(`/v2/articles/${id}`, {
       method: "PATCH",
-      body: JSON.stringify({ marked_done: done }),
+      body: JSON.stringify({ marked_done: done, marked_done_by_name: done ? (byName ?? null) : null }),
     });
     setArticles((prev) => prev.map((a) => a.id === id ? { ...a, marked_done: done } : a));
   }

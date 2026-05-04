@@ -111,40 +111,32 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
                 padding: "10px 12px",
                 background: isSelected ? "var(--accent-lt)" : isMine ? "#fff9f5" : "transparent",
                 borderLeft: isSelected ? "3px solid var(--accent)" : "3px solid transparent",
-                border: "none",
+                borderTop: "none",
+                borderRight: "none",
                 borderBottom: "1px solid var(--border)",
                 textAlign: "left",
                 cursor: "pointer",
                 opacity: a.marked_done && !isSelected ? 0.45 : 1,
               }}
             >
-              <span style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: STATUS_DOT[a.status] ?? "#94a3b8",
-                flexShrink: 0,
-                marginTop: 5,
-              }} />
+              {a.marked_done ? (
+                <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 14, flexShrink: 0, lineHeight: 1, marginTop: 3 }}>✓</span>
+              ) : (
+                <span style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: STATUS_DOT[a.status] ?? "#94a3b8",
+                  flexShrink: 0,
+                  marginTop: 5,
+                }} />
+              )}
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {a.topic}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, display: "flex", gap: 6, alignItems: "center" }}>
                   <span>{a.created_at ? new Date(a.created_at).toLocaleDateString("pl") : "—"}</span>
-                  {a.marked_done && (
-                    <span style={{
-                      background: "#22c55e",
-                      color: "#fff",
-                      borderRadius: 3,
-                      padding: "0 4px",
-                      fontSize: 10,
-                      fontWeight: 600,
-                      lineHeight: "16px",
-                    }}>
-                      ✓ Done
-                    </span>
-                  )}
                   {isMine && (
                     <span style={{
                       background: "var(--accent)",

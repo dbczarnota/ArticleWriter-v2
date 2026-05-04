@@ -156,7 +156,7 @@ class PostgresArticleRepository:
             return list(result.scalars().all())
 
     async def set_marked_done(
-        self, article_id: UUID, *, org_code: str, marked_done: bool
+        self, article_id: UUID, *, org_code: str, marked_done: bool, marked_done_by_name: str | None = None
     ) -> None:
         async with self._session_maker() as session:
             stmt = select(Article).where(Article.id == article_id, Article.org_code == org_code)
@@ -165,6 +165,7 @@ class PostgresArticleRepository:
             if article is None:
                 return
             article.marked_done = marked_done
+            article.marked_done_by_name = marked_done_by_name if marked_done else None
             await session.commit()
 
 

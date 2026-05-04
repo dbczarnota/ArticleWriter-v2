@@ -117,7 +117,7 @@ class NullArticleRepository:
         return []
 
     async def set_marked_done(
-        self, article_id: UUID, *, org_code: str, marked_done: bool
+        self, article_id: UUID, *, org_code: str, marked_done: bool, marked_done_by_name: str | None = None
     ) -> None:
         _log.debug("[null-repo] set_marked_done article_id=%s org=%s done=%s (no-op)", article_id, org_code, marked_done)
 

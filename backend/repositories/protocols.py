@@ -103,9 +103,9 @@ class ArticleRepository(Protocol):
         ...
 
     async def set_marked_done(
-        self, article_id: UUID, *, org_code: str, marked_done: bool
+        self, article_id: UUID, *, org_code: str, marked_done: bool, marked_done_by_name: str | None = None
     ) -> None:
-        """Toggle editorial done flag. No-op when article not found (idempotent)."""
+        """Toggle editorial done flag. Stores who made the change. No-op when article not found (idempotent)."""
         ...
 
 
