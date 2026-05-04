@@ -9,7 +9,7 @@ from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
 from backend.db.models import Org, OrgConfig
 from backend.main import app
-from backend.repositories import get_org_config_repo, reset_repo_cache
+from backend.repositories import get_org_config_repo, get_org_repo, reset_repo_cache
 
 _ORG = Org(
     code="test-org",
@@ -62,15 +62,40 @@ class _StubOrgConfigRepo:
         self.last_upserted = config
         return config
 
+    async def create_default(self, org_code: str) -> OrgConfig:
+        return OrgConfig(org_code=org_code)
+
+
+class _StubOrgRepo:
+    def __init__(self, org: Org) -> None:
+        self._org = org
+        self.last_domain_name: str | None = None
+
+    async def get(self, code: str) -> Org | None:
+        return self._org if code == self._org.code else None
+
+    async def create_from_jwt(self, **_kw) -> Org:  # pragma: no cover
+        raise NotImplementedError
+
+    async def list_for_user(self, user_org_codes: list[str]) -> list[Org]:
+        return [self._org] if self._org.code in user_org_codes else []
+
+    async def set_domain_name(self, code: str, domain_name: str) -> None:
+        if code == self._org.code:
+            self._org.domain_name = domain_name
+            self.last_domain_name = domain_name
+
 
 @pytest.fixture()
 def client_with_config():
     stub = _StubOrgConfigRepo()
+    org_stub = _StubOrgRepo(_ORG)
     app.dependency_overrides[get_current_user] = lambda: _USER
     app.dependency_overrides[get_current_org] = lambda: _ORG
     app.dependency_overrides[get_org_config_repo] = lambda: stub
+    app.dependency_overrides[get_org_repo] = lambda: org_stub
     reset_repo_cache()
-    yield TestClient(app), stub
+    yield TestClient(app), stub, org_stub
     app.dependency_overrides.clear()
     reset_repo_cache()
 
@@ -78,9 +103,11 @@ def client_with_config():
 @pytest.fixture()
 def client_no_config():
     stub = _StubOrgConfigRepo(config=None)
+    org_stub = _StubOrgRepo(_ORG)
     app.dependency_overrides[get_current_user] = lambda: _USER
     app.dependency_overrides[get_current_org] = lambda: _ORG
     app.dependency_overrides[get_org_config_repo] = lambda: stub
+    app.dependency_overrides[get_org_repo] = lambda: org_stub
     reset_repo_cache()
     yield TestClient(app)
     app.dependency_overrides.clear()
@@ -88,13 +115,53 @@ def client_no_config():
 
 
 def test_get_domain_config_returns_config(client_with_config):
-    client, _ = client_with_config
+    client, _, _ = client_with_config
     resp = client.get("/v2/domain-config")
     assert resp.status_code == 200
     data = resp.json()
     assert data["org_code"] == "test-org"
+    assert data["domain_name"] == "styl_fm"  # sourced from Org, not OrgConfig
     assert data["language"] == "pl"
     assert data["target_word_count"] == 600
+
+
+def test_put_domain_config_dispatches_domain_name_to_orgs_table(client_with_config):
+    client, _, org_stub = client_with_config
+    resp = client.put(
+        "/v2/domain-config",
+        json={
+            "domain_name": "renamed_domain",
+            "description": "x",
+            "language": "pl",
+            "target_word_count": 600,
+            "max_facts": 8,
+            "max_quotes": 3,
+            "search_freshness": "qdr:w",
+            "num_queries": 3,
+            "max_results": 5,
+            "min_source_signals": 1,
+            "max_pages_to_scrape": 10,
+            "youtube_search": False,
+            "twitter_search": False,
+            "facebook_search": False,
+            "news_search": False,
+            "tiktok_search": False,
+            "instagram_search": False,
+            "reddit_search": False,
+            "media_search_languages": ["en"],
+            "media_search_num": 5,
+            "media_search_max_query_tiers": 2,
+            "youtube_sort_by_date": True,
+            "reflection_context_articles": 2,
+            "guidelines": "",
+            "html_format": "",
+            "reflection_stance": "",
+            "example_articles": [],
+        },
+    )
+    assert resp.status_code == 200
+    assert org_stub.last_domain_name == "renamed_domain"
+    assert resp.json()["domain_name"] == "renamed_domain"
 
 
 def test_get_domain_config_404_when_not_configured(client_no_config):
@@ -103,7 +170,7 @@ def test_get_domain_config_404_when_not_configured(client_no_config):
 
 
 def test_put_domain_config_upserts(client_with_config):
-    client, stub = client_with_config
+    client, stub, _ = client_with_config
     resp = client.put(
         "/v2/domain-config",
         json={
@@ -144,13 +211,13 @@ def test_put_domain_config_upserts(client_with_config):
 
 
 def test_put_domain_config_validates_word_count(client_with_config):
-    client, _ = client_with_config
+    client, _, _ = client_with_config
     resp = client.put("/v2/domain-config", json={"target_word_count": 50000})
     assert resp.status_code == 422
 
 
 def test_put_domain_config_validates_max_facts(client_with_config):
-    client, _ = client_with_config
+    client, _, _ = client_with_config
     resp = client.put("/v2/domain-config", json={"max_facts": 0})
     assert resp.status_code == 422
 
@@ -198,7 +265,7 @@ def _put_body(**overrides) -> dict:
 
 def test_put_custom_freshness_days_accepted(client_with_config):
     """PUT with qdr:14 (custom days) must be saved without error."""
-    client, stub = client_with_config
+    client, stub, _ = client_with_config
     resp = client.put("/v2/domain-config", json=_put_body(search_freshness="qdr:14"))
     assert resp.status_code == 200, resp.text
     assert stub.last_upserted.search_freshness == "qdr:14"
@@ -206,7 +273,7 @@ def test_put_custom_freshness_days_accepted(client_with_config):
 
 def test_put_custom_freshness_single_day_accepted(client_with_config):
     """qdr:1 (one custom day) is the minimum meaningful custom value."""
-    client, stub = client_with_config
+    client, stub, _ = client_with_config
     resp = client.put("/v2/domain-config", json=_put_body(search_freshness="qdr:1"))
     assert resp.status_code == 200, resp.text
     assert stub.last_upserted.search_freshness == "qdr:1"
@@ -214,7 +281,7 @@ def test_put_custom_freshness_single_day_accepted(client_with_config):
 
 def test_put_custom_freshness_large_value_accepted(client_with_config):
     """qdr:365 (one year in days) must also be accepted as a plain string."""
-    client, stub = client_with_config
+    client, stub, _ = client_with_config
     resp = client.put("/v2/domain-config", json=_put_body(search_freshness="qdr:365"))
     assert resp.status_code == 200, resp.text
     assert stub.last_upserted.search_freshness == "qdr:365"
@@ -222,7 +289,7 @@ def test_put_custom_freshness_large_value_accepted(client_with_config):
 
 def test_get_returns_custom_freshness_unchanged(client_with_config):
     """GET must echo back whatever freshness string was stored."""
-    client_raw, stub = client_with_config
+    client_raw, stub, _ = client_with_config
     # Patch the stub so it returns a config with a custom freshness
     from backend.db.models import OrgConfig
 

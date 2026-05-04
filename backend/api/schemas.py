@@ -45,6 +45,10 @@ class ArticleUpdate(BaseModel):
 
 
 class DomainConfigUpdate(BaseModel):
+    domain_name: str | None = None
+    """Org's editorial-domain identifier. None means 'leave it as-is'.
+    Stored in the orgs table, not org_configs — endpoint dispatches the
+    update to OrgRepository when present."""
     description: str = ""
     language: str = "pl"
     target_word_count: int = PydanticField(ge=100, le=5000, default=600)

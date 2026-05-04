@@ -131,6 +131,13 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
               <label style={labelStyle}>
+                {dc.domainName}
+                <Tip text={dc.domainNameHint} />
+              </label>
+              <input value={form.domain_name} onChange={(e) => set("domain_name", e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>
                 {dc.domainDescription}
                 <Tip text="Krótki opis redakcji przekazywany agentom jako kontekst. Pomaga modelom zrozumieć styl i temat portalu. Np. 'Polski portal lifestyle, krótkie clickbaitowe artykuły'." />
               </label>

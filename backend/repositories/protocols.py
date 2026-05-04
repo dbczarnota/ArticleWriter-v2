@@ -135,6 +135,10 @@ class OrgRepository(Protocol):
         """Fetch by primary key (code). Returns None when absent."""
         ...
 
+    async def set_domain_name(self, code: str, domain_name: str) -> None:
+        """Update orgs.domain_name for a given org. No-op when org not found."""
+        ...
+
     async def list_for_user(self, user_org_codes: list[str]) -> list[Org]:
         """Fetch all orgs whose code appears in the user's JWT org_codes claim.
         Used for `GET /v2/orgs`. Order: by name."""

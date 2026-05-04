@@ -205,6 +205,15 @@ class PostgresOrgRepository:
         async with self._session_maker() as session:
             return await session.get(Org, code)
 
+    async def set_domain_name(self, code: str, domain_name: str) -> None:
+        async with self._session_maker() as session:
+            org = await session.get(Org, code)
+            if org is None:
+                return
+            org.domain_name = domain_name
+            org.updated_at = _utcnow()
+            await session.commit()
+
     async def list_for_user(self, user_org_codes: list[str]) -> list[Org]:
         if not user_org_codes:
             return []

@@ -36,6 +36,8 @@ export interface Translations {
   domainConfig: {
     // basic
     sectionBasic: string;
+    domainName: string;
+    domainNameHint: string;
     domainDescription: string;
     articleLanguage: string;
     // search

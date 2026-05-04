@@ -277,19 +277,30 @@ async def get_domain_config_endpoint(
     config = await org_config_repo.get(org.code)
     if config is None:
         raise HTTPException(status_code=404, detail="Domain config not found for this org")
-    return _org_config_to_dict(config)
+    return _org_config_to_dict(config, domain_name=org.domain_name)
 
 
 @router.put("/domain-config")
 async def put_domain_config_endpoint(
     body: DomainConfigUpdate,
     org: Org = Depends(get_current_org),
+    org_repo: OrgRepository = Depends(get_org_repo),
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ) -> dict:
-    """Upsert the org's domain config. Returns the saved config."""
-    config = OrgConfig(org_code=org.code, **body.model_dump())
+    """Upsert the org's domain config. Returns the saved config.
+
+    `domain_name` is dispatched to the orgs table (it doesn't live in
+    org_configs); everything else is upserted on org_configs.
+    """
+    payload = body.model_dump()
+    new_domain_name = payload.pop("domain_name", None)
+    effective_domain = org.domain_name
+    if new_domain_name is not None and new_domain_name != org.domain_name:
+        await org_repo.set_domain_name(org.code, new_domain_name)
+        effective_domain = new_domain_name
+    config = OrgConfig(org_code=org.code, **payload)
     saved = await org_config_repo.upsert(config)
-    return _org_config_to_dict(saved)
+    return _org_config_to_dict(saved, domain_name=effective_domain)
 
 
 def _apply_article_domain_overrides(domain: DomainConfig, overrides: dict) -> DomainConfig:
@@ -324,9 +335,10 @@ def _apply_article_domain_overrides(domain: DomainConfig, overrides: dict) -> Do
     return dc_replace(domain, **patches) if patches else domain
 
 
-def _org_config_to_dict(config: OrgConfig) -> dict:
+def _org_config_to_dict(config: OrgConfig, *, domain_name: str | None = None) -> dict:
     return {
         "org_code": config.org_code,
+        "domain_name": domain_name or "",
         "description": config.description,
         "language": config.language,
         "target_word_count": config.target_word_count,

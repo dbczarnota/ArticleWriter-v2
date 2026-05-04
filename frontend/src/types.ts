@@ -79,6 +79,7 @@ export interface Article extends ArticleListItem {
 
 export interface DomainConfigData {
   org_code: string;
+  domain_name: string;
   description: string;
   language: string;
   target_word_count: number;

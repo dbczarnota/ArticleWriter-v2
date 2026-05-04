@@ -37,6 +37,8 @@ export const en: Translations = {
   },
   domainConfig: {
     sectionBasic: "Basic",
+    domainName: "Domain identifier",
+    domainNameHint: "Short, human-readable name for this editorial domain (e.g. 'styl_fm'). Defaults to the Kinde org code.",
     domainDescription: "Domain description",
     articleLanguage: "Article language",
     sectionSearch: "Search",

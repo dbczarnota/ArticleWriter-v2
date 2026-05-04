@@ -164,6 +164,11 @@ class NullOrgRepository:
             return self._local_dev
         return None
 
+    async def set_domain_name(self, code: str, domain_name: str) -> None:
+        if code == LOCAL_DEV_ORG_CODE:
+            self._local_dev.domain_name = domain_name
+            self._local_dev.updated_at = datetime.now(UTC)
+
     async def list_for_user(self, user_org_codes: list[str]) -> list[Org]:
         if LOCAL_DEV_ORG_CODE in user_org_codes:
             return [self._local_dev]

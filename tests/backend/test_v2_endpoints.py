@@ -79,6 +79,11 @@ class _StubOrgRepo:
     async def create_from_jwt(self, **_kw) -> Org:  # pragma: no cover
         raise NotImplementedError
 
+    async def set_domain_name(self, code: str, domain_name: str) -> None:
+        org = self._by_code.get(code)
+        if org is not None:
+            org.domain_name = domain_name
+
 
 def _make_article(*, org_code: str, topic: str = "T", status: str = "done") -> Article:
     """Build a fully-populated Article (with one fact + one quote) for fixture use."""

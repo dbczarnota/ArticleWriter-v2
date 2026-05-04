@@ -269,6 +269,11 @@ class _FakeOrgRepo:
     async def list_for_user(self, user_org_codes: list[str]) -> list[Org]:
         return [self._by_code[c] for c in user_org_codes if c in self._by_code]
 
+    async def set_domain_name(self, code: str, domain_name: str) -> None:
+        org = self._by_code.get(code)
+        if org is not None:
+            org.domain_name = domain_name
+
 
 class _FakeOrgConfigRepo:
     def __init__(self) -> None:

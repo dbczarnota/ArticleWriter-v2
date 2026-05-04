@@ -37,6 +37,8 @@ export const pl: Translations = {
   },
   domainConfig: {
     sectionBasic: "Podstawowe",
+    domainName: "Identyfikator domeny",
+    domainNameHint: "Krótka, czytelna nazwa redakcji (np. 'styl_fm'). Domyślnie: kod organizacji z Kinde.",
     domainDescription: "Opis domeny",
     articleLanguage: "Język artykułów",
     sectionSearch: "Wyszukiwanie",
