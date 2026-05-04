@@ -153,8 +153,10 @@ class KindeAuthenticator:
         else:
             org_codes = []
 
+        org_name = payload.get("org_name")
         return AuthenticatedUser(
             id=str(user_id),
             email=payload.get("email"),
             org_codes=org_codes,
+            current_org_name=str(org_name) if org_name else None,
         )

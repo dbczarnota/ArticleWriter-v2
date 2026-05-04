@@ -21,6 +21,7 @@ from jwt.algorithms import RSAAlgorithm
 
 from backend.auth.kinde import KindeAuthenticator
 from backend.auth.protocols import NullAuthenticator
+from backend.db.models import Org, OrgConfig
 
 # ---------------------------------------------------------------------------
 # NullAuthenticator
@@ -244,6 +245,126 @@ def test_get_authenticator_factory_picks_null_by_default(monkeypatch):
     auth = get_authenticator()
     reset_authenticator_cache()
     assert isinstance(auth, NA)
+
+
+# ---------------------------------------------------------------------------
+# get_current_org — auto-bootstrap on first request
+# ---------------------------------------------------------------------------
+
+
+class _FakeOrgRepo:
+    def __init__(self) -> None:
+        self._by_code: dict[str, Org] = {}
+        self.create_calls: list[tuple[str, str]] = []
+
+    async def get(self, code: str) -> Org | None:
+        return self._by_code.get(code)
+
+    async def create_from_jwt(self, *, code: str, name: str) -> Org:
+        self.create_calls.append((code, name))
+        org = self._by_code.get(code)
+        if org is None:
+            org = Org(code=code, kinde_org_id=code, name=name, domain_name=code)
+            self._by_code[code] = org
+        return org
+
+    async def list_for_user(self, user_org_codes: list[str]) -> list[Org]:
+        return [self._by_code[c] for c in user_org_codes if c in self._by_code]
+
+
+class _FakeOrgConfigRepo:
+    def __init__(self) -> None:
+        self.create_default_calls: list[str] = []
+
+    async def get(self, org_code: str) -> OrgConfig | None:
+        del org_code
+        return None
+
+    async def upsert(self, config: OrgConfig) -> OrgConfig:
+        return config
+
+    async def create_default(self, org_code: str) -> OrgConfig:
+        self.create_default_calls.append(org_code)
+        return OrgConfig(org_code=org_code)
+
+
+async def test_get_current_org_bootstraps_org_and_config_on_first_request():
+    from backend.auth.deps import get_current_org
+    from backend.auth.protocols import AuthenticatedUser
+
+    user = AuthenticatedUser(
+        id="u1", email="u@x.pl", org_codes=["org_new"], current_org_name="Sport.fm"
+    )
+    org_repo = _FakeOrgRepo()
+    cfg_repo = _FakeOrgConfigRepo()
+
+    org = await get_current_org(
+        user=user, org_code="org_new", org_repo=org_repo, config_repo=cfg_repo
+    )
+    assert org.code == "org_new"
+    assert org.name == "Sport.fm"
+    assert org.domain_name == "org_new"
+    assert org_repo.create_calls == [("org_new", "Sport.fm")]
+    assert cfg_repo.create_default_calls == ["org_new"]
+
+
+async def test_get_current_org_falls_back_to_org_code_when_jwt_has_no_name():
+    from backend.auth.deps import get_current_org
+    from backend.auth.protocols import AuthenticatedUser
+
+    user = AuthenticatedUser(id="u1", email=None, org_codes=["org_new"])
+    org_repo = _FakeOrgRepo()
+    cfg_repo = _FakeOrgConfigRepo()
+
+    org = await get_current_org(
+        user=user, org_code="org_new", org_repo=org_repo, config_repo=cfg_repo
+    )
+    assert org.name == "org_new"
+
+
+async def test_get_current_org_returns_existing_without_recreating():
+    from backend.auth.deps import get_current_org
+    from backend.auth.protocols import AuthenticatedUser
+
+    user = AuthenticatedUser(id="u1", email=None, org_codes=["org_x"])
+    org_repo = _FakeOrgRepo()
+    org_repo._by_code["org_x"] = Org(
+        code="org_x", kinde_org_id="org_x", name="Existing", domain_name="org_x"
+    )
+    cfg_repo = _FakeOrgConfigRepo()
+
+    org = await get_current_org(
+        user=user, org_code="org_x", org_repo=org_repo, config_repo=cfg_repo
+    )
+    assert org.name == "Existing"
+    assert org_repo.create_calls == []
+    assert cfg_repo.create_default_calls == []
+
+
+async def test_get_current_org_403_for_non_member():
+    from backend.auth.deps import get_current_org
+    from backend.auth.protocols import AuthenticatedUser
+
+    user = AuthenticatedUser(id="u1", email=None, org_codes=["org_a"])
+
+    with pytest.raises(HTTPException) as exc:
+        await get_current_org(
+            user=user, org_code="org_b", org_repo=_FakeOrgRepo(), config_repo=_FakeOrgConfigRepo()
+        )
+    assert exc.value.status_code == 403
+
+
+async def test_get_current_org_400_when_org_code_header_missing():
+    from backend.auth.deps import get_current_org
+    from backend.auth.protocols import AuthenticatedUser
+
+    user = AuthenticatedUser(id="u1", email=None, org_codes=["org_a"])
+
+    with pytest.raises(HTTPException) as exc:
+        await get_current_org(
+            user=user, org_code="", org_repo=_FakeOrgRepo(), config_repo=_FakeOrgConfigRepo()
+        )
+    assert exc.value.status_code == 400
 
 
 # Reference for unused imports

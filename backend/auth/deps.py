@@ -20,8 +20,8 @@ from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.auth.protocols import AuthenticatedUser, Authenticator, NullAuthenticator
-from backend.repositories import get_org_repo
-from backend.repositories.protocols import OrgRepository
+from backend.repositories import get_org_config_repo, get_org_repo
+from backend.repositories.protocols import OrgConfigRepository, OrgRepository
 
 # auto_error=False so the bearer header is optional at the dependency level.
 # Authenticator implementations decide what to do with empty token (NullAuth ignores,
@@ -78,19 +78,18 @@ async def get_current_org(
     user: AuthenticatedUser = Depends(get_current_user),
     org_code: str = Header(alias="X-Org-Code"),
     org_repo: OrgRepository = Depends(get_org_repo),
+    config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ):
-    """Resolve and validate the active org from the X-Org-Code header.
+    """Resolve the active org from the X-Org-Code header, auto-bootstrapping
+    new tenants on first request.
 
     Steps:
     1. Verify org_code is in user.org_codes (the JWT claim) — else 403.
        This is the tenant-isolation gate: a user cannot pivot to an org they
        don't belong to even if they happen to know its code.
-    2. Look the org up via OrgRepository.
-       - If absent AND AUTH_BACKEND=kinde: try to bootstrap it from Kinde
-         Management API (sync_org_from_kinde). After sync, re-fetch.
-       - If still absent: 404.
-    3. Refuse if org has no domain_name yet — operator must run
-       backend.scripts.set_org_domain to map it (412 Precondition Failed).
+    2. Look the org up via OrgRepository. If absent: create_from_jwt() with
+       the JWT-supplied org name, then create_default() OrgConfig with model
+       defaults. Both calls are idempotent.
 
     Returns the Org row.
     """
@@ -105,25 +104,12 @@ async def get_current_org(
             detail=f"User does not belong to org '{org_code}'",
         )
     org = await org_repo.get(org_code)
-    if org is None and get_auth_backend() == "kinde":
-        # Bootstrap from Kinde on first request for this org_code.
-        from backend.services.org_sync import sync_org_from_kinde
-
-        if await sync_org_from_kinde(org_code, org_repo):
-            org = await org_repo.get(org_code)
     if org is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Org '{org_code}' not found (not yet synced from Kinde)",
-        )
-    if not org.domain_name:
-        raise HTTPException(
-            status_code=status.HTTP_412_PRECONDITION_FAILED,
-            detail=(
-                f"Org '{org_code}' is not yet mapped to a domain. "
-                "Operator must run: uv run python -m backend.scripts.set_org_domain"
-            ),
-        )
+        # First request for this tenant — bootstrap Org row + default config.
+        # JWT carries everything we need; Kinde Management API is not consulted.
+        seed_name = user.current_org_name or org_code
+        org = await org_repo.create_from_jwt(code=org_code, name=seed_name)
+        await config_repo.create_default(org_code)
     return org
 
 

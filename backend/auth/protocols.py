@@ -30,6 +30,12 @@ class AuthenticatedUser(BaseModel):
     """All orgs this user belongs to (Kinde `org_codes` claim).
     Used by get_current_org dependency to verify the X-Org-Code header is allowed."""
 
+    current_org_name: str | None = None
+    """Display name for the org the user is currently logged into (Kinde `org_name`
+    claim if exposed in the access token). Used as the seed value for `Org.name`
+    when get_current_org auto-bootstraps a new tenant. May be None — get_current_org
+    falls back to the org code in that case."""
+
 
 class Authenticator(Protocol):
     """Verify a bearer token and return the user."""
