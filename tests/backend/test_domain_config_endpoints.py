@@ -1,4 +1,5 @@
 """Tests for GET/PUT /v2/domain-config."""
+
 from __future__ import annotations
 
 import pytest

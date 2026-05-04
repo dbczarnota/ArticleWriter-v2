@@ -8,7 +8,9 @@ from agents.pipeline import runner
 
 def _make_article(days_ago: int) -> ParsedArticle:
     dt = (datetime.now(UTC) - timedelta(days=days_ago)).date().isoformat()
-    return ParsedArticle(url=f"https://ex.com/{days_ago}", title="T", content="C", publication_date=dt)
+    return ParsedArticle(
+        url=f"https://ex.com/{days_ago}", title="T", content="C", publication_date=dt
+    )
 
 
 def test_filter_keeps_article_within_window():

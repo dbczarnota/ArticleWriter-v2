@@ -72,9 +72,7 @@ def test_snippet_becomes_description():
 
 
 def test_empty_snippet_gives_none_description():
-    result = SearchResult(
-        url="https://youtube.com/watch?v=x", title="T", snippet="", source="web"
-    )
+    result = SearchResult(url="https://youtube.com/watch?v=x", title="T", snippet="", source="web")
     _, embeds = _extract_social_from_search([result])
     assert embeds[0].description is None
 

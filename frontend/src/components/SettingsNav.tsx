@@ -6,6 +6,7 @@ const SECTIONS = [
   { id: "wytyczne", label: "Wytyczne redakcyjne" },
   { id: "html", label: "Format HTML" },
   { id: "stance", label: "Stance recenzenta" },
+  { id: "tytuly", label: "Przykładowe H1" },
   { id: "przyklady", label: "Przykładowe artykuły" },
 ];
 

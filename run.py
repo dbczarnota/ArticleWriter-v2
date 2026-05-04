@@ -111,7 +111,6 @@ async def main() -> None:
         "instructions": settings.instructions.model,
         "writer": settings.writer.model,
         "reflection": settings.reflection.model,
-        "usage_tracking": settings.usage_tracking.model,
         "followup": settings.followup.model,
     }
 

@@ -50,7 +50,8 @@ async def test_gate_raises_when_extraction_is_empty(styl_fm_settings, domain):
             "agents.pipeline.runner.run_extraction_agent",
             new_callable=AsyncMock,
             return_value=ExtractionResult(facts=[], quotes=[], keywords=[]),
-        ),pytest.raises(InsufficientSourcesError) as exc_info
+        ),
+        pytest.raises(InsufficientSourcesError) as exc_info,
     ):
         await run_pipeline(
             "Topic with no available sources",
@@ -91,7 +92,8 @@ async def test_gate_threshold_configurable(styl_fm_settings, domain):
             "agents.pipeline.runner.run_extraction_agent",
             new_callable=AsyncMock,
             return_value=ExtractionResult(facts=[], quotes=[], keywords=[]),
-        ),pytest.raises(InsufficientSourcesError) as exc_info
+        ),
+        pytest.raises(InsufficientSourcesError) as exc_info,
     ):
         await run_pipeline(
             "Topic",
@@ -127,7 +129,8 @@ async def test_gate_includes_upstream_errors(styl_fm_settings, domain):
             "agents.pipeline.runner.run_extraction_agent",
             new_callable=AsyncMock,
             return_value=ExtractionResult(facts=[], quotes=[], keywords=[]),
-        ),pytest.raises(InsufficientSourcesError) as exc_info
+        ),
+        pytest.raises(InsufficientSourcesError) as exc_info,
     ):
         await run_pipeline(
             "Topic",
@@ -161,9 +164,7 @@ async def test_gate_passes_with_at_least_one_fact(styl_fm_settings, domain):
         source_title="Sample article",
     )
 
-    instructions_mock = AsyncMock(
-        side_effect=RuntimeError("downstream stop — gate already passed")
-    )
+    instructions_mock = AsyncMock(side_effect=RuntimeError("downstream stop — gate already passed"))
 
     with (
         patch("agents.pipeline.runner.run_search_agent", new_callable=AsyncMock, return_value=[]),

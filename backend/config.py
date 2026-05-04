@@ -12,7 +12,6 @@ from agents._base.config import (
     ReflectionAgentConfig,
     ScrapingConfig,
     SearchAgentConfig,
-    UsageTrackingAgentConfig,
     WriterAgentConfig,
 )
 
@@ -41,7 +40,6 @@ _AGENT_FIELD_MAP: dict[str, str] = {
     "writer": "writer",
     "reflection": "reflection",
     "followup": "followup",
-    "usage_tracking": "usage_tracking",
 }
 
 
@@ -87,9 +85,6 @@ class AppSettings:
     )
     followup: FollowUpAgentConfig = field(
         default_factory=lambda: FollowUpAgentConfig(fallback_models=_FALLBACK)
-    )
-    usage_tracking: UsageTrackingAgentConfig = field(
-        default_factory=lambda: UsageTrackingAgentConfig(fallback_models=_FALLBACK)
     )
     pipeline: PipelineFlags = field(default_factory=PipelineFlags)
 

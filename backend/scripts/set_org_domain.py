@@ -78,9 +78,7 @@ async def main() -> None:
             client = KindeManagementClient()
             kinde_org = await client.get_organization(args.code)
             if kinde_org is None:
-                raise SystemExit(
-                    f"Kinde does not have an organization with code={args.code!r}."
-                )
+                raise SystemExit(f"Kinde does not have an organization with code={args.code!r}.")
             org = Org(
                 code=kinde_org.code,
                 domain_name=args.domain,

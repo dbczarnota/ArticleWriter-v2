@@ -66,3 +66,4 @@ class DomainConfigUpdate(BaseModel):
     html_format: str = ""
     reflection_stance: str = ""
     example_articles: list[str] = PydanticField(default_factory=list)
+    example_titles: list[str] = PydanticField(default_factory=list)

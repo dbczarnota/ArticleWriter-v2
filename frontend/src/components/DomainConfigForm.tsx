@@ -219,6 +219,50 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
           />
         </section>
 
+        {/* Przykładowe H1 */}
+        <section id="tytuly" style={{ display: sectionVisible("tytuly") ? "block" : "none", marginBottom: 32 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Przykładowe H1</h3>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>
+            Wzorcowe tytuły artykułów — agent follow-up generuje alternatywne H1 w tym stylu.
+          </p>
+          {form.example_titles.map((text, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+              <input
+                value={text}
+                onChange={(e) => {
+                  const updated = [...form.example_titles];
+                  updated[i] = e.target.value;
+                  set("example_titles", updated);
+                }}
+                placeholder={`Tytuł ${i + 1}`}
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button
+                type="button"
+                onClick={() => set("example_titles", form.example_titles.filter((_, j) => j !== i))}
+                style={{ background: "none", border: "none", fontSize: 13, color: "#ef4444", cursor: "pointer", flexShrink: 0 }}
+              >
+                Usuń
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => set("example_titles", [...form.example_titles, ""])}
+            style={{
+              padding: "6px 14px",
+              background: "none",
+              border: "1px dashed var(--border)",
+              borderRadius: "var(--radius)",
+              fontSize: 13,
+              color: "var(--muted)",
+              cursor: "pointer",
+            }}
+          >
+            + Dodaj tytuł
+          </button>
+        </section>
+
         {/* Przykładowe artykuły */}
         <section id="przyklady" style={{ display: sectionVisible("przyklady") ? "block" : "none", marginBottom: 32 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Przykładowe artykuły</h3>

@@ -48,9 +48,7 @@ async def sync_org_from_kinde(org_code: str, org_repo: OrgRepository) -> bool:
     try:
         kinde_org = await client.get_organization(org_code)
     except Exception as exc:
-        _log.warning(
-            "Kinde Management API call failed for org_code=%s: %s", org_code, exc
-        )
+        _log.warning("Kinde Management API call failed for org_code=%s: %s", org_code, exc)
         return False
     if kinde_org is None:
         _log.warning("Kinde does not have an organization with code=%s", org_code)

@@ -105,5 +105,6 @@ export interface DomainConfigData {
   html_format: string;
   reflection_stance: string;
   example_articles: string[];
+  example_titles: string[];
   updated_at: string | null;
 }

@@ -37,6 +37,7 @@ class DomainConfig:
     html_format: str = ""
     reflection_stance: str = ""
     example_articles: tuple[str, ...] = ()
+    example_titles: tuple[str, ...] = ()
 
 
 def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:
@@ -68,6 +69,7 @@ def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:
         html_format=config.html_format,
         reflection_stance=config.reflection_stance,
         example_articles=tuple(config.example_articles),
+        example_titles=tuple(config.example_titles),
     )
 
 

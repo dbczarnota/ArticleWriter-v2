@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pathlib
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, field_validator
 from pydantic_ai import Agent
@@ -16,17 +16,29 @@ from agents._base.types import ArticleOutput
 from agents.extraction.agent import ExtractionResult
 from agents.writer.agent import ArticleHtml
 
+if TYPE_CHECKING:
+    from backend.domain import DomainConfig
+
 _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
 
 
 class FollowUpOutput(BaseModel):
     alternative_titles: list[str]
     followup_topics: list[str]
+    used_facts: list[str] = []
+    used_quotes: list[str] = []
 
     @field_validator("alternative_titles", "followup_topics", mode="before")
     @classmethod
     def _clean(cls, v: list) -> list:
         return [" ".join(s.split()) for item in v if isinstance(item, str) and (s := item.strip())]
+
+    @field_validator("used_facts", "used_quotes", mode="before")
+    @classmethod
+    def _clean_str_list(cls, v: Any) -> list[str]:
+        if not isinstance(v, list):
+            return []
+        return [item.strip() for item in v if isinstance(item, str) and item.strip()]
 
 
 async def run_followup_agent(
@@ -35,9 +47,10 @@ async def run_followup_agent(
     topic: str,
     extraction_result: ExtractionResult,
     config: FollowUpAgentConfig,
+    domain: DomainConfig,
     _agent: Agent[Any, Any] | None = None,
 ) -> ArticleOutput:
-    """Generate alternative titles, follow-up topics, and track used facts/quotes."""
+    """Generate alternative titles, follow-up topics, and track which facts/quotes were used."""
     facts_text = "\n".join(f"- {f.text} [{f.context}]" for f in extraction_result.facts)
     quotes_text = "\n".join(f'- "{q.text}" — {q.speaker}' for q in extraction_result.quotes)
 
@@ -60,6 +73,8 @@ async def run_followup_agent(
                 num_titles=config.num_titles,
                 num_topics=config.num_topics,
                 format_style=model_format_style(m),
+                guidelines=domain.guidelines,
+                example_titles=list(domain.example_titles),
             )
             return Agent(m, output_type=FollowUpOutput), sys_prompt
 
@@ -89,7 +104,7 @@ async def run_followup_agent(
         html=article.html,
         alternative_titles=output.alternative_titles,
         followup_topics=output.followup_topics,
-        used_facts=[],
-        used_quotes=[],
+        used_facts=output.used_facts,
+        used_quotes=output.used_quotes,
         sources=sources,
     )

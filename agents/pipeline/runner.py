@@ -20,7 +20,6 @@ from agents.parsing.agent import run_parsing_agent
 from agents.reflection.agent import run_reflection_agent
 from agents.scraping.agent import run_scraping_agent
 from agents.search.agent import run_search_agent
-from agents.usage_tracking.agent import run_usage_tracking_agent
 from agents.writer.agent import ArticleHtml, run_writer_agent
 from backend.config import AppSettings
 from backend.domain import DomainConfig
@@ -511,19 +510,11 @@ async def _run_pipeline_inner(
                     topic=topic,
                     extraction_result=extraction,
                     config=settings.followup,
+                    domain=domain,
                 )
-                try:
-                    used_facts, used_quotes = await run_usage_tracking_agent(
-                        article,
-                        extraction_result=extraction,
-                        config=settings.usage_tracking,
-                    )
-                    log.usage_tracking_done(used_facts, used_quotes)
-                except Exception as e:
-                    _errors.append({"stage": "usage_tracking", "error": str(e)})
-                    log.error("usage_tracking", e)
-                    record_error("usage_tracking")
-                    used_facts, used_quotes = [], []
+                used_facts = list(result.used_facts)
+                used_quotes = list(result.used_quotes)
+                log.usage_tracking_done(used_facts, used_quotes)
                 log.followup_done(result.alternative_titles, result.followup_topics)
                 _timing["followup"] = (time.perf_counter() - _stage_t0) * 1000
                 record_stage("followup", _timing["followup"], domain.name)

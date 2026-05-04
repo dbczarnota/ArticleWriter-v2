@@ -76,16 +76,16 @@ async def _formulate_queries(
             "    THIS story different from any other story involving the same people\n"
             "  AVOID in tier 0:\n"
             "  • Background figures who happen to be present (e.g. a spouse who isn't the actor in the story)\n"
-            "  • Generic event-type words that match too much (\"meeting\", \"visit\", \"confrontation\", \"interview\", "
-            "    \"appearance\") unless paired with a unique modifier\n"
-            "  • Adjectives or feelings (\"shocked\", \"furious\", \"emotional\") — they rarely appear verbatim in "
+            '  • Generic event-type words that match too much ("meeting", "visit", "confrontation", "interview", '
+            '    "appearance") unless paired with a unique modifier\n'
+            '  • Adjectives or feelings ("shocked", "furious", "emotional") — they rarely appear verbatim in '
             "    social-media post text\n"
             "  Example: topic 'Melania Trump nie wytrzymała przy królu Karolu' with article context revealing a "
-            "April 2026 White House dinner: GOOD tier 0 = [\"Melania Trump\", \"król Karol\", \"Biały Dom\", \"kolacja\"]. "
-            "BAD tier 0 = [\"Melania Trump\", \"król Karol\", \"Biały Dom\", \"Donald Trump\", \"konfrontacja\"] — Donald "
+            'April 2026 White House dinner: GOOD tier 0 = ["Melania Trump", "król Karol", "Biały Dom", "kolacja"]. '
+            'BAD tier 0 = ["Melania Trump", "król Karol", "Biały Dom", "Donald Trump", "konfrontacja"] — Donald '
             "is background, 'konfrontacja' is generic. Removing those gives a sharper search.\n\n"
             "Tier 1 (MID) — 2-3 keywords: drop the unique-incident anchor, keep main entity + one strong context "
-            "word (location OR event-category), e.g. [\"Melania Trump\", \"król Karol\", \"wizyta\"].\n\n"
+            'word (location OR event-category), e.g. ["Melania Trump", "król Karol", "wizyta"].\n\n'
             "Tier 2 (BROAD, optional) — 1-2 keywords, just the primary subject. Include only when narrow tiers "
             "might miss content for a niche topic; skip otherwise. Tier 2 will pull in many off-topic results, so "
             "it's a last-resort fallback.\n\n"
@@ -119,9 +119,7 @@ async def _formulate_queries(
     )
     out: list[tuple[str, list[str]]] = []
     for lq in result.output.queries:
-        tier_strings = [
-            " ".join(f'"{kw}"' for kw in tier[:6]) for tier in lq.tiers if tier
-        ]
+        tier_strings = [" ".join(f'"{kw}"' for kw in tier[:6]) for tier in lq.tiers if tier]
         if tier_strings:
             out.append((lq.lang, tier_strings))
     if not out:
@@ -247,9 +245,9 @@ async def run_media_search(
 
     if domain.reddit_search:
         # Reddit is English-dominant — use the English-language tier set if present, else the first.
-        en_tiers = next(
-            (tiers for lang, tiers in queries_per_lang if lang == "en"), None
-        ) or (queries_per_lang[0][1] if queries_per_lang else [topic])
+        en_tiers = next((tiers for lang, tiers in queries_per_lang if lang == "en"), None) or (
+            queries_per_lang[0][1] if queries_per_lang else [topic]
+        )
         # Keep the quoted-phrase form: a previous version split on whitespace and stripped quotes,
         # which broke multi-word entities ("Melania Trump" → "Melania" "Trump") and forced Reddit's
         # search into OR-mode across loose tokens, returning posts about either entity in isolation.

@@ -218,6 +218,7 @@ class NullOrgConfigRepository:
             html_format="",
             reflection_stance="",
             example_articles=[],
+            example_titles=[],
         )
 
     async def upsert(self, config: OrgConfig) -> OrgConfig:

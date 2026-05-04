@@ -326,6 +326,14 @@ class OrgConfig(SQLModel, table=True):
             server_default=text("ARRAY[]::text[]"),
         ),
     )
+    example_titles: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(
+            ARRAY(String()),
+            nullable=False,
+            server_default=text("ARRAY[]::text[]"),
+        ),
+    )
     updated_at: datetime = Field(
         default_factory=_utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()")),

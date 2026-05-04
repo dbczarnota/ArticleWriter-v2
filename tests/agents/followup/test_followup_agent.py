@@ -7,6 +7,7 @@ from agents._base.types import ArticleOutput, Fact, Quote
 from agents.extraction.agent import ExtractionResult
 from agents.followup.agent import run_followup_agent
 from agents.writer.agent import ArticleHtml
+from backend.domain import DomainConfig
 
 _ARTICLE = ArticleHtml(html="<h1>Dawid zarobił miliony</h1><p>Treść artykułu.</p>")
 
@@ -22,6 +23,7 @@ _EXTRACTION = ExtractionResult(
 )
 
 _CONFIG = FollowUpAgentConfig()
+_DOMAIN = DomainConfig(name="test", description="test")
 
 
 def _make_followup_agent(
@@ -62,6 +64,7 @@ async def test_run_followup_agent_returns_article_output():
         topic="Dawid Podsiadło",
         extraction_result=_EXTRACTION,
         config=_CONFIG,
+        domain=_DOMAIN,
         _agent=_make_followup_agent(),
     )
     assert isinstance(result, ArticleOutput)
@@ -82,6 +85,7 @@ async def test_run_followup_agent_respects_num_titles_config():
         topic="topic",
         extraction_result=_EXTRACTION,
         config=config,
+        domain=_DOMAIN,
         _agent=_make_followup_agent(alternative_titles=titles, followup_topics=topics),
     )
     assert len(result.alternative_titles) == 5
@@ -95,6 +99,7 @@ async def test_run_followup_agent_preserves_html():
         topic="topic",
         extraction_result=_EXTRACTION,
         config=_CONFIG,
+        domain=_DOMAIN,
         _agent=_make_followup_agent(),
     )
     assert result.html == "<h1>Dawid zarobił miliony</h1><p>Treść artykułu.</p>"

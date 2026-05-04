@@ -315,5 +315,6 @@ def _org_config_to_dict(config: OrgConfig) -> dict:
         "html_format": config.html_format,
         "reflection_stance": config.reflection_stance,
         "example_articles": config.example_articles,
+        "example_titles": config.example_titles,
         "updated_at": config.updated_at.isoformat() if config.updated_at else None,
     }
