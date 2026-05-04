@@ -6,6 +6,7 @@ import type { DomainConfigData } from "../types";
 
 const BASE_CONFIG: DomainConfigData = {
   org_code: "test",
+  domain_name: "test",
   description: "",
   language: "pl",
   target_word_count: 600,
