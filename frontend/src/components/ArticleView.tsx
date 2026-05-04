@@ -5,10 +5,11 @@ import { CollapsibleSection } from "./CollapsibleSection";
 
 interface ArticleViewProps {
   articleId: string;
+  currentUserId?: string;
 }
 
-export function ArticleView({ articleId }: ArticleViewProps) {
-  const { fetchArticle } = useArticles();
+export function ArticleView({ articleId, currentUserId }: ArticleViewProps) {
+  const { fetchArticle, markDone } = useArticles();
   const [article, setArticle] = useState<Article | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,8 +86,33 @@ export function ArticleView({ articleId }: ArticleViewProps) {
   return (
     <div>
       {/* Toolbar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600 }}>{article.topic}</h2>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 16 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>{article.topic}</h2>
+          <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--muted)", flexWrap: "wrap", alignItems: "center" }}>
+            <span>
+              {article.author_email
+                ? (currentUserId && article.author_user_id === currentUserId ? `Ty (${article.author_email})` : article.author_email)
+                : article.author_user_id.slice(0, 12) + "…"}
+            </span>
+            <span>{article.created_at ? new Date(article.created_at).toLocaleString("pl") : "—"}</span>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" }}>
+              <input
+                type="checkbox"
+                checked={article.marked_done}
+                onChange={(e) => {
+                  const done = e.target.checked;
+                  setArticle((a) => a ? { ...a, marked_done: done } : a);
+                  markDone(article.id, done);
+                }}
+                style={{ width: 14, height: 14, accentColor: "var(--accent)", cursor: "pointer" }}
+              />
+              <span style={{ fontWeight: article.marked_done ? 600 : 400, color: article.marked_done ? "#22c55e" : "var(--muted)" }}>
+                {article.marked_done ? "Done ✓" : "Done"}
+              </span>
+            </label>
+          </div>
+        </div>
         <button
           onClick={handleExport}
           style={{
@@ -97,6 +123,7 @@ export function ArticleView({ articleId }: ArticleViewProps) {
             borderRadius: "var(--radius)",
             fontSize: 13,
             cursor: "pointer",
+            flexShrink: 0,
           }}
         >
           Eksport HTML

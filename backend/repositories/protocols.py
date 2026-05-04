@@ -43,6 +43,7 @@ class ArticleRepository(Protocol):
         *,
         org_code: str,
         author_user_id: str,
+        author_email: str | None = None,
         domain_name: str,
         topic: str,
     ) -> UUID:
@@ -99,6 +100,12 @@ class ArticleRepository(Protocol):
         self, *, org_code: str, limit: int = 20, offset: int = 0
     ) -> list[Article]:
         """List articles for an org, newest first. Children NOT loaded (use get() for full)."""
+        ...
+
+    async def set_marked_done(
+        self, article_id: UUID, *, org_code: str, marked_done: bool
+    ) -> None:
+        """Toggle editorial done flag. No-op when article not found (idempotent)."""
         ...
 
 

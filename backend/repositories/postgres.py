@@ -40,12 +40,14 @@ class PostgresArticleRepository:
         *,
         org_code: str,
         author_user_id: str,
+        author_email: str | None = None,
         domain_name: str,
         topic: str,
     ) -> UUID:
         article = Article(
             org_code=org_code,
             author_user_id=author_user_id,
+            author_email=author_email,
             domain_name=domain_name,
             topic=topic,
             status="running",
@@ -152,6 +154,18 @@ class PostgresArticleRepository:
             )
             result = await session.execute(stmt)
             return list(result.scalars().all())
+
+    async def set_marked_done(
+        self, article_id: UUID, *, org_code: str, marked_done: bool
+    ) -> None:
+        async with self._session_maker() as session:
+            stmt = select(Article).where(Article.id == article_id, Article.org_code == org_code)
+            result = await session.execute(stmt)
+            article = result.scalar_one_or_none()
+            if article is None:
+                return
+            article.marked_done = marked_done
+            await session.commit()
 
 
 class PostgresOrgRepository:

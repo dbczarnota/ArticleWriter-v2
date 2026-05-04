@@ -42,6 +42,14 @@ export function useArticles() {
     return request<Article>(`/v2/articles/${id}`);
   }
 
+  async function markDone(id: string, done: boolean): Promise<void> {
+    await request<{ ok: boolean }>(`/v2/articles/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ marked_done: done }),
+    });
+    setArticles((prev) => prev.map((a) => a.id === id ? { ...a, marked_done: done } : a));
+  }
+
   async function submitArticle(body: {
     topic: string;
     additional_instructions?: string;
@@ -54,5 +62,5 @@ export function useArticles() {
     });
   }
 
-  return { articles, loading, refresh, fetchArticle, submitArticle };
+  return { articles, loading, refresh, fetchArticle, submitArticle, markDone };
 }

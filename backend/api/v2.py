@@ -1,14 +1,13 @@
 # backend/api/v2.py
 from __future__ import annotations
 
-import dataclasses
+import contextlib
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
-from agents._base.resilient import AllModelsFailedError, InsufficientSourcesError
 from agents.pipeline.runner import run_pipeline
-from backend.api.schemas import ArticleRequest, DomainConfigUpdate
+from backend.api.schemas import ArticleRequest, ArticleUpdate, DomainConfigUpdate
 from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
 from backend.config import AppSettings
@@ -51,6 +50,7 @@ async def write_article(
     article_id = await article_repo.create_running(
         org_code=org.code,
         author_user_id=user.id,
+        author_email=user.email,
         domain_name=org.domain_name,
         topic=req.topic,
     )
@@ -81,7 +81,7 @@ async def _run_pipeline_background(
 ) -> None:
     """Run the pipeline and persist the result. Errors are swallowed here —
     runner already marks the article as failed in the DB on exceptions."""
-    try:
+    with contextlib.suppress(Exception):  # runner handles DB failure marking internally
         await run_pipeline(
             req.topic,
             settings=app_settings,
@@ -94,8 +94,6 @@ async def _run_pipeline_background(
             author_user_id=author_user_id,
             _article_id=article_id,
         )
-    except Exception:
-        pass  # runner handles DB failure marking internally
 
 
 @router.get("/me")
@@ -140,8 +138,10 @@ async def list_articles(
             "id": str(a.id),
             "topic": a.topic,
             "status": a.status,
+            "marked_done": a.marked_done,
             "domain_name": a.domain_name,
             "author_user_id": a.author_user_id,
+            "author_email": a.author_email,
             "created_at": a.created_at.isoformat() if a.created_at else None,
             "completed_at": a.completed_at.isoformat() if a.completed_at else None,
             "total_duration_ms": a.total_duration_ms,
@@ -167,9 +167,11 @@ async def get_article(
         "id": str(article.id),
         "org_code": article.org_code,
         "author_user_id": article.author_user_id,
+        "author_email": article.author_email,
         "domain_name": article.domain_name,
         "topic": article.topic,
         "status": article.status,
+        "marked_done": article.marked_done,
         "html": article.html,
         "alternative_titles": article.alternative_titles,
         "followup_topics": article.followup_topics,
@@ -238,6 +240,18 @@ async def get_article(
             for fe in article.fallback_events
         ],
     }
+
+
+@router.patch("/articles/{article_id}")
+async def patch_article(
+    article_id: UUID,
+    body: ArticleUpdate,
+    org: Org = Depends(get_current_org),
+    article_repo: ArticleRepository = Depends(get_article_repo),
+) -> dict:
+    """Partial update — currently only `marked_done` flag."""
+    await article_repo.set_marked_done(article_id, org_code=org.code, marked_done=body.marked_done)
+    return {"ok": True}
 
 
 @router.get("/domain-config")

@@ -34,6 +34,10 @@ class ArticleRequest(BaseModel):
         return v or None
 
 
+class ArticleUpdate(BaseModel):
+    marked_done: bool
+
+
 class DomainConfigUpdate(BaseModel):
     description: str = ""
     language: str = "pl"

@@ -16,12 +16,15 @@ interface SidebarProps {
   currentUserId?: string;
 }
 
+type DoneFilter = "all" | "undone" | "done";
+
 export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }: SidebarProps) {
   const [onlyMine, setOnlyMine] = useState(false);
+  const [doneFilter, setDoneFilter] = useState<DoneFilter>("all");
 
-  const visible = onlyMine && currentUserId
-    ? articles.filter((a) => a.author_user_id === currentUserId)
-    : articles;
+  const visible = articles
+    .filter((a) => !onlyMine || !currentUserId || a.author_user_id === currentUserId)
+    .filter((a) => doneFilter === "all" ? true : doneFilter === "done" ? a.marked_done : !a.marked_done);
 
   return (
     <aside style={{
@@ -58,25 +61,36 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
         </button>
       </div>
 
-      {currentUserId && (
-        <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)" }}>
-          <button
-            onClick={() => setOnlyMine((v) => !v)}
-            style={{
-              background: onlyMine ? "var(--accent)" : "transparent",
-              color: onlyMine ? "var(--white)" : "var(--muted)",
-              border: `1px solid ${onlyMine ? "var(--accent)" : "var(--border)"}`,
+      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {(["all", "undone", "done"] as DoneFilter[]).map((f) => {
+          const labels: Record<DoneFilter, string> = { all: "Wszystkie", undone: "Undone", done: "Done" };
+          const active = doneFilter === f;
+          return (
+            <button key={f} onClick={() => setDoneFilter(f)} style={{
+              background: active ? "var(--accent)" : "transparent",
+              color: active ? "var(--white)" : "var(--muted)",
+              border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
               borderRadius: "var(--radius)",
               padding: "3px 8px",
               fontSize: 11,
               fontWeight: 500,
               cursor: "pointer",
-            }}
-          >
-            Tylko moje
-          </button>
-        </div>
-      )}
+            }}>{labels[f]}</button>
+          );
+        })}
+        {currentUserId && (
+          <button onClick={() => setOnlyMine((v) => !v)} style={{
+            background: onlyMine ? "var(--accent)" : "transparent",
+            color: onlyMine ? "var(--white)" : "var(--muted)",
+            border: `1px solid ${onlyMine ? "var(--accent)" : "var(--border)"}`,
+            borderRadius: "var(--radius)",
+            padding: "3px 8px",
+            fontSize: 11,
+            fontWeight: 500,
+            cursor: "pointer",
+          }}>Moje</button>
+        )}
+      </div>
 
       <div style={{ overflowY: "auto", flex: 1 }}>
         {visible.length === 0 && (
@@ -101,6 +115,7 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
                 borderBottom: "1px solid var(--border)",
                 textAlign: "left",
                 cursor: "pointer",
+                opacity: a.marked_done && !isSelected ? 0.45 : 1,
               }}
             >
               <span style={{

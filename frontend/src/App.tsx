@@ -47,7 +47,7 @@ export default function App() {
             </p>
           )}
           {view === "article" && selectedArticleId && (
-            <ArticleView articleId={selectedArticleId} />
+            <ArticleView articleId={selectedArticleId} currentUserId={user?.id ?? undefined} />
           )}
           {view === "new" && (
             <NewArticleForm

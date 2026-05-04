@@ -85,12 +85,18 @@ class Article(SQLModel, table=True):
     author_user_id: str = Field(max_length=128)
     """Kinde user.sub from JWT — opaque string, no FK to a users table (Kinde is source of truth)."""
 
+    author_email: str | None = Field(default=None, sa_column=Column(String(256), nullable=True))
+    """Kinde user email at write time — denormalized for display; may be None for older rows."""
+
     domain_name: str = Field(max_length=64)
     """Snapshot of org.domain_name at write time. Cheap denormalization for reporting."""
 
     topic: str = Field(max_length=1024)
     status: str = Field(max_length=32, default="running")
     """One of: running, done, failed, insufficient_sources."""
+
+    marked_done: bool = Field(default=False)
+    """Editorial flag — set by a user to mark the article as reviewed/published."""
 
     # Output payload (populated by repo.complete()):
     html: str | None = Field(default=None, sa_column=Column(String, nullable=True))

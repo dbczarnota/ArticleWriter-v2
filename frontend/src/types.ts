@@ -2,8 +2,10 @@ export interface ArticleListItem {
   id: string;
   topic: string;
   status: "running" | "done" | "failed" | "insufficient_sources";
+  marked_done: boolean;
   domain_name: string;
   author_user_id: string;
+  author_email: string | null;
   created_at: string | null;
   completed_at: string | null;
   total_duration_ms: number | null;

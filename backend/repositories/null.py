@@ -41,15 +41,17 @@ class NullArticleRepository:
         *,
         org_code: str,
         author_user_id: str,
+        author_email: str | None = None,
         domain_name: str,
         topic: str,
     ) -> UUID:
         article_id = uuid4()
         _log.info(
-            "[null-repo] create_running article_id=%s org=%s user=%s topic=%r",
+            "[null-repo] create_running article_id=%s org=%s user=%s email=%s topic=%r",
             article_id,
             org_code,
             author_user_id,
+            author_email,
             topic[:80],
         )
         return article_id
@@ -113,6 +115,11 @@ class NullArticleRepository:
             "[null-repo] list_by_org org=%s limit=%d offset=%d -> []", org_code, limit, offset
         )
         return []
+
+    async def set_marked_done(
+        self, article_id: UUID, *, org_code: str, marked_done: bool
+    ) -> None:
+        _log.debug("[null-repo] set_marked_done article_id=%s org=%s done=%s (no-op)", article_id, org_code, marked_done)
 
 
 class NullOrgRepository:
