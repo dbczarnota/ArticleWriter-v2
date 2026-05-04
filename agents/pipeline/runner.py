@@ -849,6 +849,17 @@ _SOCIAL_URL_RE = re.compile(
 )
 
 
+def _normalize_social_url(url: str) -> str:
+    """Convert embed/shortlink forms to canonical watch URLs."""
+    import re as _re
+
+    # youtube.com/embed/VIDEO_ID → youtube.com/watch?v=VIDEO_ID
+    m = _re.match(r"(https?://(?:www\.)?youtube\.com)/embed/([A-Za-z0-9_-]+)", url, _re.IGNORECASE)
+    if m:
+        return f"{m.group(1)}/watch?v={m.group(2)}"
+    return url
+
+
 def _extract_social_from_content(
     pages: list,
 ) -> list[EmbedCandidate]:
@@ -863,7 +874,7 @@ def _extract_social_from_content(
     candidates: list[EmbedCandidate] = []
     for page in pages:
         for match in _SOCIAL_URL_RE.finditer(page.content):
-            url = match.group(0).rstrip(".,;)")
+            url = _normalize_social_url(match.group(0).rstrip(".,;)"))
             if url in seen:
                 continue
             seen.add(url)
