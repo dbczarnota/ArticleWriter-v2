@@ -5,7 +5,7 @@ Persistence (optional):
     just logs a summary line). To persist into local Postgres:
 
         docker compose up -d db
-        DB_BACKEND=postgres uv run python -m backend.scripts.seed_local_dev_org   # one-time
+        DB_BACKEND=postgres uv run python -m backend.scripts.bootstrap_local_dev  # one-time
         DB_BACKEND=postgres uv run python run.py
 
     Migration to managed Postgres (Neon/Atlas/etc.) later: change DATABASE_URL,

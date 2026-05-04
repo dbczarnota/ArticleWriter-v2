@@ -21,7 +21,7 @@ single `output.html` file.
 ```powershell
 docker compose up -d db
 uv run alembic upgrade head
-uv run python -m backend.scripts.seed_local_dev_org   # one-time, creates __local_dev__ org
+uv run python -m backend.scripts.bootstrap_local_dev  # one-time, creates __local_dev__ org + default OrgConfig
 $env:DB_BACKEND="postgres"; uv run python run.py      # or set DB_BACKEND=postgres in .env
 ```
 
