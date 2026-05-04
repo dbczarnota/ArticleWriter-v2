@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: stale-articles-cleanup
+  namespace: headlinesforge
+spec:
+  # Every 5 minutes. Pipelines normally finish under 2 min, so anything still
+  # 'running' after 15 min is almost certainly orphaned (pod restart, OOM,
+  # crash). We flip them to 'failed' so the UI stops spinning.
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: cleanup
+              image: postgres:16-alpine
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: headlinesforge-secrets
+                      key: DATABASE_URL
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  # DATABASE_URL uses asyncpg dialect for the backend, but psql
+                  # only understands plain postgresql://. Strip the driver part.
+                  PSQL_URL=$(echo "$DATABASE_URL" | sed 's|postgresql+asyncpg://|postgresql://|')
+                  psql "$PSQL_URL" -v ON_ERROR_STOP=1 -c "
+                    UPDATE articles
+                    SET status = 'failed',
+                        completed_at = NOW(),
+                        errors = COALESCE(errors, '[]'::jsonb) ||
+                          '[{\"stage\":\"cleanup\",\"error\":\"orphaned: still running after 15 minutes\"}]'::jsonb
+                    WHERE status = 'running'
+                      AND created_at < NOW() - INTERVAL '15 minutes';
+                  "

@@ -88,6 +88,9 @@ jobs:
           kubectl apply -f k8s/backend-deploy.yaml
           kubectl apply -f k8s/frontend-deploy.yaml
 
+          # CronJob — sweeps stale 'running' articles every 5 min
+          kubectl apply -f k8s/stale-articles-cron.yaml
+
           # Ingress
           kubectl apply -f k8s/ingress.yaml
 

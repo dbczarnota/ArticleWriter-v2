@@ -1,13 +1,19 @@
 # backend/main.py
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 import logfire
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import update
 
 from backend.api.v2 import router as v2_router
-from backend.database import close_db, init_db
+from backend.database import close_db, get_db_backend, get_session_maker, init_db
+from backend.db.models import Article
+
+_log = logging.getLogger(__name__)
 
 _PROMPT_FALSE_POSITIVES = {
     "cookie",  # parser prompt: "remove cookie banners"
@@ -32,12 +38,54 @@ logfire.configure(
 logfire.instrument_pydantic_ai()
 
 
+async def _fail_running_articles_on_shutdown() -> None:
+    """Flip every in-flight article to 'failed' before the pod exits.
+
+    Pipeline state lives in this process's event loop; once we exit,
+    nothing advances it and the UI would spin forever on a 'running' row.
+    Assumes replicas=1 — marking ALL running rows is safe because no other
+    pod could have owned them. When we move to multiple replicas this needs
+    a per-pod owner column or a job queue.
+    """
+    if get_db_backend() != "postgres":
+        return
+    sm = get_session_maker()
+    if sm is None:
+        return
+    try:
+        async with sm() as session:
+            stmt = (
+                update(Article)
+                .where(Article.status == "running")  # type: ignore[arg-type]
+                .values(
+                    status="failed",
+                    completed_at=datetime.now(UTC),
+                    errors=[
+                        {
+                            "stage": "shutdown",
+                            "error": "backend pod terminated mid-pipeline",
+                        }
+                    ],
+                )
+            )
+            result = await session.execute(stmt)
+            await session.commit()
+            rowcount = getattr(result, "rowcount", 0) or 0
+            if rowcount:
+                _log.warning("shutdown: marked %d running articles as failed", rowcount)
+    except Exception as exc:  # never block pod shutdown on this
+        _log.warning("shutdown: failed to mark running articles: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Verify DB connectivity at startup when DB_BACKEND=postgres; no-op otherwise.
     await init_db()
-    yield
-    await close_db()
+    try:
+        yield
+    finally:
+        await _fail_running_articles_on_shutdown()
+        await close_db()
 
 
 app = FastAPI(title="ArticleWriter v2", version="2.0", lifespan=lifespan)
