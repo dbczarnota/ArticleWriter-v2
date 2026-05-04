@@ -231,21 +231,26 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {article.embed_candidates.length > 0 && (
         <CollapsibleSection prominent title="Social media" count={article.embed_candidates.length}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {article.embed_candidates.map((e) => (
-              <div key={e.id} style={{ display: "flex", gap: 10, padding: "8px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
+            {[...article.embed_candidates].sort((a, b) => (b.competitor_source_url ? 1 : 0) - (a.competitor_source_url ? 1 : 0)).map((e) => (
+              <div key={e.id} style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "#fffbeb" : "var(--white)", border: `1px solid ${e.competitor_source_url ? "#f59e0b" : "var(--border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
                 {e.thumbnail_url && <img src={e.thumbnail_url} alt="" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 4, flexShrink: 0 }} />}
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2 }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--muted)" }}>{e.source}</span>
                     {e.channel && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {e.channel}</span>}
+                    {e.competitor_source_url && (
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#b45309", background: "#fef3c7", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.04em" }}>
+                        ★ u konkurencji
+                      </span>
+                    )}
                   </div>
                   <a href={e.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, color: "var(--accent)", wordBreak: "break-word" }}>
                     {e.title ?? e.url}
                   </a>
                   {e.description && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.description}</p>}
                   {e.competitor_source_url && (
-                    <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
-                      znalezione w: <a href={e.competitor_source_url} target="_blank" rel="noreferrer" style={{ color: "var(--muted)", textDecoration: "underline", wordBreak: "break-all" }}>{e.competitor_source_url}</a>
+                    <p style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
+                      źródło: <a href={e.competitor_source_url} target="_blank" rel="noreferrer" style={{ color: "#92400e", textDecoration: "underline", wordBreak: "break-all" }}>{e.competitor_source_url}</a>
                     </p>
                   )}
                 </div>
