@@ -751,9 +751,9 @@ def _filter_by_date(
     cutoff_days: int,
     manual_urls: set[str],
 ) -> tuple[list[ParsedArticle], dict[str, str]]:
-    from datetime import datetime, timedelta
+    from datetime import UTC, datetime, timedelta
 
-    cutoff = datetime.now().date() - timedelta(days=cutoff_days)
+    cutoff = datetime.now(UTC).date() - timedelta(days=cutoff_days)
     kept: list[ParsedArticle] = []
     reasons: dict[str, str] = {}
     for article in articles:
