@@ -147,7 +147,7 @@ async def run_media_search(
     serper_api_key: str,
     max_per_source: int | None = None,
     freshness: str = "",
-    query_model: str = "google-gla:gemini-2.5-flash-lite",
+    query_model: str = "google-gla:gemini-flash-lite-latest",
     context_articles: list[ParsedArticle] | None = None,
     log: PipelineLogger | None = None,
 ) -> tuple[list[EmbedCandidate], dict[str, str]]:

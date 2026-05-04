@@ -24,7 +24,7 @@ def test_pipeline_flags_is_frozen():
 def test_app_settings_defaults():
     s = AppSettings()
     assert s.domain == "styl_fm"
-    assert s.writer.model == "google-gla:gemini-2.5-pro"
+    assert s.writer.model == "google-gla:gemini-pro-latest"
     assert s.pipeline.adaptive_search is True
     assert s.scraping.max_concurrent_jina == 8
 
@@ -42,13 +42,13 @@ def test_app_settings_replace_writer_model():
     new_writer = replace(s.writer, model="google-gla:gemini-2.5-flash")
     s2 = replace(s, writer=new_writer)
     assert s2.writer.model == "google-gla:gemini-2.5-flash"
-    assert s.writer.model == "google-gla:gemini-2.5-pro"  # oryginał niezmieniony
+    assert s.writer.model == "google-gla:gemini-pro-latest"  # oryginał niezmieniony
 
 
 def test_available_models_not_empty():
     from backend.config import AVAILABLE_MODELS
 
-    assert len(AVAILABLE_MODELS) >= 4
+    assert len(AVAILABLE_MODELS) >= 2
     assert all("id" in m and "label" in m for m in AVAILABLE_MODELS)
 
 
@@ -58,7 +58,7 @@ def test_from_request_empty_overrides():
     req = ArticleRequest(topic="Dawid Podsiadło")
     s = AppSettings.from_request(req)
     assert s.domain == "styl_fm"
-    assert s.writer.model == "google-gla:gemini-2.5-pro"
+    assert s.writer.model == "google-gla:gemini-pro-latest"
 
 
 def test_from_request_model_override():
@@ -70,7 +70,7 @@ def test_from_request_model_override():
     )
     s = AppSettings.from_request(req)
     assert s.writer.model == "google-gla:gemini-2.5-flash"
-    assert s.instructions.model == "google-gla:gemini-2.5-pro"  # niezmienione
+    assert s.instructions.model == "google-gla:gemini-pro-latest"  # niezmienione
 
 
 def test_from_request_pipeline_override():

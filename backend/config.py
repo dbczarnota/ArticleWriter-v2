@@ -21,12 +21,9 @@ if TYPE_CHECKING:
 
 
 AVAILABLE_MODELS: list[dict[str, str]] = [
-    {"id": "google-gla:gemini-2.5-pro", "label": "Gemini 2.5 Pro"},
-    {"id": "google-gla:gemini-2.5-flash", "label": "Gemini 2.5 Flash"},
-    {"id": "anthropic:claude-sonnet-4-6", "label": "Claude Sonnet 4.6"},
-    {"id": "anthropic:claude-haiku-4-5", "label": "Claude Haiku 4.5"},
-    {"id": "openai:gpt-4o", "label": "GPT-4o"},
-    {"id": "openai:gpt-4o-mini", "label": "GPT-4o Mini"},
+    {"id": "google-gla:gemini-pro-latest", "label": "Gemini Pro Latest"},
+    {"id": "google-gla:gemini-flash-latest", "label": "Gemini Flash Latest"},
+    {"id": "google-gla:gemini-flash-lite-latest", "label": "Gemini Flash Lite Latest"},
 ]
 
 
@@ -58,7 +55,7 @@ class PipelineFlags:
     min_source_signals: int = 1  # raise InsufficientSourcesError if facts+quotes below this
 
 
-_FALLBACK: tuple[str, ...] = ("groq:openai/gpt-oss-120b",)
+_FALLBACK: tuple[str, ...] = ("google-gla:gemini-flash-latest",)
 
 
 @dataclass(frozen=True)

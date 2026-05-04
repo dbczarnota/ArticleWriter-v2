@@ -17,12 +17,9 @@ const MEDIA_TOGGLES: Array<{ key: keyof DomainConfigData; label: string; tipKey:
 ];
 
 export const AVAILABLE_MODELS = [
-  { id: "google-gla:gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-  { id: "google-gla:gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  { id: "anthropic:claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
-  { id: "anthropic:claude-haiku-4-5", label: "Claude Haiku 4.5" },
-  { id: "openai:gpt-4o", label: "GPT-4o" },
-  { id: "openai:gpt-4o-mini", label: "GPT-4o Mini" },
+  { id: "google-gla:gemini-pro-latest", label: "Gemini Pro Latest" },
+  { id: "google-gla:gemini-flash-latest", label: "Gemini Flash Latest" },
+  { id: "google-gla:gemini-flash-lite-latest", label: "Gemini Flash Lite Latest" },
 ];
 
 type AgentKey = "search" | "scraping" | "parsing" | "extraction" | "adaptive_search" | "instructions" | "writer" | "reflection" | "followup";

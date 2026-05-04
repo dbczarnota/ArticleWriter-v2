@@ -35,7 +35,7 @@ def test_replace_creates_new_instance():
 
 def test_search_agent_config_defaults():
     cfg = SearchAgentConfig()
-    assert cfg.model == "google-gla:gemini-2.5-flash"
+    assert cfg.model == "google-gla:gemini-flash-latest"
     assert cfg.num_queries == 3
     assert cfg.max_results == 5
     assert cfg.search_freshness == "qdr:w"
@@ -43,7 +43,7 @@ def test_search_agent_config_defaults():
 
 def test_writer_agent_config_defaults():
     cfg = WriterAgentConfig()
-    assert cfg.model == "google-gla:gemini-2.5-pro"
+    assert cfg.model == "google-gla:gemini-pro-latest"
     assert cfg.thinking == "medium"
 
 

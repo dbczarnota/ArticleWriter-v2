@@ -16,7 +16,7 @@ class AgentConfig:
 
 @dataclass(frozen=True)
 class SearchAgentConfig(AgentConfig):
-    model: str = "google-gla:gemini-2.5-flash"
+    model: str = "google-gla:gemini-flash-latest"
     num_queries: int = 3
     max_results: int = 5
     search_freshness: str = "qdr:w"
@@ -30,23 +30,23 @@ class ScrapingConfig:
     max_concurrent_jina: int = 8
     httpx_timeout: float = 15.0
     jina_timeout: float = 30.0
-    filter_model: str = "google-gla:gemini-2.5-flash"
+    filter_model: str = "google-gla:gemini-flash-latest"
     filter_fallback_models: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class ParsingAgentConfig(AgentConfig):
-    model: str = "google-gla:gemini-2.5-flash"
+    model: str = "google-gla:gemini-flash-latest"
 
 
 @dataclass(frozen=True)
 class ExtractionAgentConfig(AgentConfig):
-    model: str = "google-gla:gemini-2.5-flash"
+    model: str = "google-gla:gemini-flash-latest"
 
 
 @dataclass(frozen=True)
 class AdaptiveSearchAgentConfig(AgentConfig):
-    model: str = "google-gla:gemini-2.5-flash"
+    model: str = "google-gla:gemini-flash-latest"
     max_additional_rounds: int = 3
     """Hard cap on extra search rounds. Pipeline early-exits as soon as
     PipelineFlags.min_source_signals is met, so this is just the budget ceiling
@@ -55,25 +55,25 @@ class AdaptiveSearchAgentConfig(AgentConfig):
 
 @dataclass(frozen=True)
 class InstructionsAgentConfig(AgentConfig):
-    model: str = "google-gla:gemini-2.5-pro"
+    model: str = "google-gla:gemini-pro-latest"
     thinking: Literal["off", "minimal", "low", "medium", "high"] = "low"
 
 
 @dataclass(frozen=True)
 class WriterAgentConfig(AgentConfig):
-    model: str = "google-gla:gemini-2.5-pro"
+    model: str = "google-gla:gemini-pro-latest"
     thinking: Literal["off", "minimal", "low", "medium", "high"] = "medium"
 
 
 @dataclass(frozen=True)
 class ReflectionAgentConfig(AgentConfig):
-    model: str = "google-gla:gemini-2.5-flash"
+    model: str = "google-gla:gemini-flash-latest"
     max_rounds: int = 1
     context_articles_count: int = 2  # parsed articles passed to reviewer as competitor coverage
 
 
 @dataclass(frozen=True)
 class FollowUpAgentConfig(AgentConfig):
-    model: str = "google-gla:gemini-2.5-pro"
+    model: str = "google-gla:gemini-pro-latest"
     num_titles: int = 10
     num_topics: int = 5
