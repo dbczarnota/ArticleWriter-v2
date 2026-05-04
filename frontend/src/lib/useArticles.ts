@@ -55,6 +55,7 @@ export function useArticles() {
     additional_instructions?: string;
     urls?: string[];
     agents?: Record<string, Record<string, unknown>>;
+    domain_overrides?: Record<string, unknown>;
   }): Promise<Article> {
     return request<Article>("/v2/write_article", {
       method: "POST",

@@ -84,13 +84,13 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   const uniqueUnused = [...new Set(unusedSourceUrls)];
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(article.html ?? "");
+    await navigator.clipboard.writeText(article!.html ?? "");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
   function handleExport() {
-    const a0 = article;
+    const a0 = article!;
     const blob = new Blob([a0.html ?? ""], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -114,8 +114,10 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
           <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--muted)", flexWrap: "wrap", alignItems: "center" }}>
             <span>
               {article.author_email
-                ? (currentUserId && article.author_user_id === currentUserId ? `Ty (${article.author_email})` : article.author_email)
-                : article.author_user_id.slice(0, 12) + "…"}
+                ? (currentUserId && article.author_user_id === currentUserId
+                    ? `Ty (${article.author_email.split("@")[0]})`
+                    : article.author_email.split("@")[0])
+                : (currentUserId && article.author_user_id === currentUserId ? "Ty" : "—")}
             </span>
             <span>{article.created_at ? new Date(article.created_at).toLocaleString("pl") : "—"}</span>
             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" }}>

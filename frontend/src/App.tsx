@@ -50,7 +50,7 @@ export default function App() {
             <ArticleView
               articleId={selectedArticleId}
               currentUserId={user?.id ?? undefined}
-              onMarkDone={(id, done) => markDone(id, done, [user?.given_name, user?.family_name].filter(Boolean).join(" ") || user?.email || undefined)}
+              onMarkDone={(id, done) => markDone(id, done, [user?.givenName, user?.familyName].filter(Boolean).join(" ") || user?.email || undefined)}
             />
           )}
           {view === "new" && (

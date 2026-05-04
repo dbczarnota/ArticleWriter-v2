@@ -31,6 +31,7 @@ const BASE_CONFIG: DomainConfigData = {
   guidelines: "",
   html_format: "",
   reflection_stance: "",
+  reflection_rounds: 1,
   example_articles: [],
   example_titles: [],
   agent_models: {},
