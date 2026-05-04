@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -36,8 +36,13 @@ class DomainConfig:
     guidelines: str = ""
     html_format: str = ""
     reflection_stance: str = ""
+    reflection_rounds: int = 1
     example_articles: tuple[str, ...] = ()
     example_titles: tuple[str, ...] = ()
+    agent_models: dict[str, str] = field(default_factory=dict)
+    """Org-level primary model per agent: {agent_key: model_id}."""
+    agent_fallback_models: dict[str, list[str]] = field(default_factory=dict)
+    """Org-level fallback models per agent: {agent_key: [fallback1, ...]}."""
 
 
 def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:
@@ -68,8 +73,13 @@ def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:
         guidelines=config.guidelines,
         html_format=config.html_format,
         reflection_stance=config.reflection_stance,
+        reflection_rounds=config.reflection_rounds,
         example_articles=tuple(config.example_articles),
         example_titles=tuple(config.example_titles),
+        agent_models=dict(config.agent_models) if config.agent_models else {},
+        agent_fallback_models={k: list(v) for k, v in config.agent_fallback_models.items()}
+        if config.agent_fallback_models
+        else {},
     )
 
 

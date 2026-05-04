@@ -318,6 +318,7 @@ class OrgConfig(SQLModel, table=True):
     guidelines: str = Field(default="")
     html_format: str = Field(default="")
     reflection_stance: str = Field(default="")
+    reflection_rounds: int = Field(default=1)
     example_articles: list[str] = Field(
         default_factory=list,
         sa_column=Column(
@@ -334,6 +335,18 @@ class OrgConfig(SQLModel, table=True):
             server_default=text("ARRAY[]::text[]"),
         ),
     )
+    agent_models: dict = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'{}'")),
+    )
+    """Per-agent primary model overrides: {agent_key: model_id}."""
+
+    agent_fallback_models: dict = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'{}'")),
+    )
+    """Per-agent fallback model lists: {agent_key: [fallback1, fallback2]}."""
+
     updated_at: datetime = Field(
         default_factory=_utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()")),

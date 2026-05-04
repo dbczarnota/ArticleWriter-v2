@@ -10,9 +10,9 @@ from agents.pipeline.runner import run_pipeline
 from backend.api.schemas import ArticleRequest, ArticleUpdate, DomainConfigUpdate
 from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
-from backend.config import AppSettings
+from backend.config import AppSettings, apply_org_models
 from backend.db.models import Org, OrgConfig
-from backend.domain import get_domain_config
+from backend.domain import DomainConfig, get_domain_config
 from backend.repositories import get_article_repo, get_org_config_repo, get_org_repo
 from backend.repositories.protocols import ArticleRepository, OrgConfigRepository, OrgRepository
 from backend.secrets import Secrets, get_secrets
@@ -35,18 +35,24 @@ async def write_article(
     Returns 202 Accepted with {id, status, topic} so the frontend can navigate
     to the article and poll GET /v2/articles/{id} until status != 'running'.
     """
-    app_settings = AppSettings.from_request(req)
-    if app_settings.domain != org.domain_name:
-        from dataclasses import replace
-
-        app_settings = replace(app_settings, domain=org.domain_name)
-
     domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
     if domain is None:
         raise HTTPException(
             status_code=412,
             detail=f"No domain config found for org '{org.code}'. Run seed script or configure via PUT /v2/domain-config.",
         )
+
+    if req.domain_overrides:
+        domain = _apply_article_domain_overrides(domain, req.domain_overrides)
+
+    # Build settings: org models first (lower priority), per-request agent overrides on top.
+    base = AppSettings(domain=org.domain_name)
+    base = apply_org_models(base, domain)
+    if domain.reflection_rounds != 1:
+        from dataclasses import replace as dc_replace
+
+        base = dc_replace(base, reflection=dc_replace(base.reflection, max_rounds=domain.reflection_rounds))
+    app_settings = AppSettings.from_request(req, base=base)
 
     article_id = await article_repo.create_running(
         org_code=org.code,
@@ -286,6 +292,38 @@ async def put_domain_config_endpoint(
     return _org_config_to_dict(saved)
 
 
+def _apply_article_domain_overrides(domain: DomainConfig, overrides: dict) -> DomainConfig:
+    """Apply per-article domain_overrides dict onto a DomainConfig instance.
+
+    Keys use DomainConfigUpdate naming (e.g. 'search_freshness', 'max_facts').
+    A mapping translates the few names that differ between the schema and DomainConfig.
+    List values are converted to tuples where DomainConfig expects tuples.
+    """
+    from dataclasses import replace as dc_replace
+
+    _KEY_MAP = {
+        "search_freshness": "default_search_freshness",
+        "num_queries": "default_num_queries",
+        "max_results": "default_max_results",
+        "min_source_signals": "default_min_source_signals",
+        "max_facts": "max_facts_in_article",
+        "max_quotes": "max_quotes_in_article",
+        "reflection_context_articles": "default_reflection_context_articles",
+    }
+    _TUPLE_FIELDS = {"media_search_languages", "example_articles", "example_titles"}
+
+    patches: dict = {}
+    for k, v in overrides.items():
+        if v is None or v == "" or v == [] or v == {}:
+            continue
+        dc_key = _KEY_MAP.get(k, k)
+        if k in _TUPLE_FIELDS and isinstance(v, list):
+            v = tuple(v)
+        patches[dc_key] = v
+
+    return dc_replace(domain, **patches) if patches else domain
+
+
 def _org_config_to_dict(config: OrgConfig) -> dict:
     return {
         "org_code": config.org_code,
@@ -314,7 +352,10 @@ def _org_config_to_dict(config: OrgConfig) -> dict:
         "guidelines": config.guidelines,
         "html_format": config.html_format,
         "reflection_stance": config.reflection_stance,
+        "reflection_rounds": config.reflection_rounds,
         "example_articles": config.example_articles,
         "example_titles": config.example_titles,
+        "agent_models": config.agent_models,
+        "agent_fallback_models": config.agent_fallback_models,
         "updated_at": config.updated_at.isoformat() if config.updated_at else None,
     }

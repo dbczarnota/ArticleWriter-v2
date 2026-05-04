@@ -104,7 +104,10 @@ export interface DomainConfigData {
   guidelines: string;
   html_format: string;
   reflection_stance: string;
+  reflection_rounds: number;
   example_articles: string[];
   example_titles: string[];
+  agent_models: Record<string, string>;
+  agent_fallback_models: Record<string, string[]>;
   updated_at: string | null;
 }

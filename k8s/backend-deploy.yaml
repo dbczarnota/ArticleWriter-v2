@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: headlinesforge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/dbczarnota/articlewriter-v2/backend:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: AUTH_BACKEND
+              value: kinde
+            - name: DB_BACKEND
+              value: postgres
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: DATABASE_URL
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: GEMINI_API_KEY
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: OPENAI_API_KEY
+            - name: GROQ_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: GROQ_API_KEY
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: OPENROUTER_API_KEY
+            - name: SERPER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: SERPER_API_KEY
+            - name: JINA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: JINA_API_KEY
+            - name: KINDE_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: KINDE_DOMAIN
+            - name: KINDE_AUDIENCE
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: KINDE_AUDIENCE
+            - name: LOGFIRE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: LOGFIRE_TOKEN
+                  optional: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: headlinesforge
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 80
+      targetPort: 8000

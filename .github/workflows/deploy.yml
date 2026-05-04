@@ -1,0 +1,90 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [master]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/articlewriter-v2
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.backend
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/backend:latest
+
+      - name: Build & push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.frontend
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/frontend:latest
+          build-args: |
+            VITE_AUTH_BACKEND=${{ secrets.VITE_AUTH_BACKEND }}
+            VITE_KINDE_CLIENT_ID=${{ secrets.VITE_KINDE_CLIENT_ID }}
+            VITE_KINDE_DOMAIN=${{ secrets.VITE_KINDE_DOMAIN }}
+            VITE_KINDE_AUDIENCE=${{ secrets.VITE_KINDE_AUDIENCE }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Deploy to cluster
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+        run: |
+          echo "$KUBECONFIG_DATA" > /tmp/kubeconfig
+          export KUBECONFIG=/tmp/kubeconfig
+
+          # Namespace
+          kubectl apply -f k8s/namespace.yaml
+
+          # Dopatch Secretu — tylko POSTGRES_PASSWORD i DATABASE_URL
+          # Reszta kluczy API jest już w Rancherze i nie jest nadpisywana
+          kubectl patch secret headlinesforge-secrets \
+            --namespace headlinesforge \
+            --type merge \
+            -p "{\"stringData\":{\"POSTGRES_PASSWORD\":\"${{ secrets.POSTGRES_PASSWORD }}\",\"DATABASE_URL\":\"postgresql+asyncpg://articlewriter:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/articlewriter\"}}" \
+            2>/dev/null || \
+          kubectl create secret generic headlinesforge-secrets \
+            --namespace headlinesforge \
+            --from-literal=POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
+            --from-literal=DATABASE_URL="postgresql+asyncpg://articlewriter:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/articlewriter"
+
+          # Postgres
+          kubectl apply -f k8s/postgres-pvc.yaml
+          kubectl apply -f k8s/postgres-deploy.yaml
+
+          # Backend & Frontend
+          kubectl apply -f k8s/backend-deploy.yaml
+          kubectl apply -f k8s/frontend-deploy.yaml
+
+          # Ingress
+          kubectl apply -f k8s/ingress.yaml
+
+          # Wymusz pobranie nowych obrazów
+          kubectl rollout restart deployment/backend -n headlinesforge
+          kubectl rollout restart deployment/frontend -n headlinesforge
+
+          rm /tmp/kubeconfig

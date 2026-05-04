@@ -1,11 +1,12 @@
 // frontend/src/components/SettingsNav.tsx
 const SECTIONS = [
   { id: "podstawowe", label: "Podstawowe" },
+  { id: "modele", label: "Wybór modeli" },
   { id: "wyszukiwanie", label: "Wyszukiwanie" },
   { id: "media", label: "Media search" },
   { id: "wytyczne", label: "Wytyczne redakcyjne" },
   { id: "html", label: "Format HTML" },
-  { id: "stance", label: "Stance recenzenta" },
+  { id: "stance", label: "Recenzent" },
   { id: "tytuly", label: "Przykładowe H1" },
   { id: "przyklady", label: "Przykładowe artykuły" },
 ];

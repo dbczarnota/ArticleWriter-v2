@@ -217,8 +217,11 @@ class NullOrgConfigRepository:
             guidelines="",
             html_format="",
             reflection_stance="",
+            reflection_rounds=1,
             example_articles=[],
             example_titles=[],
+            agent_models={},
+            agent_fallback_models={},
         )
 
     async def upsert(self, config: OrgConfig) -> OrgConfig:

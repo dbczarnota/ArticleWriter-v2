@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, field_validator
 from pydantic import Field as PydanticField
 
@@ -12,6 +14,9 @@ class ArticleRequest(BaseModel):
     agents: dict[str, dict] = {}
     pipeline: dict[str, bool] = {}
     additional_instructions: str | None = None
+    domain_overrides: dict[str, Any] = {}
+    """Per-article domain config overrides. Keys match DomainConfigUpdate field names.
+    Non-empty values replace the org's saved config for this article run only."""
 
     @field_validator("topic", mode="before")
     @classmethod
@@ -65,5 +70,8 @@ class DomainConfigUpdate(BaseModel):
     guidelines: str = ""
     html_format: str = ""
     reflection_stance: str = ""
+    reflection_rounds: int = PydanticField(ge=1, le=5, default=1)
     example_articles: list[str] = PydanticField(default_factory=list)
     example_titles: list[str] = PydanticField(default_factory=list)
+    agent_models: dict[str, str] = PydanticField(default_factory=dict)
+    agent_fallback_models: dict[str, list[str]] = PydanticField(default_factory=dict)
