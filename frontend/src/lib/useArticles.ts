@@ -29,10 +29,9 @@ export function useArticles() {
     urls?: string[];
     agents?: Record<string, Record<string, unknown>>;
   }): Promise<Article> {
-    const payload = { id: crypto.randomUUID(), ...body };
     return request<Article>("/v2/write_article", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
   }
 

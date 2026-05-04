@@ -29,7 +29,7 @@ def default_settings() -> AppSettings:
 
 @pytest.fixture
 def minimal_request() -> ArticleRequest:
-    return ArticleRequest(id="test-fixture", topic="Dawid Podsiadło")
+    return ArticleRequest(topic="Dawid Podsiadło")
 
 
 @pytest.fixture

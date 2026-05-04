@@ -4,27 +4,52 @@ from pydantic import ValidationError
 from backend.api.schemas import ArticleRequest
 
 
-def test_article_request_minimal():
-    req = ArticleRequest(id="art-1", topic="Dawid Podsiadło")
-    assert req.domain == "styl_fm"
-    assert req.urls == []
-    assert req.domains_filter == []
-    assert req.agents == {}
-    assert req.pipeline == {}
+def _base() -> dict:
+    return {"topic": "Test topic", "domain": "styl_fm"}
+
+
+def test_valid_request_passes():
+    req = ArticleRequest(**_base())
+    assert req.topic == "Test topic"
+
+
+def test_topic_empty_fails():
+    with pytest.raises(ValidationError):
+        ArticleRequest(**{**_base(), "topic": ""})
+
+
+def test_topic_whitespace_only_fails():
+    with pytest.raises(ValidationError):
+        ArticleRequest(**{**_base(), "topic": "   "})
+
+
+def test_topic_too_long_fails():
+    with pytest.raises(ValidationError):
+        ArticleRequest(**{**_base(), "topic": "x" * 301})
+
+
+def test_additional_instructions_too_long_fails():
+    with pytest.raises(ValidationError):
+        ArticleRequest(**{**_base(), "additional_instructions": "x" * 2001})
+
+
+def test_additional_instructions_none_passes():
+    req = ArticleRequest(**_base())
     assert req.additional_instructions is None
 
 
-def test_article_request_requires_id_and_topic():
-    with pytest.raises(ValidationError):
-        ArticleRequest(topic="Test")  # type: ignore[call-arg] — testing missing id
+def test_topic_stripped():
+    req = ArticleRequest(**{**_base(), "topic": "  Hello  "})
+    assert req.topic == "Hello"
 
+
+def test_article_request_requires_topic():
     with pytest.raises(ValidationError):
-        ArticleRequest(id="test-1")  # type: ignore[call-arg] — testing missing topic
+        ArticleRequest()  # type: ignore[call-arg]
 
 
 def test_article_request_with_overrides():
     req = ArticleRequest(
-        id="art-2",
         topic="Test",
         domain="the_economist",
         agents={"writer": {"model": "google-gla:gemini-2.5-flash", "thinking": "high"}},
@@ -37,7 +62,6 @@ def test_article_request_with_overrides():
 
 def test_article_request_urls_as_list():
     req = ArticleRequest(
-        id="art-3",
         topic="Test",
         urls=["https://example.com/1", "https://example.com/2"],
     )

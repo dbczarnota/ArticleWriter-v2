@@ -55,7 +55,7 @@ def test_available_models_not_empty():
 def test_from_request_empty_overrides():
     from backend.api.schemas import ArticleRequest
 
-    req = ArticleRequest(id="test-1", topic="Dawid Podsiadło")
+    req = ArticleRequest(topic="Dawid Podsiadło")
     s = AppSettings.from_request(req)
     assert s.domain == "styl_fm"
     assert s.writer.model == "google-gla:gemini-2.5-pro"
@@ -65,7 +65,6 @@ def test_from_request_model_override():
     from backend.api.schemas import ArticleRequest
 
     req = ArticleRequest(
-        id="test-2",
         topic="Test",
         agents={"writer": {"model": "google-gla:gemini-2.5-flash"}},
     )
@@ -78,7 +77,6 @@ def test_from_request_pipeline_override():
     from backend.api.schemas import ArticleRequest
 
     req = ArticleRequest(
-        id="test-3",
         topic="Test",
         pipeline={"reflection": False},
     )
@@ -90,7 +88,7 @@ def test_from_request_pipeline_override():
 def test_from_request_domain_override():
     from backend.api.schemas import ArticleRequest
 
-    req = ArticleRequest(id="test-4", topic="Test", domain="the_economist")
+    req = ArticleRequest(topic="Test", domain="the_economist")
     s = AppSettings.from_request(req)
     assert s.domain == "the_economist"
 
@@ -99,7 +97,6 @@ def test_from_request_invalid_agent_fields_ignored():
     from backend.api.schemas import ArticleRequest
 
     req = ArticleRequest(
-        id="test-5",
         topic="Test",
         agents={"writer": {"nonexistent_field": "value", "model": "google-gla:gemini-2.5-flash"}},
     )

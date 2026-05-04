@@ -5,7 +5,6 @@ from pydantic import Field as PydanticField
 
 
 class ArticleRequest(BaseModel):
-    id: str
     topic: str
     domain: str = "styl_fm"
     urls: list[str] = []

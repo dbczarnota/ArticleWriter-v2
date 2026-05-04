@@ -5,7 +5,7 @@ from backend.api.schemas import ArticleRequest
 
 
 def _base() -> dict:
-    return {"id": "x", "topic": "Test topic", "domain": "styl_fm"}
+    return {"topic": "Test topic", "domain": "styl_fm"}
 
 
 def test_valid_request_passes():
