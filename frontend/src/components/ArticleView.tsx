@@ -119,6 +119,48 @@ export function ArticleView({ articleId }: ArticleViewProps) {
         />
       )}
 
+      {/* Alternative titles */}
+      {article.alternative_titles.length > 0 && (
+        <section style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Alternatywne tytuły</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {article.alternative_titles.map((title, i) => (
+              <div key={i} style={{
+                padding: "8px 12px",
+                background: "var(--white)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                fontSize: 13,
+              }}>
+                {title}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Follow-up topics */}
+      {article.followup_topics.length > 0 && (
+        <section style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Tematy na follow-up</h3>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {article.followup_topics.map((topic, i) => (
+              <span key={i} style={{
+                padding: "5px 10px",
+                background: "var(--accent-lt)",
+                border: "1px solid #fed7aa",
+                borderRadius: 20,
+                fontSize: 12,
+                color: "var(--accent)",
+                fontWeight: 500,
+              }}>
+                {topic}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Facts */}
       <section>
         <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
