@@ -11,6 +11,9 @@ os.environ["LOGFIRE_TOKEN"] = ""
 # asyncpg connections to localhost:5432 and crash with "Event loop is closed" at teardown.
 os.environ["DB_BACKEND"] = "null"
 os.environ["DATABASE_URL"] = ""
+# Force AUTH_BACKEND=null so API tests get the NullAuthenticator (local-dev user)
+# instead of trying to validate Kinde JWTs.
+os.environ["AUTH_BACKEND"] = "null"
 
 import logfire
 

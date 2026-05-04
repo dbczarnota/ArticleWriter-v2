@@ -1,20 +1,11 @@
 # tests/backend/test_v2.py
 from unittest.mock import AsyncMock, patch
+from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
 
-from agents._base.types import ArticleOutput
 from backend.secrets import Secrets, get_secrets
-
-_MOCK_OUTPUT = ArticleOutput(
-    html="<h1>Test</h1><p>Content</p>",
-    alternative_titles=["Alt title"],
-    followup_topics=["Follow-up topic"],
-    used_facts=["Fakt 1"],
-    used_quotes=["Cytat 1"],
-    sources=["https://example.com"],
-)
 
 _FAKE_SECRETS = Secrets(serper_api_key="test-serper-key", jina_api_key=None)
 
@@ -32,22 +23,23 @@ def override_secrets():
     app.dependency_overrides.clear()
 
 
-def test_write_article_returns_200():
+def test_write_article_returns_202():
+    """write_article starts background generation and immediately returns 202 Accepted."""
     from backend.main import app
 
-    with patch("backend.api.v2.run_pipeline", new_callable=AsyncMock) as mock_pipeline:
-        mock_pipeline.return_value = _MOCK_OUTPUT
+    with patch("backend.api.v2.run_pipeline", new_callable=AsyncMock):
         client = TestClient(app)
         response = client.post(
             "/v2/write_article",
-            json={"id": "1", "topic": "Dawid Podsiadło"},
+            json={"topic": "Dawid Podsiadło"},
             headers=_LOCAL_DEV_HEADERS,
         )
-    assert response.status_code == 200
+    assert response.status_code == 202
     data = response.json()
-    assert data["html"] == "<h1>Test</h1><p>Content</p>"
-    assert data["alternative_titles"] == ["Alt title"]
-    assert data["sources"] == ["https://example.com"]
+    assert "id" in data
+    UUID(data["id"])  # must be a valid UUID
+    assert data["status"] == "running"
+    assert data["topic"] == "Dawid Podsiadło"
 
 
 def test_write_article_missing_org_header_returns_422():
@@ -58,9 +50,8 @@ def test_write_article_missing_org_header_returns_422():
         client = TestClient(app)
         response = client.post(
             "/v2/write_article",
-            json={"id": "1", "topic": "topic"},
+            json={"topic": "topic"},
         )
-    # FastAPI param validation kicks in before the auth dependency runs.
     assert response.status_code == 422
 
 
@@ -72,7 +63,7 @@ def test_write_article_wrong_org_header_returns_403():
         client = TestClient(app)
         response = client.post(
             "/v2/write_article",
-            json={"id": "1", "topic": "topic"},
+            json={"topic": "topic"},
             headers={"X-Org-Code": "some_other_org_user_doesnt_belong_to"},
         )
     assert response.status_code == 403
@@ -82,15 +73,13 @@ def test_write_article_passes_topic_and_org_to_pipeline():
     from backend.main import app
 
     with patch("backend.api.v2.run_pipeline", new_callable=AsyncMock) as mock_pipeline:
-        mock_pipeline.return_value = _MOCK_OUTPUT
         client = TestClient(app)
         client.post(
             "/v2/write_article",
-            json={"id": "1", "topic": "Konkretny temat"},
+            json={"topic": "Konkretny temat"},
             headers=_LOCAL_DEV_HEADERS,
         )
     mock_pipeline.assert_called_once()
     assert mock_pipeline.call_args.args[0] == "Konkretny temat"
-    # org_code threaded through to the runner for persistence
     assert mock_pipeline.call_args.kwargs["org_code"] == "__local_dev__"
     assert mock_pipeline.call_args.kwargs["author_user_id"] == "local-dev"

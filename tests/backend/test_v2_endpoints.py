@@ -14,7 +14,6 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from agents._base.types import ArticleOutput
 from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
 from backend.db.models import Article, Fact, Org, Quote
@@ -55,9 +54,10 @@ class _StubArticleRepo:
         rows.sort(key=lambda a: a.created_at or datetime.now(UTC), reverse=True)
         return rows[offset : offset + limit]
 
-    # Unused write-side stubs — present to satisfy the protocol surface.
-    async def create_running(self, **_kw):  # pragma: no cover
-        raise NotImplementedError
+    # Write-side stubs — create_running returns a fresh UUID so write_article works.
+    async def create_running(self, **_kw) -> UUID:
+        article_id = uuid4()
+        return article_id
 
     async def complete(self, *_a, **_kw):  # pragma: no cover
         raise NotImplementedError
@@ -276,29 +276,24 @@ def test_get_article_invalid_uuid_returns_422(client_as, org_a):
 
 
 def test_write_article_response_includes_id(client_as, org_a):
-    """write_article must return an 'id' field so the frontend can navigate to the article."""
+    """write_article returns 202 with {id, status, topic} so the frontend can poll."""
     from backend.repositories import get_org_config_repo
     from backend.repositories.null import NullOrgConfigRepository
 
-    fake_output = ArticleOutput(
-        html="<p>hi</p>",
-        article_id="aaaaaaaa-0000-0000-0000-000000000000",
-    )
     user = AuthenticatedUser(id="u1", email=None, org_codes=["org_a"])
     app = __import__("backend.main", fromlist=["app"]).app
     app.dependency_overrides[get_org_config_repo] = lambda: NullOrgConfigRepository()
 
-    with patch(
-        "backend.api.v2.run_pipeline",
-        new=AsyncMock(return_value=fake_output),
-    ):
+    with patch("backend.api.v2.run_pipeline", new=AsyncMock()):
         client = client_as(user=user, org=org_a)
         r = client.post(
             "/v2/write_article",
             json={"topic": "Test topic"},
         )
 
-    assert r.status_code == 200, r.text
+    assert r.status_code == 202, r.text
     body = r.json()
     assert "id" in body, f"'id' key missing from response: {list(body.keys())}"
-    assert body["id"] == "aaaaaaaa-0000-0000-0000-000000000000"
+    UUID(body["id"])  # must be a valid UUID
+    assert body["status"] == "running"
+    assert body["topic"] == "Test topic"
