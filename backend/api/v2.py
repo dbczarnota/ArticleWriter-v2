@@ -214,6 +214,7 @@ async def get_article(
                 "thumbnail_url": e.thumbnail_url,
                 "description": e.description,
                 "channel": e.channel,
+                "competitor_source_url": e.competitor_source_url,
             }
             for e in article.embed_candidates
         ],

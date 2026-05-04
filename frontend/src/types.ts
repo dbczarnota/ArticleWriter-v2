@@ -37,6 +37,7 @@ export interface EmbedCandidate {
   thumbnail_url: string | null;
   description: string | null;
   channel: string | null;
+  competitor_source_url: string | null;
 }
 
 export interface UsageEvent {

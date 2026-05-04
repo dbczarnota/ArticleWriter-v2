@@ -1,6 +1,7 @@
 # agents/pipeline/runner.py
 from __future__ import annotations
 
+import re
 import time
 from typing import Literal
 from uuid import UUID
@@ -226,6 +227,7 @@ async def _run_pipeline_inner(
             scraped = []
     _timing["scraping"] = (time.perf_counter() - _stage_t0) * 1000
     record_stage("scraping", _timing["scraping"], domain.name)
+    _content_embeds = _extract_social_from_content(scraped)
 
     _stage_t0 = time.perf_counter()
     with logfire.span("pipeline.stage.parsing", domain=domain.name):
@@ -368,9 +370,9 @@ async def _run_pipeline_inner(
     _timing["media_search"] = (time.perf_counter() - _stage_t0) * 1000
     record_stage("media_search", _timing["media_search"], domain.name)
 
-    # Combine social embed candidates from the dedicated media_search with social URLs
-    # surfaced by the organic web search (extracted earlier in research stage).
-    _all_embeds = embed_candidates + _search_embeds
+    # Combine all embed sources: media_search + organic search + competitor content scraping.
+    # Dedup by URL; media_search results take priority (they have richer metadata).
+    _all_embeds = embed_candidates + _search_embeds + _content_embeds
     seen: set[str] = set()
     embed_candidates = [e for e in _all_embeds if not (e.url in seen or seen.add(e.url))]
 
@@ -712,6 +714,7 @@ async def _persist_article_done(
             thumbnail_url=e.thumbnail_url,
             description=e.description,
             channel=e.channel,
+            competitor_source_url=e.competitor_source_url,
         )
         for e in embed_candidates
     ]
@@ -827,6 +830,51 @@ def _extract_social_from_search(
         else:
             scrapable.append(r)
     return scrapable, embeds
+
+
+_SOCIAL_URL_RE = re.compile(
+    r"https?://(?:www\.)?"
+    r"(?:youtube\.com/(?:watch|shorts|embed)[^\s\)\]\"'<>]*"
+    r"|youtu\.be/[^\s\)\]\"'<>]+"
+    r"|twitter\.com/\w+/status/[^\s\)\]\"'<>]+"
+    r"|x\.com/\w+/status/[^\s\)\]\"'<>]+"
+    r"|tiktok\.com/@[^\s\)\]\"'<>/]+/video/[^\s\)\]\"'<>]+"
+    r"|instagram\.com/(?:p|reel|tv)/[^\s\)\]\"'<>/]+"
+    r"|facebook\.com/(?:[^/]+/(?:posts|videos|reels)/|watch/\?v=)[^\s\)\]\"'<>]+"
+    r"|reddit\.com/r/[^\s\)\]\"'<>]+)",
+    re.IGNORECASE,
+)
+
+
+def _extract_social_from_content(
+    pages: list,
+) -> list[EmbedCandidate]:
+    """Extract social media URLs embedded in scraped competitor article content.
+
+    Regex-only, zero LLM cost. Complements _extract_social_from_search (which
+    catches top-level social URLs) by surfacing embeds mentioned within articles.
+    """
+    from urllib.parse import urlparse
+
+    seen: set[str] = set()
+    candidates: list[EmbedCandidate] = []
+    for page in pages:
+        for match in _SOCIAL_URL_RE.finditer(page.content):
+            url = match.group(0).rstrip(".,;)")
+            if url in seen:
+                continue
+            seen.add(url)
+            host = urlparse(url).netloc.removeprefix("www.")
+            source: _SocialSource | None = None
+            for domain, src in _SOCIAL_DOMAINS.items():
+                if host == domain or host.endswith("." + domain):
+                    source = src
+                    break
+            if source:
+                candidates.append(
+                    EmbedCandidate(url=url, title=url, source=source, competitor_source_url=page.url)
+                )
+    return candidates
 
 
 def _rank_articles_by_extraction(

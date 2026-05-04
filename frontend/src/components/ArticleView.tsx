@@ -13,6 +13,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   const { fetchArticle } = useArticles();
   const [article, setArticle] = useState<Article | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setArticle(null);
@@ -67,6 +68,12 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
     .map((f) => f.source_url as string)
     .filter((url) => !usedSources.includes(url));
   const uniqueUnused = [...new Set(unusedSourceUrls)];
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(article.html ?? "");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   function handleExport() {
     const a0 = article;
@@ -123,21 +130,45 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             </label>
           </div>
         </div>
-        <button
-          onClick={handleExport}
-          style={{
-            padding: "6px 14px",
-            background: "var(--accent)",
-            color: "var(--white)",
-            border: "none",
-            borderRadius: "var(--radius)",
-            fontSize: 13,
-            cursor: "pointer",
-            flexShrink: 0,
-          }}
-        >
-          Eksport HTML
-        </button>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <button
+            onClick={handleCopy}
+            title="Kopiuj HTML do schowka"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 14px",
+              background: copied ? "#22c55e" : "var(--white)",
+              color: copied ? "#fff" : "var(--accent)",
+              border: `1px solid ${copied ? "#22c55e" : "var(--accent)"}`,
+              borderRadius: "var(--radius)",
+              fontSize: 13,
+              cursor: "pointer",
+              transition: "background 0.15s, color 0.15s, border-color 0.15s",
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            {copied ? "Skopiowano!" : "Kopiuj HTML"}
+          </button>
+          <button
+            onClick={handleExport}
+            style={{
+              padding: "6px 14px",
+              background: "var(--accent)",
+              color: "var(--white)",
+              border: "none",
+              borderRadius: "var(--radius)",
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            Eksport HTML
+          </button>
+        </div>
       </div>
 
       {/* Article HTML */}
@@ -158,51 +189,60 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
       {/* Alternative titles */}
       {article.alternative_titles.length > 0 && (
-        <section style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Alternatywne tytuły</h3>
+        <CollapsibleSection prominent title="Alternatywne tytuły" count={article.alternative_titles.length} defaultOpen>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {article.alternative_titles.map((title, i) => (
-              <div key={i} style={{
-                padding: "8px 12px",
-                background: "var(--white)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                fontSize: 13,
-              }}>
+              <div key={i} style={{ padding: "8px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13 }}>
                 {title}
               </div>
             ))}
           </div>
-        </section>
+        </CollapsibleSection>
       )}
 
       {/* Follow-up topics */}
       {article.followup_topics.length > 0 && (
-        <section style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Tematy na follow-up</h3>
+        <CollapsibleSection prominent title="Tematy na follow-up" count={article.followup_topics.length} defaultOpen>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {article.followup_topics.map((topic, i) => (
-              <span key={i} style={{
-                padding: "5px 10px",
-                background: "var(--accent-lt)",
-                border: "1px solid #fed7aa",
-                borderRadius: 20,
-                fontSize: 12,
-                color: "var(--accent)",
-                fontWeight: 500,
-              }}>
+              <span key={i} style={{ padding: "5px 10px", background: "var(--accent-lt)", border: "1px solid #fed7aa", borderRadius: 20, fontSize: 12, color: "var(--accent)", fontWeight: 500 }}>
                 {topic}
               </span>
             ))}
           </div>
-        </section>
+        </CollapsibleSection>
+      )}
+
+      {/* Social media embeds */}
+      {article.embed_candidates.length > 0 && (
+        <CollapsibleSection prominent title="Social media" count={article.embed_candidates.length}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {article.embed_candidates.map((e) => (
+              <div key={e.id} style={{ display: "flex", gap: 10, padding: "8px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
+                {e.thumbnail_url && <img src={e.thumbnail_url} alt="" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 4, flexShrink: 0 }} />}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2 }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--muted)" }}>{e.source}</span>
+                    {e.channel && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {e.channel}</span>}
+                  </div>
+                  <a href={e.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, color: "var(--accent)", wordBreak: "break-word" }}>
+                    {e.title ?? e.url}
+                  </a>
+                  {e.description && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.description}</p>}
+                  {e.competitor_source_url && (
+                    <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+                      znalezione w: <a href={e.competitor_source_url} target="_blank" rel="noreferrer" style={{ color: "var(--muted)", textDecoration: "underline", wordBreak: "break-all" }}>{e.competitor_source_url}</a>
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
       )}
 
       {/* Facts */}
-      <section>
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
-          Fakty użyte ({usedFacts.length})
-        </h3>
+      <CollapsibleSection prominent title="Fakty użyte" count={usedFacts.length} defaultOpen>
         {usedFacts.map((f) => (
           <FactCard key={f.id} fact={f} />
         ))}
@@ -211,13 +251,10 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             <FactCard key={f.id} fact={f} muted />
           ))}
         </CollapsibleSection>
-      </section>
+      </CollapsibleSection>
 
       {/* Quotes */}
-      <section style={{ marginTop: 24 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
-          Cytaty użyte ({usedQuotes.length})
-        </h3>
+      <CollapsibleSection prominent title="Cytaty użyte" count={usedQuotes.length} defaultOpen>
         {usedQuotes.map((q) => (
           <QuoteCard key={q.id} quote={q} />
         ))}
@@ -226,18 +263,13 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             <QuoteCard key={q.id} quote={q} muted />
           ))}
         </CollapsibleSection>
-      </section>
+      </CollapsibleSection>
 
       {/* Sources */}
-      <section style={{ marginTop: 24 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
-          Źródła użyte ({usedSources.length})
-        </h3>
+      <CollapsibleSection prominent title="Źródła użyte" count={usedSources.length} defaultOpen>
         {usedSources.map((url) => (
           <div key={url} style={{ borderLeft: "3px solid #22c55e", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
-            <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>
-              {url}
-            </a>
+            <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>{url}</a>
           </div>
         ))}
         <CollapsibleSection title="Nieużyte źródła" count={uniqueUnused.length}>
@@ -247,12 +279,11 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             </div>
           ))}
         </CollapsibleSection>
-      </section>
+      </CollapsibleSection>
 
       {/* Stats */}
-      <section style={{ marginTop: 24, padding: 16, background: "var(--sidebar)", borderRadius: "var(--radius)", fontSize: 13 }}>
-        <h3 style={{ fontWeight: 600, marginBottom: 8 }}>Statystyki pipeline</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+      <CollapsibleSection prominent title="Statystyki pipeline">
+        <div style={{ padding: "8px 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 13 }}>
           <Stat label="Fakty" value={article.facts.length} />
           <Stat label="Cytaty" value={article.quotes.length} />
           <Stat label="Embeds" value={article.embed_candidates.length} />
@@ -260,7 +291,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
           <Stat label="Tokeny" value={totalTokens.toLocaleString()} />
           <Stat label="Czas (s)" value={article.total_duration_ms != null ? (article.total_duration_ms / 1000).toFixed(1) : "—"} />
         </div>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

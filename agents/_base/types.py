@@ -52,6 +52,8 @@ class EmbedCandidate:
     thumbnail_url: str | None = None
     description: str | None = None
     channel: str | None = None
+    competitor_source_url: str | None = None
+    """URL of the competitor article this embed was found in, if any."""
 
 
 @dataclass

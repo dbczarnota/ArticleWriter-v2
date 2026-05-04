@@ -208,6 +208,8 @@ class EmbedCandidate(SQLModel, table=True):
     thumbnail_url: str | None = Field(default=None, max_length=2048)
     description: str | None = Field(default=None, sa_column=Column(String, nullable=True))
     channel: str | None = Field(default=None, max_length=512)
+    competitor_source_url: str | None = Field(default=None, max_length=2048)
+    """URL of the competitor article this embed was discovered in."""
 
     article: Article = Relationship(back_populates="embed_candidates")
 
