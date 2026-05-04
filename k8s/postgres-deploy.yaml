@@ -28,6 +28,8 @@ spec:
                 secretKeyRef:
                   name: headlinesforge-secrets
                   key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           volumeMounts:
             - name: pgdata
               mountPath: /var/lib/postgresql/data
