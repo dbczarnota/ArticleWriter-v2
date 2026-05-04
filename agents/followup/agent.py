@@ -25,20 +25,31 @@ _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
 class FollowUpOutput(BaseModel):
     alternative_titles: list[str]
     followup_topics: list[str]
-    used_facts: list[str] = []
-    used_quotes: list[str] = []
+    # ID-based usage tracking. The agent receives source facts/quotes as a
+    # numbered list (1-indexed) and returns just the IDs of the entries it
+    # detected in the published article. We map IDs back to the original
+    # source strings on the Python side, eliminating any string-comparison
+    # drift (LLM dropping a comma, prepending "- ", paraphrasing whitespace).
+    used_fact_ids: list[int] = []
+    used_quote_ids: list[int] = []
 
     @field_validator("alternative_titles", "followup_topics", mode="before")
     @classmethod
     def _clean(cls, v: list) -> list:
         return [" ".join(s.split()) for item in v if isinstance(item, str) and (s := item.strip())]
 
-    @field_validator("used_facts", "used_quotes", mode="before")
+    @field_validator("used_fact_ids", "used_quote_ids", mode="before")
     @classmethod
-    def _clean_str_list(cls, v: Any) -> list[str]:
+    def _clean_int_list(cls, v: Any) -> list[int]:
         if not isinstance(v, list):
             return []
-        return [item.strip() for item in v if isinstance(item, str) and item.strip()]
+        out: list[int] = []
+        for item in v:
+            try:
+                out.append(int(item))
+            except (TypeError, ValueError):
+                continue
+        return out
 
 
 async def run_followup_agent(
@@ -51,14 +62,21 @@ async def run_followup_agent(
     _agent: Agent[Any, Any] | None = None,
 ) -> ArticleOutput:
     """Generate alternative titles, follow-up topics, and track which facts/quotes were used."""
-    facts_text = "\n".join(f"- {f.text}" for f in extraction_result.facts)
-    quotes_text = "\n".join(f'- "{q.text}" — {q.speaker}' for q in extraction_result.quotes)
+    facts = list(extraction_result.facts)
+    quotes = list(extraction_result.quotes)
+    facts_text = (
+        "\n".join(f"[{i}] {f.text}" for i, f in enumerate(facts, start=1)) or "(none)"
+    )
+    quotes_text = (
+        "\n".join(f'[{i}] "{q.text}" — {q.speaker}' for i, q in enumerate(quotes, start=1))
+        or "(none)"
+    )
 
     user_prompt = (
         f"TOPIC: {topic}\n\n"
         f"PUBLISHED ARTICLE:\n{article.html}\n\n"
-        f"SOURCE FACTS:\n{facts_text or '(none)'}\n\n"
-        f"SOURCE QUOTES:\n{quotes_text or '(none)'}"
+        f"SOURCE FACTS (with IDs in brackets):\n{facts_text}\n\n"
+        f"SOURCE QUOTES (with IDs in brackets):\n{quotes_text}"
     )
 
     if _agent is not None:
@@ -95,6 +113,15 @@ async def run_followup_agent(
     )
     output = result.output
 
+    # Map ID lists back to source-text strings. Out-of-range or duplicate IDs
+    # are silently dropped so a hallucinated ID never inflates usage counts.
+    used_facts = [
+        facts[i - 1].text for i in dict.fromkeys(output.used_fact_ids) if 1 <= i <= len(facts)
+    ]
+    used_quotes = [
+        quotes[i - 1].text for i in dict.fromkeys(output.used_quote_ids) if 1 <= i <= len(quotes)
+    ]
+
     sources = list(
         {f.source_url for f in extraction_result.facts if f.source_url}
         | {q.source_url for q in extraction_result.quotes if q.source_url}
@@ -104,7 +131,7 @@ async def run_followup_agent(
         html=article.html,
         alternative_titles=output.alternative_titles,
         followup_topics=output.followup_topics,
-        used_facts=output.used_facts,
-        used_quotes=output.used_quotes,
+        used_facts=used_facts,
+        used_quotes=used_quotes,
         sources=sources,
     )

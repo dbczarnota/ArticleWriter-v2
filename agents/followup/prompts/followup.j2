@@ -7,7 +7,7 @@
 {{ content }}
 {% endif %}
 {% endmacro %}
-{{ section("task", "You are a content strategist. Given a published article and its source material, do four things: (1) generate " ~ num_titles ~ " alternative headline options following the editorial guidelines; (2) suggest " ~ num_topics ~ " related topics for future articles; (3) return the exact text of each fact from SOURCE FACTS that appears verbatim or nearly verbatim in the published article; (4) return the exact text of each quote from SOURCE QUOTES that appears in the published article. For used_facts and used_quotes, copy the text strings exactly as they appear in the source lists — no paraphrasing.") | trim }}
+{{ section("task", "You are a content strategist. Given a published article and its source material, do four things: (1) generate " ~ num_titles ~ " alternative headline options following the editorial guidelines; (2) suggest " ~ num_topics ~ " related topics for future articles; (3) return `used_fact_ids` — the integer IDs (from the [n] brackets in SOURCE FACTS) of every fact whose core information appears in the published article, even when rephrased by the writer; (4) return `used_quote_ids` — the integer IDs of every quote from SOURCE QUOTES that appears in the article. Return ONLY integer IDs, never the source text. If a fact/quote is not used, omit its ID. Out-of-range IDs are ignored downstream — only return IDs you actually saw in the brackets.") | trim }}
 
 {% if guidelines %}
 {{ section("editorial_guidelines", guidelines) | trim }}

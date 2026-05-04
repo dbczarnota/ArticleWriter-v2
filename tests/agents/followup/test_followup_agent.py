@@ -29,8 +29,8 @@ _DOMAIN = DomainConfig(name="test", description="test")
 def _make_followup_agent(
     alternative_titles: list[str] | None = None,
     followup_topics: list[str] | None = None,
-    used_facts: list[str] | None = None,
-    used_quotes: list[str] | None = None,
+    used_fact_ids: list[int] | None = None,
+    used_quote_ids: list[int] | None = None,
 ):
     from agents.followup.agent import FollowUpOutput
 
@@ -48,8 +48,8 @@ def _make_followup_agent(
                     "Dawid Podsiadło dyskografia",
                     "Polscy artyści vs zagranica",
                 ],
-                "used_facts": used_facts or ["Zarobił 2 mln zł"],
-                "used_quotes": used_quotes or ["To był najpiękniejszy rok"],
+                "used_fact_ids": used_fact_ids if used_fact_ids is not None else [1],
+                "used_quote_ids": used_quote_ids if used_quote_ids is not None else [1],
             }
         ),
         output_type=FollowUpOutput,
@@ -103,3 +103,38 @@ async def test_run_followup_agent_preserves_html():
         _agent=_make_followup_agent(),
     )
     assert result.html == "<h1>Dawid zarobił miliony</h1><p>Treść artykułu.</p>"
+
+
+@pytest.mark.asyncio
+async def test_followup_maps_fact_ids_to_source_strings():
+    """LLM returns IDs; agent maps them back to canonical source-text strings."""
+    result = await run_followup_agent(
+        _ARTICLE,
+        topic="topic",
+        extraction_result=_EXTRACTION,
+        config=_CONFIG,
+        domain=_DOMAIN,
+        _agent=_make_followup_agent(used_fact_ids=[1, 2], used_quote_ids=[1]),
+    )
+    # IDs map back to the exact source-text strings — no drift, no bullet
+    # prefixes, no whitespace mismatches.
+    assert result.used_facts == ["Zarobił 2 mln zł", "Sprzedał 50 tys. biletów"]
+    assert result.used_quotes == ["To był najpiękniejszy rok"]
+
+
+@pytest.mark.asyncio
+async def test_followup_drops_out_of_range_and_duplicate_ids():
+    """Hallucinated/duplicate IDs are silently filtered."""
+    result = await run_followup_agent(
+        _ARTICLE,
+        topic="topic",
+        extraction_result=_EXTRACTION,
+        config=_CONFIG,
+        domain=_DOMAIN,
+        _agent=_make_followup_agent(
+            used_fact_ids=[1, 1, 99, 0, 2],  # duplicate 1, out-of-range 99 and 0
+            used_quote_ids=[5, 1],  # out-of-range 5
+        ),
+    )
+    assert result.used_facts == ["Zarobił 2 mln zł", "Sprzedał 50 tys. biletów"]
+    assert result.used_quotes == ["To był najpiękniejszy rok"]
