@@ -51,7 +51,7 @@ async def run_followup_agent(
     _agent: Agent[Any, Any] | None = None,
 ) -> ArticleOutput:
     """Generate alternative titles, follow-up topics, and track which facts/quotes were used."""
-    facts_text = "\n".join(f"- {f.text} [{f.context}]" for f in extraction_result.facts)
+    facts_text = "\n".join(f"- {f.text}" for f in extraction_result.facts)
     quotes_text = "\n".join(f'- "{q.text}" — {q.speaker}' for q in extraction_result.quotes)
 
     user_prompt = (
