@@ -1,4 +1,8 @@
 export interface Translations {
+  app: {
+    loading: string;
+    selectArticleHint: string;
+  };
   sidebar: {
     articles: string;
     newArticle: string;
@@ -94,6 +98,50 @@ export interface Translations {
     saving: string;
     save: string;
     saveHint: string;
+    // tooltips (?-icon hover help)
+    tipDescription: string;
+    tipLanguage: string;
+    tipTargetWordCount: string;
+    tipSearchFreshness: string;
+    tipNumQueries: string;
+    tipMaxResultsPerQuery: string;
+    tipMinSourceSignals: string;
+    tipMaxPagesToScrape: string;
+    tipMaxFacts: string;
+    tipMaxQuotes: string;
+    tipContextArticles: string;
+    tipMediaSection: string;
+    tipMediaLanguages: string;
+    tipMediaNumResults: string;
+    tipMediaMaxTiers: string;
+    tipYoutubeSortByDate: string;
+    tipFallbacks: string;
+    tipGuidelines: string;
+    tipHtmlFormat: string;
+    tipReviewerRounds: string;
+    tipReviewerInstructions: string;
+    tipExampleTitles: string;
+    tipExampleArticles: string;
+  };
+  mediaTips: {
+    youtube: string;
+    twitter: string;
+    tiktok: string;
+    instagram: string;
+    reddit: string;
+    news: string;
+    facebook: string;
+  };
+  agentTips: {
+    search: string;
+    scraping: string;
+    parsing: string;
+    extraction: string;
+    adaptive_search: string;
+    instructions: string;
+    writer: string;
+    reflection: string;
+    followup: string;
   };
   newArticle: {
     heading: string;

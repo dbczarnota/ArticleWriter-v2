@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "./lib/useAuth";
 import { useArticles } from "./lib/useArticles";
+import { useT } from "./i18n";
 import { LoginGate } from "./components/LoginGate";
 import { Topbar } from "./components/Topbar";
 import { Sidebar } from "./components/Sidebar";
@@ -14,13 +15,14 @@ const NULL_AUTH = import.meta.env.VITE_AUTH_BACKEND === "null";
 
 export default function App() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const t = useT();
   const [view, setView] = useState<View>("list");
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [newFormKey, setNewFormKey] = useState(0);
   const { articles, loading, refresh, markDone } = useArticles();
 
   if (!NULL_AUTH) {
-    if (isLoading) return <div style={{ padding: 32 }}>Ładowanie…</div>;
+    if (isLoading) return <div style={{ padding: 32 }}>{t.app.loading}</div>;
     if (!isAuthenticated) return <LoginGate />;
   }
 
@@ -43,7 +45,7 @@ export default function App() {
         <main style={{ flex: 1, overflow: "auto", padding: 24 }}>
           {view === "list" && (
             <p style={{ color: "var(--muted)" }}>
-              {loading ? "Ładowanie…" : "Wybierz artykuł lub utwórz nowy."}
+              {loading ? t.app.loading : t.app.selectArticleHint}
             </p>
           )}
           {view === "article" && selectedArticleId && (

@@ -4,14 +4,16 @@ import { useEffect, useState } from "react";
 import type { DomainConfigData } from "../types";
 import { useT } from "../i18n";
 
-const MEDIA_TOGGLES: Array<{ key: keyof DomainConfigData; label: string; tip: string }> = [
-  { key: "youtube_search", label: "YouTube", tip: "Szuka embeddowalnych filmów YouTube i Shorts powiązanych z tematem artykułu." },
-  { key: "twitter_search", label: "Twitter/X", tip: "Szuka tweetów i postów X powiązanych z tematem — embeddowanie działa gdy URL jest publiczny." },
-  { key: "tiktok_search", label: "TikTok", tip: "Szuka filmów TikTok powiązanych z tematem artykułu." },
-  { key: "instagram_search", label: "Instagram", tip: "Szuka postów i Reelsów Instagram — wykrywane też ze scrapowanych stron konkurencji." },
-  { key: "reddit_search", label: "Reddit", tip: "Szuka wątków Reddit — przydatne gdy temat ma duże zaangażowanie anglojęzyczne." },
-  { key: "news_search", label: "News", tip: "Używa trybu wyszukiwania newsów Google zamiast zwykłego SERP — preferuje świeże artykuły prasowe." },
-  { key: "facebook_search", label: "Facebook", tip: "Szuka publicznych postów i filmów Facebook. Embeddowanie wymaga publicznego URL." },
+type MediaTipKey = "youtube" | "twitter" | "tiktok" | "instagram" | "reddit" | "news" | "facebook";
+
+const MEDIA_TOGGLES: Array<{ key: keyof DomainConfigData; label: string; tipKey: MediaTipKey }> = [
+  { key: "youtube_search", label: "YouTube", tipKey: "youtube" },
+  { key: "twitter_search", label: "Twitter/X", tipKey: "twitter" },
+  { key: "tiktok_search", label: "TikTok", tipKey: "tiktok" },
+  { key: "instagram_search", label: "Instagram", tipKey: "instagram" },
+  { key: "reddit_search", label: "Reddit", tipKey: "reddit" },
+  { key: "news_search", label: "News", tipKey: "news" },
+  { key: "facebook_search", label: "Facebook", tipKey: "facebook" },
 ];
 
 export const AVAILABLE_MODELS = [
@@ -79,15 +81,15 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
   ];
 
   const AGENT_DEFINITIONS: Array<{ key: AgentKey; label: string; tip: string }> = [
-    { key: "search", label: t.agents.search, tip: "Formułuje zapytania Google i wybiera wyniki. Flash jest tu w porządku — to głównie logika zapytań, nie twórcze pisanie." },
-    { key: "scraping", label: t.agents.scraping, tip: "Ocenia jakość scrapowanych stron i odrzuca te bez wartościowej treści. Lekki model wystarczy." },
-    { key: "parsing", label: t.agents.parsing, tip: "Klasyfikuje scrapowane strony (news, blog, konkurs...) i wyciąga metadane. Lekki krok — Flash wystarczy." },
-    { key: "extraction", label: t.agents.extraction, tip: "Wyciąga fakty i cytaty ze stron źródłowych. Jakość ekstrakcji wpływa bezpośrednio na jakość artykułu." },
-    { key: "adaptive_search", label: t.agents.adaptive_search, tip: "Decyduje czy szukać dalej jeśli zebranych źródeł jest za mało. Uruchamia dodatkowe rundy wyszukiwania." },
-    { key: "instructions", label: t.agents.instructions, tip: "Analizuje zebrane źródła i tworzy szczegółowy brief dla pisarza. Pro — bo jakość briefa determinuje jakość artykułu." },
-    { key: "writer", label: t.agents.writer, tip: "Generuje gotowy artykuł HTML na podstawie briefa i źródeł. Najważniejszy agent — używaj najlepszego modelu." },
-    { key: "reflection", label: t.agents.reflection, tip: "Sprawdza artykuł i zleca ewentualne poprawki pisarzowi. Może zrobić kilka rund." },
-    { key: "followup", label: t.agents.followup, tip: "Generuje alternatywne tytuły, tematy powiązane i śledzi które fakty/cytaty trafiły do artykułu. Pro bo wymaga kreatywności stylistycznej." },
+    { key: "search", label: t.agents.search, tip: t.agentTips.search },
+    { key: "scraping", label: t.agents.scraping, tip: t.agentTips.scraping },
+    { key: "parsing", label: t.agents.parsing, tip: t.agentTips.parsing },
+    { key: "extraction", label: t.agents.extraction, tip: t.agentTips.extraction },
+    { key: "adaptive_search", label: t.agents.adaptive_search, tip: t.agentTips.adaptive_search },
+    { key: "instructions", label: t.agents.instructions, tip: t.agentTips.instructions },
+    { key: "writer", label: t.agents.writer, tip: t.agentTips.writer },
+    { key: "reflection", label: t.agents.reflection, tip: t.agentTips.reflection },
+    { key: "followup", label: t.agents.followup, tip: t.agentTips.followup },
   ];
 
   useEffect(() => {
@@ -139,14 +141,14 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
             <div>
               <label style={labelStyle}>
                 {dc.domainDescription}
-                <Tip text="Krótki opis redakcji przekazywany agentom jako kontekst. Pomaga modelom zrozumieć styl i temat portalu. Np. 'Polski portal lifestyle, krótkie clickbaitowe artykuły'." />
+                <Tip text={dc.tipDescription} />
               </label>
               <textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical" }} />
             </div>
             <div>
               <label style={labelStyle}>
                 {dc.articleLanguage}
-                <Tip text="Kod języka wg ISO 639-1 (np. 'pl', 'en'). Artykuły są generowane w tym języku." />
+                <Tip text={dc.tipLanguage} />
               </label>
               <input value={form.language} onChange={(e) => set("language", e.target.value)} style={inputStyle} />
             </div>
@@ -160,14 +162,14 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
             <div>
               <label style={labelStyle}>
                 {dc.targetWordCount}
-                <Tip text="Przybliżona liczba słów gotowego artykułu. Agent pisarz stara się trafić w tę wartość — nie jest to twardy limit." />
+                <Tip text={dc.tipTargetWordCount} />
               </label>
               <input type="number" value={form.target_word_count} onChange={(e) => set("target_word_count", +e.target.value)} min={100} max={5000} style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>
                 {dc.searchFreshness}
-                <Tip text="Ogranicza wyniki Google do wybranego okresu. 'Ostatni dzień' = gorące newsy; 'Ostatni rok' = szerszy kontekst tematyczny. Domyślnie: tydzień." />
+                <Tip text={dc.tipSearchFreshness} />
               </label>
               {(() => {
                 const isCustom = !FIXED_FRESHNESS.has(form.search_freshness);
@@ -200,49 +202,49 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
             <div>
               <label style={labelStyle}>
                 {dc.numQueries}
-                <Tip text="Ile różnych zapytań Google wysyła agent wyszukiwarki równolegle. Więcej = szersza wiedza, dłuższy czas wykonania." />
+                <Tip text={dc.tipNumQueries} />
               </label>
               <input type="number" value={form.num_queries} onChange={(e) => set("num_queries", +e.target.value)} min={1} max={10} style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>
                 {dc.maxResultsPerQuery}
-                <Tip text="Ile wyników SERP bierze pod uwagę każde zapytanie. Bezpośrednio wpływa na liczbę stron do scrapowania." />
+                <Tip text={dc.tipMaxResultsPerQuery} />
               </label>
               <input type="number" value={form.max_results} onChange={(e) => set("max_results", +e.target.value)} min={1} max={20} style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>
                 {dc.minSourceSignals}
-                <Tip text="Minimalna łączna liczba faktów + cytatów wymagana do generowania artykułu. Jeśli pipeline zbierze mniej — zwraca błąd 'insufficient_sources' zamiast pisać słaby artykuł." />
+                <Tip text={dc.tipMinSourceSignals} />
               </label>
               <input type="number" value={form.min_source_signals} onChange={(e) => set("min_source_signals", +e.target.value)} min={0} max={20} style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>
                 {dc.maxPagesToScrape}
-                <Tip text="Ile artykułów źródłowych pipeline faktycznie pobiera i czyta. Więcej = lepsza jakość materiałów, ale wolniej i drożej." />
+                <Tip text={dc.tipMaxPagesToScrape} />
               </label>
               <input type="number" value={form.max_pages_to_scrape} onChange={(e) => set("max_pages_to_scrape", +e.target.value)} min={1} max={50} style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>
                 {dc.maxFacts}
-                <Tip text="Ile faktów agent ekstrakcji może przekazać pisarzowi ze wszystkich źródeł łącznie. Pisarz wybiera z nich co uwzględnić w tekście." />
+                <Tip text={dc.tipMaxFacts} />
               </label>
               <input type="number" value={form.max_facts} onChange={(e) => set("max_facts", +e.target.value)} min={1} max={50} style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>
                 {dc.maxQuotes}
-                <Tip text="Ile cytatów (dosłownych wypowiedzi osób) trafia do kontekstu pisarza. Dobre cytaty wzmacniają autentyczność artykułu." />
+                <Tip text={dc.tipMaxQuotes} />
               </label>
               <input type="number" value={form.max_quotes} onChange={(e) => set("max_quotes", +e.target.value)} min={0} max={20} style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>
                 {dc.contextArticles}
-                <Tip text="Ile artykułów konkurencji (ze scrapowanych stron) dostaje agent-recenzent jako kontekst. Pomaga mu ocenić, czy nasz artykuł wnosi coś nowego i nie powtarza oczywistości." />
+                <Tip text={dc.tipContextArticles} />
               </label>
               <input type="number" value={form.reflection_context_articles} onChange={(e) => set("reflection_context_articles", +e.target.value)} min={0} max={10} style={inputStyle} />
             </div>
@@ -253,11 +255,11 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
         <section id="media" style={{ display: sectionVisible("media") ? "block" : "none", marginBottom: 32 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
             {dc.sectionMedia}
-            <Tip text="Pipeline szuka embeddowalnych postów z wybranych platform i próbuje umieścić je w artykule jako enrichment." />
+            <Tip text={dc.tipMediaSection} />
           </h3>
           <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 12 }}>{dc.mediaHint}</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-            {MEDIA_TOGGLES.map(({ key, label, tip }) => (
+            {MEDIA_TOGGLES.map(({ key, label, tipKey }) => (
               <label
                 key={key}
                 style={{
@@ -279,7 +281,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
                   style={{ accentColor: "var(--accent)" }}
                 />
                 {label}
-                <Tip text={tip} />
+                <Tip text={t.mediaTips[tipKey]} />
               </label>
             ))}
           </div>
@@ -287,7 +289,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
             <div>
               <label style={labelStyle}>
                 {dc.mediaLanguages}
-                <Tip text="Języki używane przy wyszukiwaniu mediów społecznościowych. 'en, pl' = szuka po angielsku i polsku. Wpływa na dopasowanie kulturowe wyników." />
+                <Tip text={dc.tipMediaLanguages} />
               </label>
               <input
                 value={form.media_search_languages.join(", ")}
@@ -299,14 +301,14 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
             <div>
               <label style={labelStyle}>
                 {dc.mediaNumResults}
-                <Tip text="Ile wyników zwraca jedno zapytanie o media społecznościowe. Więcej = większy wybór embeddów, ale wolniej." />
+                <Tip text={dc.tipMediaNumResults} />
               </label>
               <input type="number" value={form.media_search_num} onChange={(e) => set("media_search_num", +e.target.value)} min={1} max={20} style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>
                 {dc.mediaMaxTiers}
-                <Tip text="Głębokość wyszukiwania embeddowalnych mediów. Tier 2 = dodatkowe zapytania-wariacje jeśli tier 1 zwróci mało wyników. Wyższe wartości = więcej tokenów." />
+                <Tip text={dc.tipMediaMaxTiers} />
               </label>
               <input type="number" value={form.media_search_max_query_tiers} onChange={(e) => set("media_search_max_query_tiers", +e.target.value)} min={1} max={5} style={inputStyle} />
             </div>
@@ -318,7 +320,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
                 style={{ accentColor: "var(--accent)" }}
               />
               {dc.youtubeSortByDate}
-              <Tip text="Sortuje wyniki YouTube od najnowszych zamiast 'relevance'. Zalecane dla newsów — gwarantuje świeże materiały powiązane z aktualnym tematem." />
+              <Tip text={dc.tipYoutubeSortByDate} />
             </label>
           </div>
         </section>
@@ -353,7 +355,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
                     style={{ ...inputStyle, fontSize: 12, fontFamily: "monospace" }}
                   />
                   <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)" }}>
-                    <Tip text="Modele awaryjne oddzielone przecinkiem (np. 'groq:openai/gpt-oss-120b'). Używane gdy główny model zwróci błąd, timeout lub przekroczy limit." />
+                    <Tip text={dc.tipFallbacks} />
                   </span>
                 </div>
               </div>
@@ -365,7 +367,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
         <section id="wytyczne" style={{ display: sectionVisible("wytyczne") ? "block" : "none", marginBottom: 32 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
             {dc.sectionGuidelines}
-            <Tip text="Pełna 'Biblia Redaktora' w formacie Markdown. Przekazywana agentowi instrukcji i pisarzowi. Definiuj ton głosu, strukturę artykułu, zasady SEO, czego unikać, jakich słów używać, jak tytułować." />
+            <Tip text={dc.tipGuidelines} />
           </h3>
           <textarea
             value={form.guidelines}
@@ -380,7 +382,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
         <section id="html" style={{ display: sectionVisible("html") ? "block" : "none", marginBottom: 32 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
             {dc.sectionHtml}
-            <Tip text="Szablon lub opis oczekiwanej struktury HTML artykułu. Agent pisarz stosuje ten format generując kod. Można wkleić przykładowy artykuł z placeholderami albo opisać strukturę tagami." />
+            <Tip text={dc.tipHtmlFormat} />
           </h3>
           <textarea
             value={form.html_format}
@@ -396,7 +398,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
           <div style={{ marginBottom: 20 }}>
             <label style={labelStyle}>
               {dc.reviewerRounds}
-              <Tip text="Ile razy pętla recenzent→pisarz może się powtórzyć. 1 = jedna recenzja i jedna poprawka (domyślnie). 2–3 = głębsza iteracja, ale dłuższy czas i większy koszt." />
+              <Tip text={dc.tipReviewerRounds} />
             </label>
             <input
               type="number"
@@ -409,7 +411,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
           </div>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
             {dc.reviewerInstructions}
-            <Tip text="Opcjonalne wskazówki dla agenta recenzenta (QA) wykraczające poza jego wbudowane reguły. Zostaw puste jeśli domyślne zachowanie recenzenta jest wystarczające." />
+            <Tip text={dc.tipReviewerInstructions} />
           </h3>
           <textarea
             value={form.reflection_stance}
@@ -424,7 +426,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
         <section id="tytuly" style={{ display: sectionVisible("tytuly") ? "block" : "none", marginBottom: 32 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
             {dc.sectionTitles}
-            <Tip text="Wzorcowe tytuły artykułów Twojej redakcji. Agent follow-up generuje alternatywne tytuły naśladując dokładnie ten styl — długość, emocje, użycie wielkich liter, strukturę zdania." />
+            <Tip text={dc.tipExampleTitles} />
           </h3>
           <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>{dc.titlesHint}</p>
           {form.example_titles.map((text, i) => (
@@ -469,7 +471,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
         <section id="przyklady" style={{ display: sectionVisible("przyklady") ? "block" : "none", marginBottom: 32 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
             {dc.sectionArticles}
-            <Tip text="Pełne artykuły jako 'few-shot examples'. Agent instrukcji analizuje je tworząc brief dla pisarza. Im lepszy przykład, tym dokładniej pipeline odwzorowuje styl i strukturę redakcji." />
+            <Tip text={dc.tipExampleArticles} />
           </h3>
           {form.example_articles.map((text, i) => (
             <div key={i} style={{ marginBottom: 12 }}>
