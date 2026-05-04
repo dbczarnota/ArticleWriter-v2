@@ -246,3 +246,14 @@ class PostgresOrgConfigRepository:
             await session.commit()
             await session.refresh(merged)
             return merged
+
+    async def create_default(self, org_code: str) -> OrgConfig:
+        async with self._sm() as session:
+            existing = await session.get(OrgConfig, org_code)
+            if existing is not None:
+                return existing
+            cfg = OrgConfig(org_code=org_code)
+            session.add(cfg)
+            await session.commit()
+            await session.refresh(cfg)
+            return cfg

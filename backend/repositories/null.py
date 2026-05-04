@@ -226,3 +226,6 @@ class NullOrgConfigRepository:
 
     async def upsert(self, config: OrgConfig) -> OrgConfig:
         return config
+
+    async def create_default(self, org_code: str) -> OrgConfig:
+        return OrgConfig(org_code=org_code)

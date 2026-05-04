@@ -254,3 +254,54 @@ async def test_mark_failed_records_status_and_detail(session_maker):
         "quotes_count": 0,
         "min_required": 4,
     }
+
+
+async def test_orgconfig_create_default_inserts_row_with_model_defaults(session_maker):
+    from backend.repositories.postgres import (
+        PostgresOrgConfigRepository,
+        PostgresOrgRepository,
+    )
+
+    org_repo = PostgresOrgRepository(session_maker)
+    await org_repo.upsert_from_kinde(
+        kinde_org_id="org_cfg_new",
+        code="org_cfg_new",
+        name="New",
+        domain_name="org_cfg_new",
+    )
+
+    cfg_repo = PostgresOrgConfigRepository(session_maker)
+    cfg = await cfg_repo.create_default("org_cfg_new")
+    assert cfg.org_code == "org_cfg_new"
+    assert cfg.language == "pl"
+    assert cfg.target_word_count == 600
+    assert cfg.guidelines == ""
+
+    fetched = await cfg_repo.get("org_cfg_new")
+    assert fetched is not None
+    assert fetched.org_code == "org_cfg_new"
+
+
+async def test_orgconfig_create_default_is_idempotent(session_maker):
+    from backend.repositories.postgres import (
+        PostgresOrgConfigRepository,
+        PostgresOrgRepository,
+    )
+
+    org_repo = PostgresOrgRepository(session_maker)
+    await org_repo.upsert_from_kinde(
+        kinde_org_id="org_cfg_idem",
+        code="org_cfg_idem",
+        name="Idem",
+        domain_name="org_cfg_idem",
+    )
+
+    cfg_repo = PostgresOrgConfigRepository(session_maker)
+    first = await cfg_repo.create_default("org_cfg_idem")
+
+    # Mutate via upsert: a second create_default must not overwrite.
+    first.guidelines = "user-edited"
+    await cfg_repo.upsert(first)
+
+    second = await cfg_repo.create_default("org_cfg_idem")
+    assert second.guidelines == "user-edited"

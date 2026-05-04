@@ -156,3 +156,12 @@ class OrgConfigRepository(Protocol):
     async def upsert(self, config: OrgConfig) -> OrgConfig:
         """Insert or replace the config row; sets updated_at to now. Returns saved row."""
         ...
+
+    async def create_default(self, org_code: str) -> OrgConfig:
+        """Create an OrgConfig with model defaults for `org_code` if none exists.
+
+        Idempotent: returns the existing row if one is already present, otherwise
+        inserts a fresh row populated entirely from SQLModel field defaults.
+        Used by `get_current_org` during first-request bootstrap of a new tenant.
+        """
+        ...
