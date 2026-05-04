@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import httpx
 import trafilatura
 
@@ -16,6 +18,21 @@ _HEADERS = {
 }
 _MIN_CONTENT_LENGTH = 100
 
+# Extracts social embed URLs from raw HTML (iframes, blockquotes, data-* attrs).
+# Trafilatura strips these elements, so we must capture them before conversion.
+_HTML_SOCIAL_RE = re.compile(
+    r"https?://(?:www\.)?"
+    r"(?:youtube\.com/(?:watch|shorts|embed)[^\"'&\s<>]*"
+    r"|youtu\.be/[^\"'&\s<>]+"
+    r"|twitter\.com/\w+/status/[^\"'&\s<>]+"
+    r"|x\.com/\w+/status/[^\"'&\s<>]+"
+    r"|tiktok\.com/@[^\"'&\s<>/]+/video/[^\"'&\s<>]+"
+    r"|instagram\.com/(?:p|reel|tv)/[^\"'&\s<>/]+"
+    r"|facebook\.com/(?:[^/]+/(?:posts|videos|reels)/|watch/\?v=)[^\"'&\s<>]+"
+    r")",
+    re.IGNORECASE,
+)
+
 
 async def scrape_with_httpx(url: str, timeout: float = 15.0) -> ScrapedPage | None:
     """Tier-1 scraper: httpx + trafilatura. Returns None on HTTP error or empty content."""
@@ -27,6 +44,9 @@ async def scrape_with_httpx(url: str, timeout: float = 15.0) -> ScrapedPage | No
     except (httpx.HTTPStatusError, httpx.HTTPError, httpx.TimeoutException):
         return None
 
+    # Extract social embed URLs from raw HTML before trafilatura strips iframes.
+    social_urls = list(dict.fromkeys(_HTML_SOCIAL_RE.findall(html)))
+
     content = trafilatura.extract(
         html,
         include_comments=False,
@@ -35,6 +55,9 @@ async def scrape_with_httpx(url: str, timeout: float = 15.0) -> ScrapedPage | No
     )
     if not content or len(content.strip()) < _MIN_CONTENT_LENGTH:
         return None
+
+    if social_urls:
+        content += "\n\n" + "\n".join(social_urls)
 
     title = _extract_title(html)
     return ScrapedPage(url=url, title=title, content=content, scrape_tier="httpx")
