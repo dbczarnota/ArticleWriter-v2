@@ -95,6 +95,9 @@ class Article(SQLModel, table=True):
     status: str = Field(max_length=32, default="running")
     """One of: running, done, failed, insufficient_sources."""
 
+    pipeline_stage: str | None = Field(default=None, sa_column=Column(String(64), nullable=True))
+    """Current pipeline stage while status='running'. Cleared on completion."""
+
     marked_done: bool = Field(default=False)
     """Editorial flag — set by a user to mark the article as reviewed/published."""
 

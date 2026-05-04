@@ -176,6 +176,7 @@ async def _run_pipeline_inner(
         )
 
     # Stage 1: Research
+    await _article_repo.set_pipeline_stage(_article_id, "search")
     log.search_start(
         topic,
         settings.search.num_queries,
@@ -206,6 +207,7 @@ async def _run_pipeline_inner(
     # NB: media_search now runs LATER (post-rerank) so it can see actual article context.
     search_results, _search_embeds = _extract_social_from_search(search_results)
 
+    await _article_repo.set_pipeline_stage(_article_id, "scraping")
     log.scraping_start(len(search_results), len(urls or []))
     _stage_t0 = time.perf_counter()
     with logfire.span("pipeline.stage.scraping", domain=domain.name):
@@ -229,6 +231,7 @@ async def _run_pipeline_inner(
     record_stage("scraping", _timing["scraping"], domain.name)
     _content_embeds = _extract_social_from_content(scraped)
 
+    await _article_repo.set_pipeline_stage(_article_id, "parsing")
     _stage_t0 = time.perf_counter()
     with logfire.span("pipeline.stage.parsing", domain=domain.name):
         try:
@@ -254,6 +257,7 @@ async def _run_pipeline_inner(
         _filter_reasons.update(_date_reasons)
         log.date_filter_done(len(articles), len(_date_reasons))
 
+    await _article_repo.set_pipeline_stage(_article_id, "extraction")
     _stage_t0 = time.perf_counter()
     with logfire.span("pipeline.stage.extraction", domain=domain.name):
         try:
@@ -274,6 +278,7 @@ async def _run_pipeline_inner(
 
     # Stage 2: Adaptive search loop
     if settings.pipeline.adaptive_search:
+        await _article_repo.set_pipeline_stage(_article_id, "adaptive_search")
         _stage_t0 = time.perf_counter()
         _target = settings.pipeline.min_source_signals
         with logfire.span(
@@ -322,7 +327,9 @@ async def _run_pipeline_inner(
                         jina_api_key=jina_api_key,
                     )
                     extra_articles = await run_parsing_agent(extra_scraped, config=settings.parsing)
-                    articles = articles + extra_articles  # extend pool for downstream rerank/context
+                    articles = (
+                        articles + extra_articles
+                    )  # extend pool for downstream rerank/context
                     extra_extraction = await run_extraction_agent(
                         extra_articles,
                         topic=topic,
@@ -349,6 +356,7 @@ async def _run_pipeline_inner(
     # actual top sources (not just the topic line) and can produce concrete event-specific
     # queries. This used to run in parallel with web search, but a thin topic line caused
     # the LLM to fall back to generic queries that pulled in unrelated social content.
+    await _article_repo.set_pipeline_stage(_article_id, "media_search")
     embed_candidates: list[EmbedCandidate] = []
     media_errors: dict[str, str] = {}
     _stage_t0 = time.perf_counter()
@@ -407,6 +415,7 @@ async def _run_pipeline_inner(
             )
 
     # Stage 3: Writing
+    await _article_repo.set_pipeline_stage(_article_id, "instructions")
     _stage_t0 = time.perf_counter()
     with logfire.span("pipeline.stage.instructions", domain=domain.name):
         try:
@@ -426,6 +435,7 @@ async def _run_pipeline_inner(
     _timing["instructions"] = (time.perf_counter() - _stage_t0) * 1000
     record_stage("instructions", _timing["instructions"], domain.name)
 
+    await _article_repo.set_pipeline_stage(_article_id, "writer")
     _stage_t0 = time.perf_counter()
     _writer_messages: list = []  # accumulates across all writer turns for revision rounds
     with logfire.span("pipeline.stage.writer", domain=domain.name, round=1):
@@ -450,6 +460,7 @@ async def _run_pipeline_inner(
     # Each writer.revise turn receives the FULL accumulated writer history so it
     # can consciously revise its prior draft instead of regenerating from scratch.
     if settings.pipeline.reflection:
+        await _article_repo.set_pipeline_stage(_article_id, "reflection")
         _stage_t0 = time.perf_counter()
         with logfire.span(
             "pipeline.stage.reflection",
@@ -490,6 +501,7 @@ async def _run_pipeline_inner(
         record_stage("reflection", _timing["reflection"], domain.name)
 
     # Stage 5: Follow-up
+    await _article_repo.set_pipeline_stage(_article_id, "followup")
     _stage_t0 = time.perf_counter()
     with logfire.span("pipeline.stage.followup", domain=domain.name):
         if settings.pipeline.followup:
@@ -872,7 +884,9 @@ def _extract_social_from_content(
                     break
             if source:
                 candidates.append(
-                    EmbedCandidate(url=url, title=url, source=source, competitor_source_url=page.url)
+                    EmbedCandidate(
+                        url=url, title=url, source=source, competitor_source_url=page.url
+                    )
                 )
     return candidates
 

@@ -155,8 +155,23 @@ class PostgresArticleRepository:
             result = await session.execute(stmt)
             return list(result.scalars().all())
 
+    async def set_pipeline_stage(self, article_id: UUID, stage: str | None) -> None:
+        async with self._session_maker() as session:
+            stmt = select(Article).where(Article.id == article_id)
+            result = await session.execute(stmt)
+            article = result.scalar_one_or_none()
+            if article is None:
+                return
+            article.pipeline_stage = stage
+            await session.commit()
+
     async def set_marked_done(
-        self, article_id: UUID, *, org_code: str, marked_done: bool, marked_done_by_name: str | None = None
+        self,
+        article_id: UUID,
+        *,
+        org_code: str,
+        marked_done: bool,
+        marked_done_by_name: str | None = None,
     ) -> None:
         async with self._session_maker() as session:
             stmt = select(Article).where(Article.id == article_id, Article.org_code == org_code)

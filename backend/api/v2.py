@@ -38,6 +38,7 @@ async def write_article(
     app_settings = AppSettings.from_request(req)
     if app_settings.domain != org.domain_name:
         from dataclasses import replace
+
         app_settings = replace(app_settings, domain=org.domain_name)
 
     domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
@@ -130,14 +131,13 @@ async def list_articles(
 ) -> list[dict]:
     """Tenant-filtered article list, newest first. Returns minimal projection;
     full article via GET /v2/articles/{id}."""
-    articles = await article_repo.list_by_org(
-        org_code=org.code, limit=limit, offset=offset
-    )
+    articles = await article_repo.list_by_org(org_code=org.code, limit=limit, offset=offset)
     return [
         {
             "id": str(a.id),
             "topic": a.topic,
             "status": a.status,
+            "pipeline_stage": a.pipeline_stage,
             "marked_done": a.marked_done,
             "domain_name": a.domain_name,
             "author_user_id": a.author_user_id,
@@ -171,6 +171,7 @@ async def get_article(
         "domain_name": article.domain_name,
         "topic": article.topic,
         "status": article.status,
+        "pipeline_stage": article.pipeline_stage,
         "marked_done": article.marked_done,
         "marked_done_by_name": article.marked_done_by_name,
         "html": article.html,

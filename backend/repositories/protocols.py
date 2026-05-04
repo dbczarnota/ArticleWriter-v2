@@ -102,8 +102,17 @@ class ArticleRepository(Protocol):
         """List articles for an org, newest first. Children NOT loaded (use get() for full)."""
         ...
 
+    async def set_pipeline_stage(self, article_id: UUID, stage: str | None) -> None:
+        """Update the current pipeline stage label (no org filter — called internally by runner)."""
+        ...
+
     async def set_marked_done(
-        self, article_id: UUID, *, org_code: str, marked_done: bool, marked_done_by_name: str | None = None
+        self,
+        article_id: UUID,
+        *,
+        org_code: str,
+        marked_done: bool,
+        marked_done_by_name: str | None = None,
     ) -> None:
         """Toggle editorial done flag. Stores who made the change. No-op when article not found (idempotent)."""
         ...

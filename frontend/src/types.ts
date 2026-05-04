@@ -2,6 +2,7 @@ export interface ArticleListItem {
   id: string;
   topic: string;
   status: "running" | "done" | "failed" | "insufficient_sources";
+  pipeline_stage: string | null;
   marked_done: boolean;
   domain_name: string;
   author_user_id: string;

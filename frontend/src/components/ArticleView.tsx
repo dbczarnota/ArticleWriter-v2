@@ -44,13 +44,27 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   if (error) return <p style={{ color: "#ef4444" }}>Błąd: {error}</p>;
   if (!article) return <p style={{ color: "var(--muted)" }}>Ładowanie…</p>;
 
+  const STAGE_LABELS: Record<string, string> = {
+    search: "Wyszukiwanie wyników…",
+    scraping: "Scrapowanie stron…",
+    parsing: "Parsowanie artykułów…",
+    extraction: "Ekstrakcja faktów i cytatów…",
+    adaptive_search: "Dodatkowe wyszukiwanie…",
+    media_search: "Wyszukiwanie social media…",
+    instructions: "Przygotowanie instrukcji…",
+    writer: "Pisanie artykułu…",
+    reflection: "Recenzja i korekta…",
+    followup: "Tematy follow-up…",
+  };
+
   if (article.status === "running") {
+    const stageLabel = article.pipeline_stage ? (STAGE_LABELS[article.pipeline_stage] ?? article.pipeline_stage) : "Generowanie artykułu…";
     return (
       <div>
         <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>{article.topic}</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--muted)", fontSize: 14 }}>
           <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid var(--accent)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-          Generowanie artykułu…
+          {stageLabel}
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
