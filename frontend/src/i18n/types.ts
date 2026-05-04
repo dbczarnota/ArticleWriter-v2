@@ -230,6 +230,7 @@ export interface Translations {
     markDone: string;
     markedBy: string;
     me: string;
+    otherEditor: string;
     // sections
     altTitles: string;
     followupTopics: string;
@@ -249,6 +250,8 @@ export interface Translations {
     statAgentCalls: string;
     statTokens: string;
     statTime: string;
+    statWords: string;
+    statChars: string;
   };
   agents: {
     search: string;

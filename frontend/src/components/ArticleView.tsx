@@ -109,6 +109,18 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
     0
   );
 
+  // Strip HTML tags + collapse whitespace, then count words and characters
+  // (characters include spaces, exclude HTML markup). Done client-side because
+  // the source of truth is article.html and we don't want to drift if the
+  // backend later edits it.
+  const plainText = (article.html ?? "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const wordCount = plainText ? plainText.split(" ").length : 0;
+  const charCount = plainText.length;
+
   return (
     <div>
       {/* Toolbar */}
@@ -117,11 +129,14 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
           <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>{article.topic}</h2>
           <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--muted)", flexWrap: "wrap", alignItems: "center" }}>
             <span>
-              {article.author_email
-                ? (currentUserId && article.author_user_id === currentUserId
-                    ? `${av.me} (${article.author_email.split("@")[0]})`
-                    : article.author_email.split("@")[0])
-                : (currentUserId && article.author_user_id === currentUserId ? av.me : "—")}
+              {(() => {
+                const isMe = !!currentUserId && article.author_user_id === currentUserId;
+                if (article.author_email) {
+                  const handle = article.author_email.split("@")[0];
+                  return isMe ? `${av.me} (${handle})` : handle;
+                }
+                return isMe ? av.me : av.otherEditor;
+              })()}
             </span>
             <span>{article.created_at ? new Date(article.created_at).toLocaleString(lang) : "—"}</span>
             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" }}>
@@ -309,12 +324,14 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {/* Stats */}
       <CollapsibleSection prominent title={av.pipelineStats}>
         <div style={{ padding: "8px 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 13 }}>
+          <Stat label={av.statWords} value={wordCount.toLocaleString()} />
+          <Stat label={av.statChars} value={charCount.toLocaleString()} />
+          <Stat label={av.statTime} value={article.total_duration_ms != null ? (article.total_duration_ms / 1000).toFixed(1) : "—"} />
           <Stat label={av.statFacts} value={article.facts.length} />
           <Stat label={av.statQuotes} value={article.quotes.length} />
           <Stat label={av.statEmbeds} value={article.embed_candidates.length} />
           <Stat label={av.statAgentCalls} value={article.usage_events.length} />
           <Stat label={av.statTokens} value={totalTokens.toLocaleString()} />
-          <Stat label={av.statTime} value={article.total_duration_ms != null ? (article.total_duration_ms / 1000).toFixed(1) : "—"} />
         </div>
       </CollapsibleSection>
     </div>

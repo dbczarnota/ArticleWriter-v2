@@ -198,6 +198,7 @@ export const pl: Translations = {
     markDone: "Done",
     markedBy: "przez",
     me: "Ty",
+    otherEditor: "Inny redaktor",
     altTitles: "Alternatywne tytuły",
     followupTopics: "Tematy na follow-up",
     socialMedia: "Social media",
@@ -216,6 +217,8 @@ export const pl: Translations = {
     statAgentCalls: "Wywołania agentów",
     statTokens: "Tokeny",
     statTime: "Czas (s)",
+    statWords: "Słowa",
+    statChars: "Znaki (ze spacjami)",
   },
   agents: {
     search: "Wyszukiwanie",
