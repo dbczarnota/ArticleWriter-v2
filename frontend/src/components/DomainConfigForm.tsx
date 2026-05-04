@@ -1,5 +1,5 @@
 // frontend/src/components/DomainConfigForm.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { DomainConfigData } from "../types";
 
 const MEDIA_TOGGLES: Array<{ key: keyof DomainConfigData; label: string }> = [
@@ -29,6 +29,10 @@ interface DomainConfigFormProps {
 
 export function DomainConfigForm({ initialConfig, activeSection, saving, error, onSave }: DomainConfigFormProps) {
   const [form, setForm] = useState<DomainConfigData>(initialConfig);
+
+  useEffect(() => {
+    setForm(initialConfig);
+  }, [initialConfig]);
 
   function set<K extends keyof DomainConfigData>(key: K, value: DomainConfigData[K]) {
     setForm((f) => ({ ...f, [key]: value }));
