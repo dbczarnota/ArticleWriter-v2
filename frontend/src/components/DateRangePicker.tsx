@@ -46,6 +46,9 @@ export function DateRangePicker({
     from: parseISODate(value.from),
     to: parseISODate(value.to),
   }));
+  // Strict cycle: click 1 = from, click 2 = to, click 3 = new from, click 4 = to.
+  // 0 → next click sets `from`; 1 → next click sets `to`.
+  const [clickStep, setClickStep] = useState<0 | 1>(0);
   const rootRef = useRef<HTMLDivElement>(null);
 
   // Click outside closes (Apply/Cancel/Clear handle their own close).
@@ -73,6 +76,23 @@ export function DateRangePicker({
   function applyPreset(id: PresetId) {
     const { from, to } = computePreset(id);
     setDraft({ from, to });
+    setClickStep(0);
+  }
+
+  function handleDayClick(day: Date) {
+    if (clickStep === 0) {
+      setDraft({ from: day, to: undefined });
+      setClickStep(1);
+    } else {
+      const from = draft?.from;
+      if (from && day < from) {
+        // Second click before current `from` — flip so range stays valid.
+        setDraft({ from: day, to: from });
+      } else {
+        setDraft({ from: from ?? day, to: day });
+      }
+      setClickStep(0);
+    }
   }
 
   function handleApply() {
@@ -257,7 +277,7 @@ export function DateRangePicker({
             numberOfMonths={numberOfMonths}
             defaultMonth={defaultMonth}
             selected={draft}
-            onSelect={setDraft}
+            onDayClick={handleDayClick}
             weekStartsOn={1}
             className="hf-rdp"
             lang={lang}
