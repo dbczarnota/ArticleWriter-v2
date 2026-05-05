@@ -147,6 +147,10 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {/* Toolbar */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 16 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 12, fontSize: 11, color: "var(--muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            <span>{av.statWords}: <strong style={{ color: "var(--text)" }}>{wordCount.toLocaleString()}</strong></span>
+            <span>{av.statChars}: <strong style={{ color: "var(--text)" }}>{charCount.toLocaleString()}</strong></span>
+          </div>
           <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>{article.topic}</h2>
           <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--muted)", flexWrap: "wrap", alignItems: "center" }}>
             <span>
@@ -348,11 +352,10 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         </CollapsibleSection>
       </CollapsibleSection>
 
-      {/* Stats */}
+      {/* Stats — words/chars are surfaced above the title so they're
+          always visible; the rest stays in this collapsible block. */}
       <CollapsibleSection prominent title={av.pipelineStats}>
         <div style={{ padding: "8px 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 13 }}>
-          <Stat label={av.statWords} value={wordCount.toLocaleString()} />
-          <Stat label={av.statChars} value={charCount.toLocaleString()} />
           <Stat label={av.statTime} value={article.total_duration_ms != null ? (article.total_duration_ms / 1000).toFixed(1) : "—"} />
           <Stat label={av.statFacts} value={article.facts.length} />
           <Stat label={av.statQuotes} value={article.quotes.length} />
