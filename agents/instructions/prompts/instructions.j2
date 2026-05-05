@@ -11,7 +11,11 @@
 
 {{ section("guidelines", guidelines) | trim }}
 
-{{ section("task", "Select the most compelling facts (max " ~ max_facts ~ ") and quotes (max " ~ max_quotes ~ ") from the material below. Format selected facts as: \"fact text [context]\" and selected quotes as: '\"text\" — speaker (context)'. Then write clear writing instructions: tone, angle, what to emphasize, how to structure the article. Target: " ~ target_word_count ~ " words in " ~ language ~ ".") | trim }}
+{% if html_format %}
+{{ section("html_format", "The published article will follow this HTML structure / formatting template. When you write the brief, make the writing instructions consistent with this format — section breakdown (H1, H2, lead, body, blockquotes), where to place key facts, where to place quotes, anything else this template demands.\n\n" ~ html_format) | trim }}
+
+{% endif %}
+{{ section("task", "Select the most compelling facts (max " ~ max_facts ~ ") and quotes (max " ~ max_quotes ~ ") from the material below. Format selected facts as: \"fact text [context]\" and selected quotes as: '\"text\" — speaker (context)'. Then write clear writing instructions: tone, angle, what to emphasize, how to structure the article (consistent with the HTML format above when provided). Target: " ~ target_word_count ~ " words in " ~ language ~ ".") | trim }}
 
 {{ section("preserve_context_verbatim", "When you copy a fact or quote into the brief, COPY ITS FULL CONTEXT VERBATIM from the source material. Do NOT summarize, abbreviate, or paraphrase the context field. The writer needs every detail in the context (date, location, occasion, participants, surrounding circumstances) to keep facts from different events separate. A trimmed context like \"during the visit\" is dangerous: if the article also has another fact \"during the visit\" from a different visit a year earlier, the writer will fuse them. Always include the full anchoring text as it came from extraction.") | trim }}
 

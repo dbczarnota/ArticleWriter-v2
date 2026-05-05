@@ -63,6 +63,7 @@ async def run_instructions_agent(
                 _PROMPTS_DIR / "instructions.j2",
                 domain_name=domain.name,
                 guidelines=domain.guidelines,
+                html_format=domain.html_format,
                 max_facts=domain.max_facts_in_article,
                 max_quotes=domain.max_quotes_in_article,
                 target_word_count=domain.target_word_count,

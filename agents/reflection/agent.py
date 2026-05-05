@@ -88,6 +88,7 @@ async def run_reflection_agent(
                 domain_name=domain.name,
                 language=domain.language,
                 guidelines=domain.guidelines,
+                html_format=domain.html_format,
                 reflection_stance=domain.reflection_stance,
                 target_word_count=domain.target_word_count,
                 format_style=model_format_style(m),
