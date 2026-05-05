@@ -8,7 +8,8 @@
 // spacing. Every layout-critical class below restores the values explicitly
 // so the grid renders correctly inside this app.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { DayPicker } from "react-day-picker";
 import type { DateRange as RDPDateRange } from "react-day-picker";
 import "react-day-picker/dist/style.css";
@@ -23,13 +24,21 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 import type { DateRange } from "../lib/useArticles";
 
 interface DateRangePickerProps {
+  /** Element the popover anchors below (or fills the screen on mobile). */
+  anchorEl: HTMLElement | null;
   value: DateRange;
   onApply: (range: DateRange) => void;
   onClear: () => void;
   onClose: () => void;
 }
 
-export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangePickerProps) {
+export function DateRangePicker({
+  anchorEl,
+  value,
+  onApply,
+  onClear,
+  onClose,
+}: DateRangePickerProps) {
   const t = useT();
   const { lang } = useLang();
   const narrow = useMediaQuery("(max-width: 767px)");
@@ -97,13 +106,46 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
   // One month: 140 + 252 + 24 = 416 px → round to 420.
   const popoverWidth = narrow ? 320 : 700;
 
-  return (
+  // Compute fixed position relative to the anchor button. Recomputes on
+  // window resize/scroll so the popover stays glued to the anchor while
+  // the user interacts with the page.
+  const [pos, setPos] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!anchorEl) return;
+    function reposition() {
+      if (!anchorEl) return;
+      const rect = anchorEl.getBoundingClientRect();
+      const margin = 8; // breathing room from viewport edges
+      let left = rect.left;
+      // Keep the popover fully on-screen on the right side
+      if (left + popoverWidth + margin > window.innerWidth) {
+        left = Math.max(margin, window.innerWidth - popoverWidth - margin);
+      }
+      const top = rect.bottom + 4;
+      // Clamp the popover height to whatever fits below the anchor so the
+      // bottom bar (Apply / Cancel / Clear) is always reachable without
+      // page scroll. Internal area scrolls if presets + calendar exceed it.
+      const maxHeight = Math.max(280, window.innerHeight - top - margin);
+      setPos({ top, left, maxHeight });
+    }
+    reposition();
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    return () => {
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+    };
+  }, [anchorEl, popoverWidth, narrow]);
+
+  if (!pos) return null;
+
+  return createPortal(
     <div
       ref={rootRef}
       style={{
-        position: "absolute",
-        top: "calc(100% + 4px)",
-        left: 0,
+        position: "fixed",
+        top: pos.top,
+        left: pos.left,
         zIndex: 1000,
         background: "var(--white)",
         border: "1px solid var(--border)",
@@ -114,6 +156,7 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
         overflow: "hidden",
         width: popoverWidth,
         maxWidth: "calc(100vw - 24px)",
+        maxHeight: pos.maxHeight,
       }}
     >
       <style>{`
@@ -169,7 +212,7 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
         .hf-rdp .rdp-disabled .rdp-day_button { color: var(--muted); opacity: 0.4; cursor: default; }
         .hf-rdp .rdp-outside .rdp-day_button { color: var(--muted); opacity: 0.5; }
       `}</style>
-      <div style={{ display: "flex", flexDirection: narrow ? "column" : "row" }}>
+      <div style={{ display: "flex", flexDirection: narrow ? "column" : "row", flex: 1, minHeight: 0, overflow: "auto" }}>
         {/* Left rail — presets */}
         <div
           style={{
@@ -222,7 +265,7 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
         </div>
       </div>
 
-      {/* Bottom bar */}
+      {/* Bottom bar — sticky to popover regardless of inner scroll */}
       <div
         style={{
           borderTop: "1px solid var(--border)",
@@ -231,6 +274,7 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
           justifyContent: "space-between",
           alignItems: "center",
           background: "var(--sidebar)",
+          flexShrink: 0,
         }}
       >
         <button
@@ -281,6 +325,7 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

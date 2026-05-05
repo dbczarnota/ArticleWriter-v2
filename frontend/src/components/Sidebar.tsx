@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ArticleListItem } from "../types";
 import type { DateRange } from "../lib/useArticles";
 import { formatRangeLabel } from "../lib/datePresets";
@@ -54,6 +54,7 @@ export function Sidebar({
   const [onlyMine, setOnlyMine] = useState(false);
   const [doneFilter, setDoneFilter] = useState<DoneFilter>("all");
   const [datesOpen, setDatesOpen] = useState(false);
+  const datesAnchorRef = useRef<HTMLButtonElement>(null);
 
   const visible = articles
     .filter((a) => !onlyMine || !currentUserId || a.author_user_id === currentUserId)
@@ -229,9 +230,12 @@ export function Sidebar({
       </div>
 
       {/* Date range filter — opens a popover picker (DateRangePicker) with
-          presets on the left and a two-month calendar on the right. */}
-      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", position: "relative" }}>
+          presets on the left and a two-month calendar on the right. The
+          popover renders through a portal so it can escape the sidebar's
+          overflow:hidden and the page's right edge. */}
+      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)" }}>
         <button
+          ref={datesAnchorRef}
           onClick={() => setDatesOpen((v) => !v)}
           style={{
             background: isFiltered ? "var(--accent-lt)" : "transparent",
@@ -256,6 +260,7 @@ export function Sidebar({
         </button>
         {datesOpen && (
           <DateRangePicker
+            anchorEl={datesAnchorRef.current}
             value={dateRange}
             onApply={(range) => onDateRangeChange(range)}
             onClear={() => onDateRangeChange({ from: null, to: null })}
