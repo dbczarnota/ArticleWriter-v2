@@ -238,7 +238,8 @@ class PostgresOrgRepository:
             session.add(org)
             await session.commit()
             await session.refresh(org)
-            return org
+        logfire.info("org.bootstrapped", code=code, name=name)
+        return org
 
     async def get(self, code: str) -> Org | None:
         async with self._session_maker() as session:
@@ -249,9 +250,16 @@ class PostgresOrgRepository:
             org = await session.get(Org, code)
             if org is None:
                 return
+            old_domain_name = org.domain_name
             org.domain_name = domain_name
             org.updated_at = _utcnow()
             await session.commit()
+        logfire.info(
+            "org.domain_renamed",
+            code=code,
+            old_domain_name=old_domain_name,
+            new_domain_name=domain_name,
+        )
 
     async def list_for_user(self, user_org_codes: list[str]) -> list[Org]:
         if not user_org_codes:
@@ -276,7 +284,13 @@ class PostgresOrgConfigRepository:
             merged = await session.merge(config)
             await session.commit()
             await session.refresh(merged)
-            return merged
+        logfire.info(
+            "org_config.saved",
+            org_code=config.org_code,
+            language=config.language,
+            target_word_count=config.target_word_count,
+        )
+        return merged
 
     async def create_default(self, org_code: str) -> OrgConfig:
         async with self._sm() as session:
@@ -287,4 +301,5 @@ class PostgresOrgConfigRepository:
             session.add(cfg)
             await session.commit()
             await session.refresh(cfg)
-            return cfg
+        logfire.info("org_config.created_default", org_code=org_code)
+        return cfg

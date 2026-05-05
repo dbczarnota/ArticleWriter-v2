@@ -482,3 +482,116 @@ async def test_set_marked_done_emits_article_marked_done_event(session_maker, mo
     assert args[0] == "article.marked_done"
     assert kwargs["marked_done"] is True
     assert kwargs["marked_done_by_name"] == "Editor"
+
+
+async def test_create_from_jwt_first_call_emits_org_bootstrapped(session_maker, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import logfire
+
+    from backend.repositories.postgres import PostgresOrgRepository
+
+    info_mock = MagicMock()
+    monkeypatch.setattr(logfire, "info", info_mock)
+
+    repo = PostgresOrgRepository(session_maker)
+    await repo.create_from_jwt(code="org_boot1", name="Bootstrapped")
+
+    info_mock.assert_called_once()
+    assert info_mock.call_args[0][0] == "org.bootstrapped"
+    assert info_mock.call_args[1]["code"] == "org_boot1"
+    assert info_mock.call_args[1]["name"] == "Bootstrapped"
+
+
+async def test_create_from_jwt_idempotent_does_not_re_emit(session_maker, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import logfire
+
+    from backend.repositories.postgres import PostgresOrgRepository
+
+    repo = PostgresOrgRepository(session_maker)
+    await repo.create_from_jwt(code="org_boot2", name="First")
+
+    info_mock = MagicMock()
+    monkeypatch.setattr(logfire, "info", info_mock)
+
+    # Second call should be idempotent and emit nothing.
+    await repo.create_from_jwt(code="org_boot2", name="Different")
+
+    info_mock.assert_not_called()
+
+
+async def test_set_domain_name_emits_org_domain_renamed(session_maker, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import logfire
+
+    from backend.repositories.postgres import PostgresOrgRepository
+
+    repo = PostgresOrgRepository(session_maker)
+    await repo.create_from_jwt(code="org_rn1", name="N")
+
+    info_mock = MagicMock()
+    monkeypatch.setattr(logfire, "info", info_mock)
+
+    await repo.set_domain_name("org_rn1", "new_name")
+
+    info_mock.assert_called_once()
+    assert info_mock.call_args[0][0] == "org.domain_renamed"
+    assert info_mock.call_args[1]["code"] == "org_rn1"
+    assert info_mock.call_args[1]["old_domain_name"] == "org_rn1"
+    assert info_mock.call_args[1]["new_domain_name"] == "new_name"
+
+
+async def test_create_default_first_call_emits_event(session_maker, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import logfire
+
+    from backend.repositories.postgres import (
+        PostgresOrgConfigRepository,
+        PostgresOrgRepository,
+    )
+
+    org_repo = PostgresOrgRepository(session_maker)
+    await org_repo.create_from_jwt(code="org_cfg_evt", name="O")
+
+    info_mock = MagicMock()
+    monkeypatch.setattr(logfire, "info", info_mock)
+
+    cfg_repo = PostgresOrgConfigRepository(session_maker)
+    await cfg_repo.create_default("org_cfg_evt")
+
+    info_mock.assert_called_once()
+    assert info_mock.call_args[0][0] == "org_config.created_default"
+    assert info_mock.call_args[1]["org_code"] == "org_cfg_evt"
+
+
+async def test_orgconfig_upsert_emits_saved_event(session_maker, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import logfire
+
+    from backend.db.models import OrgConfig
+    from backend.repositories.postgres import (
+        PostgresOrgConfigRepository,
+        PostgresOrgRepository,
+    )
+
+    org_repo = PostgresOrgRepository(session_maker)
+    await org_repo.create_from_jwt(code="org_cfg_save", name="O")
+    cfg_repo = PostgresOrgConfigRepository(session_maker)
+    await cfg_repo.create_default("org_cfg_save")
+
+    info_mock = MagicMock()
+    monkeypatch.setattr(logfire, "info", info_mock)
+
+    cfg = OrgConfig(org_code="org_cfg_save", language="en", target_word_count=800)
+    await cfg_repo.upsert(cfg)
+
+    info_mock.assert_called_once()
+    assert info_mock.call_args[0][0] == "org_config.saved"
+    assert info_mock.call_args[1]["org_code"] == "org_cfg_save"
+    assert info_mock.call_args[1]["language"] == "en"
+    assert info_mock.call_args[1]["target_word_count"] == 800
