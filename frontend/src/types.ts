@@ -17,8 +17,7 @@ export interface Fact {
   id: string;
   text: string;
   context: string | null;
-  source_url: string | null;
-  source_title: string | null;
+  source_urls: string[];
   was_used: boolean;
 }
 
@@ -27,7 +26,7 @@ export interface Quote {
   text: string;
   speaker: string | null;
   context: string | null;
-  source_url: string | null;
+  source_urls: string[];
   was_used: boolean;
 }
 

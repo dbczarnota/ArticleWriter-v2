@@ -20,12 +20,12 @@ _DOMAIN = DomainConfig(
 
 _EXTRACTION = ExtractionResult(
     facts=[
-        Fact("Zarobił 2 mln zł", "Dawid Podsiadło, trasa 2025", "https://e.com", "Art"),
-        Fact("Sprzedał 50 tys. biletów", "Dawid Podsiadło, trasa 2025", "https://e.com", "Art"),
-        Fact("Trasa trwała 3 miesiące", "Dawid Podsiadło, trasa 2025", "https://e.com", "Art"),
+        Fact("Zarobił 2 mln zł", "Dawid Podsiadło, trasa 2025", source_urls=["https://e.com"]),
+        Fact("Sprzedał 50 tys. biletów", "Dawid Podsiadło, trasa 2025", source_urls=["https://e.com"]),
+        Fact("Trasa trwała 3 miesiące", "Dawid Podsiadło, trasa 2025", source_urls=["https://e.com"]),
     ],
     quotes=[
-        Quote("To był najpiękniejszy rok", "Dawid Podsiadło", "o trasie", "https://e.com"),
+        Quote("To był najpiękniejszy rok", "Dawid Podsiadło", "o trasie", source_urls=["https://e.com"]),
     ],
     keywords=["Dawid Podsiadło", "trasa 2025"],
 )

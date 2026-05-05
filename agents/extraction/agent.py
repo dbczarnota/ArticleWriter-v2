@@ -21,15 +21,17 @@ _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
 class _FactData(BaseModel):
     text: str
     context: str
-    source_url: str
-    source_title: str
+    source_urls: list[str]
+    """Every article URL where this exact fact appears. Multi-source facts
+    are stronger evidence — downstream agents prioritize them."""
 
 
 class _QuoteData(BaseModel):
     text: str
     speaker: str
     context: str
-    source_url: str
+    source_urls: list[str]
+    """Every article URL where this exact quote appears."""
 
 
 class ExtractionOutput(BaseModel):
@@ -97,8 +99,7 @@ async def run_extraction_agent(
             Fact(
                 text=f.text,
                 context=f.context,
-                source_url=f.source_url,
-                source_title=f.source_title,
+                source_urls=list(f.source_urls or []),
             )
             for f in result.output.facts
         ],
@@ -107,7 +108,7 @@ async def run_extraction_agent(
                 text=q.text,
                 speaker=q.speaker,
                 context=q.context,
-                source_url=q.source_url,
+                source_urls=list(q.source_urls or []),
             )
             for q in result.output.quotes
         ],

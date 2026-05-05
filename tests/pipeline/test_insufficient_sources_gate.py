@@ -160,8 +160,7 @@ async def test_gate_passes_with_at_least_one_fact(styl_fm_settings, domain):
     fact = Fact(
         text="Sample fact",
         context="test",
-        source_url="https://example.com/article",
-        source_title="Sample article",
+        source_urls=["https://example.com/article"],
     )
 
     instructions_mock = AsyncMock(side_effect=RuntimeError("downstream stop — gate already passed"))

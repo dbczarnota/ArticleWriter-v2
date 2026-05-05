@@ -147,15 +147,14 @@ async def test_article_lifecycle_create_complete_get(session_maker):
         article_id=article_id,
         text="Fact text",
         context="ctx",
-        source_url="https://a.example/1",
-        source_title="A",
+        source_urls=["https://a.example/1"],
     )
     quote = Quote(
         article_id=article_id,
         text="Quote",
         speaker="X",
         context="ctx",
-        source_url="https://a.example/1",
+        source_urls=["https://a.example/1"],
     )
     await repo.complete(
         article_id,

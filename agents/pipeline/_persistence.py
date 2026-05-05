@@ -57,8 +57,7 @@ async def persist_article_done(
             article_id=article_id,
             text=f.text,
             context=f.context,
-            source_url=f.source_url,
-            source_title=f.source_title,
+            source_urls=list(f.source_urls),
             was_used=f.text in used_facts_set,
         )
         for f in extraction.facts
@@ -69,7 +68,7 @@ async def persist_article_done(
             text=q.text,
             speaker=q.speaker,
             context=q.context,
-            source_url=q.source_url,
+            source_urls=list(q.source_urls),
             was_used=q.text in used_quotes_set,
         )
         for q in extraction.quotes

@@ -166,16 +166,35 @@ def rank_articles_by_extraction(
 
     score: Counter[str] = Counter()
     for f in extraction.facts:
-        score[f.source_url] += 2
+        for url in f.source_urls:
+            score[url] += 2
     for q in extraction.quotes:
-        score[q.source_url] += 1
+        for url in q.source_urls:
+            score[url] += 1
     return sorted(articles, key=lambda a: score[a.url], reverse=True)
 
 
 def merge_extraction(base: ExtractionResult, extra: ExtractionResult) -> ExtractionResult:
-    seen_facts = {f.text for f in base.facts}
-    seen_quotes = {q.text for q in base.quotes}
-    merged_facts = base.facts + [f for f in extra.facts if f.text not in seen_facts]
-    merged_quotes = base.quotes + [q for q in extra.quotes if q.text not in seen_quotes]
+    """Merge two extractions deduping by exact text. When the same fact or
+    quote appears on both sides, UNION the source_urls — losing that union
+    is what made the same fact appear corroborated only by its first source."""
+    base_facts = {f.text: f for f in base.facts}
+    for f in extra.facts:
+        existing = base_facts.get(f.text)
+        if existing is None:
+            base_facts[f.text] = f
+        else:
+            existing.source_urls = list(dict.fromkeys(existing.source_urls + f.source_urls))
+    base_quotes = {q.text: q for q in base.quotes}
+    for q in extra.quotes:
+        existing_q = base_quotes.get(q.text)
+        if existing_q is None:
+            base_quotes[q.text] = q
+        else:
+            existing_q.source_urls = list(dict.fromkeys(existing_q.source_urls + q.source_urls))
     merged_keywords = list(dict.fromkeys(base.keywords + extra.keywords))
-    return ExtractionResult(facts=merged_facts, quotes=merged_quotes, keywords=merged_keywords)
+    return ExtractionResult(
+        facts=list(base_facts.values()),
+        quotes=list(base_quotes.values()),
+        keywords=merged_keywords,
+    )

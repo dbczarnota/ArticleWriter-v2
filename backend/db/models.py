@@ -179,8 +179,10 @@ class Fact(SQLModel, table=True):
     """Rich event-anchoring context (date, location, occasion, participants).
     Critical for downstream agents to keep facts from different events separate."""
 
-    source_url: str = Field(max_length=2048)
-    source_title: str = Field(max_length=1024)
+    source_urls: list[str] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False))
+    """Every article URL that asserted this fact. Length > 1 means the fact
+    was corroborated by multiple sources — downstream agents prioritize."""
+
     was_used: bool = Field(default=False)
     """True if this fact appears in the final article (set at repo.complete time)."""
 
@@ -203,7 +205,9 @@ class Quote(SQLModel, table=True):
     text: str = Field(sa_column=Column(String, nullable=False))
     speaker: str = Field(max_length=512)
     context: str = Field(sa_column=Column(String, nullable=False))
-    source_url: str = Field(max_length=2048)
+    source_urls: list[str] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False))
+    """Every article URL that contained this exact quote."""
+
     was_used: bool = Field(default=False)
 
     article: Article = Relationship(back_populates="quotes")

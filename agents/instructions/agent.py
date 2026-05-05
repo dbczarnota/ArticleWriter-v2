@@ -33,12 +33,18 @@ async def run_instructions_agent(
     _agent: Agent[Any, Any] | None = None,
 ) -> WritingBrief:
     """Select best facts/quotes and create writing instructions for WriterAgent."""
+    # Render `source_urls` and `corroboration` so the instructions LLM can
+    # see *how many* sources back each fact/quote and prioritize accordingly.
+    # A fact corroborated by 4 articles is stronger evidence than one that
+    # appears in a single source.
     facts_text = "\n".join(
-        f"[{i + 1}] {f.text} [context: {f.context}] [source: {f.source_url}]"
+        f"[{i + 1}] {f.text} [context: {f.context}] "
+        f"[corroboration: {len(f.source_urls)}] [sources: {', '.join(f.source_urls) or '(none)'}]"
         for i, f in enumerate(extraction_result.facts)
     )
     quotes_text = "\n".join(
-        f'[{i + 1}] "{q.text}" — {q.speaker} ({q.context}) [source: {q.source_url}]'
+        f'[{i + 1}] "{q.text}" — {q.speaker} ({q.context}) '
+        f"[corroboration: {len(q.source_urls)}] [sources: {', '.join(q.source_urls) or '(none)'}]"
         for i, q in enumerate(extraction_result.quotes)
     )
     keywords_text = ", ".join(extraction_result.keywords)

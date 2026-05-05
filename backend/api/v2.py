@@ -248,8 +248,7 @@ async def get_article(
                 "id": str(f.id),
                 "text": f.text,
                 "context": f.context,
-                "source_url": f.source_url,
-                "source_title": f.source_title,
+                "source_urls": list(f.source_urls),
                 "was_used": f.was_used,
             }
             for f in article.facts
@@ -260,7 +259,7 @@ async def get_article(
                 "text": q.text,
                 "speaker": q.speaker,
                 "context": q.context,
-                "source_url": q.source_url,
+                "source_urls": list(q.source_urls),
                 "was_used": q.was_used,
             }
             for q in article.quotes

@@ -5,11 +5,10 @@ def test_fact_has_required_context_field():
     f = Fact(
         text="zarobił 2 miliony złotych",
         context="Dawid Podsiadło, trasa Małomiasteczkowy 2025",
-        source_url="https://example.com/artykul",
-        source_title="Sukces trasy Podsiadło",
+        source_urls=["https://example.com/artykul"],
     )
     assert f.context == "Dawid Podsiadło, trasa Małomiasteczkowy 2025"
-    assert f.source_url == "https://example.com/artykul"
+    assert f.source_urls == ["https://example.com/artykul"]
 
 
 def test_quote_has_speaker_and_context():
@@ -17,7 +16,7 @@ def test_quote_has_speaker_and_context():
         text="To był najpiękniejszy rok w moim życiu",
         speaker="Dawid Podsiadło",
         context="o trasie koncertowej, wywiad dla Gazety Wyborczej",
-        source_url="https://example.com/wywiad",
+        source_urls=["https://example.com/wywiad"],
     )
     assert q.speaker == "Dawid Podsiadło"
     assert q.context != ""

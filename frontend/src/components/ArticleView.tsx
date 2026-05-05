@@ -127,26 +127,23 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   // for). Render the inputs panel only and skip the rest.
   const isFailed = article.status === "failed" || article.status === "insufficient_sources";
 
-  // article.sources from the backend is the union of every source URL across
-  // all facts and quotes (used + unused). We compute used vs. unused on the
-  // frontend to get an accurate split: a source counts as "used" when at
-  // least one fact OR quote pulled from it landed in the article. Anything
-  // else is "unused".
-  const allItems: Array<{ was_used: boolean; source_url: string | null }> = [
+  // Each fact / quote now carries `source_urls` (a list of every article
+  // that asserted it). Compute used vs. unused over the union of all
+  // source_urls: a URL is "used" when at least one was_used=true item
+  // includes it; anything else lands in "unused".
+  const allItems: Array<{ was_used: boolean; source_urls: string[] }> = [
     ...article.facts,
     ...article.quotes,
   ];
-  const usedSources = [...new Set(
-    allItems
-      .filter((i) => i.was_used && i.source_url)
-      .map((i) => i.source_url as string)
-  )];
-  const unusedSourcesSet = new Set(
-    allItems
-      .filter((i) => !i.was_used && i.source_url)
-      .map((i) => i.source_url as string)
-  );
-  const usedSourcesSet = new Set(usedSources);
+  const usedSourcesSet = new Set<string>();
+  const unusedSourcesSet = new Set<string>();
+  for (const item of allItems) {
+    const target = item.was_used ? usedSourcesSet : unusedSourcesSet;
+    for (const url of item.source_urls ?? []) {
+      if (url) target.add(url);
+    }
+  }
+  const usedSources = [...usedSourcesSet];
   const uniqueUnused = [...unusedSourcesSet].filter((url) => !usedSourcesSet.has(url));
 
   async function handleCopy() {
@@ -491,7 +488,40 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   );
 }
 
+function CorroborationBadge({ count }: { count: number }) {
+  if (count <= 1) return null;
+  return (
+    <span style={{
+      display: "inline-block",
+      fontSize: 10,
+      fontWeight: 700,
+      color: "#166534",
+      background: "#dcfce7",
+      border: "1px solid #86efac",
+      borderRadius: 10,
+      padding: "1px 6px",
+      marginLeft: 6,
+    }} title={`Potwierdzone w ${count} źródłach`}>
+      ×{count}
+    </span>
+  );
+}
+
+function SourceList({ urls }: { urls: string[] }) {
+  if (!urls || urls.length === 0) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 4 }}>
+      {urls.map((u) => (
+        <a key={u} href={u} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "var(--accent)", wordBreak: "break-all" }}>
+          {u}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 function FactCard({ fact, muted }: { fact: Fact; muted?: boolean }) {
+  const corroboration = fact.source_urls?.length ?? 0;
   return (
     <div style={{
       borderLeft: `3px solid ${muted ? "var(--border)" : "var(--accent)"}`,
@@ -500,18 +530,18 @@ function FactCard({ fact, muted }: { fact: Fact; muted?: boolean }) {
       borderRadius: "0 var(--radius) var(--radius) 0",
       padding: "8px 8px 8px 12px",
     }}>
-      <p style={{ fontSize: 13, marginBottom: 4 }}>{fact.text}</p>
+      <p style={{ fontSize: 13, marginBottom: 4 }}>
+        {fact.text}
+        <CorroborationBadge count={corroboration} />
+      </p>
       {fact.context && <p style={{ fontSize: 12, color: "var(--muted)" }}>{fact.context}</p>}
-      {fact.source_url && (
-        <a href={fact.source_url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "var(--accent)" }}>
-          {fact.source_title ?? fact.source_url}
-        </a>
-      )}
+      <SourceList urls={fact.source_urls ?? []} />
     </div>
   );
 }
 
 function QuoteCard({ quote, muted }: { quote: Quote; muted?: boolean }) {
+  const corroboration = quote.source_urls?.length ?? 0;
   return (
     <div style={{
       borderLeft: `3px solid ${muted ? "var(--border)" : "var(--accent)"}`,
@@ -520,9 +550,13 @@ function QuoteCard({ quote, muted }: { quote: Quote; muted?: boolean }) {
       background: muted ? "transparent" : "var(--accent-lt)",
       borderRadius: "0 var(--radius) var(--radius) 0",
     }}>
-      <p style={{ fontSize: 13, fontStyle: "italic" }}>"{quote.text}"</p>
+      <p style={{ fontSize: 13, fontStyle: "italic" }}>
+        "{quote.text}"
+        <CorroborationBadge count={corroboration} />
+      </p>
       {quote.speaker && <p style={{ fontSize: 12, fontWeight: 500, marginTop: 4 }}>— {quote.speaker}</p>}
       {quote.context && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{quote.context}</p>}
+      <SourceList urls={quote.source_urls ?? []} />
     </div>
   );
 }

@@ -8,8 +8,10 @@ from typing import Literal
 class Fact:
     text: str
     context: str  # kto/co/kiedy — żeby agent pisząc artykuł wiedział czego używa
-    source_url: str
-    source_title: str
+    source_urls: list[str] = field(default_factory=list)
+    """Every article URL that asserted this fact. Multi-source = stronger
+    evidence — downstream agents (instructions/writer/reflection) prioritize
+    facts with more source_urls."""
 
 
 @dataclass
@@ -17,7 +19,8 @@ class Quote:
     text: str
     speaker: str
     context: str  # przy jakiej okazji, w jakim wywiadzie
-    source_url: str
+    source_urls: list[str] = field(default_factory=list)
+    """Every article URL that contained this exact quote."""
 
 
 @dataclass

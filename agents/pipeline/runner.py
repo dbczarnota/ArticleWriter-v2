@@ -670,8 +670,8 @@ async def _run_pipeline_inner(
 
         sources = _ensure_user_urls(
             list(
-                {f.source_url for f in extraction.facts if f.source_url}
-                | {q.source_url for q in extraction.quotes if q.source_url}
+                {url for f in extraction.facts for url in f.source_urls if url}
+                | {url for q in extraction.quotes for url in q.source_urls if url}
             )
             or scraped_urls,
             urls,

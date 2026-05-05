@@ -179,8 +179,15 @@ class PipelineLogger:
         if result.facts:
             self._c.print("  [bold]Facts:[/]")
             self._table(
-                ["Text", "Context", "Source"],
-                [[f.text[:55], f.context[:40], f.source_url[:40]] for f in result.facts],
+                ["Text", "Context", "Sources"],
+                [
+                    [
+                        f.text[:55],
+                        f.context[:40],
+                        f"×{len(f.source_urls)} {(f.source_urls[0] if f.source_urls else '')[:30]}",
+                    ]
+                    for f in result.facts
+                ],
             )
         if result.quotes:
             self._c.print("  [bold]Quotes:[/]")

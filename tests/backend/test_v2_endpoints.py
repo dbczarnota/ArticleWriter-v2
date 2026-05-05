@@ -121,8 +121,7 @@ def _make_article(*, org_code: str, topic: str = "T", status: str = "done") -> A
             article_id=article_id,
             text="F",
             context="c",
-            source_url="https://a.example/1",
-            source_title="A",
+            source_urls=["https://a.example/1"],
         )
     ]
     a.quotes = [
@@ -131,7 +130,7 @@ def _make_article(*, org_code: str, topic: str = "T", status: str = "done") -> A
             text="Q",
             speaker="X",
             context="c",
-            source_url="https://a.example/1",
+            source_urls=["https://a.example/1"],
         )
     ]
     a.embed_candidates = []

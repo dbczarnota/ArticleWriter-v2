@@ -25,7 +25,7 @@ _SEARCH = [SearchResult(url="https://e.com/1", title="T", snippet="s", source="w
 _SCRAPED = [ScrapedPage(url="https://e.com/1", title="T", content="c", scrape_tier="httpx")]
 _ARTICLES = [ParsedArticle(url="https://e.com/1", title="T", content="c", publication_date=None)]
 _EXTRACTION = ExtractionResult(
-    facts=[Fact("F", "c", "https://e.com/1", "T")], quotes=[], keywords=[]
+    facts=[Fact("F", "c", source_urls=["https://e.com/1"])], quotes=[], keywords=[]
 )
 _BRIEF = WritingBrief(selected_facts=["F [c]"], selected_quotes=[], writing_instructions="Short.")
 _DRAFT = ArticleHtml(html="<h1>Draft</h1>")

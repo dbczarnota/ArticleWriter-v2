@@ -33,8 +33,8 @@ _ARTICLES = [
     ParsedArticle(url="https://e.com/1", title="T1", content="Content", publication_date=None)
 ]
 _EXTRACTION = ExtractionResult(
-    facts=[Fact("Fakt 1", "ctx", "https://e.com/1", "T1")],
-    quotes=[Quote("Cytat 1", "Ktoś", "ctx", "https://e.com/1")],
+    facts=[Fact("Fakt 1", "ctx", source_urls=["https://e.com/1"])],
+    quotes=[Quote("Cytat 1", "Ktoś", "ctx", source_urls=["https://e.com/1"])],
     keywords=["kw1"],
 )
 _BRIEF = WritingBrief(
@@ -177,7 +177,7 @@ async def test_pipeline_runs_extra_search_round(mocked_agents):
     from agents.pipeline.runner import run_pipeline
 
     extra_extraction = ExtractionResult(
-        facts=[Fact("Extra fakt", "ctx", "https://e.com/2", "T2")],
+        facts=[Fact("Extra fakt", "ctx", source_urls=["https://e.com/2"])],
         quotes=[],
         keywords=["kw2"],
     )
@@ -304,20 +304,24 @@ def test_merge_extraction_deduplicates_by_text():
     from agents.pipeline._helpers import merge_extraction
 
     base = ExtractionResult(
-        facts=[Fact("Fakt A", "ctx", "https://a.com", "A")],
-        quotes=[Quote("Cytat A", "Ktoś", "ctx", "https://a.com")],
+        facts=[Fact("Fakt A", "ctx", source_urls=["https://a.com"])],
+        quotes=[Quote("Cytat A", "Ktoś", "ctx", source_urls=["https://a.com"])],
         keywords=["kw1"],
     )
     extra = ExtractionResult(
         facts=[
-            Fact("Fakt A", "ctx", "https://a.com", "A"),  # duplicate
-            Fact("Fakt B", "ctx", "https://b.com", "B"),  # new
+            # Duplicate by text but with a DIFFERENT source — merge_extraction
+            # should union the source_urls instead of dropping the entry.
+            Fact("Fakt A", "ctx", source_urls=["https://a-mirror.com"]),
+            Fact("Fakt B", "ctx", source_urls=["https://b.com"]),
         ],
-        quotes=[Quote("Cytat B", "Ktoś B", "ctx", "https://b.com")],
+        quotes=[Quote("Cytat B", "Ktoś B", "ctx", source_urls=["https://b.com"])],
         keywords=["kw1", "kw2"],
     )
     merged = merge_extraction(base, extra)
-    assert len(merged.facts) == 2  # A + B, not duplicate A
+    assert len(merged.facts) == 2  # A + B, A merged not duplicated
+    fact_a = next(f for f in merged.facts if f.text == "Fakt A")
+    assert sorted(fact_a.source_urls) == ["https://a-mirror.com", "https://a.com"]
     assert len(merged.quotes) == 2
     assert merged.keywords == ["kw1", "kw2"]
 

@@ -123,8 +123,8 @@ async def run_followup_agent(
     ]
 
     sources = list(
-        {f.source_url for f in extraction_result.facts if f.source_url}
-        | {q.source_url for q in extraction_result.quotes if q.source_url}
+        {url for f in extraction_result.facts for url in f.source_urls if url}
+        | {url for q in extraction_result.quotes for url in q.source_urls if url}
     )
 
     return ArticleOutput(

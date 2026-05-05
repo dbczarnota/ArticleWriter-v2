@@ -50,10 +50,15 @@ async def run_reflection_agent(
 
     if extraction is not None:
         facts_block = "\n".join(
-            f"- {f.text} (context: {f.context}; source: {f.source_url})" for f in extraction.facts
+            f"- {f.text} (context: {f.context}; "
+            f"corroboration: {len(f.source_urls)}; "
+            f"sources: {', '.join(f.source_urls) or '(none)'})"
+            for f in extraction.facts
         )
         quotes_block = "\n".join(
-            f'- "{q.text}" — {q.speaker} (context: {q.context}; source: {q.source_url})'
+            f'- "{q.text}" — {q.speaker} (context: {q.context}; '
+            f"corroboration: {len(q.source_urls)}; "
+            f"sources: {', '.join(q.source_urls) or '(none)'})"
             for q in extraction.quotes
         )
         _user_prompt += (

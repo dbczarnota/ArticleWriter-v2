@@ -13,8 +13,7 @@ def _make_extraction_result(num_facts: int = 5, num_quotes: int = 2) -> Extracti
         Fact(
             text=f"Fakt {i}",
             context="Dawid Podsiadło, trasa 2025",
-            source_url="https://example.com",
-            source_title="Artykuł",
+            source_urls=["https://example.com"],
         )
         for i in range(num_facts)
     ]
@@ -23,7 +22,7 @@ def _make_extraction_result(num_facts: int = 5, num_quotes: int = 2) -> Extracti
             text=f"Cytat {i}",
             speaker="Dawid Podsiadło",
             context="o trasie",
-            source_url="https://example.com",
+            source_urls=["https://example.com"],
         )
         for i in range(num_quotes)
     ]

@@ -26,8 +26,7 @@ def _make_extraction_agent(
             {
                 "text": "Zarobił 2 miliony złotych",
                 "context": "Dawid Podsiadło, trasa 2025",
-                "source_url": "https://example.com/art",
-                "source_title": "Dawid Podsiadło zarobił miliony",
+                "source_urls": ["https://example.com/art"],
             }
         ]
     if quotes is None:
@@ -36,7 +35,7 @@ def _make_extraction_agent(
                 "text": "To był najpiękniejszy rok",
                 "speaker": "Dawid Podsiadło",
                 "context": "o trasie 2025",
-                "source_url": "https://example.com/art",
+                "source_urls": ["https://example.com/art"],
             }
         ]
     if keywords is None:
