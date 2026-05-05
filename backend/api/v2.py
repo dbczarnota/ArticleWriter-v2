@@ -62,6 +62,8 @@ async def write_article(
         author_name=(req.author_name or "").strip() or None,
         domain_name=org.domain_name,
         topic=req.topic,
+        has_urls=bool(req.urls),
+        has_instructions=bool(req.additional_instructions),
     )
 
     with logfire.set_baggage(

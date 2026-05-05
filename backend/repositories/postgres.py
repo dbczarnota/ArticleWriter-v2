@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+import logfire
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
@@ -44,6 +45,8 @@ class PostgresArticleRepository:
         author_name: str | None = None,
         domain_name: str,
         topic: str,
+        has_urls: bool = False,
+        has_instructions: bool = False,
     ) -> UUID:
         article = Article(
             org_code=org_code,
@@ -58,6 +61,14 @@ class PostgresArticleRepository:
             session.add(article)
             await session.commit()
             await session.refresh(article)
+        logfire.info(
+            "article.created",
+            article_id=str(article.id),
+            org_code=org_code,
+            topic_length=len(topic),
+            has_urls=has_urls,
+            has_instructions=has_instructions,
+        )
         return article.id
 
     async def complete(
@@ -108,6 +119,18 @@ class PostgresArticleRepository:
                     session.add(child)
 
             await session.commit()
+        event_name = "article.completed" if status == "done" else "article.failed"
+        logfire.info(
+            event_name,
+            article_id=str(article_id),
+            status=status,
+            duration_ms=total_duration_ms,
+            facts_count=len(facts),
+            quotes_count=len(quotes),
+            embeds_count=len(embed_candidates),
+            tokens_total=sum(u.input_tokens + u.output_tokens for u in usage_events),
+            errors_count=len(errors),
+        )
 
     async def mark_failed(
         self,
@@ -126,6 +149,13 @@ class PostgresArticleRepository:
             article.insufficient_sources_detail = insufficient_sources_detail
             article.completed_at = _utcnow()
             await session.commit()
+        logfire.warn(
+            "article.failed",
+            article_id=str(article_id),
+            error_status=error_status,
+            errors_count=len(errors),
+            has_insufficient_sources_detail=insufficient_sources_detail is not None,
+        )
 
     async def get(self, article_id: UUID, *, org_code: str) -> Article | None:
         async with self._session_maker() as session:
@@ -184,6 +214,13 @@ class PostgresArticleRepository:
             article.marked_done = marked_done
             article.marked_done_by_name = marked_done_by_name if marked_done else None
             await session.commit()
+            logfire.info(
+                "article.marked_done",
+                article_id=str(article_id),
+                org_code=org_code,
+                marked_done=marked_done,
+                marked_done_by_name=marked_done_by_name,
+            )
 
 
 class PostgresOrgRepository:

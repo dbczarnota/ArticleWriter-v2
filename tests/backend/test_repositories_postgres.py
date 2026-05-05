@@ -281,3 +281,204 @@ async def test_orgconfig_create_default_is_idempotent(session_maker):
 
     second = await cfg_repo.create_default("org_cfg_idem")
     assert second.guidelines == "user-edited"
+
+
+async def test_create_running_emits_article_created_event(session_maker, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import logfire
+
+    from backend.repositories.postgres import (
+        PostgresArticleRepository,
+        PostgresOrgRepository,
+    )
+
+    org_repo = PostgresOrgRepository(session_maker)
+    await org_repo.create_from_jwt(code="org_evt1", name="Org Evt1")
+
+    info_mock = MagicMock()
+    monkeypatch.setattr(logfire, "info", info_mock)
+
+    repo = PostgresArticleRepository(session_maker)
+    await repo.create_running(
+        org_code="org_evt1",
+        author_user_id="user_x",
+        author_email="x@example.com",
+        author_name="X",
+        domain_name="org_evt1",
+        topic="Hello world topic",
+    )
+
+    info_mock.assert_called_once()
+    args, kwargs = info_mock.call_args
+    assert args[0] == "article.created"
+    assert kwargs["org_code"] == "org_evt1"
+    assert kwargs["topic_length"] == len("Hello world topic")
+    assert kwargs["has_urls"] is False
+    assert kwargs["has_instructions"] is False
+
+
+async def test_complete_done_emits_article_completed_event(session_maker, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import logfire
+
+    from backend.repositories.postgres import (
+        PostgresArticleRepository,
+        PostgresOrgRepository,
+    )
+
+    org_repo = PostgresOrgRepository(session_maker)
+    await org_repo.create_from_jwt(code="org_evt2", name="Org Evt2")
+
+    repo = PostgresArticleRepository(session_maker)
+    article_id = await repo.create_running(
+        org_code="org_evt2",
+        author_user_id="u",
+        domain_name="org_evt2",
+        topic="t",
+    )
+
+    info_mock = MagicMock()
+    monkeypatch.setattr(logfire, "info", info_mock)
+
+    await repo.complete(
+        article_id,
+        status="done",
+        html="<h1>x</h1>",
+        alternative_titles=[],
+        followup_topics=[],
+        sources=[],
+        facts=[],
+        quotes=[],
+        embed_candidates=[],
+        usage_events=[],
+        fallback_events=[],
+        pipeline_timing={},
+        errors=[],
+        total_duration_ms=42.0,
+    )
+
+    info_mock.assert_called_once()
+    args, kwargs = info_mock.call_args
+    assert args[0] == "article.completed"
+    assert kwargs["status"] == "done"
+    assert kwargs["duration_ms"] == 42.0
+    assert kwargs["facts_count"] == 0
+    assert kwargs["tokens_total"] == 0
+
+
+async def test_complete_failed_status_emits_article_failed_event(session_maker, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import logfire
+
+    from backend.repositories.postgres import (
+        PostgresArticleRepository,
+        PostgresOrgRepository,
+    )
+
+    org_repo = PostgresOrgRepository(session_maker)
+    await org_repo.create_from_jwt(code="org_evt3", name="Org Evt3")
+
+    repo = PostgresArticleRepository(session_maker)
+    article_id = await repo.create_running(
+        org_code="org_evt3", author_user_id="u", domain_name="org_evt3", topic="t"
+    )
+
+    info_mock = MagicMock()
+    monkeypatch.setattr(logfire, "info", info_mock)
+
+    await repo.complete(
+        article_id,
+        status="failed",
+        html="",
+        alternative_titles=[],
+        followup_topics=[],
+        sources=[],
+        facts=[],
+        quotes=[],
+        embed_candidates=[],
+        usage_events=[],
+        fallback_events=[],
+        pipeline_timing={},
+        errors=[{"stage": "writer", "error": "boom"}],
+        total_duration_ms=10.0,
+    )
+
+    info_mock.assert_called_once()
+    args, kwargs = info_mock.call_args
+    assert args[0] == "article.failed"
+    assert kwargs["status"] == "failed"
+    assert kwargs["errors_count"] == 1
+
+
+async def test_mark_failed_emits_article_failed_event(session_maker, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import logfire
+
+    from backend.repositories.postgres import (
+        PostgresArticleRepository,
+        PostgresOrgRepository,
+    )
+
+    org_repo = PostgresOrgRepository(session_maker)
+    await org_repo.create_from_jwt(code="org_evt4", name="Org Evt4")
+
+    repo = PostgresArticleRepository(session_maker)
+    article_id = await repo.create_running(
+        org_code="org_evt4", author_user_id="u", domain_name="org_evt4", topic="t"
+    )
+
+    warn_mock = MagicMock()
+    monkeypatch.setattr(logfire, "warn", warn_mock)
+
+    await repo.mark_failed(
+        article_id,
+        error_status="insufficient_sources",
+        errors=[{"stage": "search", "error": "boom"}],
+        insufficient_sources_detail={"facts_count": 0, "quotes_count": 0, "min_required": 4},
+    )
+
+    warn_mock.assert_called_once()
+    args, kwargs = warn_mock.call_args
+    assert args[0] == "article.failed"
+    assert kwargs["error_status"] == "insufficient_sources"
+    assert kwargs["errors_count"] == 1
+    assert kwargs["has_insufficient_sources_detail"] is True
+
+
+async def test_set_marked_done_emits_article_marked_done_event(session_maker, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import logfire
+
+    from backend.repositories.postgres import (
+        PostgresArticleRepository,
+        PostgresOrgRepository,
+    )
+
+    org_repo = PostgresOrgRepository(session_maker)
+    await org_repo.create_from_jwt(code="org_evt5", name="Org Evt5")
+
+    repo = PostgresArticleRepository(session_maker)
+    article_id = await repo.create_running(
+        org_code="org_evt5", author_user_id="u", domain_name="org_evt5", topic="t"
+    )
+
+    info_mock = MagicMock()
+    monkeypatch.setattr(logfire, "info", info_mock)
+
+    await repo.set_marked_done(
+        article_id,
+        org_code="org_evt5",
+        marked_done=True,
+        marked_done_by_name="Editor",
+    )
+
+    info_mock.assert_called_once()
+    args, kwargs = info_mock.call_args
+    assert args[0] == "article.marked_done"
+    assert kwargs["marked_done"] is True
+    assert kwargs["marked_done_by_name"] == "Editor"

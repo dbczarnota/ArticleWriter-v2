@@ -47,6 +47,8 @@ class ArticleRepository(Protocol):
         author_name: str | None = None,
         domain_name: str,
         topic: str,
+        has_urls: bool = False,
+        has_instructions: bool = False,
     ) -> UUID:
         """Insert a new article in `running` state. Returns its UUID."""
         ...
