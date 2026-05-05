@@ -5,6 +5,7 @@ import pathlib
 import time
 from typing import Any
 
+import logfire
 from pydantic import BaseModel
 from pydantic_ai import Agent
 
@@ -81,13 +82,47 @@ async def run_scraping_agent(
     approved_set = set(approved_urls)
     rejected_urls = [r.url for r in search_results if r.url not in approved_set]
 
+    # Audit point: which URLs the LLM picked vs dropped. The single most common
+    # silent failure here is "filter rejected everything because the snippets
+    # didn't look on-topic" — without this event the pipeline just shows 0
+    # facts later and you have to guess. Truncate URL lists to keep payload
+    # bounded; full lists were already stored in `search_results` if needed.
+    logfire.info(
+        "pipeline.scraping_filter.completed",
+        urls_in=len(search_results),
+        urls_approved=len(approved_set),
+        urls_rejected=len(rejected_urls),
+        approved_urls=list(approved_set)[:30],
+        rejected_urls=rejected_urls[:30],
+        filter_model=_filter_model_used,
+    )
+
     # User-supplied URLs bypass the LLM filter but still go through scraping
     if extra_urls:
         seen = set(approved_urls)
         approved_urls = approved_urls + [u for u in extra_urls if u not in seen]
 
     if not approved_urls:
+        logfire.info(
+            "pipeline.scraping.completed",
+            urls_attempted=0,
+            pages_returned=0,
+            failed=[],
+            reason="no_approved_urls",
+        )
         return [], rejected_urls
 
     pages = await scrape_urls(approved_urls, config=scraping_config, jina_api_key=jina_api_key)
+    # `scrape_urls` returns ScrapedPage only for URLs that succeeded on at least
+    # one tier. Failed URLs are computed by set difference so we can see which
+    # specific pages failed to fetch.
+    succeeded_urls = {p.url for p in pages}
+    failed_urls = [u for u in approved_urls if u not in succeeded_urls]
+    logfire.info(
+        "pipeline.scraping.completed",
+        urls_attempted=len(approved_urls),
+        pages_returned=len(pages),
+        failed_count=len(failed_urls),
+        failed=failed_urls[:30],
+    )
     return pages, rejected_urls

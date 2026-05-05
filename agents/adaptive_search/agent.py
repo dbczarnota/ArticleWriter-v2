@@ -39,10 +39,15 @@ async def run_adaptive_search_agent(
     we're under the target, and the LLM prompt is told the gap to close.
     """
     if not extraction_result.facts and not extraction_result.quotes:
+        # When extraction is empty there's nothing for the LLM to reason about,
+        # but the caller still needs at least one query to make a second
+        # search round actually do work. Falling back to the topic line lets
+        # the loop retry with the same intent at a broader phrasing — better
+        # than `agent_gave_up` and a guaranteed-zero pipeline output.
         return AdaptiveSearchDecision(
             needs_more_research=True,
-            additional_queries=[],
-            reasoning="No facts or quotes extracted.",
+            additional_queries=[topic],
+            reasoning="No facts or quotes extracted — falling back to topic-only search.",
         )
 
     facts_text = "\n".join(f"- {f.text} [{f.context}]" for f in extraction_result.facts)

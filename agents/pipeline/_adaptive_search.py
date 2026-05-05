@@ -43,6 +43,35 @@ async def adaptive_search_loop(
     jina_api_key: str | None,
     log,
 ) -> tuple[list[ParsedArticle], ExtractionResult]:
+    def _emit_round_completed(
+        *,
+        round_idx: int,
+        exit_reason: str,
+        signals_before: int,
+        signals_after: int,
+        decision_needs_more: bool | None,
+        queries: list[str],
+        new_urls: int,
+        articles_extracted: int,
+        facts_added: int,
+        quotes_added: int,
+    ) -> None:
+        logfire.info(
+            "pipeline.adaptive_search.round.completed",
+            round=round_idx,
+            exit_reason=exit_reason,
+            signals_before=signals_before,
+            signals_after=signals_after,
+            target=target_signals,
+            decision_needs_more=decision_needs_more,
+            queries=queries[:10],
+            queries_count=len(queries),
+            new_urls=new_urls,
+            articles_extracted=articles_extracted,
+            facts_added=facts_added,
+            quotes_added=quotes_added,
+        )
+
     seen_urls: set[str] = {r.url for r in search_results}
     for _round in range(settings.adaptive_search_agent.max_additional_rounds):
         round_idx = _round + 1
@@ -73,9 +102,33 @@ async def adaptive_search_loop(
                 not decision.needs_more_research or not decision.additional_queries
             ) and signals_before >= target_signals:
                 round_span.set_attribute("exit_reason", "satisfied")
+                _emit_round_completed(
+                    round_idx=round_idx,
+                    exit_reason="satisfied",
+                    signals_before=signals_before,
+                    signals_after=signals_before,
+                    decision_needs_more=decision.needs_more_research,
+                    queries=list(decision.additional_queries),
+                    new_urls=0,
+                    articles_extracted=0,
+                    facts_added=0,
+                    quotes_added=0,
+                )
                 break
             if not decision.additional_queries:
                 round_span.set_attribute("exit_reason", "agent_gave_up")
+                _emit_round_completed(
+                    round_idx=round_idx,
+                    exit_reason="agent_gave_up",
+                    signals_before=signals_before,
+                    signals_after=signals_before,
+                    decision_needs_more=decision.needs_more_research,
+                    queries=[],
+                    new_urls=0,
+                    articles_extracted=0,
+                    facts_added=0,
+                    quotes_added=0,
+                )
                 break
 
             # Serper
@@ -102,6 +155,18 @@ async def adaptive_search_loop(
                 serper_span.set_attribute("new_urls_found", len(extra_results))
             if not extra_results:
                 round_span.set_attribute("exit_reason", "no_new_urls")
+                _emit_round_completed(
+                    round_idx=round_idx,
+                    exit_reason="no_new_urls",
+                    signals_before=signals_before,
+                    signals_after=signals_before,
+                    decision_needs_more=decision.needs_more_research,
+                    queries=list(decision.additional_queries),
+                    new_urls=0,
+                    articles_extracted=0,
+                    facts_added=0,
+                    quotes_added=0,
+                )
                 break
 
             # Scraping
@@ -165,6 +230,30 @@ async def adaptive_search_loop(
             # Early exit if we hit the floor — don't waste a budget on another round.
             if signals_after >= target_signals:
                 round_span.set_attribute("exit_reason", "target_met")
+                _emit_round_completed(
+                    round_idx=round_idx,
+                    exit_reason="target_met",
+                    signals_before=signals_before,
+                    signals_after=signals_after,
+                    decision_needs_more=decision.needs_more_research,
+                    queries=list(decision.additional_queries),
+                    new_urls=len(extra_results),
+                    articles_extracted=len(extra_articles),
+                    facts_added=len(extra_extraction.facts),
+                    quotes_added=len(extra_extraction.quotes),
+                )
                 break
             round_span.set_attribute("exit_reason", "loop_continues")
+            _emit_round_completed(
+                round_idx=round_idx,
+                exit_reason="loop_continues",
+                signals_before=signals_before,
+                signals_after=signals_after,
+                decision_needs_more=decision.needs_more_research,
+                queries=list(decision.additional_queries),
+                new_urls=len(extra_results),
+                articles_extracted=len(extra_articles),
+                facts_added=len(extra_extraction.facts),
+                quotes_added=len(extra_extraction.quotes),
+            )
     return articles, extraction

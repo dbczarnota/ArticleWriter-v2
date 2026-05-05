@@ -184,6 +184,26 @@ async def _run_pipeline_inner(
                 ),
             )
 
+        # Snapshot the *effective* inputs once all domain/per-request overrides have
+        # been applied. Any future "why did the writer behave that way?" investigation
+        # can answer it from this single event. No secrets here — Settings dataclasses
+        # don't carry api_keys, those are passed positionally.
+        from dataclasses import asdict as _asdict
+
+        try:
+            _domain_dict = _asdict(domain)
+        except TypeError:
+            _domain_dict = dict(getattr(domain, "__dict__", {}))
+        _settings_dict = _asdict(settings)
+        logfire.info(
+            "pipeline.run.inputs",
+            topic=topic,
+            urls=list(urls or []),
+            additional_instructions=additional_instructions or "",
+            domain=_domain_dict,
+            settings=_settings_dict,
+        )
+
         # Stage 1: Research
         await _article_repo.set_pipeline_stage(_article_id, "search")
         log.search_start(
@@ -210,6 +230,19 @@ async def _run_pipeline_inner(
                 search_results = []
         _timing["research"] = (time.perf_counter() - _stage_t0) * 1000
         record_stage("research", _timing["research"], domain.name)
+
+        # Audit point: every URL Serper handed us, before the scraping LLM filter sees it.
+        # Lets a post-mortem distinguish "Serper returned nothing" from "filter rejected
+        # everything" from "scraping itself failed" — three very different failure modes
+        # that all surface as 0 articles downstream.
+        logfire.info(
+            "pipeline.research.completed",
+            urls_returned=len(search_results),
+            urls=[
+                {"url": r.url, "title": (r.title or "")[:200], "snippet": (r.snippet or "")[:200]}
+                for r in search_results[:30]
+            ],
+        )
 
         # Promote social media URLs discovered via organic search to embed_candidates
         # and remove them from the scraping list (they don't scrape usefully).
@@ -256,6 +289,19 @@ async def _run_pipeline_inner(
         _timing["parsing"] = (time.perf_counter() - _stage_t0) * 1000
         record_stage("parsing", _timing["parsing"], domain.name)
 
+        # Audit point: how many scraped pages survived parsing (raw HTML →
+        # structured ParsedArticle). A drop from N pages to 0 articles means
+        # the parser LLM rejected everything (paywall, error pages, off-topic).
+        logfire.info(
+            "pipeline.parsing.completed",
+            pages_in=len(scraped),
+            articles_out=len(articles),
+            articles=[
+                {"url": a.url, "title": (a.title or "")[:200]}
+                for a in articles[:30]
+            ],
+        )
+
         if settings.pipeline.cutoff_days > 0:
             articles, _date_reasons = filter_by_date(
                 articles,
@@ -284,6 +330,18 @@ async def _run_pipeline_inner(
                 extraction = ExtractionResult(facts=[], quotes=[], keywords=[])
         _timing["extraction"] = (time.perf_counter() - _stage_t0) * 1000
         record_stage("extraction", _timing["extraction"], domain.name)
+
+        # Audit point: did extraction actually produce signals to write from?
+        # 0 facts and 0 quotes here is the canary for `insufficient_sources`
+        # downstream. Adaptive search may save us, but seeing the gap explicitly
+        # makes the failure mode obvious.
+        logfire.info(
+            "pipeline.extraction.completed",
+            articles_in=len(articles),
+            facts_count=len(extraction.facts),
+            quotes_count=len(extraction.quotes),
+            keywords_count=len(extraction.keywords),
+        )
 
         # Stage 2: Adaptive search loop
         if settings.pipeline.adaptive_search:
@@ -371,6 +429,19 @@ async def _run_pipeline_inner(
                 record_error("media_search")
         _timing["media_search"] = (time.perf_counter() - _stage_t0) * 1000
         record_stage("media_search", _timing["media_search"], domain.name)
+
+        # Audit point: which social/video sources actually returned candidates,
+        # and any per-source errors that didn't kill the stage but produced no
+        # results (e.g. Reddit rate-limit, Serper quota for /images).
+        _by_source: dict[str, int] = {}
+        for _e in embed_candidates:
+            _by_source[_e.source] = _by_source.get(_e.source, 0) + 1
+        logfire.info(
+            "pipeline.media_search.completed",
+            embeds_total=len(embed_candidates),
+            by_source=_by_source,
+            errors=media_errors,
+        )
 
         # Combine all embed sources: media_search + organic search + competitor content scraping.
         # Dedup by URL; media_search results take priority (they have richer metadata).
