@@ -12,7 +12,6 @@ export function Logo({ size = "sm" }: LogoProps) {
       <span style={{ fontSize, letterSpacing: "-0.02em", lineHeight: 1 }}>
         <span style={{ fontWeight: 300, color: "var(--text)" }}>headlines</span>
         <span style={{ fontWeight: 800, color: "var(--text)" }}>forge</span>
-        <span style={{ color: "#ea580c" }}>.</span>
       </span>
     </div>
   );

@@ -238,9 +238,9 @@ export function Sidebar({
           ref={datesAnchorRef}
           onClick={() => setDatesOpen((v) => !v)}
           style={{
-            background: isFiltered ? "var(--accent-lt)" : "transparent",
-            border: `1px solid ${isFiltered ? "var(--accent)" : "var(--border)"}`,
-            color: isFiltered ? "var(--accent)" : "var(--muted)",
+            background: "transparent",
+            border: "1px solid var(--border)",
+            color: "var(--muted)",
             borderRadius: "var(--radius)",
             padding: "4px 8px",
             fontSize: 11,
