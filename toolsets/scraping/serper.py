@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+import logfire
 
 from agents._base.types import EmbedCandidate, SearchResult
 
@@ -181,6 +182,19 @@ async def search_reddit(
     return results
 
 
+# Facebook returns photo permalinks as `/{page}/photos/{slug}/{photo_id}/`.
+# When a post has no text (emoji-only / image-only / etc.) the slug becomes
+# `d41d8cd9` — the first 8 chars of MD5(""), Facebook's empty-input
+# placeholder. Google indexes these placeholder URLs and points them at
+# arbitrary unrelated content on the same page, so title/snippet describe
+# one post but the link goes to a different one. Reject them.
+_FB_BROKEN_PLACEHOLDER = "/photos/d41d8cd9/"
+
+
+def _facebook_url_is_reliable(url: str) -> bool:
+    return _FB_BROKEN_PLACEHOLDER not in url
+
+
 async def search_site(
     query: str,
     *,
@@ -200,6 +214,22 @@ async def search_site(
         response = await client.post(f"{_BASE}/search", json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
+    organic = data.get("organic", [])
+    if site == "facebook.com":
+        kept: list[dict] = []
+        for item in organic:
+            link = item.get("link", "")
+            if _facebook_url_is_reliable(link):
+                kept.append(item)
+            else:
+                logfire.warn(
+                    "media_search.facebook_url_rejected",
+                    reason="empty_slug_placeholder",
+                    url=link,
+                    title=item.get("title", ""),
+                    query=query,
+                )
+        organic = kept
     return [
         EmbedCandidate(
             url=item["link"],
@@ -207,5 +237,5 @@ async def search_site(
             source=source,  # type: ignore[arg-type]
             description=item.get("snippet", ""),
         )
-        for item in data.get("organic", [])
+        for item in organic
     ]
