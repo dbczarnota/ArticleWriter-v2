@@ -23,6 +23,10 @@ interface SidebarProps {
   loadingMore: boolean;
   onDateRangeChange: (next: DateRange) => void;
   onLoadMore: () => void;
+  open: boolean;
+  isMobile: boolean;
+  onClose: () => void;
+  onExpand: () => void;
 }
 
 type DoneFilter = "all" | "undone" | "done";
@@ -39,6 +43,10 @@ export function Sidebar({
   loadingMore,
   onDateRangeChange,
   onLoadMore,
+  open,
+  isMobile,
+  onClose,
+  onExpand,
 }: SidebarProps) {
   const t = useT();
   const { lang } = useLang();
@@ -56,15 +64,113 @@ export function Sidebar({
     done: t.sidebar.filterDone,
   };
 
+  // ── Collapsed rail (desktop only) ─────────────────────────────────────────
+  // When the user closes the sidebar on desktop we still keep a 48px rail
+  // anchored to the left edge so the new-article button and the expand
+  // affordance are always one click away.
+  if (!open && !isMobile) {
+    return (
+      <aside style={{
+        width: 48,
+        background: "var(--sidebar)",
+        borderRight: "1px solid var(--border)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "8px 0",
+        gap: 8,
+      }}>
+        <button
+          onClick={onExpand}
+          aria-label={t.sidebar.articles}
+          title={t.sidebar.articles}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 8,
+            cursor: "pointer",
+            color: "var(--muted)",
+            borderRadius: "var(--radius)",
+          }}
+        >
+          {/* Right-pointing chevron — 'expand to show list' */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+        <button
+          onClick={onNew}
+          aria-label={t.sidebar.newArticle}
+          title={t.sidebar.newArticle}
+          style={{
+            background: "var(--accent)",
+            color: "var(--white)",
+            border: "none",
+            borderRadius: "var(--radius)",
+            width: 32,
+            height: 32,
+            fontSize: 18,
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          +
+        </button>
+      </aside>
+    );
+  }
+
+  // ── Mobile drawer (overlay + backdrop) — rendered only when open ──────────
+  // Hidden state on mobile == nothing rendered so the article view gets the
+  // full screen. Backdrop click closes.
+  if (isMobile && !open) {
+    return null;
+  }
+
+  const containerStyle: React.CSSProperties = isMobile
+    ? {
+        position: "fixed",
+        top: 48, // below topbar
+        left: 0,
+        bottom: 0,
+        width: "min(85vw, 320px)",
+        background: "var(--sidebar)",
+        borderRight: "1px solid var(--border)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+        zIndex: 60,
+        boxShadow: "2px 0 12px rgba(0,0,0,0.12)",
+      }
+    : {
+        width: "var(--sidebar-width)",
+        background: "var(--sidebar)",
+        borderRight: "1px solid var(--border)",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      };
+
   return (
-    <aside style={{
-      width: "var(--sidebar-width)",
-      background: "var(--sidebar)",
-      borderRight: "1px solid var(--border)",
-      display: "flex",
-      flexDirection: "column",
-      overflow: "hidden",
-    }}>
+    <>
+      {isMobile && (
+        <div
+          onClick={onClose}
+          style={{
+            position: "fixed",
+            top: 48,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.4)",
+            zIndex: 55,
+          }}
+        />
+      )}
+      <aside style={containerStyle}>
       <div style={{
         padding: "12px 12px 8px",
         display: "flex",
@@ -255,6 +361,7 @@ export function Sidebar({
           </button>
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
