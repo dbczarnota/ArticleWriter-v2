@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Article, Fact, Quote } from "../types";
 import { useArticles } from "../lib/useArticles";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
 
@@ -15,6 +16,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   const t = useT();
   const av = t.articleView;
   const { lang } = useLang();
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const [article, setArticle] = useState<Article | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -119,13 +121,28 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   const rejectedFacts = article.facts.filter((f) => !f.was_used);
   const usedQuotes = article.quotes.filter((q) => q.was_used);
   const rejectedQuotes = article.quotes.filter((q) => !q.was_used);
-  const usedSources = article.sources;
-  // TODO(sources): approximate — only covers fact.source_url, not quote.source_url
-  const unusedSourceUrls = article.facts
-    .filter((f) => !f.was_used && f.source_url)
-    .map((f) => f.source_url as string)
-    .filter((url) => !usedSources.includes(url));
-  const uniqueUnused = [...new Set(unusedSourceUrls)];
+
+  // article.sources from the backend is the union of every source URL across
+  // all facts and quotes (used + unused). We compute used vs. unused on the
+  // frontend to get an accurate split: a source counts as "used" when at
+  // least one fact OR quote pulled from it landed in the article. Anything
+  // else is "unused".
+  const allItems: Array<{ was_used: boolean; source_url: string | null }> = [
+    ...article.facts,
+    ...article.quotes,
+  ];
+  const usedSources = [...new Set(
+    allItems
+      .filter((i) => i.was_used && i.source_url)
+      .map((i) => i.source_url as string)
+  )];
+  const unusedSourcesSet = new Set(
+    allItems
+      .filter((i) => !i.was_used && i.source_url)
+      .map((i) => i.source_url as string)
+  );
+  const usedSourcesSet = new Set(usedSources);
+  const uniqueUnused = [...unusedSourcesSet].filter((url) => !usedSourcesSet.has(url));
 
   async function handleCopy() {
     await navigator.clipboard.writeText(article!.html ?? "");
@@ -163,8 +180,16 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
   return (
     <div>
-      {/* Toolbar */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, gap: 16 }}>
+      {/* Toolbar — flex row on desktop, stacked on mobile so the action
+          buttons don't squeeze the title into a vertical letter column. */}
+      <div style={{
+        display: "flex",
+        flexDirection: isMobile ? "column" : "row",
+        alignItems: isMobile ? "stretch" : "flex-start",
+        justifyContent: "space-between",
+        marginBottom: 20,
+        gap: isMobile ? 12 : 16,
+      }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", gap: 12, fontSize: 11, color: "var(--muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>
             <span>{av.statWords}: <strong style={{ color: "var(--text)" }}>{wordCount.toLocaleString()}</strong></span>
@@ -215,7 +240,15 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             </label>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+        <div style={{
+          display: "flex",
+          gap: 8,
+          flexShrink: 0,
+          flexWrap: "wrap",
+          // On mobile the toolbar stacks; let the action row span full width.
+          width: isMobile ? "100%" : "auto",
+          justifyContent: isMobile ? "flex-start" : "flex-start",
+        }}>
           <button
             onClick={handleCopy}
             title={av.copyHtml}
