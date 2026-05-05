@@ -65,21 +65,23 @@ async def write_article(
         has_instructions=bool(req.additional_instructions),
     )
 
-    with logfire.set_baggage(
-        article_id=str(article_id),
+    # Note: no logfire.set_baggage(...) here. FastAPI BackgroundTasks runs
+    # AFTER the response has been sent, by which point any context manager
+    # opened around add_task() has already exited — so endpoint-level baggage
+    # would be a no-op for the pipeline run. The article.created event above
+    # already carries article_id/org_code as explicit kwargs (so it's
+    # queryable), and _run_pipeline_inner re-sets baggage at runner scope to
+    # cover every span emitted during the actual pipeline execution.
+    background_tasks.add_task(
+        _run_pipeline_background,
+        article_id=article_id,
+        req=req,
+        app_settings=app_settings,
+        domain=domain,
+        cfg=cfg,
         org_code=org.code,
-        user_id=user.id,
-    ):
-        background_tasks.add_task(
-            _run_pipeline_background,
-            article_id=article_id,
-            req=req,
-            app_settings=app_settings,
-            domain=domain,
-            cfg=cfg,
-            org_code=org.code,
-            author_user_id=user.id,
-        )
+        author_user_id=user.id,
+    )
 
     return {"id": str(article_id), "status": "running", "topic": req.topic}
 

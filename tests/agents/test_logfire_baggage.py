@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logfire
 from logfire.testing import TestExporter
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
 
 def test_baggage_attributes_appear_on_nested_spans():
@@ -13,7 +14,7 @@ def test_baggage_attributes_appear_on_nested_spans():
     logfire.configure(
         send_to_logfire=False,
         additional_span_processors=[
-            logfire.testing.SimpleSpanProcessor(exporter),
+            SimpleSpanProcessor(exporter),
         ],
         console=False,
     )
