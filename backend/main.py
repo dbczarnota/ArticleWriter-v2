@@ -3,6 +3,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from logging import basicConfig
 
 import logfire
 from fastapi import FastAPI
@@ -36,6 +37,8 @@ logfire.configure(
     scrubbing=logfire.ScrubbingOptions(callback=_scrub_callback),
 )
 logfire.instrument_pydantic_ai()
+logfire.instrument_httpx()
+basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 
 
 async def _fail_running_articles_on_shutdown() -> None:
