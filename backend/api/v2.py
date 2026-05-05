@@ -88,19 +88,30 @@ async def _run_pipeline_background(
     author_user_id: str,
 ) -> None:
     """Run the pipeline and persist the result. Errors are swallowed here —
-    runner already marks the article as failed in the DB on exceptions."""
+    runner already marks the article as failed in the DB on exceptions.
+
+    Wall-clock-bounded by `app_settings.pipeline.total_timeout_s` (default 15 min).
+    On timeout the runner's exception handler marks the article failed before
+    asyncio.wait_for re-raises TimeoutError, so the user never sees a
+    perpetually-running article even if every per-call timeout misfires.
+    """
+    import asyncio
+
     with contextlib.suppress(Exception):  # runner handles DB failure marking internally
-        await run_pipeline(
-            req.topic,
-            settings=app_settings,
-            domain=domain,
-            serper_api_key=cfg.serper_api_key,
-            jina_api_key=cfg.jina_api_key,
-            urls=req.urls or None,
-            additional_instructions=req.additional_instructions,
-            org_code=org_code,
-            author_user_id=author_user_id,
-            _article_id=article_id,
+        await asyncio.wait_for(
+            run_pipeline(
+                req.topic,
+                settings=app_settings,
+                domain=domain,
+                serper_api_key=cfg.serper_api_key,
+                jina_api_key=cfg.jina_api_key,
+                urls=req.urls or None,
+                additional_instructions=req.additional_instructions,
+                org_code=org_code,
+                author_user_id=author_user_id,
+                _article_id=article_id,
+            ),
+            timeout=app_settings.pipeline.total_timeout_s,
         )
 
 

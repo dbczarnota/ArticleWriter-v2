@@ -217,6 +217,11 @@ export interface Translations {
     stageParsing: string;
     stageExtraction: string;
     stageAdaptive: string;
+    stageAdaptiveDecide: string;
+    stageAdaptiveSerper: string;
+    stageAdaptiveScraping: string;
+    stageAdaptiveParsing: string;
+    stageAdaptiveExtraction: string;
     stageMedia: string;
     stageInstructions: string;
     stageWriter: string;

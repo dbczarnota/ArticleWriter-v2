@@ -1,6 +1,7 @@
 # agents/pipeline/runner.py
 from __future__ import annotations
 
+import asyncio
 import re
 import time
 from typing import Literal
@@ -277,69 +278,48 @@ async def _run_pipeline_inner(
 
     # Stage 2: Adaptive search loop
     if settings.pipeline.adaptive_search:
-        await _article_repo.set_pipeline_stage(_article_id, "adaptive_search")
         _stage_t0 = time.perf_counter()
         _target = settings.pipeline.min_source_signals
+        await _article_repo.set_pipeline_stage(_article_id, "adaptive_search")
         with logfire.span(
             "pipeline.stage.adaptive_search",
             domain=domain.name,
             target_signals=_target,
             initial_signals=len(extraction.facts) + len(extraction.quotes),
             max_rounds_budget=settings.adaptive_search_agent.max_additional_rounds,
+            total_timeout_s=settings.adaptive_search_agent.total_timeout_s,
         ):
             try:
-                seen_urls: set[str] = {r.url for r in search_results}
-                for _round in range(settings.adaptive_search_agent.max_additional_rounds):
-                    current = len(extraction.facts) + len(extraction.quotes)
-                    decision = await run_adaptive_search_agent(
-                        extraction,
+                articles, extraction = await asyncio.wait_for(
+                    _adaptive_search_loop(
+                        article_repo=_article_repo,
+                        article_id=_article_id,
                         topic=topic,
-                        config=settings.adaptive_search_agent,
+                        domain=domain,
+                        settings=settings,
+                        articles=articles,
+                        extraction=extraction,
+                        search_results=search_results,
                         target_signals=_target,
-                    )
-                    log.adaptive_search_done(decision, _round + 1)
-                    # Stop if agent is satisfied AND we've met the floor.
-                    if (
-                        not decision.needs_more_research or not decision.additional_queries
-                    ) and current >= _target:
-                        break
-                    if not decision.additional_queries:
-                        break  # nothing to query, agent gave up
-                    extra_results = []
-                    for query in decision.additional_queries:
-                        for r in await serper_search(
-                            query,
-                            num=settings.search.max_results,
-                            freshness=settings.search.search_freshness,
-                            language=domain.language,
-                            api_key=serper_api_key,
-                        ):
-                            if r.url not in seen_urls:
-                                seen_urls.add(r.url)
-                                extra_results.append(r)
-                    if not extra_results:
-                        break
-                    extra_scraped, _ = await run_scraping_agent(
-                        extra_results,
-                        topic,
-                        scraping_config=settings.scraping,
+                        serper_api_key=serper_api_key,
                         jina_api_key=jina_api_key,
-                    )
-                    extra_articles = await run_parsing_agent(extra_scraped, config=settings.parsing)
-                    articles = (
-                        articles + extra_articles
-                    )  # extend pool for downstream rerank/context
-                    extra_extraction = await run_extraction_agent(
-                        extra_articles,
-                        topic=topic,
-                        language=domain.language,
-                        config=settings.extraction,
-                    )
-                    extraction = _merge_extraction(extraction, extra_extraction)
-                    log.extraction_done(extraction)
-                    # Early exit if we hit the floor — don't waste a budget on another LLM call.
-                    if len(extraction.facts) + len(extraction.quotes) >= _target:
-                        break
+                        log=log,
+                    ),
+                    timeout=settings.adaptive_search_agent.total_timeout_s,
+                )
+            except TimeoutError as e:
+                # Hard cap hit — keep whatever was collected, soft-fail downstream.
+                _errors.append(
+                    {
+                        "stage": "adaptive_search",
+                        "error": (
+                            f"total stage timeout after "
+                            f"{settings.adaptive_search_agent.total_timeout_s:.0f}s"
+                        ),
+                    }
+                )
+                log.error("adaptive_search", e)
+                record_error("adaptive_search")
             except Exception as e:
                 _errors.append({"stage": "adaptive_search", "error": str(e)})
                 log.error("adaptive_search", e)
@@ -920,3 +900,156 @@ def _merge_extraction(base: ExtractionResult, extra: ExtractionResult) -> Extrac
     merged_quotes = base.quotes + [q for q in extra.quotes if q.text not in seen_quotes]
     merged_keywords = list(dict.fromkeys(base.keywords + extra.keywords))
     return ExtractionResult(facts=merged_facts, quotes=merged_quotes, keywords=merged_keywords)
+
+
+async def _adaptive_search_loop(
+    *,
+    article_repo,
+    article_id: UUID | None,
+    topic: str,
+    domain: DomainConfig,
+    settings: AppSettings,
+    articles: list[ParsedArticle],
+    extraction: ExtractionResult,
+    search_results,
+    target_signals: int,
+    serper_api_key: str,
+    jina_api_key: str | None,
+    log,
+) -> tuple[list[ParsedArticle], ExtractionResult]:
+    """Body of the adaptive_search stage. Pulled out of run_pipeline so the
+    outer block can wrap it in asyncio.wait_for with a single budget cap.
+
+    Each iteration creates one Logfire span `pipeline.stage.adaptive_search.round`
+    plus one sub-span per substage (decide / serper / scraping / parsing /
+    extraction). The DB pipeline_stage column is set to a fine-grained label
+    like 'adaptive_search.r2.scraping' so the UI spinner can show what we're
+    actually waiting on.
+    """
+    seen_urls: set[str] = {r.url for r in search_results}
+    for _round in range(settings.adaptive_search_agent.max_additional_rounds):
+        round_idx = _round + 1
+        signals_before = len(extraction.facts) + len(extraction.quotes)
+        with logfire.span(
+            "pipeline.stage.adaptive_search.round",
+            round=round_idx,
+            signals_before=signals_before,
+            target=target_signals,
+        ) as round_span:
+            # Decide
+            await article_repo.set_pipeline_stage(
+                article_id, f"adaptive_search.r{round_idx}.decide"
+            )
+            with logfire.span(
+                "pipeline.stage.adaptive_search.decide", round=round_idx
+            ):
+                decision = await run_adaptive_search_agent(
+                    extraction,
+                    topic=topic,
+                    config=settings.adaptive_search_agent,
+                    target_signals=target_signals,
+                )
+                log.adaptive_search_done(decision, round_idx)
+            round_span.set_attribute("decision_needs_more", decision.needs_more_research)
+            round_span.set_attribute("queries_generated", len(decision.additional_queries))
+
+            # Stop if agent is satisfied AND we've met the floor.
+            if (
+                not decision.needs_more_research or not decision.additional_queries
+            ) and signals_before >= target_signals:
+                round_span.set_attribute("exit_reason", "satisfied")
+                break
+            if not decision.additional_queries:
+                round_span.set_attribute("exit_reason", "agent_gave_up")
+                break
+
+            # Serper
+            await article_repo.set_pipeline_stage(
+                article_id, f"adaptive_search.r{round_idx}.serper"
+            )
+            with logfire.span(
+                "pipeline.stage.adaptive_search.serper",
+                round=round_idx,
+                queries_count=len(decision.additional_queries),
+            ) as serper_span:
+                extra_results = []
+                for query in decision.additional_queries:
+                    for r in await serper_search(
+                        query,
+                        num=settings.search.max_results,
+                        freshness=settings.search.search_freshness,
+                        language=domain.language,
+                        api_key=serper_api_key,
+                    ):
+                        if r.url not in seen_urls:
+                            seen_urls.add(r.url)
+                            extra_results.append(r)
+                serper_span.set_attribute("new_urls_found", len(extra_results))
+            if not extra_results:
+                round_span.set_attribute("exit_reason", "no_new_urls")
+                break
+
+            # Scraping
+            await article_repo.set_pipeline_stage(
+                article_id, f"adaptive_search.r{round_idx}.scraping"
+            )
+            with logfire.span(
+                "pipeline.stage.adaptive_search.scraping",
+                round=round_idx,
+                urls_count=len(extra_results),
+            ):
+                extra_scraped, _ = await run_scraping_agent(
+                    extra_results,
+                    topic,
+                    scraping_config=settings.scraping,
+                    jina_api_key=jina_api_key,
+                )
+
+            # Parsing
+            await article_repo.set_pipeline_stage(
+                article_id, f"adaptive_search.r{round_idx}.parsing"
+            )
+            with logfire.span(
+                "pipeline.stage.adaptive_search.parsing",
+                round=round_idx,
+                pages_count=len(extra_scraped),
+            ) as parsing_span:
+                extra_articles = await run_parsing_agent(
+                    extra_scraped, config=settings.parsing
+                )
+                parsing_span.set_attribute("articles_count", len(extra_articles))
+            articles = articles + extra_articles  # extend pool for downstream rerank
+
+            # Extraction
+            await article_repo.set_pipeline_stage(
+                article_id, f"adaptive_search.r{round_idx}.extraction"
+            )
+            with logfire.span(
+                "pipeline.stage.adaptive_search.extraction",
+                round=round_idx,
+                articles_count=len(extra_articles),
+            ) as extraction_span:
+                extra_extraction = await run_extraction_agent(
+                    extra_articles,
+                    topic=topic,
+                    language=domain.language,
+                    config=settings.extraction,
+                )
+                extraction_span.set_attribute(
+                    "facts_extracted", len(extra_extraction.facts)
+                )
+                extraction_span.set_attribute(
+                    "quotes_extracted", len(extra_extraction.quotes)
+                )
+            extraction = _merge_extraction(extraction, extra_extraction)
+            log.extraction_done(extraction)
+
+            signals_after = len(extraction.facts) + len(extraction.quotes)
+            round_span.set_attribute("signals_after", signals_after)
+
+            # Early exit if we hit the floor — don't waste a budget on another round.
+            if signals_after >= target_signals:
+                round_span.set_attribute("exit_reason", "target_met")
+                break
+            round_span.set_attribute("exit_reason", "loop_continues")
+    return articles, extraction

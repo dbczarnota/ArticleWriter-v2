@@ -53,6 +53,10 @@ class PipelineFlags:
     followup: bool = True
     cutoff_days: int = 30
     min_source_signals: int = 1  # raise InsufficientSourcesError if facts+quotes below this
+    total_timeout_s: float = 900.0
+    """Wall-clock cap for the entire pipeline (15 min). Backend wraps
+    run_pipeline() in asyncio.wait_for using this value; on timeout the
+    article is marked failed via the runner's exception handler."""
 
 
 _FALLBACK: tuple[str, ...] = ("google-gla:gemini-flash-latest",)

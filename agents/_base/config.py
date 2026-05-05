@@ -51,6 +51,12 @@ class AdaptiveSearchAgentConfig(AgentConfig):
     """Hard cap on extra search rounds. Pipeline early-exits as soon as
     PipelineFlags.min_source_signals is met, so this is just the budget ceiling
     for cases where queries don't yield enough new sources fast enough."""
+    total_timeout_s: float = 600.0
+    """Wall-clock cap for the entire adaptive_search loop (10 min).
+    Independent of per-LLM-call timeouts in run_with_fallback (those bound a
+    single agent invocation; this bounds the whole multi-round stage). On
+    expiry the soft-fail handler in runner.py catches it and the pipeline
+    continues with whatever signals were collected so far."""
 
 
 @dataclass(frozen=True)

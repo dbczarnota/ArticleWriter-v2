@@ -60,9 +60,30 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
     reflection: av.stageReflection,
     followup: av.stageFollowup,
   };
+  // Adaptive_search loop sets fine-grained sub-stages like
+  // 'adaptive_search.r2.scraping'. Map the trailing substep to a label so the
+  // user sees what the pipeline is actually waiting on. Round number is
+  // intentionally hidden — exposing 'r2' would invite questions about a
+  // budget that's purely an implementation detail.
+  const ADAPTIVE_SUBSTAGE_LABELS: Record<string, string> = {
+    decide: av.stageAdaptiveDecide,
+    serper: av.stageAdaptiveSerper,
+    scraping: av.stageAdaptiveScraping,
+    parsing: av.stageAdaptiveParsing,
+    extraction: av.stageAdaptiveExtraction,
+  };
+  function resolveStageLabel(stage: string | null): string {
+    if (!stage) return av.stageDefault;
+    if (stage in STAGE_LABELS) return STAGE_LABELS[stage];
+    if (stage.startsWith("adaptive_search.")) {
+      const substep = stage.split(".").pop() ?? "";
+      return ADAPTIVE_SUBSTAGE_LABELS[substep] ?? av.stageAdaptive;
+    }
+    return stage;  // surface raw label rather than crash if backend introduces a new stage
+  }
 
   if (article.status === "running") {
-    const stageLabel = article.pipeline_stage ? (STAGE_LABELS[article.pipeline_stage] ?? article.pipeline_stage) : av.stageDefault;
+    const stageLabel = resolveStageLabel(article.pipeline_stage);
     return (
       <div>
         <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>{article.topic}</h2>
