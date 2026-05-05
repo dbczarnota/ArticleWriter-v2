@@ -77,6 +77,7 @@ export function DateRangePicker({
   function applyPreset(id: PresetId) {
     const { from, to } = computePreset(id);
     setDraft({ from, to });
+    setVisibleMonth(monthForRange(from));
     setClickStep(0);
   }
 
@@ -114,9 +115,17 @@ export function DateRangePicker({
   // popover from overflowing the viewport).
   const today = new Date();
   const numberOfMonths = narrow ? 1 : 2;
-  const defaultMonth = narrow
-    ? new Date(today.getFullYear(), today.getMonth(), 1)
-    : new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  // Controlled `month` so presets can scroll the calendar to the relevant
+  // range (e.g. "Last month" → previous month visible). Anchor month is the
+  // *right-hand* visible month on desktop so a preset like "yesterday" keeps
+  // the current month on screen.
+  function monthForRange(from: Date | undefined): Date {
+    const anchor = from ?? today;
+    return narrow
+      ? new Date(anchor.getFullYear(), anchor.getMonth(), 1)
+      : new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1);
+  }
+  const [visibleMonth, setVisibleMonth] = useState<Date>(() => monthForRange(draft?.from));
 
   // Width math:
   //   left rail = 140 px
@@ -292,7 +301,8 @@ export function DateRangePicker({
           <DayPicker
             mode="range"
             numberOfMonths={numberOfMonths}
-            defaultMonth={defaultMonth}
+            month={visibleMonth}
+            onMonthChange={setVisibleMonth}
             selected={draft}
             onDayClick={handleDayClick}
             weekStartsOn={1}
