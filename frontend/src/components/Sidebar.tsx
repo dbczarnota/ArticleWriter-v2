@@ -117,14 +117,23 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
                 gap: 10,
                 width: "100%",
                 padding: "10px 12px",
-                background: isSelected ? "var(--accent-lt)" : isMine ? "#fff9f5" : "transparent",
+                // 'done' articles stay muted even when selected — readers need to
+                // remember the article is already done. Selection still shows
+                // through the orange left border + a subtler tint.
+                background: isSelected
+                  ? a.marked_done
+                    ? "rgba(234, 88, 12, 0.06)"
+                    : "var(--accent-lt)"
+                  : isMine
+                    ? "#fff9f5"
+                    : "transparent",
                 borderLeft: isSelected ? "3px solid var(--accent)" : "3px solid transparent",
                 borderTop: "none",
                 borderRight: "none",
                 borderBottom: "1px solid var(--border)",
                 textAlign: "left",
                 cursor: "pointer",
-                opacity: a.marked_done && !isSelected ? 0.45 : 1,
+                opacity: a.marked_done ? 0.55 : 1,
               }}
             >
               {a.marked_done ? (

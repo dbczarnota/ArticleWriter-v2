@@ -38,6 +38,19 @@ export function useArticles() {
     };
   }, [articles, refresh]);
 
+  // Refresh whenever the tab becomes visible again. The 4s poll only runs while
+  // an article is `running`; once everything is done the list goes stale until
+  // the user hits F5 or generates a new article. Switching tabs and coming
+  // back is the most common "did anything change?" signal — hook into it.
+  useEffect(() => {
+    if (!authReady) return;
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [authReady, refresh]);
+
   async function fetchArticle(id: string): Promise<Article> {
     return request<Article>(`/v2/articles/${id}`);
   }
