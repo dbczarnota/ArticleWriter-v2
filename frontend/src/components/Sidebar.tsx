@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ArticleListItem } from "../types";
 import type { DateRange } from "../lib/useArticles";
 import { useT, useLang } from "../i18n";
+import { DateRangePicker } from "./DateRangePicker";
 
 const STATUS_DOT: Record<string, string> = {
   done: "#22c55e",
@@ -120,90 +121,41 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Date range filter — collapsible. Empty state by default; click "Daty"
-          to expand the from/to inputs. */}
-      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)" }}>
+      {/* Date range filter — opens a popover picker (DateRangePicker) with
+          presets on the left and a two-month calendar on the right. */}
+      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", position: "relative" }}>
         <button
           onClick={() => setDatesOpen((v) => !v)}
           style={{
-            background: "none",
-            border: "none",
-            padding: 0,
+            background: isFiltered ? "var(--accent-lt)" : "transparent",
+            border: `1px solid ${isFiltered ? "var(--accent)" : "var(--border)"}`,
+            color: isFiltered ? "var(--accent)" : "var(--muted)",
+            borderRadius: "var(--radius)",
+            padding: "4px 8px",
             fontSize: 11,
-            fontWeight: 600,
-            color: "var(--muted)",
-            textTransform: "uppercase",
-            letterSpacing: ".05em",
+            fontWeight: 500,
             cursor: "pointer",
+            width: "100%",
             display: "flex",
             alignItems: "center",
-            gap: 4,
-            width: "100%",
+            justifyContent: "space-between",
+            gap: 6,
           }}
         >
-          <span style={{ fontSize: 9 }}>{datesOpen ? "▼" : "▶"}</span>
-          {t.sidebar.filterDates}
-          {isFiltered && (
-            <span style={{
-              marginLeft: "auto",
-              background: "var(--accent)",
-              color: "var(--white)",
-              borderRadius: 3,
-              padding: "0 4px",
-              fontSize: 9,
-              fontWeight: 700,
-            }}>•</span>
-          )}
+          <span>
+            {isFiltered
+              ? `${dateRange.from ?? "…"} → ${dateRange.to ?? "…"}`
+              : t.sidebar.filterDates}
+          </span>
+          <span style={{ fontSize: 9 }}>{datesOpen ? "▲" : "▼"}</span>
         </button>
         {datesOpen && (
-          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
-            <label style={{ fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
-              {t.sidebar.dateFrom}
-              <input
-                type="date"
-                value={dateRange.from ?? ""}
-                onChange={(e) => onDateRangeChange({ ...dateRange, from: e.target.value || null })}
-                style={{
-                  flex: 1,
-                  fontSize: 11,
-                  padding: "2px 4px",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                }}
-              />
-            </label>
-            <label style={{ fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
-              {t.sidebar.dateTo}
-              <input
-                type="date"
-                value={dateRange.to ?? ""}
-                onChange={(e) => onDateRangeChange({ ...dateRange, to: e.target.value || null })}
-                style={{
-                  flex: 1,
-                  fontSize: 11,
-                  padding: "2px 4px",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                }}
-              />
-            </label>
-            {isFiltered && (
-              <button
-                onClick={() => onDateRangeChange({ from: null, to: null })}
-                style={{
-                  alignSelf: "flex-start",
-                  background: "none",
-                  border: "none",
-                  color: "var(--accent)",
-                  fontSize: 11,
-                  cursor: "pointer",
-                  padding: "2px 0",
-                }}
-              >
-                {t.sidebar.clearDates}
-              </button>
-            )}
-          </div>
+          <DateRangePicker
+            value={dateRange}
+            onApply={(range) => onDateRangeChange(range)}
+            onClear={() => onDateRangeChange({ from: null, to: null })}
+            onClose={() => setDatesOpen(false)}
+          />
         )}
       </div>
 

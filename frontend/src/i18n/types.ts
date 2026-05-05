@@ -3,6 +3,19 @@ export interface Translations {
     loading: string;
     selectArticleHint: string;
   };
+  datePicker: {
+    today: string;
+    yesterday: string;
+    thisWeek: string;
+    last7: string;
+    lastWeek: string;
+    thisMonth: string;
+    last30: string;
+    lastMonth: string;
+    apply: string;
+    cancel: string;
+    clear: string;
+  };
   sidebar: {
     articles: string;
     newArticle: string;
