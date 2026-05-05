@@ -304,11 +304,36 @@ export function Sidebar({
                 borderBottom: "1px solid var(--border)",
                 textAlign: "left",
                 cursor: "pointer",
-                opacity: a.marked_done ? 0.55 : 1,
+                // Done = strong dim, failed = subtle dim. Failed shouldn't
+                // shout — the red ✕ already signals state, opacity just keeps
+                // it from competing with active (running/done) entries.
+                opacity: a.marked_done
+                  ? 0.55
+                  : (a.status === "failed" || a.status === "insufficient_sources")
+                    ? 0.65
+                    : 1,
               }}
             >
               {a.marked_done ? (
                 <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 14, flexShrink: 0, lineHeight: 1, marginTop: 3 }}>✓</span>
+              ) : (a.status === "failed" || a.status === "insufficient_sources") ? (
+                // Red disc with white ✕ — clearly different from the orange/green
+                // dots so failed articles read at a glance in a long list.
+                <span style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: "50%",
+                  background: "#ef4444",
+                  color: "#fff",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: 2,
+                  lineHeight: 1,
+                }}>✕</span>
               ) : (
                 <span style={{
                   width: 8,

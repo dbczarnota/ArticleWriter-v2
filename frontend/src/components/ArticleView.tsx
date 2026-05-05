@@ -122,6 +122,11 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   const usedQuotes = article.quotes.filter((q) => q.was_used);
   const rejectedQuotes = article.quotes.filter((q) => !q.was_used);
 
+  // Failed article: every body-section would render empty or near-empty,
+  // which buries the actually-useful information (what the editor asked
+  // for). Render the inputs panel only and skip the rest.
+  const isFailed = article.status === "failed" || article.status === "insufficient_sources";
+
   // article.sources from the backend is the union of every source URL across
   // all facts and quotes (used + unused). We compute used vs. unused on the
   // frontend to get an accurate split: a source counts as "used" when at
@@ -289,8 +294,26 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         </div>
       </div>
 
+      {/* Failed-status banner — explains why the body is mostly empty. */}
+      {isFailed && (
+        <div style={{
+          padding: 16,
+          background: "#fef2f2",
+          border: "1px solid #fecaca",
+          borderRadius: "var(--radius)",
+          marginBottom: 20,
+        }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "#b91c1c", marginBottom: 4 }}>
+            {av.failedTitle}
+          </p>
+          <p style={{ fontSize: 12, color: "#7f1d1d" }}>
+            {av.failedHint}
+          </p>
+        </div>
+      )}
+
       {/* Article HTML */}
-      {article.html && (
+      {!isFailed && article.html && (
         <div
           className="article-html"
           dangerouslySetInnerHTML={{ __html: article.html }}
@@ -306,7 +329,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       )}
 
       {/* Alternative titles */}
-      {article.alternative_titles.length > 0 && (
+      {!isFailed && article.alternative_titles.length > 0 && (
         <CollapsibleSection prominent title={av.altTitles} count={article.alternative_titles.length} defaultOpen>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {article.alternative_titles.map((title, i) => (
@@ -319,7 +342,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       )}
 
       {/* Follow-up topics */}
-      {article.followup_topics.length > 0 && (
+      {!isFailed && article.followup_topics.length > 0 && (
         <CollapsibleSection prominent title={av.followupTopics} count={article.followup_topics.length} defaultOpen>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {article.followup_topics.map((topic, i) => (
@@ -332,7 +355,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       )}
 
       {/* Social media embeds */}
-      {article.embed_candidates.length > 0 && (
+      {!isFailed && article.embed_candidates.length > 0 && (
         <CollapsibleSection prominent title={av.socialMedia} count={article.embed_candidates.length}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[...article.embed_candidates].sort((a, b) => (b.competitor_source_url ? 1 : 0) - (a.competitor_source_url ? 1 : 0)).map((e) => (
@@ -364,56 +387,86 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         </CollapsibleSection>
       )}
 
-      {/* Facts */}
-      <CollapsibleSection prominent title={av.factsUsed} count={usedFacts.length} defaultOpen>
-        {usedFacts.map((f) => (
-          <FactCard key={f.id} fact={f} />
-        ))}
-        <CollapsibleSection title={av.factsRejected} count={rejectedFacts.length}>
-          {rejectedFacts.map((f) => (
-            <FactCard key={f.id} fact={f} muted />
-          ))}
-        </CollapsibleSection>
-      </CollapsibleSection>
+      {!isFailed && (
+        <>
+          {/* Facts */}
+          <CollapsibleSection prominent title={av.factsUsed} count={usedFacts.length} defaultOpen>
+            {usedFacts.map((f) => (
+              <FactCard key={f.id} fact={f} />
+            ))}
+            <CollapsibleSection title={av.factsRejected} count={rejectedFacts.length}>
+              {rejectedFacts.map((f) => (
+                <FactCard key={f.id} fact={f} muted />
+              ))}
+            </CollapsibleSection>
+          </CollapsibleSection>
 
-      {/* Quotes */}
-      <CollapsibleSection prominent title={av.quotesUsed} count={usedQuotes.length} defaultOpen>
-        {usedQuotes.map((q) => (
-          <QuoteCard key={q.id} quote={q} />
-        ))}
-        <CollapsibleSection title={av.quotesRejected} count={rejectedQuotes.length}>
-          {rejectedQuotes.map((q) => (
-            <QuoteCard key={q.id} quote={q} muted />
-          ))}
-        </CollapsibleSection>
-      </CollapsibleSection>
+          {/* Quotes */}
+          <CollapsibleSection prominent title={av.quotesUsed} count={usedQuotes.length} defaultOpen>
+            {usedQuotes.map((q) => (
+              <QuoteCard key={q.id} quote={q} />
+            ))}
+            <CollapsibleSection title={av.quotesRejected} count={rejectedQuotes.length}>
+              {rejectedQuotes.map((q) => (
+                <QuoteCard key={q.id} quote={q} muted />
+              ))}
+            </CollapsibleSection>
+          </CollapsibleSection>
 
-      {/* Sources */}
-      <CollapsibleSection prominent title={av.sourcesUsed} count={usedSources.length} defaultOpen>
-        {usedSources.map((url) => (
-          <div key={url} style={{ borderLeft: "3px solid #22c55e", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
-            <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>{url}</a>
-          </div>
-        ))}
-        <CollapsibleSection title={av.sourcesUnused} count={uniqueUnused.length}>
-          {uniqueUnused.map((url) => (
-            <div key={url} style={{ borderLeft: "3px solid var(--border)", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
-              <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--muted)", wordBreak: "break-all" }}>{url}</a>
+          {/* Sources */}
+          <CollapsibleSection prominent title={av.sourcesUsed} count={usedSources.length} defaultOpen>
+            {usedSources.map((url) => (
+              <div key={url} style={{ borderLeft: "3px solid #22c55e", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
+                <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>{url}</a>
+              </div>
+            ))}
+            <CollapsibleSection title={av.sourcesUnused} count={uniqueUnused.length}>
+              {uniqueUnused.map((url) => (
+                <div key={url} style={{ borderLeft: "3px solid var(--border)", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
+                  <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--muted)", wordBreak: "break-all" }}>{url}</a>
+                </div>
+              ))}
+            </CollapsibleSection>
+          </CollapsibleSection>
+
+          {/* Stats — words/chars are surfaced above the title so they're
+              always visible; the rest stays in this collapsible block. */}
+          <CollapsibleSection prominent title={av.pipelineStats}>
+            <div style={{ padding: "8px 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 13 }}>
+              <Stat label={av.statTime} value={article.total_duration_ms != null ? (article.total_duration_ms / 1000).toFixed(1) : "—"} />
+              <Stat label={av.statFacts} value={article.facts.length} />
+              <Stat label={av.statQuotes} value={article.quotes.length} />
+              <Stat label={av.statEmbeds} value={article.embed_candidates.length} />
+              <Stat label={av.statAgentCalls} value={article.usage_events.length} />
+              <Stat label={av.statTokens} value={totalTokens.toLocaleString()} />
             </div>
-          ))}
-        </CollapsibleSection>
-      </CollapsibleSection>
+          </CollapsibleSection>
+        </>
+      )}
 
-      {/* Stats — words/chars are surfaced above the title so they're
-          always visible; the rest stays in this collapsible block. */}
-      <CollapsibleSection prominent title={av.pipelineStats}>
-        <div style={{ padding: "8px 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 13 }}>
-          <Stat label={av.statTime} value={article.total_duration_ms != null ? (article.total_duration_ms / 1000).toFixed(1) : "—"} />
-          <Stat label={av.statFacts} value={article.facts.length} />
-          <Stat label={av.statQuotes} value={article.quotes.length} />
-          <Stat label={av.statEmbeds} value={article.embed_candidates.length} />
-          <Stat label={av.statAgentCalls} value={article.usage_events.length} />
-          <Stat label={av.statTokens} value={totalTokens.toLocaleString()} />
+      {/* Inputs — always visible. For successful articles it sits at the
+          bottom for reference; for failed ones it's the only body section,
+          so an editor can copy what they typed and try again. */}
+      <CollapsibleSection prominent title={av.inputs} defaultOpen={isFailed}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "8px 0" }}>
+          <InputRow label={av.inputTopic} value={article.topic} />
+          <InputRow
+            label={av.inputInstructions}
+            value={article.additional_instructions || av.inputNone}
+            preserveWhitespace
+          />
+          <div>
+            <div style={{ color: "var(--muted)", fontSize: 11, marginBottom: 4 }}>{av.inputUrls}</div>
+            {article.input_urls.length === 0 ? (
+              <div style={{ fontSize: 13, color: "var(--muted)" }}>{av.inputNone}</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {article.input_urls.map((u) => (
+                  <a key={u} href={u} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "var(--accent)", wordBreak: "break-all" }}>{u}</a>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </CollapsibleSection>
     </div>
@@ -461,6 +514,19 @@ function Stat({ label, value }: { label: string; value: string | number }) {
     <div>
       <div style={{ color: "var(--muted)", fontSize: 11 }}>{label}</div>
       <div style={{ fontWeight: 600 }}>{value}</div>
+    </div>
+  );
+}
+
+function InputRow({ label, value, preserveWhitespace }: { label: string; value: string; preserveWhitespace?: boolean }) {
+  return (
+    <div>
+      <div style={{ color: "var(--muted)", fontSize: 11, marginBottom: 4 }}>{label}</div>
+      <div style={{
+        fontSize: 13,
+        whiteSpace: preserveWhitespace ? "pre-wrap" : "normal",
+        wordBreak: "break-word",
+      }}>{value}</div>
     </div>
   );
 }

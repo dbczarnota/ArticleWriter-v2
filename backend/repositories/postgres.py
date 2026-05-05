@@ -45,9 +45,10 @@ class PostgresArticleRepository:
         author_name: str | None = None,
         domain_name: str,
         topic: str,
-        has_urls: bool = False,
-        has_instructions: bool = False,
+        additional_instructions: str | None = None,
+        input_urls: list[str] | None = None,
     ) -> UUID:
+        urls_list = list(input_urls or [])
         article = Article(
             org_code=org_code,
             author_user_id=author_user_id,
@@ -55,6 +56,8 @@ class PostgresArticleRepository:
             author_name=author_name,
             domain_name=domain_name,
             topic=topic,
+            additional_instructions=additional_instructions,
+            input_urls=urls_list,
             status="running",
         )
         async with self._session_maker() as session:
@@ -66,8 +69,8 @@ class PostgresArticleRepository:
             article_id=str(article.id),
             org_code=org_code,
             topic_length=len(topic),
-            has_urls=has_urls,
-            has_instructions=has_instructions,
+            has_urls=bool(urls_list),
+            has_instructions=bool(additional_instructions),
         )
         return article.id
 

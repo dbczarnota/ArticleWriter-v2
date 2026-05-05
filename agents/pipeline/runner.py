@@ -118,6 +118,8 @@ async def _run_pipeline_inner(
                 author_user_id=author_user_id,
                 domain_name=domain.name,
                 topic=topic,
+                additional_instructions=additional_instructions,
+                input_urls=list(urls or []),
             )
 
         # Apply domain freshness default when the caller hasn't explicitly overridden it

@@ -48,10 +48,15 @@ class ArticleRepository(Protocol):
         author_name: str | None = None,
         domain_name: str,
         topic: str,
-        has_urls: bool = False,
-        has_instructions: bool = False,
+        additional_instructions: str | None = None,
+        input_urls: list[str] | None = None,
     ) -> UUID:
-        """Insert a new article in `running` state. Returns its UUID."""
+        """Insert a new article in `running` state. Returns its UUID.
+
+        Stores the editor's free-text steering and seed URLs verbatim so a
+        failed article can still show what the editor asked for, without
+        needing to consult logs.
+        """
         ...
 
     async def complete(

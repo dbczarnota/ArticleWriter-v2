@@ -66,8 +66,8 @@ async def write_article(
         author_name=(req.author_name or "").strip() or None,
         domain_name=org.domain_name,
         topic=req.topic,
-        has_urls=bool(req.urls),
-        has_instructions=bool(req.additional_instructions),
+        additional_instructions=req.additional_instructions,
+        input_urls=list(req.urls or []),
     )
 
     # Note: no logfire.set_baggage(...) here. FastAPI BackgroundTasks runs
@@ -227,6 +227,8 @@ async def get_article(
         "author_name": article.author_name,
         "domain_name": article.domain_name,
         "topic": article.topic,
+        "additional_instructions": article.additional_instructions,
+        "input_urls": article.input_urls,
         "status": article.status,
         "pipeline_stage": article.pipeline_stage,
         "marked_done": article.marked_done,

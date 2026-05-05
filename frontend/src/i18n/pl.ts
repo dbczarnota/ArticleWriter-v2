@@ -246,6 +246,13 @@ export const pl: Translations = {
     statTime: "Czas (s)",
     statWords: "Słowa",
     statChars: "Znaki (ze spacjami)",
+    inputs: "Dane wejściowe",
+    inputTopic: "Temat",
+    inputInstructions: "Dodatkowe instrukcje",
+    inputUrls: "URL-e",
+    inputNone: "—",
+    failedTitle: "Generowanie nie powiodło się",
+    failedHint: "Pozostałe sekcje są ukryte, bo pipeline nie wyprodukował artykułu. Poniżej dane, które wpisałeś przy uruchomieniu — możesz je skopiować i spróbować ponownie.",
   },
   agents: {
     search: "Wyszukiwanie",

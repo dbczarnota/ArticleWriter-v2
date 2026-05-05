@@ -246,6 +246,13 @@ export const en: Translations = {
     statTime: "Time (s)",
     statWords: "Words",
     statChars: "Characters (with spaces)",
+    inputs: "Inputs",
+    inputTopic: "Topic",
+    inputInstructions: "Additional instructions",
+    inputUrls: "URLs",
+    inputNone: "—",
+    failedTitle: "Generation failed",
+    failedHint: "Other sections are hidden — the pipeline did not produce an article. Below are the inputs you submitted; copy them and try again.",
   },
   agents: {
     search: "Search",

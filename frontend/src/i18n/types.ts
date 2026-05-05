@@ -279,6 +279,13 @@ export interface Translations {
     statTime: string;
     statWords: string;
     statChars: string;
+    inputs: string;
+    inputTopic: string;
+    inputInstructions: string;
+    inputUrls: string;
+    inputNone: string;
+    failedTitle: string;
+    failedHint: string;
   };
   agents: {
     search: string;

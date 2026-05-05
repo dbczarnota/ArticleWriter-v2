@@ -102,6 +102,15 @@ class Article(SQLModel, table=True):
     """Snapshot of org.domain_name at write time. Cheap denormalization for reporting."""
 
     topic: str = Field(max_length=1024)
+    additional_instructions: str | None = Field(
+        default=None, sa_column=Column(String, nullable=True)
+    )
+    """User-supplied free-text steering that goes into the writer system prompt.
+    Stored verbatim so failed articles still show what the editor asked for."""
+
+    input_urls: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
+    """User-supplied seed URLs (bypass the search stage). Empty list = none."""
+
     status: str = Field(max_length=32, default="running")
     """One of: running, done, failed, insufficient_sources."""
 

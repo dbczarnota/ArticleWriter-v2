@@ -64,6 +64,8 @@ export interface FallbackEvent {
 export interface Article extends ArticleListItem {
   org_code: string;
   marked_done_by_name: string | null;
+  additional_instructions: string | null;
+  input_urls: string[];
   html: string | null;
   alternative_titles: string[];
   followup_topics: string[];
