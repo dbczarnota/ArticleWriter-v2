@@ -22,7 +22,20 @@ def test_render_prompt_interpolates_variables(tmp_path):
     template = tmp_path / "test.j2"
     template.write_text("Hello {{ name }}! Queries: {{ num }}")
     result = render_prompt(template, name="World", num=3)
-    assert result == "Hello World! Queries: 3"
+    assert "Hello World! Queries: 3" in result
+
+
+def test_render_prompt_prepends_current_date(tmp_path):
+    """Every rendered prompt starts with today's date so LLMs have a temporal
+    anchor for tense, recency, and age calculations."""
+    from datetime import UTC, datetime
+
+    template = tmp_path / "test.j2"
+    template.write_text("body content")
+    result = render_prompt(template)
+    today = datetime.now(UTC).date().isoformat()
+    assert result.startswith(f"Today's date: {today}")
+    assert "body content" in result
 
 
 def test_render_prompt_xml_branch(tmp_path):
