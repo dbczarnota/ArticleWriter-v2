@@ -100,10 +100,16 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="ArticleWriter v2", version="2.0", lifespan=lifespan)
-# /health is hit every few seconds by the K8s liveness/readiness probe.
-# Tracing each one floods the Live feed with no diagnostic value (a 200
-# means the pod is up — already implied by the app responding at all).
-logfire.instrument_fastapi(app, excluded_urls=["/health"])
+# Quiet the noisy paths from auto-tracing:
+# - /health: K8s liveness/readiness probe, fires every few seconds.
+# - /v2/articles and /v2/articles/{id}: list refreshes + article switches
+#   on the frontend. The interesting writes (POST /v2/write_article,
+#   PATCH mark-done) emit explicit `article.created` / `article.marked_done`
+#   events from the repository, so the FastAPI span is redundant.
+logfire.instrument_fastapi(
+    app,
+    excluded_urls=["/health", "/v2/articles(/.*)?$"],
+)
 
 app.add_middleware(
     CORSMiddleware,
