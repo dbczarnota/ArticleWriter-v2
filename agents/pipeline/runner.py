@@ -32,6 +32,18 @@ from backend.domain import DomainConfig
 from backend.services.metrics import record_error, record_pipeline_run, record_stage
 
 
+def _ensure_user_urls(sources: list[str], user_urls: list[str] | None) -> list[str]:
+    """User-supplied seed URLs are non-negotiable inputs and must always
+    appear in the article's sources, even when the extraction LLM yielded
+    no facts/quotes from them. Editors enter URLs because they expect
+    those pages to be in the writer's context — silently dropping them
+    when extraction comes back empty broke that contract."""
+    if not user_urls:
+        return sources
+    seen = set(sources)
+    return sources + [u for u in user_urls if u not in seen]
+
+
 async def run_pipeline(
     topic: str,
     *,
@@ -595,7 +607,10 @@ async def _run_pipeline_inner(
                     record_stage("followup", _timing["followup"], domain.name)
                     _total_ms = (time.perf_counter() - _pipeline_t0) * 1000
                     record_pipeline_run(domain.name, "error" if _errors else "ok", _total_ms)
-                    log.done(len(result.sources or scraped_urls), len(_errors))
+                    _final_sources = _ensure_user_urls(
+                        list(result.sources or scraped_urls), urls
+                    )
+                    log.done(len(_final_sources), len(_errors))
                     await persist_article_done(
                         repo=_article_repo,
                         article_id=_article_id,
@@ -606,7 +621,7 @@ async def _run_pipeline_inner(
                         used_quotes_texts=list(used_quotes),
                         extraction=extraction,
                         embed_candidates=embed_candidates,
-                        sources=list(result.sources or scraped_urls),
+                        sources=_final_sources,
                         pipeline_timing=_timing,
                         errors=_errors,
                         total_duration_ms=_total_ms,
@@ -619,7 +634,7 @@ async def _run_pipeline_inner(
                         article_id=str(_article_id),
                         used_facts=used_facts,
                         used_quotes=used_quotes,
-                        sources=result.sources or scraped_urls,
+                        sources=_final_sources,
                         scraped_urls=scraped_urls,
                         errors=_errors,
                         filter_reasons=_filter_reasons,
@@ -653,12 +668,13 @@ async def _run_pipeline_inner(
             _timing["followup"] = (time.perf_counter() - _stage_t0) * 1000
             record_stage("followup", _timing["followup"], domain.name)
 
-        sources = (
+        sources = _ensure_user_urls(
             list(
                 {f.source_url for f in extraction.facts if f.source_url}
                 | {q.source_url for q in extraction.quotes if q.source_url}
             )
-            or scraped_urls
+            or scraped_urls,
+            urls,
         )
         _total_ms = (time.perf_counter() - _pipeline_t0) * 1000
         _status = "error" if _errors else "ok"

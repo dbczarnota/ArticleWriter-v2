@@ -279,6 +279,7 @@ export interface Translations {
     statTime: string;
     statWords: string;
     statChars: string;
+    statArticleId: string;
     inputs: string;
     inputTopic: string;
     inputInstructions: string;

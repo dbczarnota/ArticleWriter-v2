@@ -440,6 +440,24 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
               <Stat label={av.statAgentCalls} value={article.usage_events.length} />
               <Stat label={av.statTokens} value={totalTokens.toLocaleString()} />
             </div>
+            {/* Article ID — copyable so it can be pasted directly into a
+                Logfire `WHERE article_id = '...'` query. Monospace + small. */}
+            <div style={{
+              marginTop: 12,
+              paddingTop: 10,
+              borderTop: "1px solid var(--border)",
+              fontSize: 11,
+              color: "var(--muted)",
+              display: "flex",
+              gap: 6,
+              flexWrap: "wrap",
+              alignItems: "baseline",
+            }}>
+              <span>{av.statArticleId}:</span>
+              <code style={{ fontFamily: "ui-monospace, monospace", color: "var(--text)", wordBreak: "break-all" }}>
+                {article.id}
+              </code>
+            </div>
           </CollapsibleSection>
         </>
       )}

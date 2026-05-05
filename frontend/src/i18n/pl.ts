@@ -246,6 +246,7 @@ export const pl: Translations = {
     statTime: "Czas (s)",
     statWords: "Słowa",
     statChars: "Znaki (ze spacjami)",
+    statArticleId: "ID artykułu",
     inputs: "Dane wejściowe",
     inputTopic: "Temat",
     inputInstructions: "Dodatkowe instrukcje",
