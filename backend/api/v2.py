@@ -25,7 +25,6 @@ router = APIRouter(prefix="/v2")
 async def write_article(
     req: ArticleRequest,
     background_tasks: BackgroundTasks,
-    cfg: Secrets = Depends(get_secrets),
     user: AuthenticatedUser = Depends(get_current_user),
     org: Org = Depends(get_current_org),
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
@@ -36,6 +35,11 @@ async def write_article(
     Returns 202 Accepted with {id, status, topic} so the frontend can navigate
     to the article and poll GET /v2/articles/{id} until status != 'running'.
     """
+    # Pull secrets inside the function rather than as a FastAPI Depends arg.
+    # When `cfg` was an arg, instrument_fastapi serialized it into the span's
+    # `fastapi.arguments.values` and Logfire's scrubber had to redact each
+    # api_key field. Cleaner not to attempt the serialization at all.
+    cfg = get_secrets()
     domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
     if domain is None:
         raise HTTPException(
