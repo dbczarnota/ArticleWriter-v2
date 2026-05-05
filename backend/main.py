@@ -1,11 +1,22 @@
 # backend/main.py
 import logging
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from logging import basicConfig
 
-import logfire
+# Suppress JWKS auto-spans before instrument_httpx() runs. Kinde's
+# scripts.kinde.com/.well-known/jwks.json is fetched a handful of times
+# per day (cached in process), carries no per-user info, and only matters
+# if Kinde itself is down — which we'd notice via 401s on /v2/me. The
+# OTEL httpx instrumentation reads this env var on init.
+os.environ.setdefault(
+    "OTEL_PYTHON_HTTPX_EXCLUDED_URLS",
+    r"scripts\.kinde\.com/\.well-known/jwks",
+)
+
+import logfire  # noqa: E402  must come after the env var above
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import update

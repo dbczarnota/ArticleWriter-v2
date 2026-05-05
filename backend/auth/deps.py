@@ -15,13 +15,23 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
+from time import time
 
+import logfire
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.auth.protocols import AuthenticatedUser, Authenticator, NullAuthenticator
 from backend.repositories import get_org_config_repo, get_org_repo
 from backend.repositories.protocols import OrgConfigRepository, OrgRepository
+
+# Window for treating two requests from the same user as one logical
+# session. We don't see real login events (those happen on Kinde's hosted
+# page); instead we emit `user.session_started` the first time a user_id
+# shows up after this gap. Process restart resets the cache, which is
+# fine — that's a fresh "session" too.
+_SESSION_WINDOW_S = 30 * 60
+_recent_users: dict[str, float] = {}
 
 # auto_error=False so the bearer header is optional at the dependency level.
 # Authenticator implementations decide what to do with empty token (NullAuth ignores,
@@ -64,14 +74,44 @@ async def get_current_user(
     With AUTH_BACKEND=null the token is ignored — a hardcoded local-dev user is
     returned, mirroring run.py's offline behaviour.
     """
+    backend = get_auth_backend()
     token = creds.credentials if creds else ""
-    if get_auth_backend() == "kinde" and not token:
+    if backend == "kinde" and not token:
+        logfire.warn("user.auth_failed", reason="missing_token")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing bearer token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return await authenticator.authenticate(token)
+    try:
+        user = await authenticator.authenticate(token)
+    except HTTPException as exc:
+        if backend == "kinde":
+            logfire.warn(
+                "user.auth_failed",
+                reason="invalid_token",
+                status_code=exc.status_code,
+            )
+        raise
+    if backend == "kinde":
+        _maybe_emit_session_started(user)
+    return user
+
+
+def _maybe_emit_session_started(user: AuthenticatedUser) -> None:
+    """Emit `user.session_started` when this user is first seen (or first
+    after `_SESSION_WINDOW_S` of silence). One event per logical session
+    rather than per HTTP request — keeps the audit trail readable."""
+    now = time()
+    last = _recent_users.get(user.id)
+    if last is None or now - last > _SESSION_WINDOW_S:
+        logfire.info(
+            "user.session_started",
+            user_id=user.id,
+            email=user.email,
+            org_codes=list(user.org_codes),
+        )
+    _recent_users[user.id] = now
 
 
 async def get_current_org(
@@ -99,6 +139,12 @@ async def get_current_org(
             detail="X-Org-Code header is required",
         )
     if org_code not in user.org_codes:
+        logfire.warn(
+            "user.org_access_denied",
+            user_id=user.id,
+            attempted_org_code=org_code,
+            user_org_codes=list(user.org_codes),
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"User does not belong to org '{org_code}'",
