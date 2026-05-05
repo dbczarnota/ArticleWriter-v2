@@ -4,6 +4,7 @@ from __future__ import annotations
 import contextlib
 from uuid import UUID
 
+import logfire
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 
 from agents.pipeline.runner import run_pipeline
@@ -63,16 +64,21 @@ async def write_article(
         topic=req.topic,
     )
 
-    background_tasks.add_task(
-        _run_pipeline_background,
-        article_id=article_id,
-        req=req,
-        app_settings=app_settings,
-        domain=domain,
-        cfg=cfg,
+    with logfire.set_baggage(
+        article_id=str(article_id),
         org_code=org.code,
-        author_user_id=user.id,
-    )
+        user_id=user.id,
+    ):
+        background_tasks.add_task(
+            _run_pipeline_background,
+            article_id=article_id,
+            req=req,
+            app_settings=app_settings,
+            domain=domain,
+            cfg=cfg,
+            org_code=org.code,
+            author_user_id=user.id,
+        )
 
     return {"id": str(article_id), "status": "running", "topic": req.topic}
 
