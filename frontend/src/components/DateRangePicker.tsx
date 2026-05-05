@@ -81,20 +81,23 @@ export function DateRangePicker({
     setClickStep(0);
   }
 
-  function handleDayClick(day: Date) {
+  // Strict from/to cycle that cooperates with RDP's range mode by computing
+  // the next selection ourselves on every day click. Returning a fully-formed
+  // range to RDP avoids any internal state drifting out of sync (which
+  // produced ghost highlights of older selections).
+  function handleSelect(_range: RDPDateRange | undefined, day: Date) {
     if (clickStep === 0) {
       setDraft({ from: day, to: undefined });
       setClickStep(1);
-    } else {
-      const from = draft?.from;
-      if (from && day < from) {
-        // Second click before current `from` — flip so range stays valid.
-        setDraft({ from: day, to: from });
-      } else {
-        setDraft({ from: from ?? day, to: day });
-      }
-      setClickStep(0);
+      return;
     }
+    const from = draft?.from;
+    if (from && day < from) {
+      setDraft({ from: day, to: from });
+    } else {
+      setDraft({ from: from ?? day, to: day });
+    }
+    setClickStep(0);
   }
 
   function handleApply() {
@@ -304,7 +307,7 @@ export function DateRangePicker({
             month={visibleMonth}
             onMonthChange={setVisibleMonth}
             selected={draft}
-            onDayClick={handleDayClick}
+            onSelect={handleSelect}
             weekStartsOn={1}
             className="hf-rdp"
             lang={lang}
