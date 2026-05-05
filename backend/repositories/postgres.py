@@ -174,12 +174,22 @@ class PostgresArticleRepository:
             return result.scalar_one_or_none()
 
     async def list_by_org(
-        self, *, org_code: str, limit: int = 20, offset: int = 0
+        self,
+        *,
+        org_code: str,
+        limit: int = 20,
+        offset: int = 0,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
     ) -> list[Article]:
         async with self._session_maker() as session:
+            stmt = select(Article).where(Article.org_code == org_code)
+            if created_after is not None:
+                stmt = stmt.where(Article.created_at >= created_after)  # type: ignore[arg-type]
+            if created_before is not None:
+                stmt = stmt.where(Article.created_at <= created_before)  # type: ignore[arg-type]
             stmt = (
-                select(Article)
-                .where(Article.org_code == org_code)
+                stmt
                 .order_by(Article.created_at.desc())  # type: ignore[attr-defined]
                 .limit(limit)
                 .offset(offset)

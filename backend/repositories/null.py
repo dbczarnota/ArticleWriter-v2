@@ -113,8 +113,15 @@ class NullArticleRepository:
         return None
 
     async def list_by_org(
-        self, *, org_code: str, limit: int = 20, offset: int = 0
+        self,
+        *,
+        org_code: str,
+        limit: int = 20,
+        offset: int = 0,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
     ) -> list[Article]:
+        del created_after, created_before  # null repo has no rows to filter
         _log.debug(
             "[null-repo] list_by_org org=%s limit=%d offset=%d -> []", org_code, limit, offset
         )

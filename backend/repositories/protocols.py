@@ -12,6 +12,7 @@ filters by it. Application code MUST NOT construct ad-hoc SQL queries that bypas
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -100,9 +101,21 @@ class ArticleRepository(Protocol):
         ...
 
     async def list_by_org(
-        self, *, org_code: str, limit: int = 20, offset: int = 0
+        self,
+        *,
+        org_code: str,
+        limit: int = 20,
+        offset: int = 0,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
     ) -> list[Article]:
-        """List articles for an org, newest first. Children NOT loaded (use get() for full)."""
+        """List articles for an org, newest first. Children NOT loaded (use get() for full).
+
+        `created_after` / `created_before` are inclusive bounds on Article.created_at
+        when supplied (used by the sidebar date filter). None means no bound on
+        that side. Both naive and timezone-aware datetimes accepted; comparisons
+        happen in UTC at the DB level.
+        """
         ...
 
     async def set_pipeline_stage(self, article_id: UUID, stage: str | None) -> None:

@@ -10,7 +10,14 @@ export interface Translations {
     filterUndone: string;
     filterDone: string;
     filterMine: string;
+    filterDates: string;
+    dateFrom: string;
+    dateTo: string;
+    clearDates: string;
     noArticles: string;
+    noArticlesInRange: string;
+    loadMore: string;
+    loadingMore: string;
     mine: string;
   };
   userMenu: {

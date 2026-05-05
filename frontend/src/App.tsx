@@ -19,7 +19,18 @@ export default function App() {
   const [view, setView] = useState<View>("list");
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [newFormKey, setNewFormKey] = useState(0);
-  const { articles, loading, refresh, markDone } = useArticles();
+  const {
+    articles,
+    loading,
+    loadingMore,
+    hasMore,
+    dateRange,
+    isFiltered,
+    refresh,
+    loadMore,
+    setDateRange,
+    markDone,
+  } = useArticles();
 
   if (!NULL_AUTH) {
     if (isLoading) return <div style={{ padding: 32 }}>{t.app.loading}</div>;
@@ -41,6 +52,12 @@ export default function App() {
           onSelect={selectArticle}
           onNew={() => { setNewFormKey((k) => k + 1); setView("new"); }}
           currentUserId={user?.id ?? undefined}
+          dateRange={dateRange}
+          isFiltered={isFiltered}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          onDateRangeChange={setDateRange}
+          onLoadMore={loadMore}
         />
         <main style={{ flex: 1, overflow: "auto", padding: 24 }}>
           {view === "list" && (

@@ -1,23 +1,75 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "./useApi";
 import type { Article, ArticleListItem } from "../types";
+
+const PAGE_SIZE = 100;
+
+/** ISO date strings 'YYYY-MM-DD' from native <input type="date">, or null. */
+export interface DateRange {
+  from: string | null;
+  to: string | null;
+}
+
+function buildArticlesUrl(offset: number, range: DateRange): string {
+  const params = new URLSearchParams({
+    limit: String(PAGE_SIZE),
+    offset: String(offset),
+  });
+  if (range.from) {
+    // Inclusive start of day in UTC.
+    params.set("created_after", `${range.from}T00:00:00Z`);
+  }
+  if (range.to) {
+    // Inclusive end of day in UTC so the user gets a full calendar day.
+    params.set("created_before", `${range.to}T23:59:59Z`);
+  }
+  return `/v2/articles?${params.toString()}`;
+}
 
 export function useArticles() {
   const { request, authReady } = useApi();
   const [articles, setArticles] = useState<ArticleListItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [dateRange, setDateRangeState] = useState<DateRange>({ from: null, to: null });
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const isFiltered = useMemo(
+    () => Boolean(dateRange.from) || Boolean(dateRange.to),
+    [dateRange],
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await request<ArticleListItem[]>("/v2/articles");
+      const data = await request<ArticleListItem[]>(buildArticlesUrl(0, dateRange));
       setArticles(data);
+      setHasMore(data.length === PAGE_SIZE);
       return data;
     } finally {
       setLoading(false);
     }
-  }, [request]);
+  }, [request, dateRange]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const data = await request<ArticleListItem[]>(
+        buildArticlesUrl(articles.length, dateRange),
+      );
+      setArticles((prev) => [...prev, ...data]);
+      setHasMore(data.length === PAGE_SIZE);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [request, articles.length, dateRange, hasMore, loadingMore]);
+
+  const setDateRange = useCallback((next: DateRange) => {
+    // Changing the filter resets pagination — refresh effect picks it up.
+    setDateRangeState(next);
+  }, []);
 
   useEffect(() => { if (authReady) refresh(); }, [authReady, refresh]);
 
@@ -77,5 +129,18 @@ export function useArticles() {
     });
   }
 
-  return { articles, loading, refresh, fetchArticle, submitArticle, markDone };
+  return {
+    articles,
+    loading,
+    loadingMore,
+    hasMore,
+    dateRange,
+    isFiltered,
+    refresh,
+    loadMore,
+    setDateRange,
+    fetchArticle,
+    submitArticle,
+    markDone,
+  };
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ArticleListItem } from "../types";
+import type { DateRange } from "../lib/useArticles";
 import { useT, useLang } from "../i18n";
 
 const STATUS_DOT: Record<string, string> = {
@@ -15,15 +16,34 @@ interface SidebarProps {
   onSelect: (id: string) => void;
   onNew: () => void;
   currentUserId?: string;
+  dateRange: DateRange;
+  isFiltered: boolean;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onDateRangeChange: (next: DateRange) => void;
+  onLoadMore: () => void;
 }
 
 type DoneFilter = "all" | "undone" | "done";
 
-export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }: SidebarProps) {
+export function Sidebar({
+  articles,
+  selectedId,
+  onSelect,
+  onNew,
+  currentUserId,
+  dateRange,
+  isFiltered,
+  hasMore,
+  loadingMore,
+  onDateRangeChange,
+  onLoadMore,
+}: SidebarProps) {
   const t = useT();
   const { lang } = useLang();
   const [onlyMine, setOnlyMine] = useState(false);
   const [doneFilter, setDoneFilter] = useState<DoneFilter>("all");
+  const [datesOpen, setDatesOpen] = useState(false);
 
   const visible = articles
     .filter((a) => !onlyMine || !currentUserId || a.author_user_id === currentUserId)
@@ -100,9 +120,98 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
         )}
       </div>
 
+      {/* Date range filter — collapsible. Empty state by default; click "Daty"
+          to expand the from/to inputs. */}
+      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)" }}>
+        <button
+          onClick={() => setDatesOpen((v) => !v)}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            fontSize: 11,
+            fontWeight: 600,
+            color: "var(--muted)",
+            textTransform: "uppercase",
+            letterSpacing: ".05em",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            width: "100%",
+          }}
+        >
+          <span style={{ fontSize: 9 }}>{datesOpen ? "▼" : "▶"}</span>
+          {t.sidebar.filterDates}
+          {isFiltered && (
+            <span style={{
+              marginLeft: "auto",
+              background: "var(--accent)",
+              color: "var(--white)",
+              borderRadius: 3,
+              padding: "0 4px",
+              fontSize: 9,
+              fontWeight: 700,
+            }}>•</span>
+          )}
+        </button>
+        {datesOpen && (
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{ fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+              {t.sidebar.dateFrom}
+              <input
+                type="date"
+                value={dateRange.from ?? ""}
+                onChange={(e) => onDateRangeChange({ ...dateRange, from: e.target.value || null })}
+                style={{
+                  flex: 1,
+                  fontSize: 11,
+                  padding: "2px 4px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                }}
+              />
+            </label>
+            <label style={{ fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+              {t.sidebar.dateTo}
+              <input
+                type="date"
+                value={dateRange.to ?? ""}
+                onChange={(e) => onDateRangeChange({ ...dateRange, to: e.target.value || null })}
+                style={{
+                  flex: 1,
+                  fontSize: 11,
+                  padding: "2px 4px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                }}
+              />
+            </label>
+            {isFiltered && (
+              <button
+                onClick={() => onDateRangeChange({ from: null, to: null })}
+                style={{
+                  alignSelf: "flex-start",
+                  background: "none",
+                  border: "none",
+                  color: "var(--accent)",
+                  fontSize: 11,
+                  cursor: "pointer",
+                  padding: "2px 0",
+                }}
+              >
+                {t.sidebar.clearDates}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
       <div style={{ overflowY: "auto", flex: 1 }}>
         {visible.length === 0 && (
-          <p style={{ padding: 16, color: "var(--muted)", fontSize: 13 }}>{t.sidebar.noArticles}</p>
+          <p style={{ padding: 16, color: "var(--muted)", fontSize: 13 }}>
+            {isFiltered ? t.sidebar.noArticlesInRange : t.sidebar.noArticles}
+          </p>
         )}
         {visible.map((a) => {
           const isMine = currentUserId && a.author_user_id === currentUserId;
@@ -172,6 +281,27 @@ export function Sidebar({ articles, selectedId, onSelect, onNew, currentUserId }
             </button>
           );
         })}
+        {hasMore && visible.length > 0 && (
+          <button
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            style={{
+              display: "block",
+              width: "100%",
+              padding: "10px 12px",
+              background: "transparent",
+              border: "none",
+              borderTop: "1px solid var(--border)",
+              fontSize: 12,
+              fontWeight: 500,
+              color: loadingMore ? "var(--muted)" : "var(--accent)",
+              cursor: loadingMore ? "default" : "pointer",
+              textAlign: "center",
+            }}
+          >
+            {loadingMore ? t.sidebar.loadingMore : t.sidebar.loadMore}
+          </button>
+        )}
       </div>
     </aside>
   );

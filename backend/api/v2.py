@@ -1,6 +1,7 @@
 # backend/api/v2.py
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 import logfire
@@ -164,12 +165,24 @@ async def list_my_orgs(
 async def list_articles(
     org: Org = Depends(get_current_org),
     article_repo: ArticleRepository = Depends(get_article_repo),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    created_after: datetime | None = Query(None),
+    created_before: datetime | None = Query(None),
 ) -> list[dict]:
     """Tenant-filtered article list, newest first. Returns minimal projection;
-    full article via GET /v2/articles/{id}."""
-    articles = await article_repo.list_by_org(org_code=org.code, limit=limit, offset=offset)
+    full article via GET /v2/articles/{id}.
+
+    `created_after` / `created_before` accept ISO-8601 datetimes (e.g.
+    '2026-04-28T00:00:00Z') and bound the result inclusively. None means
+    no bound on that side."""
+    articles = await article_repo.list_by_org(
+        org_code=org.code,
+        limit=limit,
+        offset=offset,
+        created_after=created_after,
+        created_before=created_before,
+    )
     return [
         {
             "id": str(a.id),
