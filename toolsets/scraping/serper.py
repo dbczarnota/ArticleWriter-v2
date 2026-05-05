@@ -13,6 +13,40 @@ def _lang_payload(language: str) -> dict:
     return {"gl": code, "hl": code, "lr": f"lang_{code}"}
 
 
+def _log_serper_results(
+    endpoint: str,
+    query: str,
+    items: list[dict],
+    *,
+    link_key: str = "link",
+    title_key: str = "title",
+    snippet_key: str = "snippet",
+) -> None:
+    """Emit a structured `serper.results` event with the response shape.
+
+    Auto-instrumented httpx spans only carry method/url/status/duration —
+    they don't capture the response body. This event makes the actual
+    items Serper returned (URL + title + first ~200 chars of snippet)
+    queryable in Logfire by article_id + endpoint, so a post-mortem can
+    see exactly what the LLM got handed without re-running the search.
+    """
+    summarized = [
+        {
+            "url": item.get(link_key, ""),
+            "title": (item.get(title_key, "") or "")[:200],
+            "snippet": (item.get(snippet_key, "") or "")[:300],
+        }
+        for item in items[:10]
+    ]
+    logfire.info(
+        "serper.results",
+        endpoint=endpoint,
+        query=query,
+        result_count=len(items),
+        results=summarized,
+    )
+
+
 async def search(
     query: str,
     *,
@@ -28,11 +62,13 @@ async def search(
         response = await client.post(f"{_BASE}/search", json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
+    organic = data.get("organic", [])
+    _log_serper_results("/search", query, organic)
     return [
         SearchResult(
             url=item["link"], title=item["title"], snippet=item.get("snippet", ""), source="web"
         )
-        for item in data.get("organic", [])
+        for item in organic
     ]
 
 
@@ -50,11 +86,13 @@ async def search_news(
         response = await client.post(f"{_BASE}/news", json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
+    news = data.get("news", [])
+    _log_serper_results("/news", query, news)
     return [
         SearchResult(
             url=item["link"], title=item["title"], snippet=item.get("snippet", ""), source="web"
         )
-        for item in data.get("news", [])
+        for item in news
     ]
 
 
@@ -80,6 +118,8 @@ async def search_videos(
         response = await client.post(f"{_BASE}/videos", json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
+    videos = data.get("videos", [])
+    _log_serper_results("/videos", query, videos)
     return [
         EmbedCandidate(
             url=item["link"],
@@ -89,7 +129,7 @@ async def search_videos(
             description=item.get("snippet", ""),
             channel=item.get("channel", ""),
         )
-        for item in data.get("videos", [])
+        for item in videos
         if "youtube.com" in item.get("link", "") or "youtu.be" in item.get("link", "")
     ]
 
@@ -110,9 +150,11 @@ async def search_images(
         response = await client.post(f"{_BASE}/images", json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
+    images = data.get("images", [])
+    _log_serper_results("/images", query, images)
 
     results = []
-    for item in data.get("images", []):
+    for item in images:
         link = item.get("link", "")
         source: str
         if "instagram.com" in link:
@@ -161,9 +203,18 @@ async def search_reddit(
         )
         response.raise_for_status()
         data = response.json()
+    children = data.get("data", {}).get("children", [])
+    # Reddit's shape is `{data: {url, title, ...}}` per child — flatten for the helper.
+    _log_serper_results(
+        "reddit/search.json",
+        query,
+        [c.get("data", {}) for c in children],
+        link_key="url",
+        snippet_key="selftext",
+    )
 
     results = []
-    for child in data.get("data", {}).get("children", []):
+    for child in children:
         post = child.get("data", {})
         url = post.get("url", "")
         if not url:
@@ -215,6 +266,7 @@ async def search_site(
         response.raise_for_status()
         data = response.json()
     organic = data.get("organic", [])
+    _log_serper_results(f"/search site:{site}", query, organic)
     if site == "facebook.com":
         kept: list[dict] = []
         for item in organic:
