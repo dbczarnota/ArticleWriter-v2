@@ -57,19 +57,29 @@ _EMBED = EmbedCandidate(url="https://youtube.com/watch?v=1", title="YT Video", s
 
 @pytest.fixture
 def mocked_agents():
+    # Scraping / parsing / extraction are called from both the main flow
+    # (runner.py) AND the adaptive_search loop (_adaptive_search.py). We
+    # patch BOTH bindings to the SAME AsyncMock so call_count totals across
+    # both call sites — that's what the assertions in this file expect.
+    m_scrape = AsyncMock()
+    m_parse = AsyncMock()
+    m_extract = AsyncMock()
     with (
         patch("agents.pipeline.runner.run_search_agent", new_callable=AsyncMock) as m_search,
-        patch("agents.pipeline.runner.run_scraping_agent", new_callable=AsyncMock) as m_scrape,
-        patch("agents.pipeline.runner.run_parsing_agent", new_callable=AsyncMock) as m_parse,
-        patch("agents.pipeline.runner.run_extraction_agent", new_callable=AsyncMock) as m_extract,
+        patch("agents.pipeline.runner.run_scraping_agent", new=m_scrape),
+        patch("agents.pipeline._adaptive_search.run_scraping_agent", new=m_scrape),
+        patch("agents.pipeline.runner.run_parsing_agent", new=m_parse),
+        patch("agents.pipeline._adaptive_search.run_parsing_agent", new=m_parse),
+        patch("agents.pipeline.runner.run_extraction_agent", new=m_extract),
+        patch("agents.pipeline._adaptive_search.run_extraction_agent", new=m_extract),
         patch(
-            "agents.pipeline.runner.run_adaptive_search_agent", new_callable=AsyncMock
+            "agents.pipeline._adaptive_search.run_adaptive_search_agent", new_callable=AsyncMock
         ) as m_adaptive,
         patch("agents.pipeline.runner.run_instructions_agent", new_callable=AsyncMock) as m_instr,
         patch("agents.pipeline.runner.run_writer_agent", new_callable=AsyncMock) as m_writer,
         patch("agents.pipeline.runner.run_reflection_agent", new_callable=AsyncMock) as m_reflect,
         patch("agents.pipeline.runner.run_followup_agent", new_callable=AsyncMock) as m_followup,
-        patch("agents.pipeline.runner.serper_search", new_callable=AsyncMock) as m_serper,
+        patch("agents.pipeline._adaptive_search.serper_search", new_callable=AsyncMock) as m_serper,
         patch("agents.pipeline.runner.run_media_search", new_callable=AsyncMock) as m_media,
     ):
         m_search.return_value = _SEARCH_RESULTS
@@ -291,7 +301,7 @@ async def test_pipeline_output_has_token_usage(mocked_agents):
 
 
 def test_merge_extraction_deduplicates_by_text():
-    from agents.pipeline.runner import _merge_extraction
+    from agents.pipeline._helpers import merge_extraction
 
     base = ExtractionResult(
         facts=[Fact("Fakt A", "ctx", "https://a.com", "A")],
@@ -306,7 +316,7 @@ def test_merge_extraction_deduplicates_by_text():
         quotes=[Quote("Cytat B", "Ktoś B", "ctx", "https://b.com")],
         keywords=["kw1", "kw2"],
     )
-    merged = _merge_extraction(base, extra)
+    merged = merge_extraction(base, extra)
     assert len(merged.facts) == 2  # A + B, not duplicate A
     assert len(merged.quotes) == 2
     assert merged.keywords == ["kw1", "kw2"]

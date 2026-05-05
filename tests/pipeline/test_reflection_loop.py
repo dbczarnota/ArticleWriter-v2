@@ -44,19 +44,29 @@ _EMBED = EmbedCandidate(url="https://youtube.com/watch?v=1", title="V", source="
 
 @pytest.fixture
 def patched_pipeline():
+    # See comment in tests/agents/pipeline/test_runner.py — scraping / parsing /
+    # extraction are called from two modules (runner + _adaptive_search), patch
+    # both with the same AsyncMock to keep call_count totals correct.
+    m_scrape = AsyncMock()
+    m_parse = AsyncMock()
+    m_extract = AsyncMock()
     with (
         patch("agents.pipeline.runner.run_search_agent", new_callable=AsyncMock) as m_search,
-        patch("agents.pipeline.runner.run_scraping_agent", new_callable=AsyncMock) as m_scrape,
-        patch("agents.pipeline.runner.run_parsing_agent", new_callable=AsyncMock) as m_parse,
-        patch("agents.pipeline.runner.run_extraction_agent", new_callable=AsyncMock) as m_extract,
+        patch("agents.pipeline.runner.run_scraping_agent", new=m_scrape),
+        patch("agents.pipeline._adaptive_search.run_scraping_agent", new=m_scrape),
+        patch("agents.pipeline.runner.run_parsing_agent", new=m_parse),
+        patch("agents.pipeline._adaptive_search.run_parsing_agent", new=m_parse),
+        patch("agents.pipeline.runner.run_extraction_agent", new=m_extract),
+        patch("agents.pipeline._adaptive_search.run_extraction_agent", new=m_extract),
         patch(
-            "agents.pipeline.runner.run_adaptive_search_agent", new_callable=AsyncMock
+            "agents.pipeline._adaptive_search.run_adaptive_search_agent",
+            new_callable=AsyncMock,
         ) as m_adaptive,
         patch("agents.pipeline.runner.run_instructions_agent", new_callable=AsyncMock) as m_instr,
         patch("agents.pipeline.runner.run_writer_agent", new_callable=AsyncMock) as m_writer,
         patch("agents.pipeline.runner.run_reflection_agent", new_callable=AsyncMock) as m_reflect,
         patch("agents.pipeline.runner.run_followup_agent", new_callable=AsyncMock) as m_followup,
-        patch("agents.pipeline.runner.serper_search", new_callable=AsyncMock) as m_serper,
+        patch("agents.pipeline._adaptive_search.serper_search", new_callable=AsyncMock) as m_serper,
         patch("agents.pipeline.runner.run_media_search", new_callable=AsyncMock) as m_media,
     ):
         m_search.return_value = _SEARCH

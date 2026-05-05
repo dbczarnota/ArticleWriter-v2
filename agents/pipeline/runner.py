@@ -2,22 +2,27 @@
 from __future__ import annotations
 
 import asyncio
-import re
 import time
-from typing import Literal
 from uuid import UUID
 
 import logfire
 
 from agents._base.resilient import InsufficientSourcesError
 from agents._base.run_context import get_fallback_events, init_collector
-from agents._base.types import ArticleOutput, EmbedCandidate, ParsedArticle
-from agents.adaptive_search.agent import run_adaptive_search_agent
+from agents._base.types import ArticleOutput, EmbedCandidate
 from agents.extraction.agent import ExtractionResult, run_extraction_agent
 from agents.followup.agent import run_followup_agent
 from agents.instructions.agent import WritingBrief, run_instructions_agent
 from agents.media_search.agent import run_media_search
 from agents.parsing.agent import run_parsing_agent
+from agents.pipeline._adaptive_search import adaptive_search_loop
+from agents.pipeline._helpers import (
+    extract_social_from_content,
+    extract_social_from_search,
+    filter_by_date,
+    rank_articles_by_extraction,
+)
+from agents.pipeline._persistence import persist_article_done
 from agents.reflection.agent import run_reflection_agent
 from agents.scraping.agent import run_scraping_agent
 from agents.search.agent import run_search_agent
@@ -25,7 +30,6 @@ from agents.writer.agent import ArticleHtml, run_writer_agent
 from backend.config import AppSettings
 from backend.domain import DomainConfig
 from backend.services.metrics import record_error, record_pipeline_run, record_stage
-from toolsets.scraping.serper import search as serper_search
 
 
 async def run_pipeline(
@@ -205,7 +209,7 @@ async def _run_pipeline_inner(
     # Promote social media URLs discovered via organic search to embed_candidates
     # and remove them from the scraping list (they don't scrape usefully).
     # NB: media_search now runs LATER (post-rerank) so it can see actual article context.
-    search_results, _search_embeds = _extract_social_from_search(search_results)
+    search_results, _search_embeds = extract_social_from_search(search_results)
 
     await _article_repo.set_pipeline_stage(_article_id, "scraping")
     log.scraping_start(len(search_results), len(urls or []))
@@ -229,7 +233,7 @@ async def _run_pipeline_inner(
             scraped = []
     _timing["scraping"] = (time.perf_counter() - _stage_t0) * 1000
     record_stage("scraping", _timing["scraping"], domain.name)
-    _content_embeds = _extract_social_from_content(scraped)
+    _content_embeds = extract_social_from_content(scraped)
 
     await _article_repo.set_pipeline_stage(_article_id, "parsing")
     _stage_t0 = time.perf_counter()
@@ -248,7 +252,7 @@ async def _run_pipeline_inner(
     record_stage("parsing", _timing["parsing"], domain.name)
 
     if settings.pipeline.cutoff_days > 0:
-        articles, _date_reasons = _filter_by_date(
+        articles, _date_reasons = filter_by_date(
             articles,
             cutoff_days=settings.pipeline.cutoff_days,
             manual_urls=set(urls or []),
@@ -291,7 +295,7 @@ async def _run_pipeline_inner(
         ):
             try:
                 articles, extraction = await asyncio.wait_for(
-                    _adaptive_search_loop(
+                    adaptive_search_loop(
                         article_repo=_article_repo,
                         article_id=_article_id,
                         topic=topic,
@@ -329,7 +333,7 @@ async def _run_pipeline_inner(
 
     # Rerank parsed articles by their contribution to extraction; reused below for both
     # media_search context AND reviewer's competitor-coverage block.
-    ranked_articles = _rank_articles_by_extraction(articles, extraction)
+    ranked_articles = rank_articles_by_extraction(articles, extraction)
 
     # Stage 2.5: Media search — runs AFTER rerank so the query formulator sees the
     # actual top sources (not just the topic line) and can produce concrete event-specific
@@ -501,7 +505,7 @@ async def _run_pipeline_inner(
                 _total_ms = (time.perf_counter() - _pipeline_t0) * 1000
                 record_pipeline_run(domain.name, "error" if _errors else "ok", _total_ms)
                 log.done(len(result.sources or scraped_urls), len(_errors))
-                await _persist_article_done(
+                await persist_article_done(
                     repo=_article_repo,
                     article_id=_article_id,
                     article_html=article.html,
@@ -569,7 +573,7 @@ async def _run_pipeline_inner(
     _status = "error" if _errors else "ok"
     record_pipeline_run(domain.name, _status, _total_ms)
     log.done(len(sources), len(_errors))
-    await _persist_article_done(
+    await persist_article_done(
         repo=_article_repo,
         article_id=_article_id,
         article_html=article.html,
@@ -621,435 +625,3 @@ async def _run_pipeline_inner(
         ],
     )
 
-
-async def _persist_article_done(
-    *,
-    repo,
-    article_id,
-    article_html: str,
-    alternative_titles: list[str],
-    followup_topics: list[str],
-    used_facts_texts: list[str],
-    used_quotes_texts: list[str],
-    extraction: ExtractionResult,
-    embed_candidates: list[EmbedCandidate],
-    sources: list[str],
-    pipeline_timing: dict[str, float],
-    errors: list[dict[str, str]],
-    total_duration_ms: float,
-    token_records,
-    fallback_events,
-    status: str = "done",
-) -> None:
-    """Translate agent-level types to DB rows and persist the completed Article.
-
-    Lives at module level so both success-return paths (followup-OK and followup-skipped)
-    use the same translation + write call.
-    """
-    from backend.db.models import (
-        EmbedCandidate as DBEmbed,
-    )
-    from backend.db.models import (
-        Fact as DBFact,
-    )
-    from backend.db.models import (
-        FallbackEvent as DBFallbackEvent,
-    )
-    from backend.db.models import (
-        Quote as DBQuote,
-    )
-    from backend.db.models import (
-        UsageEvent as DBUsageEvent,
-    )
-
-    used_facts_set = set(used_facts_texts)
-    used_quotes_set = set(used_quotes_texts)
-    # article_id is set on each child explicitly so Pydantic-level validation passes;
-    # the repo will overwrite it (no-op since it's the same value).
-    db_facts = [
-        DBFact(
-            article_id=article_id,
-            text=f.text,
-            context=f.context,
-            source_url=f.source_url,
-            source_title=f.source_title,
-            was_used=f.text in used_facts_set,
-        )
-        for f in extraction.facts
-    ]
-    db_quotes = [
-        DBQuote(
-            article_id=article_id,
-            text=q.text,
-            speaker=q.speaker,
-            context=q.context,
-            source_url=q.source_url,
-            was_used=q.text in used_quotes_set,
-        )
-        for q in extraction.quotes
-    ]
-    db_embeds = [
-        DBEmbed(
-            article_id=article_id,
-            url=e.url,
-            title=e.title,
-            source=e.source,
-            thumbnail_url=e.thumbnail_url,
-            description=e.description,
-            channel=e.channel,
-            competitor_source_url=e.competitor_source_url,
-        )
-        for e in embed_candidates
-    ]
-    db_usage = [
-        DBUsageEvent(
-            article_id=article_id,
-            agent_name=r.agent,
-            model=r.model,
-            input_tokens=r.input_tokens,
-            output_tokens=r.output_tokens,
-            duration_ms=r.duration_ms,
-        )
-        for r in token_records
-    ]
-    db_fallbacks = [
-        DBFallbackEvent(
-            article_id=article_id,
-            agent_name=e.agent,
-            failed_model=e.failed_model,
-            error_type=e.error_type,
-            error_message=e.error_message,
-        )
-        for e in fallback_events
-    ]
-    await repo.complete(
-        article_id,
-        status=status,
-        html=article_html or "",
-        alternative_titles=alternative_titles,
-        followup_topics=followup_topics,
-        sources=sources,
-        facts=db_facts,
-        quotes=db_quotes,
-        embed_candidates=db_embeds,
-        usage_events=db_usage,
-        fallback_events=db_fallbacks,
-        pipeline_timing=pipeline_timing,
-        errors=errors,
-        total_duration_ms=total_duration_ms,
-    )
-
-
-def _filter_by_date(
-    articles: list[ParsedArticle],
-    cutoff_days: int,
-    manual_urls: set[str],
-) -> tuple[list[ParsedArticle], dict[str, str]]:
-    from datetime import UTC, datetime, timedelta
-
-    cutoff = datetime.now(UTC).date() - timedelta(days=cutoff_days)
-    kept: list[ParsedArticle] = []
-    reasons: dict[str, str] = {}
-    for article in articles:
-        if article.url in manual_urls:
-            kept.append(article)
-            continue
-        if article.publication_date is None:
-            kept.append(article)
-            continue
-        try:
-            pub = datetime.fromisoformat(article.publication_date).date()
-        except ValueError:
-            kept.append(article)
-            continue
-        if pub < cutoff:
-            reasons[article.url] = f"Too old: {pub}"
-        else:
-            kept.append(article)
-    return kept, reasons
-
-
-_SocialSource = Literal["youtube", "twitter", "tiktok", "instagram", "facebook", "reddit"]
-
-_SOCIAL_DOMAINS: dict[str, _SocialSource] = {
-    "youtube.com": "youtube",
-    "youtu.be": "youtube",
-    "twitter.com": "twitter",
-    "x.com": "twitter",
-    "tiktok.com": "tiktok",
-    "instagram.com": "instagram",
-    "facebook.com": "facebook",
-    "reddit.com": "reddit",
-}
-
-
-def _extract_social_from_search(
-    results: list,
-) -> tuple[list, list[EmbedCandidate]]:
-    """Split search results into (scrapable, social_embed_candidates).
-
-    Social media URLs are useless to scrape but valuable as embeds.
-    """
-    from urllib.parse import urlparse
-
-    scrapable: list = []
-    embeds: list[EmbedCandidate] = []
-    for r in results:
-        host = urlparse(r.url).netloc.removeprefix("www.")
-        source: _SocialSource | None = None
-        for domain, src in _SOCIAL_DOMAINS.items():
-            if host == domain or host.endswith("." + domain):
-                source = src
-                break
-        if source:
-            embeds.append(
-                EmbedCandidate(
-                    url=r.url,
-                    title=r.title,
-                    source=source,
-                    description=r.snippet or None,
-                )
-            )
-        else:
-            scrapable.append(r)
-    return scrapable, embeds
-
-
-_SOCIAL_URL_RE = re.compile(
-    r"https?://(?:www\.)?"
-    r"(?:youtube\.com/(?:watch|shorts|embed)[^\s\)\]\"'<>]*"
-    r"|youtu\.be/[^\s\)\]\"'<>]+"
-    r"|twitter\.com/\w+/status/[^\s\)\]\"'<>]+"
-    r"|x\.com/\w+/status/[^\s\)\]\"'<>]+"
-    r"|tiktok\.com/@[^\s\)\]\"'<>/]+/video/[^\s\)\]\"'<>]+"
-    r"|instagram\.com/(?:p|reel|tv)/[^\s\)\]\"'<>/]+"
-    r"|facebook\.com/(?:[^/]+/(?:posts|videos|reels)/|watch/\?v=)[^\s\)\]\"'<>]+"
-    r"|reddit\.com/r/[^\s\)\]\"'<>]+)",
-    re.IGNORECASE,
-)
-
-
-def _normalize_social_url(url: str) -> str:
-    """Convert embed/shortlink forms to canonical watch URLs."""
-    import re as _re
-
-    # youtube.com/embed/VIDEO_ID → youtube.com/watch?v=VIDEO_ID
-    m = _re.match(r"(https?://(?:www\.)?youtube\.com)/embed/([A-Za-z0-9_-]+)", url, _re.IGNORECASE)
-    if m:
-        return f"{m.group(1)}/watch?v={m.group(2)}"
-    return url
-
-
-def _extract_social_from_content(
-    pages: list,
-) -> list[EmbedCandidate]:
-    """Extract social media URLs embedded in scraped competitor article content.
-
-    Regex-only, zero LLM cost. Complements _extract_social_from_search (which
-    catches top-level social URLs) by surfacing embeds mentioned within articles.
-    """
-    from urllib.parse import urlparse
-
-    seen: set[str] = set()
-    candidates: list[EmbedCandidate] = []
-    for page in pages:
-        for match in _SOCIAL_URL_RE.finditer(page.content):
-            url = _normalize_social_url(match.group(0).rstrip(".,;)"))
-            if url in seen:
-                continue
-            seen.add(url)
-            host = urlparse(url).netloc.removeprefix("www.")
-            source: _SocialSource | None = None
-            for domain, src in _SOCIAL_DOMAINS.items():
-                if host == domain or host.endswith("." + domain):
-                    source = src
-                    break
-            if source:
-                candidates.append(
-                    EmbedCandidate(
-                        url=url, title=url, source=source, competitor_source_url=page.url
-                    )
-                )
-    return candidates
-
-
-def _rank_articles_by_extraction(
-    articles: list[ParsedArticle], extraction: ExtractionResult
-) -> list[ParsedArticle]:
-    """Sort parsed articles by how much they contributed to the extraction.
-
-    A fact counts twice as much as a quote (facts are more directly load-bearing for
-    fact-checking; quotes are also ranked but less aggressively). Articles that didn't
-    contribute anything fall to the end in their original order. Reviewer's competitor
-    coverage is taken from the top of this list.
-    """
-    from collections import Counter
-
-    score: Counter[str] = Counter()
-    for f in extraction.facts:
-        score[f.source_url] += 2
-    for q in extraction.quotes:
-        score[q.source_url] += 1
-    return sorted(articles, key=lambda a: score[a.url], reverse=True)
-
-
-def _merge_extraction(base: ExtractionResult, extra: ExtractionResult) -> ExtractionResult:
-    seen_facts = {f.text for f in base.facts}
-    seen_quotes = {q.text for q in base.quotes}
-    merged_facts = base.facts + [f for f in extra.facts if f.text not in seen_facts]
-    merged_quotes = base.quotes + [q for q in extra.quotes if q.text not in seen_quotes]
-    merged_keywords = list(dict.fromkeys(base.keywords + extra.keywords))
-    return ExtractionResult(facts=merged_facts, quotes=merged_quotes, keywords=merged_keywords)
-
-
-async def _adaptive_search_loop(
-    *,
-    article_repo,
-    article_id: UUID | None,
-    topic: str,
-    domain: DomainConfig,
-    settings: AppSettings,
-    articles: list[ParsedArticle],
-    extraction: ExtractionResult,
-    search_results,
-    target_signals: int,
-    serper_api_key: str,
-    jina_api_key: str | None,
-    log,
-) -> tuple[list[ParsedArticle], ExtractionResult]:
-    """Body of the adaptive_search stage. Pulled out of run_pipeline so the
-    outer block can wrap it in asyncio.wait_for with a single budget cap.
-
-    Each iteration creates one Logfire span `pipeline.stage.adaptive_search.round`
-    plus one sub-span per substage (decide / serper / scraping / parsing /
-    extraction). The DB pipeline_stage column is set to a fine-grained label
-    like 'adaptive_search.r2.scraping' so the UI spinner can show what we're
-    actually waiting on.
-    """
-    seen_urls: set[str] = {r.url for r in search_results}
-    for _round in range(settings.adaptive_search_agent.max_additional_rounds):
-        round_idx = _round + 1
-        signals_before = len(extraction.facts) + len(extraction.quotes)
-        with logfire.span(
-            "pipeline.stage.adaptive_search.round",
-            round=round_idx,
-            signals_before=signals_before,
-            target=target_signals,
-        ) as round_span:
-            # Decide
-            await article_repo.set_pipeline_stage(
-                article_id, f"adaptive_search.r{round_idx}.decide"
-            )
-            with logfire.span(
-                "pipeline.stage.adaptive_search.decide", round=round_idx
-            ):
-                decision = await run_adaptive_search_agent(
-                    extraction,
-                    topic=topic,
-                    config=settings.adaptive_search_agent,
-                    target_signals=target_signals,
-                )
-                log.adaptive_search_done(decision, round_idx)
-            round_span.set_attribute("decision_needs_more", decision.needs_more_research)
-            round_span.set_attribute("queries_generated", len(decision.additional_queries))
-
-            # Stop if agent is satisfied AND we've met the floor.
-            if (
-                not decision.needs_more_research or not decision.additional_queries
-            ) and signals_before >= target_signals:
-                round_span.set_attribute("exit_reason", "satisfied")
-                break
-            if not decision.additional_queries:
-                round_span.set_attribute("exit_reason", "agent_gave_up")
-                break
-
-            # Serper
-            await article_repo.set_pipeline_stage(
-                article_id, f"adaptive_search.r{round_idx}.serper"
-            )
-            with logfire.span(
-                "pipeline.stage.adaptive_search.serper",
-                round=round_idx,
-                queries_count=len(decision.additional_queries),
-            ) as serper_span:
-                extra_results = []
-                for query in decision.additional_queries:
-                    for r in await serper_search(
-                        query,
-                        num=settings.search.max_results,
-                        freshness=settings.search.search_freshness,
-                        language=domain.language,
-                        api_key=serper_api_key,
-                    ):
-                        if r.url not in seen_urls:
-                            seen_urls.add(r.url)
-                            extra_results.append(r)
-                serper_span.set_attribute("new_urls_found", len(extra_results))
-            if not extra_results:
-                round_span.set_attribute("exit_reason", "no_new_urls")
-                break
-
-            # Scraping
-            await article_repo.set_pipeline_stage(
-                article_id, f"adaptive_search.r{round_idx}.scraping"
-            )
-            with logfire.span(
-                "pipeline.stage.adaptive_search.scraping",
-                round=round_idx,
-                urls_count=len(extra_results),
-            ):
-                extra_scraped, _ = await run_scraping_agent(
-                    extra_results,
-                    topic,
-                    scraping_config=settings.scraping,
-                    jina_api_key=jina_api_key,
-                )
-
-            # Parsing
-            await article_repo.set_pipeline_stage(
-                article_id, f"adaptive_search.r{round_idx}.parsing"
-            )
-            with logfire.span(
-                "pipeline.stage.adaptive_search.parsing",
-                round=round_idx,
-                pages_count=len(extra_scraped),
-            ) as parsing_span:
-                extra_articles = await run_parsing_agent(
-                    extra_scraped, config=settings.parsing
-                )
-                parsing_span.set_attribute("articles_count", len(extra_articles))
-            articles = articles + extra_articles  # extend pool for downstream rerank
-
-            # Extraction
-            await article_repo.set_pipeline_stage(
-                article_id, f"adaptive_search.r{round_idx}.extraction"
-            )
-            with logfire.span(
-                "pipeline.stage.adaptive_search.extraction",
-                round=round_idx,
-                articles_count=len(extra_articles),
-            ) as extraction_span:
-                extra_extraction = await run_extraction_agent(
-                    extra_articles,
-                    topic=topic,
-                    language=domain.language,
-                    config=settings.extraction,
-                )
-                extraction_span.set_attribute(
-                    "facts_extracted", len(extra_extraction.facts)
-                )
-                extraction_span.set_attribute(
-                    "quotes_extracted", len(extra_extraction.quotes)
-                )
-            extraction = _merge_extraction(extraction, extra_extraction)
-            log.extraction_done(extraction)
-
-            signals_after = len(extraction.facts) + len(extraction.quotes)
-            round_span.set_attribute("signals_after", signals_after)
-
-            # Early exit if we hit the floor — don't waste a budget on another round.
-            if signals_after >= target_signals:
-                round_span.set_attribute("exit_reason", "target_met")
-                break
-            round_span.set_attribute("exit_reason", "loop_continues")
-    return articles, extraction
