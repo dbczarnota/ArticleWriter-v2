@@ -1,88 +1,26 @@
 // frontend/src/components/DateRangePicker.tsx
-// Two-month range picker with a left rail of common presets
-// (Today / Yesterday / This week / Last 7 days / Last week / This month
-// / Last 30 days / Last month). Designed to feel native to the rest of
-// the app — no heavy outlines, accent-tinted selection, soft borders.
+// Two-month range picker with a left rail of common presets.
+// Designed to feel native to the rest of the app — soft borders,
+// accent-tinted selection, no heavy outlines.
+//
+// Implementation note: tokens.css applies a global `*, *::before, *::after
+// { margin: 0; padding: 0; }` reset that wipes react-day-picker's internal
+// spacing. Every layout-critical class below restores the values explicitly
+// so the grid renders correctly inside this app.
 
 import { useEffect, useRef, useState } from "react";
 import { DayPicker } from "react-day-picker";
 import type { DateRange as RDPDateRange } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { useT, useLang } from "../i18n";
+import {
+  computePreset,
+  parseISODate,
+  toISODate,
+  type PresetId,
+} from "../lib/datePresets";
+import { useMediaQuery } from "../lib/useMediaQuery";
 import type { DateRange } from "../lib/useArticles";
-
-function toISODate(d: Date): string {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function parseISODate(iso: string | null): Date | undefined {
-  if (!iso) return undefined;
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
-
-type PresetId =
-  | "today"
-  | "yesterday"
-  | "thisWeek"
-  | "last7"
-  | "lastWeek"
-  | "thisMonth"
-  | "last30"
-  | "lastMonth";
-
-function computePreset(id: PresetId): { from: Date; to: Date } {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  switch (id) {
-    case "today":
-      return { from: today, to: today };
-    case "yesterday": {
-      const y = new Date(today);
-      y.setDate(y.getDate() - 1);
-      return { from: y, to: y };
-    }
-    case "thisWeek": {
-      // Monday-anchored week (matches PL/EN locale convention in this app)
-      const day = (today.getDay() + 6) % 7; // 0 = Mon, 6 = Sun
-      const start = new Date(today);
-      start.setDate(start.getDate() - day);
-      return { from: start, to: today };
-    }
-    case "last7": {
-      const start = new Date(today);
-      start.setDate(start.getDate() - 6); // includes today, total 7 days
-      return { from: start, to: today };
-    }
-    case "lastWeek": {
-      const day = (today.getDay() + 6) % 7;
-      const thisMon = new Date(today);
-      thisMon.setDate(thisMon.getDate() - day);
-      const lastMon = new Date(thisMon);
-      lastMon.setDate(lastMon.getDate() - 7);
-      const lastSun = new Date(thisMon);
-      lastSun.setDate(lastSun.getDate() - 1);
-      return { from: lastMon, to: lastSun };
-    }
-    case "thisMonth": {
-      const start = new Date(today.getFullYear(), today.getMonth(), 1);
-      return { from: start, to: today };
-    }
-    case "last30": {
-      const start = new Date(today);
-      start.setDate(start.getDate() - 29);
-      return { from: start, to: today };
-    }
-    case "lastMonth": {
-      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const end = new Date(today.getFullYear(), today.getMonth(), 0);
-      return { from: start, to: end };
-    }
-  }
-}
 
 interface DateRangePickerProps {
   value: DateRange;
@@ -94,13 +32,14 @@ interface DateRangePickerProps {
 export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangePickerProps) {
   const t = useT();
   const { lang } = useLang();
+  const narrow = useMediaQuery("(max-width: 767px)");
   const [draft, setDraft] = useState<RDPDateRange | undefined>(() => ({
     from: parseISODate(value.from),
     to: parseISODate(value.to),
   }));
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Click outside closes (but Apply/Clear handle their own close)
+  // Click outside closes (Apply/Cancel/Clear handle their own close).
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
@@ -141,10 +80,22 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
     onClose();
   }
 
-  // Render two months side by side, with the right pane showing the current
-  // month so users see the present and the recent past at the same time.
+  // Two months on desktop, one on mobile (mobile-only fallback to keep the
+  // popover from overflowing the viewport).
   const today = new Date();
-  const defaultMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const numberOfMonths = narrow ? 1 : 2;
+  const defaultMonth = narrow
+    ? new Date(today.getFullYear(), today.getMonth(), 1)
+    : new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+  // Width math:
+  //   left rail = 140 px
+  //   each month = 7 cols × 36 px = 252 px + 16 px horizontal padding
+  //   inter-month gap from react-day-picker = 16 px
+  //   borders + breathing room ≈ 8 px
+  // Two months: 140 + 252 + 252 + 16 + 24 = 684 px → round to 700.
+  // One month: 140 + 252 + 24 = 416 px → round to 420.
+  const popoverWidth = narrow ? 320 : 700;
 
   return (
     <div
@@ -161,45 +112,92 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
+        width: popoverWidth,
+        maxWidth: "calc(100vw - 24px)",
       }}
     >
       <style>{`
-        .hf-rdp { --rdp-accent-color: var(--accent); --rdp-accent-background-color: var(--accent-lt); margin: 0; }
-        .hf-rdp .rdp-day_button { border-radius: 4px; }
-        .hf-rdp .rdp-selected:not(.rdp-range_middle) .rdp-day_button { background: var(--accent); color: var(--white); border: none; }
-        .hf-rdp .rdp-range_start .rdp-day_button,
-        .hf-rdp .rdp-range_end .rdp-day_button { background: var(--accent); color: var(--white); }
+        /* Restore margins/padding the global reset stripped, then layer accent. */
+        .hf-rdp { --rdp-accent-color: var(--accent); --rdp-accent-background-color: var(--accent-lt); }
+        .hf-rdp .rdp-months { display: flex; gap: 16px; padding: 8px 12px; flex-wrap: wrap; }
+        .hf-rdp .rdp-month { display: block; }
+        .hf-rdp .rdp-month_caption { font-size: 13px; font-weight: 600; padding: 4px 0 8px; }
+        .hf-rdp .rdp-nav { padding: 0 4px; }
+        .hf-rdp .rdp-button_previous,
+        .hf-rdp .rdp-button_next {
+          width: 28px; height: 28px; padding: 0; color: var(--muted);
+          display: inline-flex; align-items: center; justify-content: center;
+          background: transparent; border-radius: 4px;
+        }
+        .hf-rdp .rdp-button_previous:hover,
+        .hf-rdp .rdp-button_next:hover { background: var(--accent-lt); color: var(--accent); }
+        .hf-rdp .rdp-month_grid { border-collapse: separate; border-spacing: 0; }
+        .hf-rdp .rdp-weekdays { display: table-row; }
+        .hf-rdp .rdp-weekday {
+          width: 36px; height: 28px; padding: 0;
+          font-size: 11px; color: var(--muted); font-weight: 500;
+          text-transform: none;
+        }
+        .hf-rdp .rdp-week { display: table-row; }
+        .hf-rdp .rdp-day { width: 36px; height: 36px; padding: 1px; text-align: center; vertical-align: middle; }
+        .hf-rdp .rdp-day_button {
+          width: 34px; height: 34px; padding: 0; margin: 0;
+          font: inherit; font-size: 12px;
+          background: transparent; color: var(--text); border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          display: inline-flex; align-items: center; justify-content: center;
+        }
+        .hf-rdp .rdp-day_button:hover:not([aria-disabled="true"]) {
+          background: var(--accent-lt); color: var(--accent);
+        }
+        .hf-rdp .rdp-today .rdp-day_button:not([aria-selected="true"]) {
+          color: var(--accent); font-weight: 600;
+        }
+        /* Range middle: full-bleed light background, no per-cell radius. */
         .hf-rdp .rdp-range_middle { background: var(--accent-lt); }
-        .hf-rdp .rdp-range_middle .rdp-day_button { color: var(--text); background: transparent; }
-        .hf-rdp .rdp-today .rdp-day_button:not([aria-selected="true"]) { color: var(--accent); font-weight: 600; }
-        .hf-rdp .rdp-month_caption { font-size: 13px; font-weight: 600; }
-        .hf-rdp .rdp-weekday { font-size: 11px; color: var(--muted); font-weight: 500; }
-        .hf-rdp .rdp-button_previous, .hf-rdp .rdp-button_next { color: var(--muted); }
-        .hf-rdp .rdp-day_button:hover:not([aria-disabled="true"]) { background: var(--accent-lt); }
+        .hf-rdp .rdp-range_middle .rdp-day_button {
+          background: transparent; color: var(--text); border-radius: 0; width: 100%;
+        }
+        /* Range start / end: solid accent disc. */
+        .hf-rdp .rdp-range_start .rdp-day_button,
+        .hf-rdp .rdp-range_end .rdp-day_button,
+        .hf-rdp .rdp-selected:not(.rdp-range_middle) .rdp-day_button {
+          background: var(--accent); color: var(--white); border: none; border-radius: 4px;
+        }
+        .hf-rdp .rdp-day_button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+        .hf-rdp .rdp-disabled .rdp-day_button { color: var(--muted); opacity: 0.4; cursor: default; }
+        .hf-rdp .rdp-outside .rdp-day_button { color: var(--muted); opacity: 0.5; }
       `}</style>
-      <div style={{ display: "flex" }}>
+      <div style={{ display: "flex", flexDirection: narrow ? "column" : "row" }}>
         {/* Left rail — presets */}
         <div
           style={{
-            width: 140,
-            borderRight: "1px solid var(--border)",
-            padding: "8px 0",
+            width: narrow ? "100%" : 140,
+            borderRight: narrow ? "none" : "1px solid var(--border)",
+            borderBottom: narrow ? "1px solid var(--border)" : "none",
+            padding: narrow ? "4px" : "8px 0",
             display: "flex",
-            flexDirection: "column",
+            flexDirection: narrow ? "row" : "column",
+            flexWrap: narrow ? "wrap" : "nowrap",
+            gap: narrow ? 4 : 0,
           }}
         >
           {presets.map((p) => (
             <button
               key={p.id}
+              type="button"
               onClick={() => applyPreset(p.id)}
               style={{
                 background: "none",
-                border: "none",
+                border: narrow ? "1px solid var(--border)" : "none",
+                borderRadius: "var(--radius)",
                 textAlign: "left",
-                padding: "8px 14px",
+                padding: narrow ? "4px 8px" : "8px 14px",
                 fontSize: 12,
                 color: "var(--text)",
                 cursor: "pointer",
+                whiteSpace: "nowrap",
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-lt)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
@@ -210,15 +208,14 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
         </div>
 
         {/* Right — calendar */}
-        <div style={{ padding: "8px 12px" }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <DayPicker
             mode="range"
-            numberOfMonths={2}
+            numberOfMonths={numberOfMonths}
             defaultMonth={defaultMonth}
             selected={draft}
             onSelect={setDraft}
             weekStartsOn={1}
-            locale={undefined /* native locale via lang prop */}
             className="hf-rdp"
             lang={lang}
           />
@@ -237,6 +234,7 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
         }}
       >
         <button
+          type="button"
           onClick={handleClear}
           style={{
             background: "none",
@@ -244,12 +242,14 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
             color: "var(--muted)",
             fontSize: 12,
             cursor: "pointer",
+            padding: "4px 8px",
           }}
         >
           {t.datePicker.clear}
         </button>
         <div style={{ display: "flex", gap: 8 }}>
           <button
+            type="button"
             onClick={onClose}
             style={{
               background: "none",
@@ -258,11 +258,13 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
               padding: "4px 12px",
               fontSize: 12,
               color: "var(--text)",
+              cursor: "pointer",
             }}
           >
             {t.datePicker.cancel}
           </button>
           <button
+            type="button"
             onClick={handleApply}
             style={{
               background: "var(--accent)",
@@ -272,6 +274,7 @@ export function DateRangePicker({ value, onApply, onClear, onClose }: DateRangeP
               padding: "4px 12px",
               fontSize: 12,
               fontWeight: 500,
+              cursor: "pointer",
             }}
           >
             {t.datePicker.apply}

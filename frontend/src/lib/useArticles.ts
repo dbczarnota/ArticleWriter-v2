@@ -4,10 +4,23 @@ import type { Article, ArticleListItem } from "../types";
 
 const PAGE_SIZE = 100;
 
-/** ISO date strings 'YYYY-MM-DD' from native <input type="date">, or null. */
+/** ISO date strings 'YYYY-MM-DD' (matching native <input type="date">), or null. */
 export interface DateRange {
   from: string | null;
   to: string | null;
+}
+
+/** Initial filter on first session load — Last 7 days, computed inline to
+ * keep this hook self-contained. The picker has its own copy of the same
+ * preset logic in lib/datePresets.ts. */
+function defaultLast7DaysRange(): DateRange {
+  const t = new Date();
+  const today = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+  const start = new Date(today);
+  start.setDate(start.getDate() - 6);
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return { from: fmt(start), to: fmt(today) };
 }
 
 function buildArticlesUrl(offset: number, range: DateRange): string {
@@ -32,7 +45,7 @@ export function useArticles() {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const [dateRange, setDateRangeState] = useState<DateRange>({ from: null, to: null });
+  const [dateRange, setDateRangeState] = useState<DateRange>(defaultLast7DaysRange);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isFiltered = useMemo(

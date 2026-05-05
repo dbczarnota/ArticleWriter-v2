@@ -15,6 +15,8 @@ export interface Translations {
     apply: string;
     cancel: string;
     clear: string;
+    from: string;
+    to: string;
   };
   sidebar: {
     articles: string;

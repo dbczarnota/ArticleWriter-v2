@@ -17,6 +17,8 @@ export const en: Translations = {
     apply: "Apply",
     cancel: "Cancel",
     clear: "Clear",
+    from: "From",
+    to: "To",
   },
   sidebar: {
     articles: "Articles",

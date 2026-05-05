@@ -17,6 +17,8 @@ export const pl: Translations = {
     apply: "Zastosuj",
     cancel: "Anuluj",
     clear: "Wyczyść",
+    from: "Od",
+    to: "Do",
   },
   sidebar: {
     articles: "Artykuły",

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ArticleListItem } from "../types";
 import type { DateRange } from "../lib/useArticles";
+import { formatRangeLabel } from "../lib/datePresets";
 import { useT, useLang } from "../i18n";
 import { DateRangePicker } from "./DateRangePicker";
 
@@ -248,10 +249,8 @@ export function Sidebar({
             gap: 6,
           }}
         >
-          <span>
-            {isFiltered
-              ? `${dateRange.from ?? "…"} → ${dateRange.to ?? "…"}`
-              : t.sidebar.filterDates}
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {formatRangeLabel(dateRange, t, lang)}
           </span>
           <span style={{ fontSize: 9 }}>{datesOpen ? "▲" : "▼"}</span>
         </button>
