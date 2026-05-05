@@ -82,10 +82,29 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
     return stage;  // surface raw label rather than crash if backend introduces a new stage
   }
 
+  // Same fallback chain as the done-view title bar — author_name (Kinde
+  // full name) → email handle → 'Inny redaktor'. Surfaced via a helper so
+  // both views share the logic instead of forking it.
+  function resolveAuthorLabel(): string {
+    const isMe = !!currentUserId && article!.author_user_id === currentUserId;
+    if (article!.author_name) {
+      return isMe ? `${av.me} (${article!.author_name})` : article!.author_name;
+    }
+    if (article!.author_email) {
+      const handle = article!.author_email.split("@")[0];
+      return isMe ? `${av.me} (${handle})` : handle;
+    }
+    return isMe ? av.me : av.otherEditor;
+  }
+
   if (article.status === "running") {
     const stageLabel = resolveStageLabel(article.pipeline_stage);
     return (
       <div>
+        <div style={{ display: "flex", gap: 12, fontSize: 12, color: "var(--muted)", marginBottom: 6, flexWrap: "wrap" }}>
+          <span>{resolveAuthorLabel()}</span>
+          <span>{article.created_at ? new Date(article.created_at).toLocaleString(lang) : "—"}</span>
+        </div>
         <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>{article.topic}</h2>
         <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--muted)", fontSize: 14 }}>
           <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid var(--accent)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
