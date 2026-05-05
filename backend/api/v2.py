@@ -1,7 +1,6 @@
 # backend/api/v2.py
 from __future__ import annotations
 
-import contextlib
 from uuid import UUID
 
 import logfire
@@ -105,7 +104,7 @@ async def _run_pipeline_background(
     """
     import asyncio
 
-    with contextlib.suppress(Exception):  # runner handles DB failure marking internally
+    try:
         await asyncio.wait_for(
             run_pipeline(
                 req.topic,
@@ -121,6 +120,17 @@ async def _run_pipeline_background(
             ),
             timeout=app_settings.pipeline.total_timeout_s,
         )
+    except TimeoutError:
+        logfire.error(
+            "pipeline.total_timeout_hit",
+            article_id=str(article_id),
+            org_code=org_code,
+            timeout_s=app_settings.pipeline.total_timeout_s,
+        )
+        # Runner's exception handler still marks the article as failed.
+    except Exception:
+        # Runner handles DB failure marking internally for non-timeout errors.
+        pass
 
 
 @router.get("/me")

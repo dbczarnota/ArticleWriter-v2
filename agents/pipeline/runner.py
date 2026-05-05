@@ -329,6 +329,12 @@ async def _run_pipeline_inner(
                     )
                     log.error("adaptive_search", e)
                     record_error("adaptive_search")
+                    logfire.warn(
+                        "pipeline.adaptive_search.budget_exhausted",
+                        timeout_s=settings.adaptive_search_agent.total_timeout_s,
+                        signals_collected=len(extraction.facts) + len(extraction.quotes),
+                        target=_target,
+                    )
                 except Exception as e:
                     _errors.append({"stage": "adaptive_search", "error": str(e)})
                     log.error("adaptive_search", e)
@@ -383,6 +389,13 @@ async def _run_pipeline_inner(
                 quotes=len(extraction.quotes),
                 min_required=settings.pipeline.min_source_signals,
             ):
+                logfire.warn(
+                    "pipeline.guardrail.insufficient_sources",
+                    facts=len(extraction.facts),
+                    quotes=len(extraction.quotes),
+                    min_required=settings.pipeline.min_source_signals,
+                    upstream_errors_count=len(_errors),
+                )
                 log.error("guardrail", RuntimeError("insufficient_sources"))
                 await _article_repo.mark_failed(
                     _article_id,

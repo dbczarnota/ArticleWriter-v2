@@ -75,9 +75,17 @@ async def _fail_running_articles_on_shutdown() -> None:
             await session.commit()
             rowcount = getattr(result, "rowcount", 0) or 0
             if rowcount:
-                _log.warning("shutdown: marked %d running articles as failed", rowcount)
+                logfire.warn(
+                    "pipeline.shutdown_marked_failed",
+                    rowcount=rowcount,
+                )
     except Exception as exc:  # never block pod shutdown on this
-        _log.warning("shutdown: failed to mark running articles: %s", exc)
+        logfire.warn(
+            "pipeline.shutdown_marked_failed",
+            rowcount=0,
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
 
 
 @asynccontextmanager
