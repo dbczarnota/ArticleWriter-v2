@@ -51,6 +51,12 @@ logfire.instrument_pydantic_ai()
 logfire.instrument_httpx()
 basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 
+# Trafilatura emits routine "wrong data type or not valid HTML" warnings
+# every time tier-1 fails on a JS-only / paywall page — but the orchestrator
+# already retries via Jina, so the warning is just noise. Drop it to ERROR
+# so genuine library failures still surface.
+logging.getLogger("trafilatura").setLevel(logging.ERROR)
+
 
 async def _fail_running_articles_on_shutdown() -> None:
     """Flip every in-flight article to 'failed' before the pod exits.
