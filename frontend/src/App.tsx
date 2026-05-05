@@ -48,6 +48,9 @@ export default function App() {
     // Mobile: tapping an article should close the drawer so the article is
     // visible. Desktop: keep the sidebar as it was.
     if (isMobile) setSidebarOpen(false);
+    // Refresh the list whenever the user navigates so co-workers' new
+    // articles show up without needing a tab switch.
+    refresh();
   }
 
   return (
@@ -66,6 +69,7 @@ export default function App() {
             setNewFormKey((k) => k + 1);
             setView("new");
             if (isMobile) setSidebarOpen(false);
+            refresh();
           }}
           currentUserId={user?.id ?? undefined}
           dateRange={dateRange}
