@@ -16,6 +16,7 @@ import "react-day-picker/dist/style.css";
 import { useT, useLang } from "../i18n";
 import {
   computePreset,
+  detectPreset,
   parseISODate,
   toISODate,
   type PresetId,
@@ -246,28 +247,44 @@ export function DateRangePicker({
             gap: narrow ? 4 : 0,
           }}
         >
-          {presets.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => applyPreset(p.id)}
-              style={{
-                background: "none",
-                border: narrow ? "1px solid var(--border)" : "none",
-                borderRadius: "var(--radius)",
-                textAlign: "left",
-                padding: narrow ? "4px 8px" : "8px 14px",
-                fontSize: 12,
-                color: "var(--text)",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-lt)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-            >
-              {p.label}
-            </button>
-          ))}
+          {(() => {
+            const activePreset = detectPreset({
+              from: draft?.from ? toISODate(draft.from) : null,
+              to: draft?.to ? toISODate(draft.to) : null,
+            });
+            return presets.map((p) => {
+              const active = activePreset === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => applyPreset(p.id)}
+                  style={{
+                    background: active ? "var(--accent-lt)" : "none",
+                    border: narrow
+                      ? `1px solid ${active ? "var(--accent)" : "var(--border)"}`
+                      : "none",
+                    borderRadius: "var(--radius)",
+                    textAlign: "left",
+                    padding: narrow ? "4px 8px" : "8px 14px",
+                    fontSize: 12,
+                    color: active ? "var(--accent)" : "var(--text)",
+                    fontWeight: active ? 600 : 400,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) e.currentTarget.style.background = "var(--accent-lt)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) e.currentTarget.style.background = "none";
+                  }}
+                >
+                  {p.label}
+                </button>
+              );
+            });
+          })()}
         </div>
 
         {/* Right — calendar */}
