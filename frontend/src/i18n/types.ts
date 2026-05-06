@@ -35,6 +35,9 @@ export interface Translations {
     loadingMore: string;
     mine: string;
   };
+  topbar: {
+    discovery: string;
+  };
   userMenu: {
     account: string;
     settings: string;

@@ -1,15 +1,17 @@
 import { UserMenu } from "./UserMenu";
 import { Logo } from "./Logo";
-import { useLang } from "../i18n";
+import { useLang, useT } from "../i18n";
 
 interface TopbarProps {
   onSettings: () => void;
+  onDiscovery: () => void;
   onToggleSidebar: () => void;
   sidebarOpen: boolean;
 }
 
-export function Topbar({ onSettings, onToggleSidebar, sidebarOpen }: TopbarProps) {
+export function Topbar({ onSettings, onDiscovery, onToggleSidebar, sidebarOpen }: TopbarProps) {
   const { lang, setLang } = useLang();
+  const t = useT();
 
   return (
     <header style={{
@@ -52,6 +54,22 @@ export function Topbar({ onSettings, onToggleSidebar, sidebarOpen }: TopbarProps
         <Logo />
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <button
+          onClick={onDiscovery}
+          style={{
+            background: "none",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius)",
+            padding: "4px 10px",
+            fontSize: 13,
+            color: "var(--text)",
+            cursor: "pointer",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-lt)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+        >
+          {t.topbar.discovery}
+        </button>
         <div style={{ display: "flex", gap: 4, fontSize: 12, color: "var(--muted)" }}>
           {(["pl", "en"] as const).map((l) => (
             <button

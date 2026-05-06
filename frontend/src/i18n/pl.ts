@@ -37,6 +37,9 @@ export const pl: Translations = {
     loadingMore: "Ładuję…",
     mine: "Moje",
   },
+  topbar: {
+    discovery: "Odkrywanie",
+  },
   userMenu: {
     account: "konto",
     settings: "Ustawienia",

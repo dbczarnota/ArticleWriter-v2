@@ -9,8 +9,9 @@ import { Sidebar } from "./components/Sidebar";
 import { ArticleView } from "./components/ArticleView";
 import { NewArticleForm } from "./components/NewArticleForm";
 import { SettingsView } from "./components/SettingsView";
+import { DiscoveryHub } from "./components/DiscoveryHub";
 
-type View = "list" | "article" | "new" | "settings";
+type View = "list" | "article" | "new" | "settings" | "discovery";
 
 const NULL_AUTH = import.meta.env.VITE_AUTH_BACKEND === "null";
 
@@ -57,6 +58,7 @@ export default function App() {
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       <Topbar
         onSettings={() => setView("settings")}
+        onDiscovery={() => setView("discovery")}
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
         sidebarOpen={sidebarOpen}
       />
@@ -106,6 +108,7 @@ export default function App() {
             />
           )}
           {view === "settings" && <SettingsView />}
+          {view === "discovery" && <DiscoveryHub />}
         </main>
       </div>
     </div>

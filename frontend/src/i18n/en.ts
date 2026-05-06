@@ -37,6 +37,9 @@ export const en: Translations = {
     loadingMore: "Loading…",
     mine: "Mine",
   },
+  topbar: {
+    discovery: "Discovery",
+  },
   userMenu: {
     account: "account",
     settings: "Settings",
