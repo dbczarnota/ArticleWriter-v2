@@ -26,7 +26,7 @@ export function DiscoveryHub() {
     categories: [],
     statuses: ["open", "resurfaced"],
   });
-  const [sort, setSort] = useState<DiscoveryTopicSort>("last_activity");
+  const [sort, setSort] = useState<DiscoveryTopicSort>("item_count");
 
   const { feeds, loading: feedsLoading } = useDiscoveryFeeds();
   const { topics, loading: topicsLoading, refresh: refreshTopics } = useDiscoveryTopics({
