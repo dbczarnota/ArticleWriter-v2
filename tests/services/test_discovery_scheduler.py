@@ -21,7 +21,8 @@ async def test_master_tick_dispatches_eligible_orgs(monkeypatch):
     cfg_repo = AsyncMock()
 
     domain_a = DomainConfig(
-        name="d", description="t",
+        name="d",
+        description="t",
         discovery_enabled=True,
         discovery_feeds=[FeedConfig(url="https://x/rss")],
     )
@@ -31,8 +32,12 @@ async def test_master_tick_dispatches_eligible_orgs(monkeypatch):
         return domain_a if code == "a" else domain_b
 
     monkeypatch.setattr("backend.services.discovery.scheduler.get_org_repo", lambda: org_repo)
-    monkeypatch.setattr("backend.services.discovery.scheduler.get_org_config_repo", lambda: cfg_repo)
-    monkeypatch.setattr("backend.services.discovery.scheduler.get_discovery_repo", lambda: AsyncMock())
+    monkeypatch.setattr(
+        "backend.services.discovery.scheduler.get_org_config_repo", lambda: cfg_repo
+    )
+    monkeypatch.setattr(
+        "backend.services.discovery.scheduler.get_discovery_repo", lambda: AsyncMock()
+    )
     monkeypatch.setattr("backend.domain.get_domain_config", _get_domain)
 
     poller = AsyncMock()
@@ -65,7 +70,8 @@ async def test_master_tick_respects_interval_eligibility(monkeypatch):
     org_repo.list_all.return_value = [org_a]
 
     domain_a = DomainConfig(
-        name="d", description="t",
+        name="d",
+        description="t",
         discovery_enabled=True,
         discovery_feeds=[FeedConfig(url="https://x/rss", poll_interval_min=15)],
     )
@@ -74,8 +80,12 @@ async def test_master_tick_respects_interval_eligibility(monkeypatch):
         return domain_a
 
     monkeypatch.setattr("backend.services.discovery.scheduler.get_org_repo", lambda: org_repo)
-    monkeypatch.setattr("backend.services.discovery.scheduler.get_org_config_repo", lambda: AsyncMock())
-    monkeypatch.setattr("backend.services.discovery.scheduler.get_discovery_repo", lambda: AsyncMock())
+    monkeypatch.setattr(
+        "backend.services.discovery.scheduler.get_org_config_repo", lambda: AsyncMock()
+    )
+    monkeypatch.setattr(
+        "backend.services.discovery.scheduler.get_discovery_repo", lambda: AsyncMock()
+    )
     monkeypatch.setattr("backend.domain.get_domain_config", _get_domain)
 
     poller = AsyncMock()

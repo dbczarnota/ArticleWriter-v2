@@ -76,8 +76,12 @@ async def test_one_failing_item_does_not_kill_the_loop(monkeypatch):
     fetcher = AsyncMock(
         return_value=FetchResult(
             items=[
-                RawFeedItem(title="bad", url="https://x/1", guid="g1", summary=None, published_at=None),
-                RawFeedItem(title="good", url="https://x/2", guid="g2", summary=None, published_at=None),
+                RawFeedItem(
+                    title="bad", url="https://x/1", guid="g1", summary=None, published_at=None
+                ),
+                RawFeedItem(
+                    title="good", url="https://x/2", guid="g2", summary=None, published_at=None
+                ),
             ],
             etag=None,
             last_modified=None,

@@ -54,8 +54,10 @@ async def test_topic_writer_empty_title_raises():
     agent = _make_writer_agent(title="   ", blurb="ok")
     with pytest.raises(ValueError, match="empty title or blurb"):
         await run_topic_writer_agent(
-            title="t", summary="s",
-            config=ExtractionAgentConfig(), _agent=agent,
+            title="t",
+            summary="s",
+            config=ExtractionAgentConfig(),
+            _agent=agent,
         )
 
 
@@ -65,6 +67,8 @@ async def test_topic_writer_empty_blurb_raises():
     agent = _make_writer_agent(title="ok", blurb="")
     with pytest.raises(ValueError, match="empty title or blurb"):
         await run_topic_writer_agent(
-            title="t", summary="s",
-            config=ExtractionAgentConfig(), _agent=agent,
+            title="t",
+            summary="s",
+            config=ExtractionAgentConfig(),
+            _agent=agent,
         )

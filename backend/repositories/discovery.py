@@ -153,9 +153,7 @@ class PostgresDiscoveryRepository:
             await session.execute(stmt)
             await session.commit()
 
-    async def list_items_for_topic(
-        self, *, topic_id: UUID, org_code: str
-    ) -> list[DiscoveryItem]:
+    async def list_items_for_topic(self, *, topic_id: UUID, org_code: str) -> list[DiscoveryItem]:
         async with self._session_maker() as session:
             result = await session.execute(
                 select(DiscoveryItem)
@@ -271,9 +269,13 @@ class PostgresDiscoveryRepository:
             topic = await session.get(DiscoveryTopic, topic_id)
             if topic is None or topic.consumed_at is None:
                 return False
-            count_stmt = select(func.count()).select_from(DiscoveryItem).where(
-                DiscoveryItem.topic_id == topic_id,  # type: ignore[arg-type]
-                DiscoveryItem.fetched_at > topic.consumed_at,  # type: ignore[arg-type]
+            count_stmt = (
+                select(func.count())
+                .select_from(DiscoveryItem)
+                .where(
+                    DiscoveryItem.topic_id == topic_id,  # type: ignore[arg-type]
+                    DiscoveryItem.fetched_at > topic.consumed_at,  # type: ignore[arg-type]
+                )
             )
             new_count = (await session.execute(count_stmt)).scalar_one() or 0
             if new_count < threshold:

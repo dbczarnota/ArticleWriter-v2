@@ -304,25 +304,22 @@ async def test_list_items_for_topic_is_tenant_isolated(session_maker, org):
         await session.commit()
 
     repo = PostgresDiscoveryRepository(session_maker)
-    topic = await repo.create_topic(
-        org_code=org.code, title="T", blurb="b", categories=[]
-    )
+    topic = await repo.create_topic(org_code=org.code, title="T", blurb="b", categories=[])
     item = DiscoveryItem(
-        org_code=org.code, canonical_url="https://e.com/x",
-        title="X", categories=[], topic_id=topic.id,
+        org_code=org.code,
+        canonical_url="https://e.com/x",
+        title="X",
+        categories=[],
+        topic_id=topic.id,
     )
     await repo.upsert_item(item)
 
     # Same topic_id, but other org_code → empty result
-    items = await repo.list_items_for_topic(
-        topic_id=topic.id, org_code="org_other"
-    )
+    items = await repo.list_items_for_topic(topic_id=topic.id, org_code="org_other")
     assert items == []
 
     # Correct org_code → finds item
-    items = await repo.list_items_for_topic(
-        topic_id=topic.id, org_code=org.code
-    )
+    items = await repo.list_items_for_topic(topic_id=topic.id, org_code=org.code)
     assert len(items) == 1
 
 
@@ -338,12 +335,8 @@ async def test_list_topics_for_ui_org_filtered(session_maker, org):
         await session.commit()
 
     repo = PostgresDiscoveryRepository(session_maker)
-    mine = await repo.create_topic(
-        org_code=org.code, title="mine", blurb="b", categories=[]
-    )
-    theirs = await repo.create_topic(
-        org_code="other_org", title="theirs", blurb="b", categories=[]
-    )
+    mine = await repo.create_topic(org_code=org.code, title="mine", blurb="b", categories=[])
+    theirs = await repo.create_topic(org_code="other_org", title="theirs", blurb="b", categories=[])
 
     rows = await repo.list_topics_for_ui(org_code=org.code)
     ids = {t.id for t in rows}

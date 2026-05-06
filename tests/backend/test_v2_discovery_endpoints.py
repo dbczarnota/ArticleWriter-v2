@@ -195,7 +195,9 @@ async def test_write_article_marks_topic_consumed(monkeypatch, user, org, discov
 
 
 @pytest.mark.asyncio
-async def test_write_article_does_not_mark_consumed_until_task_runs(monkeypatch, user, org, discovery_repo):
+async def test_write_article_does_not_mark_consumed_until_task_runs(
+    monkeypatch, user, org, discovery_repo
+):
     """Endpoint returns 202 immediately; topic stays 'open' until the
     background task runs and marks it consumed. Simulating that the
     task never runs leaves the topic open."""
@@ -289,6 +291,7 @@ async def test_write_article_from_topic_with_zero_items(monkeypatch, user, org, 
     class _StubOrgConfigRepo:
         async def get(self, org_code):
             from backend.db.models import OrgConfig
+
             return OrgConfig(org_code=org_code, language="pl")
 
         async def upsert(self, c):
@@ -296,6 +299,7 @@ async def test_write_article_from_topic_with_zero_items(monkeypatch, user, org, 
 
         async def create_default(self, code):
             from backend.db.models import OrgConfig
+
             return OrgConfig(org_code=code, language="pl")
 
     async def _noop(*args, **kwargs):
