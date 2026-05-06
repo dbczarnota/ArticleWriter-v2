@@ -27,7 +27,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, String, text
+from sqlalchemy import Column, DateTime, ForeignKey, Index, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlmodel import Field, Relationship, SQLModel
@@ -373,4 +373,152 @@ class OrgConfig(SQLModel, table=True):
     updated_at: datetime = Field(
         default_factory=_utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()")),
+    )
+
+
+class DiscoveryFeed(SQLModel, table=True):
+    """RSS feed runtime state — separate from DomainConfig.discovery_feeds
+    (config = url+name+interval; this row tracks last fetch / etag / errors)."""
+
+    __tablename__ = "discovery_feeds"  # type: ignore[assignment]
+    __table_args__ = (
+        Index("ix_discovery_feeds_org", "org_code"),
+        UniqueConstraint("org_code", "feed_url", name="uq_discovery_feeds_org_url"),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        sa_column=Column(PG_UUID(as_uuid=True), primary_key=True),
+    )
+    org_code: str = Field(sa_column=Column(String(128), ForeignKey("orgs.code"), nullable=False))
+    feed_url: str = Field(max_length=2048)
+    last_fetched_at: datetime | None = Field(default=None)
+    last_etag: str | None = Field(default=None, max_length=256)
+    last_modified: str | None = Field(default=None, max_length=64)
+    last_error: str | None = Field(default=None, sa_column=Column(String(2048), nullable=True))
+    error_count: int = Field(default=0)
+    disabled: bool = Field(default=False)
+    created_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
+    )
+
+
+class DiscoveryTopic(SQLModel, table=True):
+    """Aggregate that surfaces in the UI. `categories` is a JSONB list[str]
+    — union of all attached items' tags."""
+
+    __tablename__ = "discovery_topics"  # type: ignore[assignment]
+    __table_args__ = (Index("ix_discovery_topics_org_activity", "org_code", "last_activity_at"),)
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        sa_column=Column(PG_UUID(as_uuid=True), primary_key=True),
+    )
+    org_code: str = Field(sa_column=Column(String(128), ForeignKey("orgs.code"), nullable=False))
+    title: str = Field(max_length=512)
+    blurb: str = Field(max_length=1024)
+    categories: list[str] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False))
+    status: str = Field(default="open", max_length=32)
+    """One of: open | dismissed | consumed | resurfaced."""
+
+    first_seen_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
+    )
+    last_activity_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
+    )
+    consumed_article_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(PG_UUID(as_uuid=True), ForeignKey("articles.id"), nullable=True),
+    )
+    consumed_at: datetime | None = Field(default=None)
+    items_at_consume: int | None = Field(default=None)
+
+    created_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
+    )
+    updated_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
+    )
+
+
+class DiscoveryItem(SQLModel, table=True):
+    """One RSS item, deduped by (org_code, canonical_url)."""
+
+    __tablename__ = "discovery_items"  # type: ignore[assignment]
+    __table_args__ = (
+        Index("ix_discovery_items_org_fetched", "org_code", "fetched_at"),
+        Index("ix_discovery_items_topic", "topic_id"),
+        UniqueConstraint("org_code", "canonical_url", name="uq_discovery_items_org_url"),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        sa_column=Column(PG_UUID(as_uuid=True), primary_key=True),
+    )
+    org_code: str = Field(sa_column=Column(String(128), ForeignKey("orgs.code"), nullable=False))
+    canonical_url: str = Field(max_length=2048)
+    guid: str | None = Field(default=None, max_length=512)
+    title: str = Field(max_length=1024)
+    summary: str | None = Field(default=None, sa_column=Column(String, nullable=True))
+    published_at: datetime | None = Field(default=None)
+
+    categories: list[str] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False))
+    category_confidences: dict[str, float] | None = Field(
+        default=None, sa_column=Column(JSONB, nullable=True)
+    )
+
+    topic_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(
+            PG_UUID(as_uuid=True),
+            ForeignKey("discovery_topics.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+    )
+
+    classifier_model: str | None = Field(default=None, max_length=128)
+    classifier_input_tokens: int | None = Field(default=None)
+    classifier_output_tokens: int | None = Field(default=None)
+    matcher_model: str | None = Field(default=None, max_length=128)
+    matcher_input_tokens: int | None = Field(default=None)
+    matcher_output_tokens: int | None = Field(default=None)
+
+    fetched_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
+    )
+    processed_at: datetime | None = Field(default=None)
+
+
+class DiscoveryItemFeed(SQLModel, table=True):
+    """M2M between items and feeds: same canonical URL may appear in
+    multiple feeds; we record every feed that surfaced it."""
+
+    __tablename__ = "discovery_item_feeds"  # type: ignore[assignment]
+
+    item_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID(as_uuid=True),
+            ForeignKey("discovery_items.id", ondelete="CASCADE"),
+            primary_key=True,
+            nullable=False,
+        )
+    )
+    feed_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID(as_uuid=True),
+            ForeignKey("discovery_feeds.id", ondelete="CASCADE"),
+            primary_key=True,
+            nullable=False,
+        )
+    )
+    seen_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
     )
