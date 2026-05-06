@@ -1,0 +1,10 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("task", "You classify an RSS news item against a list of editor-defined CATEGORIES (tags). Return EVERY category that genuinely applies — tags are independent and an item can carry several. Return an EMPTY list if no category fits well; do NOT force-fit. The user message contains the item TITLE, item SUMMARY, and the available CATEGORIES (each with name + description). For each chosen category emit confidence in [0..1]. State a one-sentence reasoning summarizing which tags you picked and why.") | trim }}
