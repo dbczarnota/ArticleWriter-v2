@@ -105,3 +105,35 @@ async def test_reset_feed_errors_clears_disabled(session_maker, org):
     feeds = await repo.list_feeds_for_org(org.code)
     assert feeds[0].disabled is False
     assert feeds[0].error_count == 0
+
+
+@pytest.mark.asyncio
+async def test_upsert_item_then_get_by_url(session_maker, org):
+    from backend.db.models import DiscoveryItem
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    item = DiscoveryItem(
+        org_code=org.code,
+        canonical_url="https://example.com/x",
+        title="X",
+        categories=["Sport"],
+    )
+    await repo.upsert_item(item)
+    found = await repo.get_item_by_url(org_code=org.code, canonical_url="https://example.com/x")
+    assert found is not None
+    assert found.title == "X"
+    assert found.categories == ["Sport"]
+
+
+@pytest.mark.asyncio
+async def test_add_item_to_feed_link_idempotent(session_maker, org):
+    from backend.db.models import DiscoveryItem
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    feed = await repo.upsert_feed(org_code=org.code, feed_url="https://example.com/rss")
+    item = DiscoveryItem(org_code=org.code, canonical_url="https://example.com/x", title="X", categories=[])
+    await repo.upsert_item(item)
+    await repo.add_item_to_feed_link(item_id=item.id, feed_id=feed.id)
+    await repo.add_item_to_feed_link(item_id=item.id, feed_id=feed.id)  # duplicate ignored
