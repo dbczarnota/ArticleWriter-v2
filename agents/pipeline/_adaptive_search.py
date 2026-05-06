@@ -194,9 +194,7 @@ async def adaptive_search_loop(
                 round=round_idx,
                 pages_count=len(extra_scraped),
             ) as parsing_span:
-                extra_articles = await run_parsing_agent(
-                    extra_scraped, config=settings.parsing
-                )
+                extra_articles = await run_parsing_agent(extra_scraped, config=settings.parsing)
                 parsing_span.set_attribute("articles_count", len(extra_articles))
             articles = articles + extra_articles  # extend pool for downstream rerank
 
@@ -215,12 +213,8 @@ async def adaptive_search_loop(
                     language=domain.language,
                     config=settings.extraction,
                 )
-                extraction_span.set_attribute(
-                    "facts_extracted", len(extra_extraction.facts)
-                )
-                extraction_span.set_attribute(
-                    "quotes_extracted", len(extra_extraction.quotes)
-                )
+                extraction_span.set_attribute("facts_extracted", len(extra_extraction.facts))
+                extraction_span.set_attribute("quotes_extracted", len(extra_extraction.quotes))
             extraction = merge_extraction(extraction, extra_extraction)
             log.extraction_done(extraction)
 

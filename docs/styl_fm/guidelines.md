@@ -96,6 +96,99 @@ Lead to pierwsze, wyboldowane zdania artykułu – to, co czytelnik widzi zaraz 
 *   **Nie powtarzaj tytułu** słowo w słowo. Lead ma rozwijać obietnicę z H1, a nie ją kopiować.
 *   **Wyjątki od zasady "imię i nazwisko na start":** gdy piszemy o zdarzeniu (tragedia, katastrofa, sprawa kryminalna, w której nazwisko nie jest publiczne), gdy bohaterem jest grupa lub instytucja, albo gdy ukrycie tożsamości jest elementem luki informacyjnej. Wtedy zaczynamy od faktu zdarzenia (miejsce + co się stało).
     *   *Dobrze:* **Pod Włodawą** doszło do tragedii. 37-letnia **Emilia S.** zamarzła na polu kukurydzy po nocnej kłótni z mężem.
+*   **Pierwszy akapit po lidzie też zawiera imię i nazwisko bohatera.** Lead pakuje hak, drugi akapit go cementuje — i robi to ponownie z imieniem i nazwiskiem (a nie tylko z zaimkiem "ona" / "on" czy ogólnym "aktorka", "celebrytka"). Dlaczego? Po pierwsze — Google indeksuje powtórzenia kluczowych fraz i to pomaga w SEO. Po drugie — czytelnik, który scrollował, ma się natychmiast zorientować, o kim mowa, bez wracania do leadu. Po trzecie — to wzmacnia rytm artykułu i odsiewa wodolejstwo.
+    *   *Dobrze:* *Lead:* **Julia Wieniawa** ponownie rozgrzała swoich fanów na Instagramie. *Drugi akapit:* **Wieniawa** opublikowała zdjęcie w mikroskopijnych majtkach na swoim profilu w sobotni wieczór. W kilka godzin zebrało ono ponad 50 tys. polubień.
+    *   *Źle (zaimek zamiast nazwiska):* *Lead:* **Julia Wieniawa** ponownie rozgrzała swoich fanów. *Drugi akapit:* Ona opublikowała zdjęcie w mikroskopijnych majtkach. W kilka godzin zebrało ono…
+    *   *Źle (mglisty zaimek opisowy):* *Drugi akapit:* Aktorka po raz kolejny pokazała, co potrafi. Tym razem postawiła na odwagę.
+    *   **Forma w drugim akapicie:** wystarczy samo nazwisko (*Wieniawa*), pełne imię i nazwisko (*Julia Wieniawa*), albo nazwisko z krótkim wzmacniaczem (*32-letnia Wieniawa*, *gwiazda "Hotelu Paradise"*). Cel: brzmieć naturalnie, nie kopiować dosłownie zdania z leadu.
+    *   **Wyjątek (jak w leadzie):** w tekstach o tragediach/zdarzeniach, gdzie nazwisko zostało zanonimizowane (*Emilia S.*), w drugim akapicie używamy tej samej anonimizowanej formy.
+
+---
+
+### CZĘŚĆ V: TON — LEKKA IRONIA I DROBNE ŻARTY
+
+Nasze teksty mają być **konkretne, ale nie suche**. Lekka nutka ironii i drobne żarty są **pożądane** — to one odróżniają nas od beznamiętnej agencji prasowej. Czytelnik ma czuć, że tekst napisał człowiek z dystansem, nie automat klepiący komunikat PR.
+
+#### ZASADA 1: Mrugnięcie okiem do czytelnika
+
+Pisarz wie, że czytelnik wie. Ironia opiera się na wspólnym kontekście — drobne, podszyte humorem zdanie, które puentuje absurd sytuacji albo odsłania to, czego bohater nie powiedział wprost.
+
+*   **Dobrze:** *"Aktorka zapewnia, że to "tylko zwykły dzień przy kawie". Zwykły dzień, na którym przypadkiem kręcono sesję dla marki kosmetyków za sześciocyfrowy kontrakt."*
+*   **Źle (za grubo):** *"Aktorka kłamie jak z nut, bo każdy widzi, że to ustawka."*
+*   **Źle (za sucho):** *"Aktorka opublikowała zdjęcie przy kawie. W tle widoczne logo marki, dla której pracuje."*
+
+#### ZASADA 2: Drobny żart, nie stand-up
+
+Jeden, czasem dwa zgrabne wtręty na cały artykuł. Jeśli dorzucisz żart w każdym akapicie, traci on moc — zaczynasz brzmieć jak natrętny kabareciarz, nie jak redaktor. **Pointa działa, gdy jest rzadka.** Najlepiej w połowie tekstu albo na zamknięcie, jako kropka nad i.
+
+*   **Dobrze (zamknięcie):** *"Fani odetchnęli z ulgą. W końcu od ostatniego rozstania minęły aż dwa tygodnie — zdecydowanie za długo jak na branżowe standardy."*
+*   **Źle:** żart w leadzie, drugi w pierwszym H2, trzeci w cytacie, czwarty w zakończeniu. Czytelnik wymięka.
+
+#### ZASADA 3: Ironia kosztem sytuacji, nie kosztem bohatera
+
+Żartujemy z **absurdu okoliczności, schematu medialnego, tego co oczywiste a nie powiedziane** — nie z czyjegoś wyglądu, dramatu osobistego, choroby, śmierci, rodziny. To linia, której nie przekraczamy nawet w najbardziej clickbaitowym tekście. Cel: czytelnik się uśmiecha, nie krzywi.
+
+*   **OK:** ironizować ze sztampowych formułek PR-owych, z udawanego zaskoczenia gwiazdy, z "przypadkowych" sesji paparazzi, z dziwnych logicznie tłumaczeń.
+*   **Nie wolno:** żartować z tragedii, choroby, ofiar przemocy, śmierci, dzieci, wyglądu fizycznego (chyba że bohater sam świadomie eksponuje).
+
+#### ZASADA 4: Sformułowania pasujące do naszego tonu
+
+Lekko ironiczne wtręty, które dobrze pracują:
+
+*   *"jak się można domyślić"*, *"kto by się spodziewał"*, *"zupełnie przypadkiem"*, *"oczywiście całkiem niezamierzenie"*, *"w geście czystej skromności"*, *"żeby tylko nie zwracać na siebie uwagi"*
+*   *"w sumie nikt się nie zdziwił"*, *"to się musiało stać"*, *"tylko kwestia czasu"*, *"nikt nie miał wątpliwości"*
+*   *"jak na ironię"*, *"co znaczące"*, *"ku zaskoczeniu nikogo"*, *"sprawa potoczyła się dokładnie tak, jak można było przewidzieć"*
+
+#### ZASADA 5: Ironia subtelna, nie sarkazm
+
+Sarkazm = z góry, atakujący, "ja wiem lepiej". Ironia = równorzędny, partnerski, "to jest zabawne, prawda?". Trzymamy się ironii. Sarkazm zostawiamy konkurencji.
+
+*   **Ironia (OK):** *"Gwiazda zapewnia, że relacja z fotografem to czysty przypadek. Wymowny czysty przypadek, bo trwający już szósty miesiąc."*
+*   **Sarkazm (NIE):** *"No tak, klasyczna gwiazdka, która znowu mami fanów bajkami o przypadkowości."*
+
+#### ZASADA 6: TWARDY STOP — tematy poza ironią i żartem
+
+Wszystko, co napisaliśmy wyżej o ironii i drobnych żartach, **nie obowiązuje** w tekstach o:
+
+*   wypadkach, katastrofach, pożarach, tragediach losowych,
+*   śmierci osoby (publicznej i prywatnej), kondolencjach, pogrzebach,
+*   chorobach, urazach, hospitalizacji, problemach psychicznych, uzależnieniach,
+*   przemocy, sprawach kryminalnych, ofiarach przestępstw, zaginięciach,
+*   krzywdzie dzieci, przemocy domowej, samobójstwach,
+*   żałobie, stratach rodzinnych (śmierć dziecka, rodzica, partnera),
+*   kataklizmach, klęskach żywiołowych z ofiarami.
+
+W takich tekstach pisarz pracuje w trybie **rzeczowym, ale empatycznym i poruszającym** — to nie jest komunikat agencyjny. Konkretne fakty, neutralny ton wobec opisu zdarzeń, ale **emocje czytelnika nadal wzbudzamy** — tylko innymi środkami niż w tekstach lifestyle'owych. Bez ironii, bez "mrugnięcia okiem", bez puentujących żarcików, bez błyskotliwych formułek z naszego słowniczka. Także bez epitetów typu *"rozgogolona"*, *"absolutny hit"* — one tu nie mają miejsca.
+
+#### Czego ZAMIAST tego oczekujemy
+
+Tekst o tragedii ma **poruszyć czytelnika** — wywołać współczucie, refleksję, zatrzymać. Robimy to nie hiperbolą i clickbaitem, tylko **konkretem ludzkim**:
+
+*   **Eksponuj poruszający szczegół.** Banalna rzecz, która nagle nabiera znaczenia w kontekście tragedii: ostatnia wiadomość, niedokończona kawa na stole, plany na wieczór, prezent na nadchodzące urodziny dziecka, pies, który wciąż czeka pod drzwiami. Jeden taki szczegół wbija się w pamięć mocniej niż dziesięć ogólników.
+    *   *Dobrze:* *"Marek miał wracać do domu na 19. Na stole czekało nakryte miejsce — żona przygotowała jego ulubione gołąbki z okazji rocznicy ślubu. Tej rocznicy już nie obchodzili."*
+*   **Cytuj bliskich, jeśli źródła to umożliwiają.** Słowa rodziny, sąsiadów, kolegów z pracy mają inny ciężar niż relacja w trzeciej osobie. Krótki cytat z atrybucją działa jak punkt kulminacyjny.
+    *   *Dobrze:* *"'Mówiłam mu, żeby na siebie uważał. Zawsze odpowiadał: mamo, spokojnie, ja wracam' — wspomina pani Krystyna."*
+*   **Pokaż człowieka, nie statystykę.** Czytelnik nie współczuje "ofierze wypadku" — współczuje konkretnemu Markowi, który był tatą dwójki dzieci, pracował jako kierowca od 15 lat, w niedzielę miał zabrać córkę na pierwszy seans w kinie. Im więcej takiego konkretu (z poszanowaniem prywatności), tym mocniejsza reakcja czytelnika.
+*   **Ton: powściągliwy, ale ciepły.** Krótkie zdania, brak emfazy językowej, ale dobór szczegółów emocjonalny. Nie krzyczymy "TRAGEDIA!" — zostawiamy fakt, który sam jest tragedią, i pozwalamy mu wybrzmieć.
+*   **Lead w takim tekście** ma już zatrzymać emocjonalnie — nie clickbaitem, tylko ludzkim haczykiem. Nazwisko, wiek, jedno zdanie, które oddaje skalę straty.
+    *   *Dobrze:* *"**38-letni Marek L.** miał wracać z pracy na rocznicę ślubu. Zginął kilometr od domu, na drodze S7, którą jeździł codziennie od 12 lat."*
+
+#### Czego nadal NIE robimy
+
+*   **Nie spekulujemy** o przyczynach, jeśli nie ma faktów. "Prawdopodobnie", "podobno zarządzający fabryką wiedzieli" — bez tego.
+*   **Nie eksploatujemy.** Eksponowanie poruszającego szczegółu to nie to samo co taplanie się w cudzym dramacie. Cienka linia: szczegół ma uderzyć i odbić, nie być pretekstem do akapitu makabry.
+*   **Nie publikujemy detali, które nie mają znaczenia dla czytelnika** a obciążają rodzinę: imion dzieci ofiary, dokładnych adresów, drastycznych szczegółów medycznych, zdjęć z miejsca zdarzenia.
+*   **Nie łapiemy kliknięć kosztem ofiary.** Headline nie jest tu narzędziem CTR — jest informacją z szacunkiem.
+
+*   **Dobrze (porusza, nie eksploatuje):** *"38-letni Marek L. zginął na S7 kilometr od domu. Wracał na rocznicę ślubu. Na stole czekała żona. Zostawił dwoje dzieci."*
+*   **Źle (sucho, agencyjnie — brakuje człowieka):** *"38-letni Marek L. zginął w wypadku na drodze S7. Sprawca uciekł z miejsca zdarzenia. Policja szuka świadków."*
+*   **Źle (ironia tam, gdzie jej być nie może):** *"Tragedia, której — jak się można domyślić — nikt się nie spodziewał. Zupełnie przypadkiem na S7 doszło do dramatu."*
+*   **Źle (clickbait z naszego słowniczka):** *"Mrozi krew w żyłach! Tragedia na S7 zwala z nóg, a fani gwiazdy nie gryzą się w język."*
+*   **Źle (eksploatacja makabry):** *"Ciało Marka L. było tak zmasakrowane, że ratownicy nie mogli go zidentyfikować. Świadkowie w szoku do dziś nie mogą spać."*
+
+**Headline w takich tekstach** też się zmienia: bez hiperboli typu *"szczęka opada"*, *"w sieci wrze"*. Działa konstrukcja faktyczna z ludzkim akcentem: *"Tragiczny wypadek na S7. 38-letni Marek nie wrócił już na rocznicę ślubu."*
+
+**Zasada brzytwy:** jeśli masz wątpliwość, czy dany żart wypada w danym tekście — **nie wypada**. I druga: jeśli masz wątpliwość, czy dany szczegół porusza, czy raczej eksploatuje — **wytnij go**. Lepiej napisać krócej i z szacunkiem, niż przekroczyć granicę przyzwoitości.
 
 ---
 

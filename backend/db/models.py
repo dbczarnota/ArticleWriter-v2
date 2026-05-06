@@ -397,15 +397,21 @@ class OrgConfig(SQLModel, table=True):
     )
     discovery_classifier_fallback_models: list = Field(
         default_factory=lambda: ["groq:openai/gpt-oss-120b"],
-        sa_column=Column(JSONB, nullable=False, server_default=text("""'["groq:openai/gpt-oss-120b"]'""")),
+        sa_column=Column(
+            JSONB, nullable=False, server_default=text("""'["groq:openai/gpt-oss-120b"]'""")
+        ),
     )
     discovery_matcher_fallback_models: list = Field(
         default_factory=lambda: ["groq:openai/gpt-oss-120b"],
-        sa_column=Column(JSONB, nullable=False, server_default=text("""'["groq:openai/gpt-oss-120b"]'""")),
+        sa_column=Column(
+            JSONB, nullable=False, server_default=text("""'["groq:openai/gpt-oss-120b"]'""")
+        ),
     )
     discovery_topic_writer_fallback_models: list = Field(
         default_factory=lambda: ["groq:openai/gpt-oss-120b"],
-        sa_column=Column(JSONB, nullable=False, server_default=text("""'["groq:openai/gpt-oss-120b"]'""")),
+        sa_column=Column(
+            JSONB, nullable=False, server_default=text("""'["groq:openai/gpt-oss-120b"]'""")
+        ),
     )
 
     updated_at: datetime = Field(

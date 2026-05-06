@@ -29,7 +29,9 @@ async def test_new_item_no_match_creates_topic(monkeypatch):
     repo = NullDiscoveryRepository()
     feed = await repo.upsert_feed(org_code="org_t", feed_url="https://x/rss")
 
-    classifier = AsyncMock(return_value=CategoryDecision(categories=["Sport"], confidences={}, reasoning=""))
+    classifier = AsyncMock(
+        return_value=CategoryDecision(categories=["Sport"], confidences={}, reasoning="")
+    )
     matcher = AsyncMock(return_value=MatchDecision(matched_topic_id=None, reasoning=""))
     writer = AsyncMock(return_value=TopicDescriptor(title="New story", blurb="A new event"))
 
@@ -37,8 +39,12 @@ async def test_new_item_no_match_creates_topic(monkeypatch):
     monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_matcher_agent", matcher)
     monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_writer_agent", writer)
 
-    raw = RawFeedItem(title="X", url="https://x/a/1?utm_source=rss", guid="g1", summary="s", published_at=None)
-    item = await process_item(raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo)
+    raw = RawFeedItem(
+        title="X", url="https://x/a/1?utm_source=rss", guid="g1", summary="s", published_at=None
+    )
+    item = await process_item(
+        raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo
+    )
 
     assert item.canonical_url == "https://x/a/1"
     assert item.categories == ["Sport"]
@@ -57,7 +63,9 @@ async def test_new_item_match_attaches_to_existing(monkeypatch):
         org_code="org_t", title="Existing", blurb="b", categories=["Sport"]
     )
 
-    classifier = AsyncMock(return_value=CategoryDecision(categories=["Lokalne"], confidences={}, reasoning=""))
+    classifier = AsyncMock(
+        return_value=CategoryDecision(categories=["Lokalne"], confidences={}, reasoning="")
+    )
     matcher = AsyncMock(return_value=MatchDecision(matched_topic_id=existing.id, reasoning=""))
     writer = AsyncMock()
 
@@ -66,7 +74,9 @@ async def test_new_item_match_attaches_to_existing(monkeypatch):
     monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_writer_agent", writer)
 
     raw = RawFeedItem(title="X", url="https://x/a/1", guid="g1", summary="s", published_at=None)
-    item = await process_item(raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo)
+    item = await process_item(
+        raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo
+    )
 
     assert item.topic_id == existing.id
     writer.assert_not_awaited()  # no new topic created
@@ -81,7 +91,9 @@ async def test_duplicate_url_links_feed_no_reprocess(monkeypatch):
     feed_a = await repo.upsert_feed(org_code="org_t", feed_url="https://a/rss")
     feed_b = await repo.upsert_feed(org_code="org_t", feed_url="https://b/rss")
 
-    classifier = AsyncMock(return_value=CategoryDecision(categories=[], confidences={}, reasoning=""))
+    classifier = AsyncMock(
+        return_value=CategoryDecision(categories=[], confidences={}, reasoning="")
+    )
     matcher = AsyncMock(return_value=MatchDecision(matched_topic_id=None, reasoning=""))
     writer = AsyncMock(return_value=TopicDescriptor(title="t", blurb="b"))
     monkeypatch.setattr("backend.services.discovery.pipeline.run_classifier_agent", classifier)
@@ -89,8 +101,12 @@ async def test_duplicate_url_links_feed_no_reprocess(monkeypatch):
     monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_writer_agent", writer)
 
     raw = RawFeedItem(title="X", url="https://x/a/1", guid="g1", summary="s", published_at=None)
-    first = await process_item(raw=raw, org_code="org_t", domain=_domain(), feed_id=feed_a.id, repo=repo)
-    second = await process_item(raw=raw, org_code="org_t", domain=_domain(), feed_id=feed_b.id, repo=repo)
+    first = await process_item(
+        raw=raw, org_code="org_t", domain=_domain(), feed_id=feed_a.id, repo=repo
+    )
+    second = await process_item(
+        raw=raw, org_code="org_t", domain=_domain(), feed_id=feed_b.id, repo=repo
+    )
     assert first.id == second.id
     assert classifier.await_count == 1  # second call short-circuited
 
@@ -100,7 +116,9 @@ async def test_classifier_returning_empty_lands_in_uncategorized(monkeypatch):
     repo = NullDiscoveryRepository()
     feed = await repo.upsert_feed(org_code="org_t", feed_url="https://x/rss")
 
-    classifier = AsyncMock(return_value=CategoryDecision(categories=[], confidences={}, reasoning=""))
+    classifier = AsyncMock(
+        return_value=CategoryDecision(categories=[], confidences={}, reasoning="")
+    )
     matcher = AsyncMock(return_value=MatchDecision(matched_topic_id=None, reasoning=""))
     writer = AsyncMock(return_value=TopicDescriptor(title="t", blurb="b"))
     monkeypatch.setattr("backend.services.discovery.pipeline.run_classifier_agent", classifier)
@@ -108,5 +126,7 @@ async def test_classifier_returning_empty_lands_in_uncategorized(monkeypatch):
     monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_writer_agent", writer)
 
     raw = RawFeedItem(title="X", url="https://x/a/1", guid="g1", summary="s", published_at=None)
-    item = await process_item(raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo)
+    item = await process_item(
+        raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo
+    )
     assert item.categories == []

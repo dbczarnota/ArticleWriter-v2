@@ -66,7 +66,9 @@ async def write_article(
     if domain.reflection_rounds != 1:
         from dataclasses import replace as dc_replace
 
-        base = dc_replace(base, reflection=dc_replace(base.reflection, max_rounds=domain.reflection_rounds))
+        base = dc_replace(
+            base, reflection=dc_replace(base.reflection, max_rounds=domain.reflection_rounds)
+        )
     app_settings = AppSettings.from_request(req, base=base)
 
     article_id = await article_repo.create_running(
@@ -425,8 +427,7 @@ async def get_discovery_topic(
         raise HTTPException(status_code=404, detail="Topic not found")
     items = await discovery_repo.list_items_for_topic(topic_id)
     new_count = sum(
-        1 for it in items
-        if topic.consumed_at is not None and it.fetched_at > topic.consumed_at
+        1 for it in items if topic.consumed_at is not None and it.fetched_at > topic.consumed_at
     )
     return {
         **_topic_to_json(topic, new_items_since_consume=new_count),

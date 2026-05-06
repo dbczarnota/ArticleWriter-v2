@@ -76,7 +76,9 @@ async def test_record_feed_run_resets_errors(session_maker, org):
     feeds = await repo.list_feeds_for_org(org.code)
     assert feeds[0].error_count == 2
 
-    await repo.record_feed_run(f.id, last_etag='"abc"', last_modified="Wed, 21 Oct 2026 07:28:00 GMT")
+    await repo.record_feed_run(
+        f.id, last_etag='"abc"', last_modified="Wed, 21 Oct 2026 07:28:00 GMT"
+    )
     feeds = await repo.list_feeds_for_org(org.code)
     assert feeds[0].error_count == 0
     assert feeds[0].last_etag == '"abc"'
@@ -134,7 +136,9 @@ async def test_add_item_to_feed_link_idempotent(session_maker, org):
 
     repo = PostgresDiscoveryRepository(session_maker)
     feed = await repo.upsert_feed(org_code=org.code, feed_url="https://example.com/rss")
-    item = DiscoveryItem(org_code=org.code, canonical_url="https://example.com/x", title="X", categories=[])
+    item = DiscoveryItem(
+        org_code=org.code, canonical_url="https://example.com/x", title="X", categories=[]
+    )
     await repo.upsert_item(item)
     await repo.add_item_to_feed_link(item_id=item.id, feed_id=feed.id)
     await repo.add_item_to_feed_link(item_id=item.id, feed_id=feed.id)  # duplicate ignored
@@ -201,8 +205,11 @@ async def test_mark_topic_consumed_and_resurface(session_maker, org):
     # Pre-consume: 2 items
     async with session_maker() as session:
         article = Article(
-            org_code=org.code, author_user_id="u1", domain_name="test",
-            topic="T", status="done",
+            org_code=org.code,
+            author_user_id="u1",
+            domain_name="test",
+            topic="T",
+            status="done",
         )
         session.add(article)
         await session.commit()
@@ -210,14 +217,15 @@ async def test_mark_topic_consumed_and_resurface(session_maker, org):
 
     for i in range(2):
         item = DiscoveryItem(
-            org_code=org.code, canonical_url=f"https://e.com/{i}",
-            title=f"X{i}", categories=[], topic_id=topic.id,
+            org_code=org.code,
+            canonical_url=f"https://e.com/{i}",
+            title=f"X{i}",
+            categories=[],
+            topic_id=topic.id,
         )
         await repo.upsert_item(item)
 
-    await repo.mark_topic_consumed(
-        topic_id=topic.id, article_id=article.id, items_at_consume=2
-    )
+    await repo.mark_topic_consumed(topic_id=topic.id, article_id=article.id, items_at_consume=2)
 
     # No new items yet
     flipped = await repo.check_resurface(topic_id=topic.id, threshold=3)
@@ -227,8 +235,12 @@ async def test_mark_topic_consumed_and_resurface(session_maker, org):
     later = dt.now(UTC)
     for i in range(2, 5):
         item = DiscoveryItem(
-            org_code=org.code, canonical_url=f"https://e.com/{i}",
-            title=f"X{i}", categories=[], topic_id=topic.id, fetched_at=later,
+            org_code=org.code,
+            canonical_url=f"https://e.com/{i}",
+            title=f"X{i}",
+            categories=[],
+            topic_id=topic.id,
+            fetched_at=later,
         )
         await repo.upsert_item(item)
 
@@ -246,7 +258,9 @@ async def test_list_topics_for_ui_filters(session_maker, org):
     repo = PostgresDiscoveryRepository(session_maker)
     a = await repo.create_topic(org_code=org.code, title="A", blurb="b", categories=["Polityka"])
     b = await repo.create_topic(org_code=org.code, title="B", blurb="b", categories=["Sport"])
-    c = await repo.create_topic(org_code=org.code, title="C", blurb="b", categories=["Polityka", "Sport"])
+    c = await repo.create_topic(
+        org_code=org.code, title="C", blurb="b", categories=["Polityka", "Sport"]
+    )
 
     # filter by single category
     rows = await repo.list_topics_for_ui(org_code=org.code, categories=["Polityka"])

@@ -35,13 +35,13 @@ async def run_classifier_agent(
     _agent: Agent[Any, Any] | None = None,
 ) -> CategoryDecision:
     if not categories:
-        return CategoryDecision(categories=[], confidences={}, reasoning="No categories configured.")
+        return CategoryDecision(
+            categories=[], confidences={}, reasoning="No categories configured."
+        )
 
     cat_block = "\n".join(f"- {c.name}: {c.description}" for c in categories)
     user_prompt = (
-        f"TITLE: {title}\n\n"
-        f"SUMMARY: {summary or '(no summary)'}\n\n"
-        f"CATEGORIES:\n{cat_block}"
+        f"TITLE: {title}\n\nSUMMARY: {summary or '(no summary)'}\n\nCATEGORIES:\n{cat_block}"
     )
 
     if _agent is not None:
@@ -49,6 +49,7 @@ async def run_classifier_agent(
         result = await _agent.run(user_prompt)
         _model_used = config.model
     else:
+
         def _factory(m: str) -> tuple[Agent[Any, Any], str]:
             sys_prompt = render_prompt(
                 _PROMPTS_DIR / "classify.j2",

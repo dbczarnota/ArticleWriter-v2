@@ -103,4 +103,6 @@ async def fetch_feed(
         items_in_response=len(items),
         not_modified=False,
     )
-    return FetchResult(items=items, etag=new_etag, last_modified=new_last_modified, not_modified=False)
+    return FetchResult(
+        items=items, etag=new_etag, last_modified=new_last_modified, not_modified=False
+    )

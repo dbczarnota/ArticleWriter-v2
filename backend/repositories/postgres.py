@@ -192,8 +192,7 @@ class PostgresArticleRepository:
             if created_before is not None:
                 stmt = stmt.where(Article.created_at <= created_before)  # type: ignore[arg-type]
             stmt = (
-                stmt
-                .order_by(Article.created_at.desc())  # type: ignore[attr-defined]
+                stmt.order_by(Article.created_at.desc())  # type: ignore[attr-defined]
                 .limit(limit)
                 .offset(offset)
             )

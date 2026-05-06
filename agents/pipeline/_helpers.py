@@ -108,9 +108,7 @@ _SOCIAL_URL_RE = re.compile(
 def normalize_social_url(url: str) -> str:
     """Convert embed/shortlink forms to canonical watch URLs."""
     # youtube.com/embed/VIDEO_ID → youtube.com/watch?v=VIDEO_ID
-    m = re.match(
-        r"(https?://(?:www\.)?youtube\.com)/embed/([A-Za-z0-9_-]+)", url, re.IGNORECASE
-    )
+    m = re.match(r"(https?://(?:www\.)?youtube\.com)/embed/([A-Za-z0-9_-]+)", url, re.IGNORECASE)
     if m:
         return f"{m.group(1)}/watch?v={m.group(2)}"
     return url

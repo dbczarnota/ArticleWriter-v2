@@ -33,6 +33,7 @@ _log = logging.getLogger(__name__)
 def _utcnow() -> datetime:
     return datetime.now(UTC)
 
+
 # Stable seed values used by run.py's NullAuthenticator path so a developer can
 # rely on the same identifiers across runs.
 LOCAL_DEV_ORG_CODE = "__local_dev__"
@@ -310,9 +311,7 @@ class NullDiscoveryRepository:
         f.disabled = False
 
     # ── Items ────────────────────────────────────────────────────────────
-    async def get_item_by_url(
-        self, *, org_code: str, canonical_url: str
-    ) -> DiscoveryItem | None:
+    async def get_item_by_url(self, *, org_code: str, canonical_url: str) -> DiscoveryItem | None:
         for it in self._items.values():
             if it.org_code == org_code and it.canonical_url == canonical_url:
                 return it
@@ -330,9 +329,7 @@ class NullDiscoveryRepository:
         return [it for it in self._items.values() if it.topic_id == topic_id]
 
     # ── Topics ───────────────────────────────────────────────────────────
-    async def list_active_topics(
-        self, *, org_code: str, window_days: int
-    ) -> list[DiscoveryTopic]:
+    async def list_active_topics(self, *, org_code: str, window_days: int) -> list[DiscoveryTopic]:
         cutoff = _utcnow() - timedelta(days=window_days)
         return [
             t
@@ -348,9 +345,7 @@ class NullDiscoveryRepository:
         blurb: str,
         categories: list[str],
     ) -> DiscoveryTopic:
-        t = DiscoveryTopic(
-            org_code=org_code, title=title, blurb=blurb, categories=list(categories)
-        )
+        t = DiscoveryTopic(org_code=org_code, title=title, blurb=blurb, categories=list(categories))
         self._topics[t.id] = t
         return t
 
@@ -382,9 +377,7 @@ class NullDiscoveryRepository:
         t.consumed_at = _utcnow()
         t.items_at_consume = items_at_consume
 
-    async def check_resurface(
-        self, *, topic_id: UUID, threshold: int
-    ) -> bool:
+    async def check_resurface(self, *, topic_id: UUID, threshold: int) -> bool:
         t = self._topics[topic_id]
         if t.consumed_at is None:
             return False
@@ -398,9 +391,7 @@ class NullDiscoveryRepository:
             return True
         return False
 
-    async def get_topic(
-        self, *, topic_id: UUID, org_code: str
-    ) -> DiscoveryTopic | None:
+    async def get_topic(self, *, topic_id: UUID, org_code: str) -> DiscoveryTopic | None:
         t = self._topics.get(topic_id)
         if t is None or t.org_code != org_code:
             return None

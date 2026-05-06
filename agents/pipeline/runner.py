@@ -138,7 +138,9 @@ async def _run_pipeline_inner(
         if settings.search.search_freshness == SearchAgentConfig().search_freshness:
             settings = dc_replace(
                 settings,
-                search=dc_replace(settings.search, search_freshness=domain.default_search_freshness),
+                search=dc_replace(
+                    settings.search, search_freshness=domain.default_search_freshness
+                ),
             )
 
         # Apply domain news_search default
@@ -170,7 +172,8 @@ async def _run_pipeline_inner(
         from agents._base.config import ReflectionAgentConfig
 
         if (
-            settings.reflection.context_articles_count == ReflectionAgentConfig().context_articles_count
+            settings.reflection.context_articles_count
+            == ReflectionAgentConfig().context_articles_count
             and domain.default_reflection_context_articles
             != ReflectionAgentConfig().context_articles_count
         ):
@@ -310,10 +313,7 @@ async def _run_pipeline_inner(
             "pipeline.parsing.completed",
             pages_in=len(scraped),
             articles_out=len(articles),
-            articles=[
-                {"url": a.url, "title": (a.title or "")[:200]}
-                for a in articles[:30]
-            ],
+            articles=[{"url": a.url, "title": (a.title or "")[:200]} for a in articles[:30]],
         )
 
         if settings.pipeline.cutoff_days > 0:
@@ -607,9 +607,7 @@ async def _run_pipeline_inner(
                     record_stage("followup", _timing["followup"], domain.name)
                     _total_ms = (time.perf_counter() - _pipeline_t0) * 1000
                     record_pipeline_run(domain.name, "error" if _errors else "ok", _total_ms)
-                    _final_sources = _ensure_user_urls(
-                        list(result.sources or scraped_urls), urls
-                    )
+                    _final_sources = _ensure_user_urls(list(result.sources or scraped_urls), urls)
                     log.done(len(_final_sources), len(_errors))
                     await persist_article_done(
                         repo=_article_repo,
@@ -731,4 +729,3 @@ async def _run_pipeline_inner(
                 for e in get_fallback_events()
             ],
         )
-

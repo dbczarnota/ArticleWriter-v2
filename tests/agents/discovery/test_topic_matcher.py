@@ -26,8 +26,11 @@ async def test_empty_candidates_always_returns_none():
     """Whatever the LLM hallucinates, no candidates -> None."""
     agent = _make_matcher_agent(matched_id="some-id-the-llm-made-up")
     out = await run_topic_matcher_agent(
-        title="X", summary="Y", candidates=[],
-        config=ExtractionAgentConfig(), _agent=agent,
+        title="X",
+        summary="Y",
+        candidates=[],
+        config=ExtractionAgentConfig(),
+        _agent=agent,
     )
     assert out.matched_topic_id is None
 
@@ -37,8 +40,11 @@ async def test_returns_matched_id_when_in_candidates():
     cand = TopicCandidate(id=uuid4(), title="Existing", blurb="An ongoing story")
     agent = _make_matcher_agent(matched_id=str(cand.id))
     out = await run_topic_matcher_agent(
-        title="More on existing", summary="...", candidates=[cand],
-        config=ExtractionAgentConfig(), _agent=agent,
+        title="More on existing",
+        summary="...",
+        candidates=[cand],
+        config=ExtractionAgentConfig(),
+        _agent=agent,
     )
     assert out.matched_topic_id == cand.id
 
@@ -48,7 +54,10 @@ async def test_invalid_id_treated_as_no_match():
     cand = TopicCandidate(id=uuid4(), title="Existing", blurb="...")
     agent = _make_matcher_agent(matched_id=str(uuid4()))  # not in candidates
     out = await run_topic_matcher_agent(
-        title="X", summary="Y", candidates=[cand],
-        config=ExtractionAgentConfig(), _agent=agent,
+        title="X",
+        summary="Y",
+        candidates=[cand],
+        config=ExtractionAgentConfig(),
+        _agent=agent,
     )
     assert out.matched_topic_id is None

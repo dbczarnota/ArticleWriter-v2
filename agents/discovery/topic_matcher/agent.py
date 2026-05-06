@@ -54,6 +54,7 @@ async def run_topic_matcher_agent(
         result = await _agent.run(user_prompt)
         _model_used = config.model
     else:
+
         def _factory(m: str) -> tuple[Agent[Any, Any], str]:
             sys_prompt = render_prompt(
                 _PROMPTS_DIR / "match.j2",

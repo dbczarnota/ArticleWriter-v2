@@ -23,11 +23,17 @@ def _make_classifier_agent(categories: list[str], confidences: dict[str, float] 
 
 @pytest.mark.asyncio
 async def test_returns_categories_chosen_by_llm():
-    cats = [CategoryConfig(name="Sport", description="x"), CategoryConfig(name="Polityka", description="y")]
+    cats = [
+        CategoryConfig(name="Sport", description="x"),
+        CategoryConfig(name="Polityka", description="y"),
+    ]
     agent = _make_classifier_agent(categories=["Sport"])
     out = await run_classifier_agent(
-        title="Mecz", summary="Polska wygrała", categories=cats,
-        config=ExtractionAgentConfig(), _agent=agent,
+        title="Mecz",
+        summary="Polska wygrała",
+        categories=cats,
+        config=ExtractionAgentConfig(),
+        _agent=agent,
     )
     assert out.categories == ["Sport"]
 
@@ -36,8 +42,11 @@ async def test_returns_categories_chosen_by_llm():
 async def test_empty_categories_returns_empty_list():
     agent = _make_classifier_agent(categories=[])
     out = await run_classifier_agent(
-        title="T", summary="S", categories=[],
-        config=ExtractionAgentConfig(), _agent=agent,
+        title="T",
+        summary="S",
+        categories=[],
+        config=ExtractionAgentConfig(),
+        _agent=agent,
     )
     assert out.categories == []
 
@@ -46,8 +55,13 @@ async def test_empty_categories_returns_empty_list():
 async def test_can_return_multiple_categories():
     agent = _make_classifier_agent(categories=["Sport", "Polityka"])
     out = await run_classifier_agent(
-        title="T", summary="S",
-        categories=[CategoryConfig(name="Sport", description="x"), CategoryConfig(name="Polityka", description="y")],
-        config=ExtractionAgentConfig(), _agent=agent,
+        title="T",
+        summary="S",
+        categories=[
+            CategoryConfig(name="Sport", description="x"),
+            CategoryConfig(name="Polityka", description="y"),
+        ],
+        config=ExtractionAgentConfig(),
+        _agent=agent,
     )
     assert sorted(out.categories) == ["Polityka", "Sport"]

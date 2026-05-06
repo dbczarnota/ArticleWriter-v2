@@ -14,10 +14,17 @@ _ARTICLE = ArticleHtml(html="<h1>Dawid zarobił miliony</h1><p>Treść artykułu
 _EXTRACTION = ExtractionResult(
     facts=[
         Fact("Zarobił 2 mln zł", "Dawid Podsiadło, trasa 2025", source_urls=["https://e.com"]),
-        Fact("Sprzedał 50 tys. biletów", "Dawid Podsiadło, trasa 2025", source_urls=["https://e.com"]),
+        Fact(
+            "Sprzedał 50 tys. biletów", "Dawid Podsiadło, trasa 2025", source_urls=["https://e.com"]
+        ),
     ],
     quotes=[
-        Quote("To był najpiękniejszy rok", "Dawid Podsiadło", "o trasie", source_urls=["https://e.com"]),
+        Quote(
+            "To był najpiękniejszy rok",
+            "Dawid Podsiadło",
+            "o trasie",
+            source_urls=["https://e.com"],
+        ),
     ],
     keywords=["Dawid Podsiadło"],
 )

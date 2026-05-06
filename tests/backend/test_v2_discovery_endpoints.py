@@ -72,9 +72,7 @@ async def test_list_topics_filters_by_category(client, discovery_repo, org):
     a = await discovery_repo.create_topic(
         org_code=org.code, title="A", blurb="b", categories=["Polityka"]
     )
-    await discovery_repo.create_topic(
-        org_code=org.code, title="B", blurb="b", categories=["Sport"]
-    )
+    await discovery_repo.create_topic(org_code=org.code, title="B", blurb="b", categories=["Sport"])
     response = client.get("/v2/discovery/topics", params={"category": "Polityka"})
     assert response.status_code == 200
     rows = response.json()

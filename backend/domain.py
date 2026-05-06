@@ -127,7 +127,11 @@ def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:
         else {},
         discovery_enabled=config.discovery_enabled,
         discovery_feeds=[
-            FeedConfig(url=f["url"], name=f.get("name", ""), poll_interval_min=f.get("poll_interval_min", 15))
+            FeedConfig(
+                url=f["url"],
+                name=f.get("name", ""),
+                poll_interval_min=f.get("poll_interval_min", 15),
+            )
             for f in (config.discovery_feeds or [])
         ],
         discovery_categories=[
@@ -139,9 +143,13 @@ def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:
         discovery_classifier_model=config.discovery_classifier_model,
         discovery_matcher_model=config.discovery_matcher_model,
         discovery_topic_writer_model=config.discovery_topic_writer_model,
-        discovery_classifier_fallback_models=list(config.discovery_classifier_fallback_models or []),
+        discovery_classifier_fallback_models=list(
+            config.discovery_classifier_fallback_models or []
+        ),
         discovery_matcher_fallback_models=list(config.discovery_matcher_fallback_models or []),
-        discovery_topic_writer_fallback_models=list(config.discovery_topic_writer_fallback_models or []),
+        discovery_topic_writer_fallback_models=list(
+            config.discovery_topic_writer_fallback_models or []
+        ),
     )
 
 

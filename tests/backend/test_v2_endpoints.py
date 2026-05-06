@@ -341,7 +341,9 @@ def test_domain_config_accepts_valid_discovery_block():
     cfg = DomainConfigUpdate(
         domain_name="t",
         discovery_enabled=True,
-        discovery_feeds=[{"url": "https://example.com/rss", "name": "Test", "poll_interval_min": 10}],
+        discovery_feeds=[
+            {"url": "https://example.com/rss", "name": "Test", "poll_interval_min": 10}
+        ],
         discovery_categories=[{"name": "Sport", "description": "About sports"}],
         discovery_topic_matching_window_days=3,
         discovery_followup_threshold=5,

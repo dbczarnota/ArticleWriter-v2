@@ -253,6 +253,7 @@ class DiscoveryRepository(Protocol):
         and unions item_categories into topic.categories. Returns the
         updated topic."""
         ...
+
     async def mark_topic_consumed(
         self,
         *,
@@ -269,6 +270,7 @@ class DiscoveryRepository(Protocol):
         """Counts items added after consumed_at; if >= threshold, flips
         topic.status to 'resurfaced'. Returns True if flipped."""
         ...
+
     async def get_topic(self, *, topic_id: UUID, org_code: str) -> DiscoveryTopic | None: ...
     async def list_topics_for_ui(
         self,

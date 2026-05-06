@@ -30,16 +30,14 @@ async def run_topic_writer_agent(
     config: ExtractionAgentConfig,
     _agent: Agent[Any, Any] | None = None,
 ) -> TopicDescriptor:
-    user_prompt = (
-        f"ITEM TITLE: {title}\n\n"
-        f"ITEM SUMMARY: {summary or '(no summary)'}"
-    )
+    user_prompt = f"ITEM TITLE: {title}\n\nITEM SUMMARY: {summary or '(no summary)'}"
 
     if _agent is not None:
         _t0 = time.perf_counter()
         result = await _agent.run(user_prompt)
         _model_used = config.model
     else:
+
         def _factory(m: str) -> tuple[Agent[Any, Any], str]:
             sys_prompt = render_prompt(
                 _PROMPTS_DIR / "describe.j2",

@@ -34,7 +34,11 @@ _TRACKING_PARAMS = frozenset(
 def canonicalize_url(url: str) -> str:
     """Return a stable form of `url` suitable for cross-feed dedup."""
     parsed = urlparse(url)
-    pairs = [(k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=True) if k not in _TRACKING_PARAMS]
+    pairs = [
+        (k, v)
+        for k, v in parse_qsl(parsed.query, keep_blank_values=True)
+        if k not in _TRACKING_PARAMS
+    ]
     new_query = urlencode(pairs)
     return urlunparse(
         (

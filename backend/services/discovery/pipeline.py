@@ -87,9 +87,7 @@ async def process_item(
             org_code=org_code,
             window_days=domain.discovery_topic_matching_window_days,
         )
-        candidates = [
-            TopicCandidate(id=t.id, title=t.title, blurb=t.blurb) for t in active_topics
-        ]
+        candidates = [TopicCandidate(id=t.id, title=t.title, blurb=t.blurb) for t in active_topics]
         match_decision = await run_topic_matcher_agent(
             title=raw.title,
             summary=raw.summary,
@@ -99,7 +97,9 @@ async def process_item(
         logfire.info(
             "discovery.item.match_attempt",
             candidates_count=len(candidates),
-            matched_topic_id=str(match_decision.matched_topic_id) if match_decision.matched_topic_id else None,
+            matched_topic_id=str(match_decision.matched_topic_id)
+            if match_decision.matched_topic_id
+            else None,
             reasoning=match_decision.reasoning,
         )
 

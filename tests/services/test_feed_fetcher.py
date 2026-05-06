@@ -32,7 +32,11 @@ _RSS_VALID = """<?xml version="1.0"?>
 @respx.mock
 async def test_parses_valid_rss_200():
     respx.get("https://example.com/rss").mock(
-        return_value=Response(200, text=_RSS_VALID, headers={"ETag": '"abc"', "Last-Modified": "Mon, 04 May 2026 11:00:00 GMT"})
+        return_value=Response(
+            200,
+            text=_RSS_VALID,
+            headers={"ETag": '"abc"', "Last-Modified": "Mon, 04 May 2026 11:00:00 GMT"},
+        )
     )
     out = await fetch_feed("https://example.com/rss", etag=None, last_modified=None)
     assert isinstance(out, FetchResult)

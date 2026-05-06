@@ -40,6 +40,8 @@ async def test_empty_title_or_blurb_raises():
     agent = _make_writer_agent(title="", blurb="x")
     with pytest.raises(ValueError):
         await run_topic_writer_agent(
-            title="t", summary="s",
-            config=ExtractionAgentConfig(), _agent=agent,
+            title="t",
+            summary="s",
+            config=ExtractionAgentConfig(),
+            _agent=agent,
         )

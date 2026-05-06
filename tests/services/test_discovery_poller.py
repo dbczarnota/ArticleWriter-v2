@@ -12,8 +12,10 @@ from backend.services.discovery.poller import poll_org_feeds
 
 def _domain(feeds: list[FeedConfig]):
     return DomainConfig(
-        name="test", description="t",
-        discovery_enabled=True, discovery_feeds=feeds,
+        name="test",
+        description="t",
+        discovery_enabled=True,
+        discovery_feeds=feeds,
     )
 
 
@@ -35,8 +37,12 @@ async def test_iterates_feeds_and_processes_new_items(monkeypatch):
     repo = NullDiscoveryRepository()
     fetcher = AsyncMock(
         return_value=FetchResult(
-            items=[RawFeedItem(title="X", url="https://x/1", guid="g1", summary="s", published_at=None)],
-            etag='"a"', last_modified=None, not_modified=False,
+            items=[
+                RawFeedItem(title="X", url="https://x/1", guid="g1", summary="s", published_at=None)
+            ],
+            etag='"a"',
+            last_modified=None,
+            not_modified=False,
         )
     )
     proc = AsyncMock()

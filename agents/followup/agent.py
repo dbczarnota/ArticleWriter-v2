@@ -64,9 +64,7 @@ async def run_followup_agent(
     """Generate alternative titles, follow-up topics, and track which facts/quotes were used."""
     facts = list(extraction_result.facts)
     quotes = list(extraction_result.quotes)
-    facts_text = (
-        "\n".join(f"[{i}] {f.text}" for i, f in enumerate(facts, start=1)) or "(none)"
-    )
+    facts_text = "\n".join(f"[{i}] {f.text}" for i, f in enumerate(facts, start=1)) or "(none)"
     quotes_text = (
         "\n".join(f'[{i}] "{q.text}" — {q.speaker}' for i, q in enumerate(quotes, start=1))
         or "(none)"

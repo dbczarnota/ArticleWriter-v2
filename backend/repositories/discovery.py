@@ -101,9 +101,7 @@ class PostgresDiscoveryRepository:
             await session.commit()
 
     # ── Items ────────────────────────────────────────────────────────────
-    async def get_item_by_url(
-        self, *, org_code: str, canonical_url: str
-    ) -> DiscoveryItem | None:
+    async def get_item_by_url(self, *, org_code: str, canonical_url: str) -> DiscoveryItem | None:
         async with self._session_maker() as session:
             result = await session.execute(
                 select(DiscoveryItem).where(
@@ -164,9 +162,7 @@ class PostgresDiscoveryRepository:
             return list(result.scalars().all())
 
     # ── Topics ───────────────────────────────────────────────────────────
-    async def list_active_topics(
-        self, *, org_code: str, window_days: int
-    ) -> list[DiscoveryTopic]:
+    async def list_active_topics(self, *, org_code: str, window_days: int) -> list[DiscoveryTopic]:
         cutoff = datetime.now(UTC) - timedelta(days=window_days)
         async with self._session_maker() as session:
             result = await session.execute(
@@ -274,9 +270,7 @@ class PostgresDiscoveryRepository:
             )
             return True
 
-    async def get_topic(
-        self, *, topic_id: UUID, org_code: str
-    ) -> DiscoveryTopic | None:
+    async def get_topic(self, *, topic_id: UUID, org_code: str) -> DiscoveryTopic | None:
         async with self._session_maker() as session:
             topic = await session.get(DiscoveryTopic, topic_id)
             if topic is None or topic.org_code != org_code:

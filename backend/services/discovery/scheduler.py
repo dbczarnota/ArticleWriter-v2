@@ -53,9 +53,7 @@ async def start_scheduler() -> None:
         domain = await get_domain_config(org.code, org.domain_name, cfg_repo)
         if domain is None or not domain.discovery_enabled or not domain.discovery_feeds:
             continue
-        interval_min = max(
-            1, min(f.poll_interval_min for f in domain.discovery_feeds)
-        )
+        interval_min = max(1, min(f.poll_interval_min for f in domain.discovery_feeds))
         _scheduler.add_job(
             _poll_org_job,
             "interval",
