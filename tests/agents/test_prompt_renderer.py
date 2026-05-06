@@ -38,6 +38,27 @@ def test_render_prompt_prepends_current_date(tmp_path):
     assert "body content" in result
 
 
+def test_render_prompt_prepends_weekday(tmp_path):
+    """Date anchor includes the weekday name so LLMs don't hallucinate a
+    different day of the week when describing 'today'."""
+    from datetime import UTC, datetime
+
+    weekdays = {
+        "Monday", "Tuesday", "Wednesday", "Thursday",
+        "Friday", "Saturday", "Sunday",
+    }
+    template = tmp_path / "test.j2"
+    template.write_text("x")
+    result = render_prompt(template)
+    today = datetime.now(UTC).date()
+    expected_weekday = (
+        "Monday", "Tuesday", "Wednesday", "Thursday",
+        "Friday", "Saturday", "Sunday",
+    )[today.weekday()]
+    assert f"({expected_weekday})" in result.split("\n", 1)[0]
+    assert expected_weekday in weekdays
+
+
 def test_render_prompt_xml_branch(tmp_path):
     template = tmp_path / "test.j2"
     template.write_text(
