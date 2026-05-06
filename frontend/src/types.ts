@@ -136,3 +136,41 @@ export interface DomainConfigData {
   discovery_topic_writer_fallback_models: string[];
   updated_at: string | null;
 }
+
+export interface DiscoveryFeed {
+  id: string;
+  feed_url: string;
+  last_fetched_at: string | null;
+  last_error: string | null;
+  error_count: number;
+  disabled: boolean;
+  items_24h_count: number;
+}
+
+export interface DiscoveryTopicSummary {
+  id: string;
+  title: string;
+  blurb: string;
+  categories: string[];
+  status: "open" | "resurfaced" | "consumed" | "dismissed";
+  consumed_at: string | null;
+  consumed_article_id: string | null;
+  last_activity_at: string;
+  created_at: string;
+  new_items_since_consume: number;
+}
+
+export interface DiscoveryItem {
+  id: string;
+  canonical_url: string;
+  title: string;
+  summary: string | null;
+  categories: string[];
+  topic_id: string | null;
+  fetched_at: string | null;
+  published_at: string | null;
+}
+
+export interface DiscoveryTopicDetail extends DiscoveryTopicSummary {
+  items: DiscoveryItem[];
+}
