@@ -237,3 +237,41 @@ async def test_mark_topic_consumed_and_resurface(session_maker, org):
     found = await repo.get_topic(topic_id=topic.id, org_code=org.code)
     assert found is not None
     assert found.status == "resurfaced"
+
+
+@pytest.mark.asyncio
+async def test_list_topics_for_ui_filters(session_maker, org):
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    a = await repo.create_topic(org_code=org.code, title="A", blurb="b", categories=["Polityka"])
+    b = await repo.create_topic(org_code=org.code, title="B", blurb="b", categories=["Sport"])
+    c = await repo.create_topic(org_code=org.code, title="C", blurb="b", categories=["Polityka", "Sport"])
+
+    # filter by single category
+    rows = await repo.list_topics_for_ui(org_code=org.code, categories=["Polityka"])
+    assert {t.id for t in rows} == {a.id, c.id}
+
+    # filter by multiple categories (OR)
+    rows = await repo.list_topics_for_ui(org_code=org.code, categories=["Polityka", "Sport"])
+    assert {t.id for t in rows} == {a.id, b.id, c.id}
+
+    # filter by status
+    await repo.dismiss_topic(topic_id=a.id, org_code=org.code)
+    rows = await repo.list_topics_for_ui(org_code=org.code, statuses=["dismissed"])
+    assert {t.id for t in rows} == {a.id}
+
+
+@pytest.mark.asyncio
+async def test_dismiss_then_restore(session_maker, org):
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    t = await repo.create_topic(org_code=org.code, title="T", blurb="b", categories=[])
+    await repo.dismiss_topic(topic_id=t.id, org_code=org.code)
+    fetched = await repo.get_topic(topic_id=t.id, org_code=org.code)
+    assert fetched is not None and fetched.status == "dismissed"
+
+    await repo.restore_topic(topic_id=t.id, org_code=org.code)
+    fetched = await repo.get_topic(topic_id=t.id, org_code=org.code)
+    assert fetched is not None and fetched.status == "open"

@@ -282,3 +282,58 @@ class PostgresDiscoveryRepository:
             if topic is None or topic.org_code != org_code:
                 return None
             return topic
+
+    async def list_topics_for_ui(
+        self,
+        *,
+        org_code: str,
+        categories: list[str] | None = None,
+        statuses: list[str] | None = None,
+        since: datetime | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[DiscoveryTopic]:
+        from sqlalchemy import cast, or_
+        from sqlalchemy.dialects.postgresql import JSONB
+
+        async with self._session_maker() as session:
+            stmt = select(DiscoveryTopic).where(DiscoveryTopic.org_code == org_code)  # type: ignore[arg-type]
+            if statuses:
+                stmt = stmt.where(DiscoveryTopic.status.in_(statuses))  # type: ignore[arg-type]
+            if since is not None:
+                stmt = stmt.where(DiscoveryTopic.last_activity_at >= since)  # type: ignore[arg-type]
+            if categories:
+                # `categories` is JSONB list; OR semantics — any tag matches.
+                # JSONB containment of a single-element array gives that.
+                clauses = [
+                    DiscoveryTopic.categories.op("@>")(cast([cat], JSONB))  # type: ignore[arg-type]
+                    for cat in categories
+                ]
+                stmt = stmt.where(or_(*clauses))
+            stmt = stmt.order_by(DiscoveryTopic.last_activity_at.desc()).limit(limit).offset(offset)  # type: ignore[arg-type]
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
+
+    async def dismiss_topic(self, *, topic_id: UUID, org_code: str) -> None:
+        async with self._session_maker() as session:
+            await session.execute(
+                update(DiscoveryTopic)
+                .where(
+                    DiscoveryTopic.id == topic_id,  # type: ignore[arg-type]
+                    DiscoveryTopic.org_code == org_code,  # type: ignore[arg-type]
+                )
+                .values(status="dismissed", updated_at=_utcnow())
+            )
+            await session.commit()
+
+    async def restore_topic(self, *, topic_id: UUID, org_code: str) -> None:
+        async with self._session_maker() as session:
+            await session.execute(
+                update(DiscoveryTopic)
+                .where(
+                    DiscoveryTopic.id == topic_id,  # type: ignore[arg-type]
+                    DiscoveryTopic.org_code == org_code,  # type: ignore[arg-type]
+                )
+                .values(status="open", updated_at=_utcnow())
+            )
+            await session.commit()
