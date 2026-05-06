@@ -9,6 +9,23 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
+class FeedConfig:
+    """RSS feed config entry stored in DomainConfig.discovery_feeds."""
+
+    url: str
+    name: str = ""
+    poll_interval_min: int = 15
+
+
+@dataclass(frozen=True)
+class CategoryConfig:
+    """Discovery category (a tag) — name + description for the LLM classifier."""
+
+    name: str
+    description: str
+
+
+@dataclass(frozen=True)
 class DomainConfig:
     name: str
     description: str
@@ -43,6 +60,34 @@ class DomainConfig:
     """Org-level primary model per agent: {agent_key: model_id}."""
     agent_fallback_models: dict[str, list[str]] = field(default_factory=dict)
     """Org-level fallback models per agent: {agent_key: [fallback1, ...]}."""
+
+    # ── Discovery (RSS-based topic discovery) ────────────────────────────────
+    discovery_enabled: bool = False
+    """Master switch — False keeps the per-org poller a no-op."""
+
+    discovery_feeds: list[FeedConfig] = field(default_factory=list)
+    discovery_categories: list[CategoryConfig] = field(default_factory=list)
+
+    discovery_topic_matching_window_days: int = 3
+    """Only topics with last_activity_at within this window are eligible
+    candidates when matching a new item to an existing topic."""
+
+    discovery_followup_threshold: int = 5
+    """When a `consumed` topic accumulates this many new items after
+    consumed_at, status flips to `resurfaced`."""
+
+    discovery_classifier_model: str = "google-gla:gemini-flash-lite-latest"
+    discovery_matcher_model: str = "google-gla:gemini-flash-lite-latest"
+    discovery_topic_writer_model: str = "google-gla:gemini-flash-lite-latest"
+    discovery_classifier_fallback_models: list[str] = field(
+        default_factory=lambda: ["groq:openai/gpt-oss-120b"]
+    )
+    discovery_matcher_fallback_models: list[str] = field(
+        default_factory=lambda: ["groq:openai/gpt-oss-120b"]
+    )
+    discovery_topic_writer_fallback_models: list[str] = field(
+        default_factory=lambda: ["groq:openai/gpt-oss-120b"]
+    )
 
 
 def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:

@@ -96,3 +96,35 @@ def test_article_output_has_token_usage_field():
     output = ArticleOutput(html="<p>hi</p>")
     assert isinstance(output.token_usage, list)
     assert output.token_usage == []
+
+
+def test_feed_config_defaults():
+    from backend.domain import FeedConfig
+
+    fc = FeedConfig(url="https://example.com/rss")
+    assert fc.url == "https://example.com/rss"
+    assert fc.name == ""
+    assert fc.poll_interval_min == 15
+
+
+def test_category_config_required_fields():
+    from backend.domain import CategoryConfig
+
+    cc = CategoryConfig(name="Polityka", description="Krajowa polityka")
+    assert cc.name == "Polityka"
+    assert cc.description == "Krajowa polityka"
+
+
+def test_domain_config_discovery_defaults():
+    from backend.domain import DomainConfig
+
+    dc = DomainConfig(name="t", description="t")
+    assert dc.discovery_enabled is False
+    assert dc.discovery_feeds == []
+    assert dc.discovery_categories == []
+    assert dc.discovery_topic_matching_window_days == 3
+    assert dc.discovery_followup_threshold == 5
+    assert dc.discovery_classifier_model == "google-gla:gemini-flash-lite-latest"
+    assert dc.discovery_matcher_model == "google-gla:gemini-flash-lite-latest"
+    assert dc.discovery_topic_writer_model == "google-gla:gemini-flash-lite-latest"
+    assert dc.discovery_classifier_fallback_models == ["groq:openai/gpt-oss-120b"]
