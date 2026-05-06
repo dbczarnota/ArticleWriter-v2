@@ -167,33 +167,51 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                   style={{
                     padding: "12px 16px",
                     borderTop: idx === 0 ? "none" : "1px solid var(--border)",
+                    display: "flex",
+                    gap: 12,
+                    alignItems: "flex-start",
                   }}
                 >
-                  <a
-                    href={it.canonical_url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    style={{
-                      fontWeight: 500,
-                      color: "var(--text)",
-                      textDecoration: "none",
-                      fontSize: 14,
-                    }}
-                  >
-                    {it.title} <span style={{ color: "var(--muted)" }}>↗</span>
-                  </a>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--muted)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      marginTop: 2,
-                    }}
-                  >
-                    {it.canonical_url}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <a
+                      href={it.canonical_url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      style={{
+                        fontWeight: 500,
+                        color: "var(--text)",
+                        textDecoration: "none",
+                        fontSize: 14,
+                      }}
+                    >
+                      {it.title} <span style={{ color: "var(--muted)" }}>↗</span>
+                    </a>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--muted)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        marginTop: 2,
+                      }}
+                    >
+                      {it.canonical_url}
+                    </div>
                   </div>
+                  {it.fetched_at && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--muted)",
+                        flexShrink: 0,
+                        whiteSpace: "nowrap",
+                      }}
+                      title={new Date(it.fetched_at).toLocaleString()}
+                    >
+                      {new Date(it.fetched_at).toLocaleString()}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -241,8 +259,13 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
             </button>
           )}
           <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.8 }}>
-            <div>{t.discovery.topic.firstSeen}: {new Date(detail.created_at).toLocaleString()}</div>
-            <div>{t.discovery.topic.lastActivity}: {new Date(detail.last_activity_at).toLocaleString()}</div>
+            <div>
+              {t.discovery.topic.firstSeen}:{" "}
+              {detail.first_seen_at ? new Date(detail.first_seen_at).toLocaleString() : "—"}
+            </div>
+            <div>
+              {t.discovery.topic.lastActivity}: {new Date(detail.last_activity_at).toLocaleString()}
+            </div>
             <div>{t.discovery.topic.statusLabel}: {detail.status}</div>
             <div>{t.discovery.topic.itemsCount}: {detail.items.length}</div>
           </div>

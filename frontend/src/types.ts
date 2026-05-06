@@ -156,7 +156,7 @@ export interface DiscoveryTopicSummary {
   consumed_at: string | null;
   consumed_article_id: string | null;
   last_activity_at: string;
-  created_at: string;
+  first_seen_at: string | null;
   new_items_since_consume: number;
   item_count: number;
   feed_hosts: string[];
