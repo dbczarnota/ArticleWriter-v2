@@ -26,6 +26,7 @@ vi.mock("../i18n", () => ({
       item: { empty: "", uncategorized: "", colItem: "", colCategories: "", colSeen: "" },
       feed: { lastFetched: "", errors: "", items24h: "", healthy: "", degraded: "", disabled: "", emptyHint: "", lastError: "", justNow: "", minAgo: "", hAgo: "", dAgo: "" },
       hub: { resurfaced: "", written: "", sources: "", sourcesCount: "" },
+      sort: { label: "", lastActivity: "", firstSeen: "", itemCount: "" },
     },
   }),
 }));

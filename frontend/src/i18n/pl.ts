@@ -362,6 +362,12 @@ export const pl: Translations = {
       dAgo: "d temu",
     },
     hub: { resurfaced: "🔥 RESURFACED", written: "✓ NAPISANE", sources: "Źródła", sourcesCount: "źródeł" },
+    sort: {
+      label: "Sortuj:",
+      lastActivity: "Ostatnia aktywność",
+      firstSeen: "Pierwsze pojawienie",
+      itemCount: "Liczba źródeł",
+    },
     dialog: {
       title: "Napisz artykuł z tematu",
       topicLabel: "Temat",

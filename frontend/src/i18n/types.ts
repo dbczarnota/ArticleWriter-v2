@@ -376,6 +376,12 @@ export interface Translations {
       dAgo: string;
     };
     hub: { resurfaced: string; written: string; sources: string; sourcesCount: string };
+    sort: {
+      label: string;
+      lastActivity: string;
+      firstSeen: string;
+      itemCount: string;
+    };
     dialog: {
       title: string;
       topicLabel: string;

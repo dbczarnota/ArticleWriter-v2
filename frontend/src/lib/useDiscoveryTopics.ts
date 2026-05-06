@@ -2,10 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useApi } from "./useApi";
 import type { DiscoveryTopicSummary } from "../types";
 
+export type DiscoveryTopicSort = "last_activity" | "first_seen" | "item_count";
+
 export interface DiscoveryTopicFilters {
   feedId?: string | null;
   categories?: string[];
   statuses?: string[];
+  sort?: DiscoveryTopicSort;
 }
 
 export function useDiscoveryTopics(filters: DiscoveryTopicFilters) {
@@ -17,6 +20,7 @@ export function useDiscoveryTopics(filters: DiscoveryTopicFilters) {
     feedId: filters.feedId ?? null,
     categories: filters.categories ?? [],
     statuses: filters.statuses ?? [],
+    sort: filters.sort ?? "last_activity",
   });
 
   const refresh = useCallback(async () => {
@@ -27,10 +31,12 @@ export function useDiscoveryTopics(filters: DiscoveryTopicFilters) {
         feedId: string | null;
         categories: string[];
         statuses: string[];
+        sort: DiscoveryTopicSort;
       };
       if (parsed.feedId) params.set("feed_id", parsed.feedId);
       for (const c of parsed.categories) params.append("category", c);
       for (const s of parsed.statuses) params.append("status", s);
+      params.set("sort", parsed.sort);
       const rows = await request<DiscoveryTopicSummary[]>(
         `/v2/discovery/topics?${params.toString()}`,
       );

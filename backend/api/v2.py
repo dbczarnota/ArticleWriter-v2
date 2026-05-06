@@ -504,6 +504,9 @@ def _hosts_from_items(items: list) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
+_SORT_KEYS = {"last_activity", "first_seen", "item_count"}
+
+
 @router.get("/discovery/topics")
 async def list_discovery_topics(
     org: Org = Depends(get_current_org),
@@ -512,17 +515,25 @@ async def list_discovery_topics(
     status: list[str] = Query(default_factory=lambda: ["open", "resurfaced"]),
     feed_id: UUID | None = Query(default=None),
     since: datetime | None = None,
+    sort: str = Query("last_activity"),
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[dict]:
+    if sort not in _SORT_KEYS:
+        raise HTTPException(status_code=400, detail=f"Invalid sort: {sort}")
+
+    # Fetch all matching topics (without limit/offset) so we can sort by
+    # derived fields (item_count) before paginating. The repo orders by
+    # last_activity_at DESC; we re-sort per the requested key. Org-scope
+    # caps total topic count, so pulling the full set into Python is fine.
     rows = await discovery_repo.list_topics_for_ui(
         org_code=org.code,
         categories=category or None,
         statuses=status or None,
         since=since,
         feed_id=feed_id,
-        limit=limit,
-        offset=offset,
+        limit=10_000,
+        offset=0,
     )
     out: list[dict] = []
     for t in rows:
@@ -541,7 +552,17 @@ async def list_discovery_topics(
                 topic_image_url=_topic_image_from_items(items),
             )
         )
-    return out
+
+    if sort == "first_seen":
+        out.sort(key=lambda x: x["first_seen_at"] or "", reverse=True)
+    elif sort == "item_count":
+        # Tie-break by last_activity so equal-count topics still order
+        # predictably (most recently active first).
+        out.sort(key=lambda x: (x["item_count"], x["last_activity_at"] or ""), reverse=True)
+    else:  # last_activity (default)
+        out.sort(key=lambda x: x["last_activity_at"] or "", reverse=True)
+
+    return out[offset : offset + limit]
 
 
 @router.get("/discovery/topics/{topic_id}")

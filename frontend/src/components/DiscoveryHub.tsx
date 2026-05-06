@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useDiscoveryFeeds } from "../lib/useDiscoveryFeeds";
-import { useDiscoveryTopics } from "../lib/useDiscoveryTopics";
+import { useDiscoveryTopics, type DiscoveryTopicSort } from "../lib/useDiscoveryTopics";
 import { useDiscoveryItems } from "../lib/useDiscoveryItems";
 import {
   DiscoveryFiltersSidebar,
@@ -25,12 +25,14 @@ export function DiscoveryHub() {
     categories: [],
     statuses: ["open", "resurfaced"],
   });
+  const [sort, setSort] = useState<DiscoveryTopicSort>("last_activity");
 
   const { feeds, loading: feedsLoading } = useDiscoveryFeeds();
   const { topics, loading: topicsLoading } = useDiscoveryTopics({
     feedId: filters.feedId,
     categories: filters.categories,
     statuses: filters.statuses,
+    sort,
   });
   const { items, loading: itemsLoading } = useDiscoveryItems({
     feedId: filters.feedId,
@@ -90,6 +92,7 @@ export function DiscoveryHub() {
             padding: "12px 24px",
             display: "flex",
             gap: 8,
+            alignItems: "center",
             background: "var(--white)",
           }}
         >
@@ -102,6 +105,31 @@ export function DiscoveryHub() {
           <button type="button" onClick={() => setView("feeds")} disabled={view === "feeds"} style={tabBtn(view === "feeds")}>
             🔌 {t.discovery.views.feeds}
           </button>
+          {view === "topics" && !selectedTopicId && (
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+              <label htmlFor="discovery-topics-sort" style={{ fontSize: 12, color: "var(--muted)" }}>
+                {t.discovery.sort.label}
+              </label>
+              <select
+                id="discovery-topics-sort"
+                value={sort}
+                onChange={(e) => setSort(e.target.value as DiscoveryTopicSort)}
+                style={{
+                  padding: "5px 8px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  background: "var(--white)",
+                  color: "var(--text)",
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                <option value="last_activity">{t.discovery.sort.lastActivity}</option>
+                <option value="first_seen">{t.discovery.sort.firstSeen}</option>
+                <option value="item_count">{t.discovery.sort.itemCount}</option>
+              </select>
+            </div>
+          )}
         </div>
         <div style={{ flex: 1, overflow: "auto", background: "var(--bg)" }}>
           {selectedTopicId ? (
