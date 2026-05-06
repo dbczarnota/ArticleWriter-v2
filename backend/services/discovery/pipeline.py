@@ -68,12 +68,6 @@ async def process_item(
         # stay un-processed forever, retrying every tick.
         if existing is not None and existing.processed_at is not None:
             await repo.add_item_to_feed_link(item_id=existing.id, feed_id=feed_id)
-            logfire.info(
-                "discovery.item.duplicate",
-                item_id=str(existing.id),
-                feed_id=str(feed_id),
-                canonical_url=canonical,
-            )
             return existing
 
         # Classify
