@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useDiscoveryFeeds } from "../lib/useDiscoveryFeeds";
 import { useDiscoveryTopics, type DiscoveryTopicSort } from "../lib/useDiscoveryTopics";
 import { useDiscoveryItems } from "../lib/useDiscoveryItems";
+import { useApi } from "../lib/useApi";
 import {
   DiscoveryFiltersSidebar,
   type DiscoveryFiltersValue,
@@ -28,12 +29,13 @@ export function DiscoveryHub() {
   const [sort, setSort] = useState<DiscoveryTopicSort>("last_activity");
 
   const { feeds, loading: feedsLoading } = useDiscoveryFeeds();
-  const { topics, loading: topicsLoading } = useDiscoveryTopics({
+  const { topics, loading: topicsLoading, refresh: refreshTopics } = useDiscoveryTopics({
     feedId: filters.feedId,
     categories: filters.categories,
     statuses: filters.statuses,
     sort,
   });
+  const { request } = useApi();
   const { items, loading: itemsLoading } = useDiscoveryItems({
     feedId: filters.feedId,
     categories: filters.categories,
@@ -54,6 +56,24 @@ export function DiscoveryHub() {
     // toggle source URLs before the pipeline kicks off. The actual POST
     // happens inside the dialog on Generate.
     setWriteFromTopicId(topicId);
+  }
+
+  async function dismissTopic(topicId: string) {
+    try {
+      await request(`/v2/discovery/topics/${topicId}/dismiss`, { method: "POST" });
+      await refreshTopics();
+    } catch (err) {
+      console.error("DiscoveryHub: dismiss failed", err);
+    }
+  }
+
+  async function restoreTopic(topicId: string) {
+    try {
+      await request(`/v2/discovery/topics/${topicId}/restore`, { method: "POST" });
+      await refreshTopics();
+    } catch (err) {
+      console.error("DiscoveryHub: restore failed", err);
+    }
   }
 
   function onArticleSubmitted(articleId: string) {
@@ -146,6 +166,8 @@ export function DiscoveryHub() {
                   loading={topicsLoading}
                   onWrite={startWrite}
                   onSelect={setSelectedTopicId}
+                  onDismiss={dismissTopic}
+                  onRestore={restoreTopic}
                 />
               )}
               {view === "items" && <ItemsTable items={items} loading={itemsLoading} />}

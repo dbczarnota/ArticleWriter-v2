@@ -7,9 +7,11 @@ interface Props {
   loading: boolean;
   onWrite: (topicId: string) => void;
   onSelect?: (topicId: string) => void;
+  onDismiss?: (topicId: string) => void;
+  onRestore?: (topicId: string) => void;
 }
 
-export function TopicsList({ topics, loading, onWrite, onSelect }: Props) {
+export function TopicsList({ topics, loading, onWrite, onSelect, onDismiss, onRestore }: Props) {
   const t = useT();
   if (loading) {
     return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.topic.loading}</div>;
@@ -20,7 +22,14 @@ export function TopicsList({ topics, loading, onWrite, onSelect }: Props) {
   return (
     <div>
       {topics.map((topic) => (
-        <TopicCard key={topic.id} topic={topic} onWrite={onWrite} onSelect={onSelect} />
+        <TopicCard
+          key={topic.id}
+          topic={topic}
+          onWrite={onWrite}
+          onSelect={onSelect}
+          onDismiss={onDismiss}
+          onRestore={onRestore}
+        />
       ))}
     </div>
   );

@@ -7,9 +7,11 @@ interface Props {
   topic: DiscoveryTopicSummary;
   onWrite: (topicId: string) => void;
   onSelect?: (topicId: string) => void;
+  onDismiss?: (topicId: string) => void;
+  onRestore?: (topicId: string) => void;
 }
 
-export function TopicCard({ topic, onWrite, onSelect }: Props) {
+export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore }: Props) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<DiscoveryItem[] | null>(null);
@@ -47,6 +49,16 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
 
   const isResurfaced = topic.status === "resurfaced";
   const isConsumed = topic.status === "consumed";
+  const isDismissed = topic.status === "dismissed";
+
+  function handleDismiss(e: React.MouseEvent) {
+    e.stopPropagation();
+    onDismiss?.(topic.id);
+  }
+  function handleRestore(e: React.MouseEvent) {
+    e.stopPropagation();
+    onRestore?.(topic.id);
+  }
 
   const chipBase: React.CSSProperties = {
     display: "inline-flex",
@@ -156,12 +168,51 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
               color: "var(--muted)",
               marginTop: 8,
               flexWrap: "wrap",
+              alignItems: "center",
             }}
           >
             <span>📰 {topic.item_count} {t.discovery.hub.sourcesCount}</span>
             <span>⏱️ {new Date(topic.last_activity_at).toLocaleString()}</span>
             {topic.feed_hosts.length > 0 && (
               <span>🌐 {topic.feed_hosts.join(", ")}</span>
+            )}
+            {!isConsumed && !isDismissed && onDismiss && (
+              <button
+                type="button"
+                onClick={handleDismiss}
+                style={{
+                  background: "none",
+                  border: 0,
+                  padding: 0,
+                  fontSize: 12,
+                  color: "var(--muted)",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  textUnderlineOffset: 2,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "#b91c1c"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted)"; }}
+              >
+                {t.discovery.topic.dismiss}
+              </button>
+            )}
+            {isDismissed && onRestore && (
+              <button
+                type="button"
+                onClick={handleRestore}
+                style={{
+                  background: "none",
+                  border: 0,
+                  padding: 0,
+                  fontSize: 12,
+                  color: "var(--accent)",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  textUnderlineOffset: 2,
+                }}
+              >
+                {t.discovery.topic.restore}
+              </button>
             )}
           </div>
         </div>

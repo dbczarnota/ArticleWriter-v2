@@ -343,7 +343,7 @@ export interface Translations {
   discovery: {
     views: { topics: string; items: string; feeds: string };
     filters: { feeds: string; categories: string; status: string; all: string; emptyCategories: string };
-    status: { open: string; resurfaced: string; consumed: string };
+    status: { open: string; resurfaced: string; consumed: string; dismissed: string };
     topic: {
       sources: string;
       write: string;
@@ -359,6 +359,8 @@ export interface Translations {
       itemsShort: string;
       error: string;
       toggleSources: string;
+      dismiss: string;
+      restore: string;
     };
     item: { empty: string; uncategorized: string; colItem: string; colCategories: string; colSeen: string };
     feed: {

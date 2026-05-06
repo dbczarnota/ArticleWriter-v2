@@ -329,7 +329,7 @@ export const pl: Translations = {
   discovery: {
     views: { topics: "Tematy", items: "Itemy", feeds: "Feedy" },
     filters: { feeds: "Feedy (filtr)", categories: "Kategorie", status: "Status", all: "Wszystkie", emptyCategories: "(brak kategorii)" },
-    status: { open: "Świeże", resurfaced: "Resurfaced", consumed: "Już napisane" },
+    status: { open: "Świeże", resurfaced: "Resurfaced", consumed: "Już napisane", dismissed: "Odrzucone" },
     topic: {
       sources: "Źródła",
       write: "Napisz",
@@ -345,6 +345,8 @@ export const pl: Translations = {
       itemsShort: "itemów",
       error: "Błąd",
       toggleSources: "toggle sources",
+      dismiss: "Odrzuć",
+      restore: "Przywróć",
     },
     item: { empty: "Brak itemów dla tego filtra.", uncategorized: "(brak)", colItem: "Item", colCategories: "Kategorie", colSeen: "Pojawiło się" },
     feed: {

@@ -149,6 +149,7 @@ export function DiscoveryFiltersSidebar({ feeds, availableCategories, value, onC
             { id: "open", label: t.discovery.status.open },
             { id: "resurfaced", label: t.discovery.status.resurfaced },
             { id: "consumed", label: t.discovery.status.consumed },
+            { id: "dismissed", label: t.discovery.status.dismissed },
           ].map((s) => (
             <label
               key={s.id}
