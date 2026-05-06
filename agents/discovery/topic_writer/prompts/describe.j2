@@ -1,0 +1,10 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("task", "You describe a news story for an internal tracking system. Given a single RSS item (TITLE + SUMMARY), produce: (1) a NEUTRAL TITLE — generic, not click-bait, that names the subject and event without hyperbole or teasers; this title will be read by another LLM later when matching new items, so plain is better than punchy. (2) a one- or two-sentence BLURB describing the core facts (who, what, when, where) in under 200 characters. The blurb is the matching signal — make it specific to THIS event. Avoid 'shocking', 'unbelievable', and similar; use neutral journalistic phrasing.") | trim }}
