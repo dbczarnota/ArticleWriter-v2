@@ -1,0 +1,173 @@
+import type { DiscoveryFeed } from "../types";
+
+export interface DiscoveryFiltersValue {
+  feedId: string | null;
+  categories: string[];
+  statuses: string[];
+}
+
+interface Props {
+  feeds: DiscoveryFeed[];
+  availableCategories: { name: string; count?: number }[];
+  value: DiscoveryFiltersValue;
+  onChange: (next: DiscoveryFiltersValue) => void;
+}
+
+export function DiscoveryFiltersSidebar({ feeds, availableCategories, value, onChange }: Props) {
+  function setFeed(id: string | null) {
+    onChange({ ...value, feedId: id });
+  }
+  function toggleCategory(name: string) {
+    const has = value.categories.includes(name);
+    onChange({
+      ...value,
+      categories: has ? value.categories.filter((c) => c !== name) : [...value.categories, name],
+    });
+  }
+  function toggleStatus(status: string) {
+    const has = value.statuses.includes(status);
+    onChange({
+      ...value,
+      statuses: has ? value.statuses.filter((s) => s !== status) : [...value.statuses, status],
+    });
+  }
+
+  function hostname(url: string): string {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
+  }
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 11,
+    textTransform: "uppercase",
+    color: "var(--muted)",
+    cursor: "pointer",
+    letterSpacing: "0.04em",
+    padding: "4px 0",
+  };
+
+  const buttonRow: React.CSSProperties = {
+    display: "flex",
+    justifyContent: "space-between",
+    width: "100%",
+    padding: "6px 10px",
+    background: "transparent",
+    border: 0,
+    borderRadius: "var(--radius)",
+    cursor: "pointer",
+    color: "var(--text)",
+    fontSize: 14,
+    textAlign: "left",
+  };
+
+  return (
+    <aside
+      style={{
+        width: 240,
+        borderRight: "1px solid var(--border)",
+        padding: 12,
+        background: "var(--sidebar)",
+        overflowY: "auto",
+        flexShrink: 0,
+      }}
+    >
+      <details open style={{ marginBottom: 16 }}>
+        <summary style={labelStyle}>Feedy (filtr)</summary>
+        <div style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            onClick={() => setFeed(null)}
+            style={{
+              ...buttonRow,
+              background: value.feedId === null ? "var(--accent-lt)" : "transparent",
+            }}
+          >
+            <span>Wszystkie</span>
+          </button>
+          {feeds.map((f) => (
+            <button
+              type="button"
+              key={f.id}
+              onClick={() => setFeed(f.id)}
+              style={{
+                ...buttonRow,
+                background: value.feedId === f.id ? "var(--accent-lt)" : "transparent",
+              }}
+            >
+              <span>{hostname(f.feed_url)}</span>
+              <span style={{ color: "var(--muted)", fontSize: 12 }}>{f.items_24h_count}</span>
+            </button>
+          ))}
+        </div>
+      </details>
+
+      <details open style={{ marginBottom: 16 }}>
+        <summary style={labelStyle}>Kategorie</summary>
+        <div style={{ marginTop: 8 }}>
+          {availableCategories.length === 0 && (
+            <div style={{ color: "var(--muted)", fontSize: 12, padding: "4px 10px" }}>
+              (brak kategorii)
+            </div>
+          )}
+          {availableCategories.map((c) => (
+            <label
+              key={c.name}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+                padding: "4px 10px",
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type="checkbox"
+                  checked={value.categories.includes(c.name)}
+                  onChange={() => toggleCategory(c.name)}
+                />
+                {c.name}
+              </span>
+              {c.count !== undefined && (
+                <span style={{ color: "var(--muted)", fontSize: 12 }}>{c.count}</span>
+              )}
+            </label>
+          ))}
+        </div>
+      </details>
+
+      <details>
+        <summary style={labelStyle}>Status</summary>
+        <div style={{ marginTop: 8 }}>
+          {[
+            { id: "open", label: "Świeże" },
+            { id: "resurfaced", label: "Resurfaced" },
+            { id: "consumed", label: "Już napisane" },
+          ].map((s) => (
+            <label
+              key={s.id}
+              style={{
+                display: "flex",
+                gap: 8,
+                padding: "4px 10px",
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={value.statuses.includes(s.id)}
+                onChange={() => toggleStatus(s.id)}
+              />
+              {s.label}
+            </label>
+          ))}
+        </div>
+      </details>
+    </aside>
+  );
+}
