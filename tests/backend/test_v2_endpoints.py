@@ -349,3 +349,13 @@ def test_domain_config_accepts_valid_discovery_block():
         discovery_followup_threshold=5,
     )
     assert cfg.discovery_enabled is True
+
+
+def test_put_domain_config_partial_body_preserves_discovery_feeds():
+    """A partial PUT (only target_word_count) must NOT wipe discovery_feeds."""
+    from backend.api.schemas import DomainConfigUpdate
+
+    partial = DomainConfigUpdate.model_validate({"domain_name": "t", "target_word_count": 800})
+    dumped = partial.model_dump(exclude_unset=True)
+    assert "target_word_count" in dumped
+    assert "discovery_feeds" not in dumped  # caller didn't send it; merge layer keeps existing

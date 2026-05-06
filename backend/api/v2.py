@@ -356,13 +356,18 @@ async def put_domain_config_endpoint(
     `domain_name` is dispatched to the orgs table (it doesn't live in
     org_configs); everything else is upserted on org_configs.
     """
-    payload = body.model_dump()
-    new_domain_name = payload.pop("domain_name", None)
+    patch = body.model_dump(exclude_unset=True)
+    new_domain_name = patch.pop("domain_name", None)
     effective_domain = org.domain_name
     if new_domain_name is not None and new_domain_name != org.domain_name:
         await org_repo.set_domain_name(org.code, new_domain_name)
         effective_domain = new_domain_name
-    config = OrgConfig(org_code=org.code, **payload)
+    # Load the existing row so unset fields keep their stored values.
+    existing = await org_config_repo.get(org.code)
+    existing_data = existing.model_dump() if existing is not None else {}
+    existing_data.pop("org_code", None)
+    merged = {**existing_data, **patch}
+    config = OrgConfig(org_code=org.code, **merged)
     saved = await org_config_repo.upsert(config)
     return _org_config_to_dict(saved, domain_name=effective_domain)
 
