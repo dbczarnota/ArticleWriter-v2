@@ -353,7 +353,9 @@ export interface Translations {
       empty: string;
       backToTopics: string;
       firstSeen: string;
+      firstSeenShort: string;
       lastActivity: string;
+      lastActivityShort: string;
       statusLabel: string;
       itemsCount: string;
       itemsShort: string;

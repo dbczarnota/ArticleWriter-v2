@@ -22,7 +22,7 @@ vi.mock("../i18n", () => ({
       views: { topics: "TopicsLabel", items: "ItemsLabel", feeds: "FeedsLabel" },
       filters: { feeds: "Feeds", categories: "Categories", status: "Status", all: "All", emptyCategories: "" },
       status: { open: "open", resurfaced: "resurfaced", consumed: "consumed", dismissed: "dismissed" },
-      topic: { sources: "", write: "", openArticle: "", loading: "", empty: "", backToTopics: "", firstSeen: "", lastActivity: "", statusLabel: "", itemsCount: "", writeArticle: "", itemsShort: "", error: "", toggleSources: "", dismiss: "", restore: "" },
+      topic: { sources: "", write: "", openArticle: "", loading: "", empty: "", backToTopics: "", firstSeen: "", firstSeenShort: "", lastActivity: "", lastActivityShort: "", statusLabel: "", itemsCount: "", writeArticle: "", itemsShort: "", error: "", toggleSources: "", dismiss: "", restore: "" },
       item: { empty: "", uncategorized: "", colItem: "", colCategories: "", colSeen: "" },
       feed: { lastFetched: "", errors: "", items24h: "", healthy: "", degraded: "", disabled: "", emptyHint: "", lastError: "", justNow: "", minAgo: "", hAgo: "", dAgo: "" },
       hub: { resurfaced: "", written: "", sources: "", sourcesCount: "" },

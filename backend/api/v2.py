@@ -554,7 +554,10 @@ async def list_discovery_topics(
         )
 
     if sort == "first_seen":
-        out.sort(key=lambda x: x["first_seen_at"] or "", reverse=True)
+        # Ascending: the user picks "First seen" because they want to see
+        # the OLDEST topics surface first ("what's been around the longest").
+        # DESC would just duplicate the default last_activity meaning.
+        out.sort(key=lambda x: x["first_seen_at"] or "")
     elif sort == "item_count":
         # Tie-break by last_activity so equal-count topics still order
         # predictably (most recently active first).
