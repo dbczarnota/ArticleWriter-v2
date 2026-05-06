@@ -3,7 +3,7 @@ DiscoveryRepository protocol."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import logfire
@@ -11,12 +11,11 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from backend.db.models import DiscoveryFeed, DiscoveryItem, DiscoveryItemFeed
+from backend.db.models import DiscoveryFeed, DiscoveryItem, DiscoveryItemFeed, DiscoveryTopic
 
 
 def _utcnow() -> datetime:
-    # Column is TIMESTAMP WITHOUT TIME ZONE — store naive UTC.
-    return datetime.now(UTC).replace(tzinfo=None)
+    return datetime.now(UTC)
 
 
 class PostgresDiscoveryRepository:
@@ -163,3 +162,123 @@ class PostgresDiscoveryRepository:
                 .order_by(DiscoveryItem.fetched_at)  # type: ignore[arg-type]
             )
             return list(result.scalars().all())
+
+    # ── Topics ───────────────────────────────────────────────────────────
+    async def list_active_topics(
+        self, *, org_code: str, window_days: int
+    ) -> list[DiscoveryTopic]:
+        cutoff = datetime.now(UTC) - timedelta(days=window_days)
+        async with self._session_maker() as session:
+            result = await session.execute(
+                select(DiscoveryTopic).where(
+                    DiscoveryTopic.org_code == org_code,  # type: ignore[arg-type]
+                    DiscoveryTopic.last_activity_at >= cutoff,  # type: ignore[arg-type]
+                )
+            )
+            return list(result.scalars().all())
+
+    async def create_topic(
+        self,
+        *,
+        org_code: str,
+        title: str,
+        blurb: str,
+        categories: list[str],
+    ) -> DiscoveryTopic:
+        topic = DiscoveryTopic(
+            org_code=org_code,
+            title=title,
+            blurb=blurb,
+            categories=list(categories),
+        )
+        async with self._session_maker() as session:
+            session.add(topic)
+            await session.commit()
+            await session.refresh(topic)
+        logfire.info(
+            "discovery.topic.created",
+            topic_id=str(topic.id),
+            title=title,
+            blurb=blurb,
+            categories=list(categories),
+        )
+        return topic
+
+    async def attach_item_to_topic(
+        self,
+        *,
+        item_id: UUID,
+        topic_id: UUID,
+        item_categories: list[str],
+    ) -> DiscoveryTopic:
+        async with self._session_maker() as session:
+            topic = await session.get(DiscoveryTopic, topic_id)
+            if topic is None:
+                raise LookupError(f"Topic {topic_id} not found")
+            new_tags = [c for c in item_categories if c not in topic.categories]
+            if new_tags:
+                topic.categories = list(topic.categories) + new_tags
+            topic.last_activity_at = datetime.now(UTC)
+            topic.updated_at = datetime.now(UTC)
+            item = await session.get(DiscoveryItem, item_id)
+            if item is not None:
+                item.topic_id = topic_id
+            await session.commit()
+            await session.refresh(topic)
+            return topic
+
+    async def mark_topic_consumed(
+        self,
+        *,
+        topic_id: UUID,
+        article_id: UUID,
+        items_at_consume: int,
+    ) -> None:
+        async with self._session_maker() as session:
+            await session.execute(
+                update(DiscoveryTopic)
+                .where(DiscoveryTopic.id == topic_id)  # type: ignore[arg-type]
+                .values(
+                    status="consumed",
+                    consumed_article_id=article_id,
+                    consumed_at=datetime.now(UTC),
+                    items_at_consume=items_at_consume,
+                    updated_at=datetime.now(UTC),
+                )
+            )
+            await session.commit()
+
+    async def check_resurface(self, *, topic_id: UUID, threshold: int) -> bool:
+        async with self._session_maker() as session:
+            topic = await session.get(DiscoveryTopic, topic_id)
+            if topic is None or topic.consumed_at is None:
+                return False
+            count_result = await session.execute(
+                select(DiscoveryItem.id).where(  # type: ignore[arg-type]
+                    DiscoveryItem.topic_id == topic_id,  # type: ignore[arg-type]
+                    DiscoveryItem.fetched_at > topic.consumed_at,  # type: ignore[arg-type]
+                )
+            )
+            new_count = len(list(count_result.scalars().all()))
+            if new_count < threshold:
+                return False
+            topic.status = "resurfaced"
+            topic.updated_at = datetime.now(UTC)
+            await session.commit()
+            logfire.info(
+                "discovery.topic.resurfaced",
+                topic_id=str(topic_id),
+                consumed_at=topic.consumed_at.isoformat(),
+                new_items_since=new_count,
+                threshold=threshold,
+            )
+            return True
+
+    async def get_topic(
+        self, *, topic_id: UUID, org_code: str
+    ) -> DiscoveryTopic | None:
+        async with self._session_maker() as session:
+            topic = await session.get(DiscoveryTopic, topic_id)
+            if topic is None or topic.org_code != org_code:
+                return None
+            return topic

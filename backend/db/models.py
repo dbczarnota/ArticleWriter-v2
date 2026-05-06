@@ -392,7 +392,9 @@ class DiscoveryFeed(SQLModel, table=True):
     )
     org_code: str = Field(sa_column=Column(String(128), ForeignKey("orgs.code"), nullable=False))
     feed_url: str = Field(max_length=2048)
-    last_fetched_at: datetime | None = Field(default=None)
+    last_fetched_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
     last_etag: str | None = Field(default=None, max_length=256)
     last_modified: str | None = Field(default=None, max_length=64)
     last_error: str | None = Field(default=None, sa_column=Column(String(2048), nullable=True))
@@ -434,7 +436,9 @@ class DiscoveryTopic(SQLModel, table=True):
         default=None,
         sa_column=Column(PG_UUID(as_uuid=True), ForeignKey("articles.id"), nullable=True),
     )
-    consumed_at: datetime | None = Field(default=None)
+    consumed_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
     items_at_consume: int | None = Field(default=None)
 
     created_at: datetime = Field(
@@ -466,7 +470,9 @@ class DiscoveryItem(SQLModel, table=True):
     guid: str | None = Field(default=None, max_length=512)
     title: str = Field(max_length=1024)
     summary: str | None = Field(default=None, sa_column=Column(String, nullable=True))
-    published_at: datetime | None = Field(default=None)
+    published_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
 
     categories: list[str] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False))
     category_confidences: dict[str, float] | None = Field(
@@ -493,7 +499,9 @@ class DiscoveryItem(SQLModel, table=True):
         default_factory=_utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
     )
-    processed_at: datetime | None = Field(default=None)
+    processed_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
 
 
 class DiscoveryItemFeed(SQLModel, table=True):

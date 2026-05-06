@@ -4,6 +4,7 @@ instance via testcontainers (mirrors test_repositories_postgres.py)."""
 from __future__ import annotations
 
 import os
+from datetime import UTC
 
 os.environ.setdefault("TESTCONTAINERS_RYUK_DISABLED", "true")
 
@@ -137,3 +138,102 @@ async def test_add_item_to_feed_link_idempotent(session_maker, org):
     await repo.upsert_item(item)
     await repo.add_item_to_feed_link(item_id=item.id, feed_id=feed.id)
     await repo.add_item_to_feed_link(item_id=item.id, feed_id=feed.id)  # duplicate ignored
+
+
+@pytest.mark.asyncio
+async def test_create_topic_and_attach_unions_categories(session_maker, org):
+    from backend.db.models import DiscoveryItem
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    topic = await repo.create_topic(
+        org_code=org.code, title="T", blurb="B", categories=["Polityka"]
+    )
+    assert topic.categories == ["Polityka"]
+
+    item = DiscoveryItem(
+        org_code=org.code, canonical_url="https://e.com/1", title="X", categories=["Lokalne"]
+    )
+    await repo.upsert_item(item)
+    updated = await repo.attach_item_to_topic(
+        item_id=item.id, topic_id=topic.id, item_categories=["Lokalne"]
+    )
+    assert sorted(updated.categories) == ["Lokalne", "Polityka"]
+
+
+@pytest.mark.asyncio
+async def test_list_active_topics_honors_window(session_maker, org):
+    from datetime import datetime as dt
+    from datetime import timedelta as td
+
+    from sqlalchemy import update as sqla_update
+
+    from backend.db.models import DiscoveryTopic
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    fresh = await repo.create_topic(org_code=org.code, title="fresh", blurb="b", categories=[])
+    stale = await repo.create_topic(org_code=org.code, title="stale", blurb="b", categories=[])
+
+    # Push stale's last_activity_at back 10 days
+    async with session_maker() as session:
+        await session.execute(
+            sqla_update(DiscoveryTopic)
+            .where(DiscoveryTopic.id == stale.id)  # type: ignore[arg-type]
+            .values(last_activity_at=dt.now(UTC) - td(days=10))
+        )
+        await session.commit()
+
+    active = await repo.list_active_topics(org_code=org.code, window_days=3)
+    assert {t.id for t in active} == {fresh.id}
+
+
+@pytest.mark.asyncio
+async def test_mark_topic_consumed_and_resurface(session_maker, org):
+    from datetime import datetime as dt
+
+    from backend.db.models import Article, DiscoveryItem
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    topic = await repo.create_topic(org_code=org.code, title="T", blurb="B", categories=[])
+
+    # Pre-consume: 2 items
+    async with session_maker() as session:
+        article = Article(
+            org_code=org.code, author_user_id="u1", domain_name="test",
+            topic="T", status="done",
+        )
+        session.add(article)
+        await session.commit()
+        await session.refresh(article)
+
+    for i in range(2):
+        item = DiscoveryItem(
+            org_code=org.code, canonical_url=f"https://e.com/{i}",
+            title=f"X{i}", categories=[], topic_id=topic.id,
+        )
+        await repo.upsert_item(item)
+
+    await repo.mark_topic_consumed(
+        topic_id=topic.id, article_id=article.id, items_at_consume=2
+    )
+
+    # No new items yet
+    flipped = await repo.check_resurface(topic_id=topic.id, threshold=3)
+    assert flipped is False
+
+    # Add 3 new items, pretend they were fetched after consumed_at
+    later = dt.now(UTC)
+    for i in range(2, 5):
+        item = DiscoveryItem(
+            org_code=org.code, canonical_url=f"https://e.com/{i}",
+            title=f"X{i}", categories=[], topic_id=topic.id, fetched_at=later,
+        )
+        await repo.upsert_item(item)
+
+    flipped = await repo.check_resurface(topic_id=topic.id, threshold=3)
+    assert flipped is True
+    found = await repo.get_topic(topic_id=topic.id, org_code=org.code)
+    assert found is not None
+    assert found.status == "resurfaced"
