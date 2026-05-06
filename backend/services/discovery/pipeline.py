@@ -132,6 +132,7 @@ async def process_item(
             title=raw.title[:1024],
             summary=raw.summary,
             published_at=raw.published_at,
+            image_url=raw.image_url,
             categories=list(classifier_decision.categories),
             category_confidences=dict(classifier_decision.confidences) or None,
             topic_id=topic_id_for_item,

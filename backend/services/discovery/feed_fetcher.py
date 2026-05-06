@@ -24,6 +24,7 @@ class RawFeedItem:
     guid: str | None
     summary: str | None
     published_at: datetime | None
+    image_url: str | None = None
 
 
 @dataclass
@@ -42,6 +43,80 @@ def _parse_published(entry: dict) -> datetime | None:  # type: ignore[type-arg]
         return datetime(*parsed[:6], tzinfo=UTC)
     except (TypeError, ValueError):
         return None
+
+
+def _parse_image(entry: dict) -> str | None:  # type: ignore[type-arg]
+    """Best-effort extraction of an article hero image URL from RSS entry.
+
+    Tries (in priority order):
+    1. media:content with image type
+    2. media:thumbnail
+    3. enclosures of image/* type
+    4. <img> in summary/content HTML
+
+    Returns first absolute http(s) URL found, or None."""
+    import re
+
+    def _ok(url: object) -> str | None:
+        if not isinstance(url, str):
+            return None
+        url = url.strip()
+        if url.startswith("http://") or url.startswith("https://"):
+            return url[:2048]
+        return None
+
+    media_content = entry.get("media_content") or []
+    if isinstance(media_content, list):
+        for m in media_content:
+            if not isinstance(m, dict):
+                continue
+            mtype = str(m.get("type") or m.get("medium") or "")
+            if mtype.startswith("image") or mtype == "image":
+                got = _ok(m.get("url"))
+                if got:
+                    return got
+        # Fall back to first media_content even without explicit image type.
+        for m in media_content:
+            if isinstance(m, dict):
+                got = _ok(m.get("url"))
+                if got:
+                    return got
+
+    media_thumbnail = entry.get("media_thumbnail") or []
+    if isinstance(media_thumbnail, list):
+        for m in media_thumbnail:
+            if isinstance(m, dict):
+                got = _ok(m.get("url"))
+                if got:
+                    return got
+
+    enclosures = entry.get("enclosures") or []
+    if isinstance(enclosures, list):
+        for enc in enclosures:
+            if isinstance(enc, dict) and str(enc.get("type") or "").startswith("image"):
+                got = _ok(enc.get("href") or enc.get("url"))
+                if got:
+                    return got
+
+    # Last resort: first <img src="..."> in the HTML body of summary/content.
+    html_blobs: list[str] = []
+    summary = entry.get("summary")
+    if isinstance(summary, str):
+        html_blobs.append(summary)
+    content = entry.get("content")
+    if isinstance(content, list):
+        for c in content:
+            if isinstance(c, dict):
+                v = c.get("value")
+                if isinstance(v, str):
+                    html_blobs.append(v)
+    for blob in html_blobs:
+        m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', blob, re.IGNORECASE)
+        if m:
+            got = _ok(m.group(1))
+            if got:
+                return got
+    return None
 
 
 async def fetch_feed(
@@ -92,6 +167,7 @@ async def fetch_feed(
                 guid=str(raw_guid) if raw_guid is not None else None,
                 summary=str(raw_summary) if raw_summary is not None else None,
                 published_at=_parse_published(entry),
+                image_url=_parse_image(entry),
             )
         )
     new_etag = response.headers.get("ETag")

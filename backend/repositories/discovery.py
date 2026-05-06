@@ -160,6 +160,10 @@ class PostgresDiscoveryRepository:
             # Update mutable fields
             row.title = item.title
             row.summary = item.summary
+            # Don't blank a known image with None — late polls may not parse
+            # one out of every entry. Keep whatever we already had.
+            if item.image_url is not None:
+                row.image_url = item.image_url
             row.categories = list(item.categories)
             row.category_confidences = item.category_confidences
             row.topic_id = item.topic_id

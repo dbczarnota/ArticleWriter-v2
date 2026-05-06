@@ -514,6 +514,7 @@ class DiscoveryItem(SQLModel, table=True):
     guid: str | None = Field(default=None, max_length=512)
     title: str = Field(max_length=1024)
     summary: str | None = Field(default=None, sa_column=Column(String, nullable=True))
+    image_url: str | None = Field(default=None, max_length=2048)
     published_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )

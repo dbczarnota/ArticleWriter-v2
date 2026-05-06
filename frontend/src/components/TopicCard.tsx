@@ -83,6 +83,25 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
         >
           {open ? "▾" : "▸"}
         </button>
+        {topic.topic_image_url && (
+          <img
+            src={topic.topic_image_url}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            onClick={handleBodyClick}
+            style={{
+              width: 72,
+              height: 72,
+              objectFit: "cover",
+              borderRadius: "var(--radius)",
+              flexShrink: 0,
+              cursor: onSelect ? "pointer" : "default",
+              background: "var(--sidebar)",
+            }}
+          />
+        )}
         <div
           style={{ flex: 1, minWidth: 0, cursor: onSelect ? "pointer" : "default" }}
           onClick={handleBodyClick}
@@ -216,25 +235,46 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
                 rel="noreferrer noopener"
                 onClick={(e) => e.stopPropagation()}
                 style={{
-                  display: "block",
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
                   padding: "6px 0",
                   textDecoration: "none",
                   color: "var(--text)",
                 }}
               >
-                <div style={{ fontSize: 14 }}>
-                  {it.title} <span style={{ color: "var(--muted)" }}>↗</span>
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--muted)",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {it.canonical_url}
+                {it.image_url && (
+                  <img
+                    src={it.image_url}
+                    alt=""
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      objectFit: "cover",
+                      borderRadius: 4,
+                      flexShrink: 0,
+                      background: "var(--sidebar)",
+                    }}
+                  />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14 }}>
+                    {it.title} <span style={{ color: "var(--muted)" }}>↗</span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--muted)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {it.canonical_url}
+                  </div>
                 </div>
               </a>
             ))

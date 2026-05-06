@@ -452,6 +452,7 @@ def _topic_to_json(
     new_items_since_consume: int = 0,
     item_count: int = 0,
     feed_hosts: list[str] | None = None,
+    topic_image_url: str | None = None,
 ) -> dict:
     return {
         "id": str(t.id),
@@ -467,7 +468,19 @@ def _topic_to_json(
         "new_items_since_consume": new_items_since_consume,
         "item_count": item_count,
         "feed_hosts": feed_hosts or [],
+        "topic_image_url": topic_image_url,
     }
+
+
+def _topic_image_from_items(items: list) -> str | None:
+    """Pick the oldest item's image as the topic's hero image. Falls back
+    through later items if the originator had no image — UX wants *some*
+    thumbnail when one exists in the topic."""
+    ordered = sorted(items, key=lambda it: it.fetched_at)
+    for it in ordered:
+        if it.image_url:
+            return it.image_url
+    return None
 
 
 def _hosts_from_items(items: list) -> list[str]:
@@ -525,6 +538,7 @@ async def list_discovery_topics(
                 new_items_since_consume=new_count,
                 item_count=len(items),
                 feed_hosts=_hosts_from_items(items),
+                topic_image_url=_topic_image_from_items(items),
             )
         )
     return out
@@ -549,6 +563,7 @@ async def get_discovery_topic(
             new_items_since_consume=new_count,
             item_count=len(items),
             feed_hosts=_hosts_from_items(items),
+            topic_image_url=_topic_image_from_items(items),
         ),
         "items": [
             {
@@ -556,6 +571,7 @@ async def get_discovery_topic(
                 "canonical_url": it.canonical_url,
                 "title": it.title,
                 "summary": it.summary,
+                "image_url": it.image_url,
                 "categories": list(it.categories),
                 "fetched_at": it.fetched_at.isoformat() if it.fetched_at else None,
                 "published_at": it.published_at.isoformat() if it.published_at else None,
@@ -704,6 +720,7 @@ async def list_discovery_items(
             "canonical_url": it.canonical_url,
             "title": it.title,
             "summary": it.summary,
+            "image_url": it.image_url,
             "categories": list(it.categories),
             "topic_id": str(it.topic_id) if it.topic_id else None,
             "fetched_at": it.fetched_at.isoformat() if it.fetched_at else None,

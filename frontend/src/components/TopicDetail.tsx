@@ -109,32 +109,53 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
         }}
       >
         <section style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-            {isResurfaced && (
-              <span style={{ ...chipBase, background: "#fee2e2", color: "#b91c1c" }}>
-                {t.discovery.hub.resurfaced}
-              </span>
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+            {detail.topic_image_url && (
+              <img
+                src={detail.topic_image_url}
+                alt=""
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                style={{
+                  width: 160,
+                  height: 110,
+                  objectFit: "cover",
+                  borderRadius: "var(--radius)",
+                  flexShrink: 0,
+                  background: "var(--sidebar)",
+                }}
+              />
             )}
-            {isConsumed && (
-              <span style={{ ...chipBase, background: "#dcfce7", color: "#166534" }}>
-                {t.discovery.hub.written}
-              </span>
-            )}
-            {detail.categories.map((c) => (
-              <span
-                key={c}
-                style={{ ...chipBase, background: "var(--accent-lt)", color: "var(--accent)" }}
-              >
-                {c}
-              </span>
-            ))}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                {isResurfaced && (
+                  <span style={{ ...chipBase, background: "#fee2e2", color: "#b91c1c" }}>
+                    {t.discovery.hub.resurfaced}
+                  </span>
+                )}
+                {isConsumed && (
+                  <span style={{ ...chipBase, background: "#dcfce7", color: "#166534" }}>
+                    {t.discovery.hub.written}
+                  </span>
+                )}
+                {detail.categories.map((c) => (
+                  <span
+                    key={c}
+                    style={{ ...chipBase, background: "var(--accent-lt)", color: "var(--accent)" }}
+                  >
+                    {c}
+                  </span>
+                ))}
+              </div>
+              <h2 style={{ margin: "0 0 12px", color: "var(--text)" }}>{detail.title}</h2>
+              {detail.blurb && (
+                <p style={{ color: "var(--muted)", lineHeight: 1.6, marginTop: 0 }}>
+                  {detail.blurb}
+                </p>
+              )}
+            </div>
           </div>
-          <h2 style={{ margin: "0 0 12px", color: "var(--text)" }}>{detail.title}</h2>
-          {detail.blurb && (
-            <p style={{ color: "var(--muted)", lineHeight: 1.6, marginTop: 0 }}>
-              {detail.blurb}
-            </p>
-          )}
 
           <h3 style={{ marginTop: 24, color: "var(--text)", fontSize: 15 }}>
             {t.discovery.topic.sources} ({detail.items.length})
@@ -172,6 +193,23 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                     alignItems: "flex-start",
                   }}
                 >
+                  {it.image_url && (
+                    <img
+                      src={it.image_url}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      style={{
+                        width: 64,
+                        height: 64,
+                        objectFit: "cover",
+                        borderRadius: 4,
+                        flexShrink: 0,
+                        background: "var(--sidebar)",
+                      }}
+                    />
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <a
                       href={it.canonical_url}

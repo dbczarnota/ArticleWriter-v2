@@ -160,6 +160,7 @@ export interface DiscoveryTopicSummary {
   new_items_since_consume: number;
   item_count: number;
   feed_hosts: string[];
+  topic_image_url: string | null;
 }
 
 export interface DiscoveryItem {
@@ -167,6 +168,7 @@ export interface DiscoveryItem {
   canonical_url: string;
   title: string;
   summary: string | null;
+  image_url: string | null;
   categories: string[];
   topic_id: string | null;
   fetched_at: string | null;
