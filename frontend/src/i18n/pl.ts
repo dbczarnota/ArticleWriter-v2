@@ -332,8 +332,8 @@ export const pl: Translations = {
     status: { open: "Świeże", resurfaced: "Resurfaced", consumed: "Już napisane" },
     topic: {
       sources: "Źródła",
-      write: "Napisz →",
-      writeArticle: "📝 Napisz artykuł",
+      write: "Napisz",
+      writeArticle: "Napisz artykuł",
       openArticle: "Otwórz artykuł",
       loading: "Ładowanie…",
       empty: "Brak tematów dla tego filtra.",
