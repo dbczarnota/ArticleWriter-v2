@@ -167,6 +167,22 @@ class PostgresDiscoveryRepository:
             )
             return list(result.scalars().all())
 
+    async def list_unprocessed_items(
+        self, *, org_code: str, since: datetime, limit: int = 50
+    ) -> list[DiscoveryItem]:
+        async with self._session_maker() as session:
+            result = await session.execute(
+                select(DiscoveryItem)
+                .where(
+                    DiscoveryItem.org_code == org_code,  # type: ignore[arg-type]
+                    DiscoveryItem.processed_at.is_(None),  # type: ignore[union-attr]
+                    DiscoveryItem.fetched_at >= since,  # type: ignore[arg-type]
+                )
+                .order_by(DiscoveryItem.fetched_at)  # type: ignore[arg-type]
+                .limit(limit)
+            )
+            return list(result.scalars().all())
+
     # ── Topics ───────────────────────────────────────────────────────────
     async def list_active_topics(self, *, org_code: str, window_days: int) -> list[DiscoveryTopic]:
         cutoff = datetime.now(UTC) - timedelta(days=window_days)

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import time
+from datetime import UTC, datetime, timedelta
 
 import logfire
 
 from backend.domain import DomainConfig
 from backend.repositories.protocols import DiscoveryRepository
-from backend.services.discovery.feed_fetcher import FeedFetchError, fetch_feed
+from backend.services.discovery.feed_fetcher import FeedFetchError, RawFeedItem, fetch_feed
 from backend.services.discovery.pipeline import process_item
 
 
@@ -83,20 +84,74 @@ async def poll_org_feeds(
                 continue
 
             for raw in result.items:
-                await process_item(
-                    raw=raw,
-                    org_code=org_code,
-                    domain=domain,
-                    feed_id=feed_row.id,
-                    repo=repo,
-                )
-                total_new += 1
+                try:
+                    await process_item(
+                        raw=raw,
+                        org_code=org_code,
+                        domain=domain,
+                        feed_id=feed_row.id,
+                        repo=repo,
+                    )
+                    total_new += 1
+                except Exception as e:
+                    logfire.warn(
+                        "discovery.item.processing_failed",
+                        feed_id=str(feed_row.id),
+                        feed_url=cfg.url,
+                        item_url=raw.url,
+                        error_type=type(e).__name__,
+                        error_message=str(e)[:500],
+                    )
+                    # Continue to next item; don't poison the rest of the feed.
+
+    # Orphan recovery: items whose pipeline failed earlier (classifier crash,
+    # matcher error, etc) sit with processed_at IS NULL. Give them another
+    # shot each cycle. Bounded to last 24h + 50 items so a poison-pill item
+    # doesn't block forever and the retry budget stays small.
+    since = datetime.now(UTC) - timedelta(hours=24)
+    orphans = await repo.list_unprocessed_items(org_code=org_code, since=since)
+    orphans_retried = 0
+    orphans_recovered = 0
+    for orphan in orphans:
+        try:
+            raw = RawFeedItem(
+                title=orphan.title,
+                url=orphan.canonical_url,
+                guid=orphan.guid,
+                summary=orphan.summary,
+                published_at=orphan.published_at,
+            )
+            # Use the first runtime feed as a placeholder feed_id for baggage.
+            # An orphan was created from at least one feed, so runtime_feeds
+            # should not be empty, but guard defensively.
+            if not runtime_feeds:
+                continue
+            await process_item(
+                raw=raw,
+                org_code=org_code,
+                domain=domain,
+                feed_id=runtime_feeds[0].id,
+                repo=repo,
+            )
+            orphans_retried += 1
+            orphans_recovered += 1
+        except Exception as e:
+            orphans_retried += 1
+            logfire.warn(
+                "discovery.item.retry_failed",
+                org_code=org_code,
+                item_url=orphan.canonical_url,
+                error_type=type(e).__name__,
+                error_message=str(e)[:500],
+            )
 
     logfire.info(
         "discovery.poll.completed",
         org_code=org_code,
         feeds_polled=feeds_polled,
         items_new=total_new,
+        orphans_retried=orphans_retried,
+        orphans_recovered=orphans_recovered,
         duration_ms=(time.perf_counter() - t0) * 1000,
     )
     return total_new

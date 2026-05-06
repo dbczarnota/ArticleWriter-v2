@@ -334,6 +334,16 @@ class NullDiscoveryRepository:
             if it.topic_id == topic_id and it.org_code == org_code
         ]
 
+    async def list_unprocessed_items(
+        self, *, org_code: str, since: datetime, limit: int = 50
+    ) -> list[DiscoveryItem]:
+        rows = [
+            it for it in self._items.values()
+            if it.org_code == org_code and it.processed_at is None and it.fetched_at >= since
+        ]
+        rows.sort(key=lambda it: it.fetched_at)
+        return rows[:limit]
+
     # ── Topics ───────────────────────────────────────────────────────────
     async def list_active_topics(self, *, org_code: str, window_days: int) -> list[DiscoveryTopic]:
         cutoff = _utcnow() - timedelta(days=window_days)

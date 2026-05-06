@@ -70,6 +70,38 @@ async def test_304_no_processing(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_one_failing_item_does_not_kill_the_loop(monkeypatch):
+    """A bad item raises but the next item still gets processed."""
+    repo = NullDiscoveryRepository()
+    fetcher = AsyncMock(
+        return_value=FetchResult(
+            items=[
+                RawFeedItem(title="bad", url="https://x/1", guid="g1", summary=None, published_at=None),
+                RawFeedItem(title="good", url="https://x/2", guid="g2", summary=None, published_at=None),
+            ],
+            etag=None,
+            last_modified=None,
+            not_modified=False,
+        )
+    )
+
+    proc_calls: list[str] = []
+
+    async def proc(*, raw, **_):
+        proc_calls.append(raw.url)
+        if raw.url == "https://x/1":
+            raise RuntimeError("LLM down")
+
+    monkeypatch.setattr("backend.services.discovery.poller.fetch_feed", fetcher)
+    monkeypatch.setattr("backend.services.discovery.poller.process_item", proc)
+
+    domain = _domain([FeedConfig(url="https://x/rss")])
+    await poll_org_feeds(org_code="org_t", domain=domain, repo=repo)
+    # Both items attempted; loop continued past the failure.
+    assert proc_calls == ["https://x/1", "https://x/2"]
+
+
+@pytest.mark.asyncio
 async def test_fetch_error_increments_error_count(monkeypatch):
     repo = NullDiscoveryRepository()
     fetcher = AsyncMock(side_effect=FeedFetchError("boom"))

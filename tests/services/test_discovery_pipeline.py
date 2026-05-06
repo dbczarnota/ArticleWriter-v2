@@ -112,6 +112,27 @@ async def test_duplicate_url_links_feed_no_reprocess(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_classifier_failure_does_not_create_orphan_item(monkeypatch):
+    """If classifier crashes, no DiscoveryItem should be persisted (avoids
+    orphan rows that block future retries via the get_item_by_url
+    short-circuit)."""
+    repo = NullDiscoveryRepository()
+    feed = await repo.upsert_feed(org_code="org_t", feed_url="https://x/rss")
+
+    classifier = AsyncMock(side_effect=RuntimeError("LLM down"))
+    monkeypatch.setattr("backend.services.discovery.pipeline.run_classifier_agent", classifier)
+    monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_matcher_agent", AsyncMock())
+    monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_writer_agent", AsyncMock())
+
+    raw = RawFeedItem(title="X", url="https://x/a/1", guid="g1", summary="s", published_at=None)
+    with pytest.raises(RuntimeError):
+        await process_item(raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo)
+
+    # No item should have been persisted (no orphan to short-circuit future retries)
+    assert await repo.get_item_by_url(org_code="org_t", canonical_url="https://x/a/1") is None
+
+
+@pytest.mark.asyncio
 async def test_classifier_returning_empty_lands_in_uncategorized(monkeypatch):
     repo = NullDiscoveryRepository()
     feed = await repo.upsert_feed(org_code="org_t", feed_url="https://x/rss")

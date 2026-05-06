@@ -103,36 +103,12 @@ async def process_item(
             reasoning=match_decision.reasoning,
         )
 
-        # Persist item placeholder so we have an id for attach_item_to_topic
-        item = DiscoveryItem(
-            org_code=org_code,
-            canonical_url=canonical,
-            guid=raw.guid,
-            title=raw.title[:1024],
-            summary=raw.summary,
-            published_at=raw.published_at,
-            categories=list(classifier_decision.categories),
-            category_confidences=dict(classifier_decision.confidences) or None,
-        )
-        item = await repo.upsert_item(item)
-        await repo.add_item_to_feed_link(item_id=item.id, feed_id=feed_id)
-
-        if match_decision.matched_topic_id is not None:
-            await repo.attach_item_to_topic(
-                item_id=item.id,
-                topic_id=match_decision.matched_topic_id,
-                item_categories=list(classifier_decision.categories),
-            )
-            logfire.info(
-                "discovery.topic.matched",
-                topic_id=str(match_decision.matched_topic_id),
-                item_id=str(item.id),
-            )
-            await repo.check_resurface(
-                topic_id=match_decision.matched_topic_id,
-                threshold=domain.discovery_followup_threshold,
-            )
-        else:
+        # Persist item AFTER matcher/writer decision so a crash in either
+        # step doesn't leave an orphan. If the matcher said "match", we
+        # set topic_id directly. If "new topic", we create the topic
+        # first, then upsert the item with its topic_id already set.
+        topic_id_for_item = match_decision.matched_topic_id
+        if topic_id_for_item is None:
             descriptor = await run_topic_writer_agent(
                 title=raw.title, summary=raw.summary, config=_writer_config(domain)
             )
@@ -142,13 +118,40 @@ async def process_item(
                 blurb=descriptor.blurb,
                 categories=list(classifier_decision.categories),
             )
-            await repo.attach_item_to_topic(
-                item_id=item.id,
-                topic_id=topic.id,
-                item_categories=list(classifier_decision.categories),
+            topic_id_for_item = topic.id
+
+        item = DiscoveryItem(
+            org_code=org_code,
+            canonical_url=canonical,
+            guid=raw.guid,
+            title=raw.title[:1024],
+            summary=raw.summary,
+            published_at=raw.published_at,
+            categories=list(classifier_decision.categories),
+            category_confidences=dict(classifier_decision.confidences) or None,
+            topic_id=topic_id_for_item,
+        )
+        item = await repo.upsert_item(item)
+        await repo.add_item_to_feed_link(item_id=item.id, feed_id=feed_id)
+
+        # attach_item_to_topic also unions categories and bumps last_activity_at.
+        await repo.attach_item_to_topic(
+            item_id=item.id,
+            topic_id=topic_id_for_item,
+            item_categories=list(classifier_decision.categories),
+        )
+        if match_decision.matched_topic_id is not None:
+            logfire.info(
+                "discovery.topic.matched",
+                topic_id=str(match_decision.matched_topic_id),
+                item_id=str(item.id),
+            )
+            await repo.check_resurface(
+                topic_id=match_decision.matched_topic_id,
+                threshold=domain.discovery_followup_threshold,
             )
 
-        # Refresh + mark processed
+        # Mark processed
         item.processed_at = datetime.now(UTC)
         item = await repo.upsert_item(item)
         logfire.info(

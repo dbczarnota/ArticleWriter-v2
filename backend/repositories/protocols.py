@@ -232,6 +232,13 @@ class DiscoveryRepository(Protocol):
     async def list_items_for_topic(
         self, *, topic_id: UUID, org_code: str
     ) -> list[DiscoveryItem]: ...
+    async def list_unprocessed_items(
+        self, *, org_code: str, since: datetime, limit: int = 50
+    ) -> list[DiscoveryItem]:
+        """Items with processed_at IS NULL fetched after `since`. Used by
+        the poller's orphan-recovery scan: items whose pipeline failed
+        (classifier crashed, etc) sit here until a future tick retries them."""
+        ...
 
     # ── Topics ───────────────────────────────────────────────────────────
     async def list_active_topics(
