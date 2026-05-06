@@ -18,6 +18,9 @@ from uuid import UUID
 
 from backend.db.models import (
     Article,
+    DiscoveryFeed,
+    DiscoveryItem,
+    DiscoveryTopic,
     EmbedCandidate,
     Fact,
     FallbackEvent,
@@ -185,3 +188,91 @@ class OrgConfigRepository(Protocol):
         Used by `get_current_org` during first-request bootstrap of a new tenant.
         """
         ...
+
+
+class DiscoveryRepository(Protocol):
+    """Persistence for the RSS discovery layer.
+
+    Tenant-isolated: every read takes `org_code` and the implementation
+    filters by it. Mirrors ArticleRepository / OrgRepository conventions.
+    """
+
+    # ── Feeds ────────────────────────────────────────────────────────────
+    async def list_feeds_for_org(self, org_code: str) -> list[DiscoveryFeed]: ...
+    async def upsert_feed(self, *, org_code: str, feed_url: str) -> DiscoveryFeed: ...
+    async def record_feed_run(
+        self,
+        feed_id: UUID,
+        *,
+        last_etag: str | None,
+        last_modified: str | None,
+    ) -> None: ...
+    async def record_feed_error(
+        self,
+        feed_id: UUID,
+        *,
+        error_message: str,
+        disable_threshold: int = 10,
+    ) -> None: ...
+    async def reset_feed_errors(self, feed_id: UUID) -> None: ...
+
+    # ── Items ────────────────────────────────────────────────────────────
+    async def get_item_by_url(
+        self, *, org_code: str, canonical_url: str
+    ) -> DiscoveryItem | None: ...
+    async def upsert_item(self, item: DiscoveryItem) -> DiscoveryItem: ...
+    async def add_item_to_feed_link(self, *, item_id: UUID, feed_id: UUID) -> None: ...
+    async def list_items_for_topic(self, topic_id: UUID) -> list[DiscoveryItem]: ...
+
+    # ── Topics ───────────────────────────────────────────────────────────
+    async def list_active_topics(
+        self, *, org_code: str, window_days: int
+    ) -> list[DiscoveryTopic]: ...
+    async def create_topic(
+        self,
+        *,
+        org_code: str,
+        title: str,
+        blurb: str,
+        categories: list[str],
+    ) -> DiscoveryTopic: ...
+    async def attach_item_to_topic(
+        self,
+        *,
+        item_id: UUID,
+        topic_id: UUID,
+        item_categories: list[str],
+    ) -> DiscoveryTopic:
+        """Attaches item to topic, touches last_activity_at,
+        and unions item_categories into topic.categories. Returns the
+        updated topic."""
+        ...
+    async def mark_topic_consumed(
+        self,
+        *,
+        topic_id: UUID,
+        article_id: UUID,
+        items_at_consume: int,
+    ) -> None: ...
+    async def check_resurface(
+        self,
+        *,
+        topic_id: UUID,
+        threshold: int,
+    ) -> bool:
+        """Counts items added after consumed_at; if >= threshold, flips
+        topic.status to 'resurfaced'. Returns True if flipped."""
+        ...
+    async def get_topic(self, *, topic_id: UUID, org_code: str) -> DiscoveryTopic | None: ...
+    async def list_topics_for_ui(
+        self,
+        *,
+        org_code: str,
+        categories: list[str] | None = None,
+        statuses: list[str] | None = None,
+        since: datetime | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[DiscoveryTopic]: ...
+    async def dismiss_topic(self, *, topic_id: UUID, org_code: str) -> None: ...
+    async def restore_topic(self, *, topic_id: UUID, org_code: str) -> None: ...
