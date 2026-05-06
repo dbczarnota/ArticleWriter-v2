@@ -375,6 +375,8 @@ export const pl: Translations = {
     dialog: {
       title: "Napisz artykuł z tematu",
       topicLabel: "Temat",
+      instructionsLabel: "Dodatkowe wskazówki",
+      instructionsPlaceholder: "Skup się na...",
       sourcesLabel: "Źródła (odznacz te, których nie chcesz; możesz też dodać własne)",
       copyTitle: "Kopiuj tytuł",
       addUrl: "Dodaj URL",

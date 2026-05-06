@@ -635,10 +635,11 @@ async def restore_discovery_topic(
 
 class WriteFromTopicOverrides(BaseModel):
     """Optional overrides supplied from the pre-write dialog. When omitted,
-    the article is written using the topic's title + every item's URL — same
-    as the pre-dialog behavior."""
+    the article is written using the topic's title + blurb + every item's
+    URL — same as the pre-dialog behavior."""
 
     topic_override: str | None = None
+    additional_instructions: str | None = None
     urls: list[str] | None = None
 
 
@@ -674,6 +675,13 @@ async def write_article_from_discovery_topic(
         if overrides and overrides.topic_override and overrides.topic_override.strip()
         else topic.title
     )
+    # Editor's textarea takes precedence; fall back to topic.blurb (same as
+    # the no-overrides path) when not provided. Empty string explicitly
+    # wipes the blurb — interpret that as "no instructions at all".
+    if overrides is not None and overrides.additional_instructions is not None:
+        final_instructions: str | None = overrides.additional_instructions.strip() or None
+    else:
+        final_instructions = topic.blurb
 
     cfg = get_secrets()
     domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
@@ -689,7 +697,7 @@ async def write_article_from_discovery_topic(
     req = ArticleRequest(
         topic=final_topic,
         urls=urls,
-        additional_instructions=topic.blurb,
+        additional_instructions=final_instructions,
         author_name=author_name,
     )
     app_settings = _build_app_settings(req=req, org_domain_name=org.domain_name, domain=domain)

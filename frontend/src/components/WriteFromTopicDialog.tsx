@@ -14,6 +14,7 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
   const { request } = useApi();
   const [detail, setDetail] = useState<DiscoveryTopicDetail | null>(null);
   const [topicTitle, setTopicTitle] = useState("");
+  const [instructions, setInstructions] = useState("");
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   // URLs the editor pasted in addition to the discovered sources.
   // Stored separately so the discovered list keeps its full metadata
@@ -34,6 +35,9 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
       if (cancelled) return;
       setDetail(d);
       setTopicTitle(d.title);
+      // Default instructions = topic blurb (the matcher signal). Editor
+      // can override or wipe it before generating.
+      setInstructions(d.blurb || "");
       setSelectedUrls(new Set(d.items.map((it) => it.canonical_url)));
     });
     return () => { cancelled = true; };
@@ -99,6 +103,7 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
     try {
       const body = {
         topic_override: topicTitle.trim() === detail.title ? null : topicTitle.trim(),
+        additional_instructions: instructions.trim() || null,
         urls: Array.from(selectedUrls),
       };
       // useApi.request already sets Content-Type: application/json; passing
@@ -221,6 +226,40 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
                   background: "var(--white)",
                   color: "var(--text)",
                   boxSizing: "border-box",
+                }}
+              />
+
+              <label
+                htmlFor="write-dialog-instructions"
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  color: "var(--muted)",
+                  marginTop: 16,
+                  marginBottom: 4,
+                }}
+              >
+                {t.discovery.dialog.instructionsLabel}
+              </label>
+              <textarea
+                id="write-dialog-instructions"
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                disabled={submitting}
+                rows={3}
+                placeholder={t.discovery.dialog.instructionsPlaceholder}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  fontSize: 13,
+                  lineHeight: 1.4,
+                  background: "var(--white)",
+                  color: "var(--text)",
+                  boxSizing: "border-box",
+                  resize: "vertical",
+                  fontFamily: "inherit",
                 }}
               />
 

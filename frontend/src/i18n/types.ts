@@ -389,6 +389,8 @@ export interface Translations {
     dialog: {
       title: string;
       topicLabel: string;
+      instructionsLabel: string;
+      instructionsPlaceholder: string;
       sourcesLabel: string;
       copyTitle: string;
       addUrl: string;
