@@ -10,11 +10,13 @@ import {
 import { TopicsList } from "./TopicsList";
 import { ItemsTable } from "./ItemsTable";
 import { FeedsHealth } from "./FeedsHealth";
+import { TopicDetail } from "./TopicDetail";
 
 type DiscoveryView = "topics" | "items" | "feeds";
 
 export function DiscoveryHub() {
   const [view, setView] = useState<DiscoveryView>("topics");
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [filters, setFilters] = useState<DiscoveryFiltersValue>({
     feedId: null,
     categories: [],
@@ -97,11 +99,26 @@ export function DiscoveryHub() {
           </button>
         </div>
         <div style={{ flex: 1, overflow: "auto", background: "var(--bg)" }}>
-          {view === "topics" && (
-            <TopicsList topics={topics} loading={topicsLoading} onWrite={startWrite} />
+          {selectedTopicId ? (
+            <TopicDetail
+              topicId={selectedTopicId}
+              onBack={() => setSelectedTopicId(null)}
+              onWrite={startWrite}
+            />
+          ) : (
+            <>
+              {view === "topics" && (
+                <TopicsList
+                  topics={topics}
+                  loading={topicsLoading}
+                  onWrite={startWrite}
+                  onSelect={setSelectedTopicId}
+                />
+              )}
+              {view === "items" && <ItemsTable items={items} loading={itemsLoading} />}
+              {view === "feeds" && <FeedsHealth feeds={feeds} loading={feedsLoading} />}
+            </>
           )}
-          {view === "items" && <ItemsTable items={items} loading={itemsLoading} />}
-          {view === "feeds" && <FeedsHealth feeds={feeds} loading={feedsLoading} />}
         </div>
       </div>
     </div>

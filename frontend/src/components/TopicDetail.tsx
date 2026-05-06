@@ -1,0 +1,251 @@
+import { useEffect, useState } from "react";
+import { useApi } from "../lib/useApi";
+import type { DiscoveryItem, DiscoveryTopicDetail } from "../types";
+
+interface Props {
+  topicId: string;
+  onBack: () => void;
+  onWrite: (topicId: string) => void;
+}
+
+function hostnameOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "?";
+  }
+}
+
+export function TopicDetail({ topicId, onBack, onWrite }: Props) {
+  const { request } = useApi();
+  const [detail, setDetail] = useState<DiscoveryTopicDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDetail(null);
+    setError(null);
+    request<DiscoveryTopicDetail>(`/v2/discovery/topics/${topicId}`)
+      .then((d) => {
+        if (!cancelled) setDetail(d);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [request, topicId]);
+
+  if (error) {
+    return (
+      <div style={{ padding: 24, color: "#b91c1c" }}>
+        Błąd: {error}
+      </div>
+    );
+  }
+  if (!detail) {
+    return <div style={{ padding: 24, color: "var(--muted)" }}>Ładowanie…</div>;
+  }
+
+  // Group items by hostname.
+  const groups = new Map<string, DiscoveryItem[]>();
+  for (const it of detail.items) {
+    const host = hostnameOf(it.canonical_url);
+    const arr = groups.get(host);
+    if (arr) arr.push(it);
+    else groups.set(host, [it]);
+  }
+
+  const isResurfaced = detail.status === "resurfaced";
+  const isConsumed = detail.status === "consumed";
+
+  const chipBase: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "2px 8px",
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 500,
+  };
+
+  return (
+    <div>
+      <div
+        style={{
+          padding: "12px 24px",
+          borderBottom: "1px solid var(--border)",
+          display: "flex",
+          gap: 12,
+          alignItems: "center",
+          background: "var(--white)",
+        }}
+      >
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            background: "none",
+            border: 0,
+            color: "var(--muted)",
+            cursor: "pointer",
+            padding: 0,
+            fontSize: 14,
+          }}
+        >
+          ← Tematy
+        </button>
+        <span style={{ color: "var(--muted)" }}>/</span>
+        <span style={{ color: "var(--text)", fontWeight: 500 }}>{detail.title}</span>
+      </div>
+      <div
+        style={{
+          padding: 24,
+          display: "grid",
+          gridTemplateColumns: "1fr 320px",
+          gap: 24,
+        }}
+      >
+        <section style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+            {isResurfaced && (
+              <span style={{ ...chipBase, background: "#fee2e2", color: "#b91c1c" }}>
+                🔥 RESURFACED
+              </span>
+            )}
+            {isConsumed && (
+              <span style={{ ...chipBase, background: "#dcfce7", color: "#166534" }}>
+                ✓ NAPISANE
+              </span>
+            )}
+            {detail.categories.map((c) => (
+              <span
+                key={c}
+                style={{ ...chipBase, background: "var(--accent-lt)", color: "var(--accent)" }}
+              >
+                {c}
+              </span>
+            ))}
+          </div>
+          <h2 style={{ margin: "0 0 12px", color: "var(--text)" }}>{detail.title}</h2>
+          {detail.blurb && (
+            <p style={{ color: "var(--muted)", lineHeight: 1.6, marginTop: 0 }}>
+              {detail.blurb}
+            </p>
+          )}
+
+          <h3 style={{ marginTop: 24, color: "var(--text)", fontSize: 15 }}>
+            Źródła ({detail.items.length})
+          </h3>
+          {Array.from(groups.entries()).map(([host, group]) => (
+            <div
+              key={host}
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                marginBottom: 12,
+                overflow: "hidden",
+                background: "var(--white)",
+              }}
+            >
+              <div
+                style={{
+                  background: "var(--sidebar)",
+                  padding: "8px 16px",
+                  fontSize: 13,
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <strong style={{ color: "var(--text)" }}>{host}</strong>{" "}
+                <span style={{ color: "var(--muted)" }}>· {group.length} itemów</span>
+              </div>
+              {group.map((it, idx) => (
+                <div
+                  key={it.id}
+                  style={{
+                    padding: "12px 16px",
+                    borderTop: idx === 0 ? "none" : "1px solid var(--border)",
+                  }}
+                >
+                  <a
+                    href={it.canonical_url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    style={{
+                      fontWeight: 500,
+                      color: "var(--text)",
+                      textDecoration: "none",
+                      fontSize: 14,
+                    }}
+                  >
+                    {it.title} <span style={{ color: "var(--muted)" }}>↗</span>
+                  </a>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--muted)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      marginTop: 2,
+                    }}
+                  >
+                    {it.canonical_url}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </section>
+
+        <aside>
+          {isConsumed ? (
+            <button
+              type="button"
+              disabled
+              style={{
+                width: "100%",
+                padding: "10px 16px",
+                background: "var(--sidebar)",
+                color: "var(--muted)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                cursor: "default",
+                fontWeight: 500,
+                marginBottom: 16,
+                fontSize: 14,
+              }}
+            >
+              Otwórz artykuł
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onWrite(topicId)}
+              style={{
+                width: "100%",
+                padding: "10px 16px",
+                background: "var(--accent)",
+                color: "var(--white)",
+                border: 0,
+                borderRadius: "var(--radius)",
+                cursor: "pointer",
+                fontWeight: 500,
+                marginBottom: 16,
+                fontSize: 14,
+              }}
+            >
+              📝 Napisz artykuł
+            </button>
+          )}
+          <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.8 }}>
+            <div>Pierwsze pojawienie: {new Date(detail.created_at).toLocaleString()}</div>
+            <div>Ostatnia aktywność: {new Date(detail.last_activity_at).toLocaleString()}</div>
+            <div>Status: {detail.status}</div>
+            <div>Itemów: {detail.items.length}</div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
