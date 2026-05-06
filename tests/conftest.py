@@ -25,6 +25,18 @@ from backend.api.schemas import ArticleRequest  # noqa: E402
 from backend.config import AppSettings  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _reset_repo_factory_cache():
+    """Repo factories use @lru_cache, so a test that mutates the in-memory
+    state of a NullRepo would leak that state into the next test. Clear
+    after each test so the next one gets a fresh repo. Cheap (cache_clear
+    is O(1))."""
+    yield
+    from backend.repositories import reset_repo_cache
+
+    reset_repo_cache()
+
+
 @pytest.fixture
 def default_settings() -> AppSettings:
     return AppSettings()
