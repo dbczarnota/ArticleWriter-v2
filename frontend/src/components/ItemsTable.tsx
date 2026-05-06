@@ -1,4 +1,5 @@
 import type { DiscoveryItem } from "../types";
+import { useT } from "../i18n";
 
 interface Props {
   items: DiscoveryItem[];
@@ -6,11 +7,12 @@ interface Props {
 }
 
 export function ItemsTable({ items, loading }: Props) {
+  const t = useT();
   if (loading) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>Ładowanie…</div>;
+    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.topic.loading}</div>;
   }
   if (items.length === 0) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>Brak itemów dla tego filtra.</div>;
+    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.item.empty}</div>;
   }
 
   const chip: React.CSSProperties = {
@@ -32,9 +34,9 @@ export function ItemsTable({ items, loading }: Props) {
           fontSize: 12,
           textAlign: "left",
         }}>
-          <th style={{ padding: "8px 24px", fontWeight: 500 }}>Item</th>
-          <th style={{ padding: 8, fontWeight: 500 }}>Kategorie</th>
-          <th style={{ padding: 8, fontWeight: 500 }}>Pojawiło się</th>
+          <th style={{ padding: "8px 24px", fontWeight: 500 }}>{t.discovery.item.colItem}</th>
+          <th style={{ padding: 8, fontWeight: 500 }}>{t.discovery.item.colCategories}</th>
+          <th style={{ padding: 8, fontWeight: 500 }}>{t.discovery.item.colSeen}</th>
         </tr>
       </thead>
       <tbody>
@@ -66,7 +68,7 @@ export function ItemsTable({ items, loading }: Props) {
             <td style={{ padding: 8 }}>
               {it.categories.length === 0 ? (
                 <span style={{ color: "var(--muted)", fontStyle: "italic", fontSize: 12 }}>
-                  (brak)
+                  {t.discovery.item.uncategorized}
                 </span>
               ) : (
                 it.categories.map((c) => <span key={c} style={chip}>{c}</span>)

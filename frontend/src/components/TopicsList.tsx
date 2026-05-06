@@ -1,5 +1,6 @@
 import type { DiscoveryTopicSummary } from "../types";
 import { TopicCard } from "./TopicCard";
+import { useT } from "../i18n";
 
 interface Props {
   topics: DiscoveryTopicSummary[];
@@ -9,11 +10,12 @@ interface Props {
 }
 
 export function TopicsList({ topics, loading, onWrite, onSelect }: Props) {
+  const t = useT();
   if (loading) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>Ładowanie…</div>;
+    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.topic.loading}</div>;
   }
   if (topics.length === 0) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>Brak tematów dla tego filtra.</div>;
+    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.topic.empty}</div>;
   }
   return (
     <div>

@@ -11,10 +11,12 @@ import { TopicsList } from "./TopicsList";
 import { ItemsTable } from "./ItemsTable";
 import { FeedsHealth } from "./FeedsHealth";
 import { TopicDetail } from "./TopicDetail";
+import { useT } from "../i18n";
 
 type DiscoveryView = "topics" | "items" | "feeds";
 
 export function DiscoveryHub() {
+  const t = useT();
   const [view, setView] = useState<DiscoveryView>("topics");
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [filters, setFilters] = useState<DiscoveryFiltersValue>({
@@ -89,13 +91,13 @@ export function DiscoveryHub() {
           }}
         >
           <button type="button" onClick={() => setView("topics")} disabled={view === "topics"} style={tabBtn(view === "topics")}>
-            📚 Tematy
+            📚 {t.discovery.views.topics}
           </button>
           <button type="button" onClick={() => setView("items")} disabled={view === "items"} style={tabBtn(view === "items")}>
-            📰 Itemy
+            📰 {t.discovery.views.items}
           </button>
           <button type="button" onClick={() => setView("feeds")} disabled={view === "feeds"} style={tabBtn(view === "feeds")}>
-            🔌 Feedy
+            🔌 {t.discovery.views.feeds}
           </button>
         </div>
         <div style={{ flex: 1, overflow: "auto", background: "var(--bg)" }}>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { DiscoveryTopicSummary, DiscoveryItem } from "../types";
 import { useDiscoveryTopicDetail } from "../lib/useDiscoveryTopicDetail";
+import { useT } from "../i18n";
 
 interface Props {
   topic: DiscoveryTopicSummary;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function TopicCard({ topic, onWrite, onSelect }: Props) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<DiscoveryItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
         <button
           type="button"
           onClick={toggle}
-          aria-label="toggle sources"
+          aria-label={t.discovery.topic.toggleSources}
           aria-expanded={open}
           style={{
             background: "none",
@@ -82,12 +84,12 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
           <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4, flexWrap: "wrap" }}>
             {isResurfaced && (
               <span style={{ ...chipBase, background: "#fee2e2", color: "#b91c1c" }}>
-                🔥 RESURFACED
+                {t.discovery.hub.resurfaced}
               </span>
             )}
             {isConsumed && (
               <span style={{ ...chipBase, background: "#dcfce7", color: "#166534" }}>
-                ✓ NAPISANE
+                {t.discovery.hub.written}
               </span>
             )}
             {topic.categories.map((c) => (
@@ -140,7 +142,7 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
                 cursor: "default",
               }}
             >
-              Otwórz artykuł
+              {t.discovery.topic.openArticle}
             </button>
           ) : (
             <button
@@ -157,7 +159,7 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
                 fontSize: 13,
               }}
             >
-              Napisz →
+              {t.discovery.topic.write}
             </button>
           )}
         </div>
@@ -173,14 +175,14 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
           }}
         >
           <div style={{ fontSize: 11, textTransform: "uppercase", color: "var(--muted)", marginBottom: 6, letterSpacing: "0.04em" }}>
-            Źródła
+            {t.discovery.topic.sources}
           </div>
           {error ? (
-            <div style={{ color: "#b91c1c", fontSize: 13 }}>Błąd: {error}</div>
+            <div style={{ color: "#b91c1c", fontSize: 13 }}>{t.discovery.topic.error}: {error}</div>
           ) : items === null ? (
-            <div style={{ color: "var(--muted)", fontSize: 13 }}>Ładowanie…</div>
+            <div style={{ color: "var(--muted)", fontSize: 13 }}>{t.discovery.topic.loading}</div>
           ) : items.length === 0 ? (
-            <div style={{ color: "var(--muted)", fontSize: 13 }}>(brak)</div>
+            <div style={{ color: "var(--muted)", fontSize: 13 }}>{t.discovery.item.uncategorized}</div>
           ) : (
             items.map((it) => (
               <a

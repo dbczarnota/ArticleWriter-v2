@@ -1,25 +1,27 @@
 import type { DiscoveryFeed } from "../types";
+import { useT } from "../i18n";
+import type { Translations } from "../i18n";
 
 interface Props {
   feeds: DiscoveryFeed[];
   loading: boolean;
 }
 
-function relTime(iso: string | null): string {
+function relTime(iso: string | null, t: Translations): string {
   if (!iso) return "—";
   const ms = Date.now() - new Date(iso).getTime();
   const min = Math.round(ms / 60000);
-  if (min < 1) return "przed chwilą";
-  if (min < 60) return `${min} min temu`;
+  if (min < 1) return t.discovery.feed.justNow;
+  if (min < 60) return `${min} ${t.discovery.feed.minAgo}`;
   const h = Math.round(min / 60);
-  if (h < 24) return `${h}h temu`;
-  return `${Math.round(h / 24)}d temu`;
+  if (h < 24) return `${h}${t.discovery.feed.hAgo}`;
+  return `${Math.round(h / 24)}${t.discovery.feed.dAgo}`;
 }
 
-function statusOf(f: DiscoveryFeed): { label: string; bg: string; fg: string } {
-  if (f.disabled) return { label: "● Disabled", bg: "#fee2e2", fg: "#b91c1c" };
-  if (f.error_count >= 3) return { label: "● Degraded", bg: "#fef3c7", fg: "#92400e" };
-  return { label: "● Healthy", bg: "#dcfce7", fg: "#166534" };
+function statusOf(f: DiscoveryFeed, t: Translations): { label: string; bg: string; fg: string } {
+  if (f.disabled) return { label: t.discovery.feed.disabled, bg: "#fee2e2", fg: "#b91c1c" };
+  if (f.error_count >= 3) return { label: t.discovery.feed.degraded, bg: "#fef3c7", fg: "#92400e" };
+  return { label: t.discovery.feed.healthy, bg: "#dcfce7", fg: "#166534" };
 }
 
 function hostname(url: string): string {
@@ -31,13 +33,14 @@ function hostname(url: string): string {
 }
 
 export function FeedsHealth({ feeds, loading }: Props) {
+  const t = useT();
   if (loading) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>Ładowanie…</div>;
+    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.topic.loading}</div>;
   }
   if (feeds.length === 0) {
     return (
       <div style={{ padding: 24, color: "var(--muted)" }}>
-        Brak feedów. Dodaj w Settings → Discovery.
+        {t.discovery.feed.emptyHint}
       </div>
     );
   }
@@ -52,7 +55,7 @@ export function FeedsHealth({ feeds, loading }: Props) {
       }}
     >
       {feeds.map((f) => {
-        const s = statusOf(f);
+        const s = statusOf(f, t);
         return (
           <div
             key={f.id}
@@ -101,11 +104,11 @@ export function FeedsHealth({ feeds, loading }: Props) {
               }}
             >
               <div>
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>Last fetched</div>
-                <div style={{ fontWeight: 500, color: "var(--text)" }}>{relTime(f.last_fetched_at)}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{t.discovery.feed.lastFetched}</div>
+                <div style={{ fontWeight: 500, color: "var(--text)" }}>{relTime(f.last_fetched_at, t)}</div>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>Error count</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{t.discovery.feed.errors}</div>
                 <div
                   style={{
                     fontWeight: 500,
@@ -116,7 +119,7 @@ export function FeedsHealth({ feeds, loading }: Props) {
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: 11, color: "var(--muted)" }}>Items 24h</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{t.discovery.feed.items24h}</div>
                 <div style={{ fontWeight: 500, color: "var(--text)" }}>{f.items_24h_count}</div>
               </div>
             </div>
@@ -130,7 +133,7 @@ export function FeedsHealth({ feeds, loading }: Props) {
                 }}
                 title={f.last_error}
               >
-                Last error: {f.last_error.slice(0, 120)}
+                {t.discovery.feed.lastError}: {f.last_error.slice(0, 120)}
               </div>
             )}
           </div>

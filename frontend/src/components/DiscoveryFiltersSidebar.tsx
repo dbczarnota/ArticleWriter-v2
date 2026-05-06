@@ -1,4 +1,5 @@
 import type { DiscoveryFeed } from "../types";
+import { useT } from "../i18n";
 
 export interface DiscoveryFiltersValue {
   feedId: string | null;
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function DiscoveryFiltersSidebar({ feeds, availableCategories, value, onChange }: Props) {
+  const t = useT();
   function setFeed(id: string | null) {
     onChange({ ...value, feedId: id });
   }
@@ -75,7 +77,7 @@ export function DiscoveryFiltersSidebar({ feeds, availableCategories, value, onC
       }}
     >
       <details open style={{ marginBottom: 16 }}>
-        <summary style={labelStyle}>Feedy (filtr)</summary>
+        <summary style={labelStyle}>{t.discovery.filters.feeds}</summary>
         <div style={{ marginTop: 8 }}>
           <button
             type="button"
@@ -85,7 +87,7 @@ export function DiscoveryFiltersSidebar({ feeds, availableCategories, value, onC
               background: value.feedId === null ? "var(--accent-lt)" : "transparent",
             }}
           >
-            <span>Wszystkie</span>
+            <span>{t.discovery.filters.all}</span>
           </button>
           {feeds.map((f) => (
             <button
@@ -105,11 +107,11 @@ export function DiscoveryFiltersSidebar({ feeds, availableCategories, value, onC
       </details>
 
       <details open style={{ marginBottom: 16 }}>
-        <summary style={labelStyle}>Kategorie</summary>
+        <summary style={labelStyle}>{t.discovery.filters.categories}</summary>
         <div style={{ marginTop: 8 }}>
           {availableCategories.length === 0 && (
             <div style={{ color: "var(--muted)", fontSize: 12, padding: "4px 10px" }}>
-              (brak kategorii)
+              {t.discovery.filters.emptyCategories}
             </div>
           )}
           {availableCategories.map((c) => (
@@ -141,12 +143,12 @@ export function DiscoveryFiltersSidebar({ feeds, availableCategories, value, onC
       </details>
 
       <details>
-        <summary style={labelStyle}>Status</summary>
+        <summary style={labelStyle}>{t.discovery.filters.status}</summary>
         <div style={{ marginTop: 8 }}>
           {[
-            { id: "open", label: "Świeże" },
-            { id: "resurfaced", label: "Resurfaced" },
-            { id: "consumed", label: "Już napisane" },
+            { id: "open", label: t.discovery.status.open },
+            { id: "resurfaced", label: t.discovery.status.resurfaced },
+            { id: "consumed", label: t.discovery.status.consumed },
           ].map((s) => (
             <label
               key={s.id}

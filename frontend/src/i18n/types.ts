@@ -340,4 +340,41 @@ export interface Translations {
     month: string;
     year: string;
   };
+  discovery: {
+    views: { topics: string; items: string; feeds: string };
+    filters: { feeds: string; categories: string; status: string; all: string; emptyCategories: string };
+    status: { open: string; resurfaced: string; consumed: string };
+    topic: {
+      sources: string;
+      write: string;
+      writeArticle: string;
+      openArticle: string;
+      loading: string;
+      empty: string;
+      backToTopics: string;
+      firstSeen: string;
+      lastActivity: string;
+      statusLabel: string;
+      itemsCount: string;
+      itemsShort: string;
+      error: string;
+      toggleSources: string;
+    };
+    item: { empty: string; uncategorized: string; colItem: string; colCategories: string; colSeen: string };
+    feed: {
+      lastFetched: string;
+      errors: string;
+      items24h: string;
+      healthy: string;
+      degraded: string;
+      disabled: string;
+      emptyHint: string;
+      lastError: string;
+      justNow: string;
+      minAgo: string;
+      hAgo: string;
+      dAgo: string;
+    };
+    hub: { resurfaced: string; written: string; sources: string; sourcesCount: string };
+  };
 }

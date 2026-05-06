@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useApi } from "../lib/useApi";
 import type { DiscoveryItem, DiscoveryTopicDetail } from "../types";
+import { useT } from "../i18n";
 
 interface Props {
   topicId: string;
@@ -17,6 +18,7 @@ function hostnameOf(url: string): string {
 }
 
 export function TopicDetail({ topicId, onBack, onWrite }: Props) {
+  const t = useT();
   const { request } = useApi();
   const [detail, setDetail] = useState<DiscoveryTopicDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,12 +42,12 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
   if (error) {
     return (
       <div style={{ padding: 24, color: "#b91c1c" }}>
-        Błąd: {error}
+        {t.discovery.topic.error}: {error}
       </div>
     );
   }
   if (!detail) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>Ładowanie…</div>;
+    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.topic.loading}</div>;
   }
 
   // Group items by hostname.
@@ -93,7 +95,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
             fontSize: 14,
           }}
         >
-          ← Tematy
+          {t.discovery.topic.backToTopics}
         </button>
         <span style={{ color: "var(--muted)" }}>/</span>
         <span style={{ color: "var(--text)", fontWeight: 500 }}>{detail.title}</span>
@@ -110,12 +112,12 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
           <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
             {isResurfaced && (
               <span style={{ ...chipBase, background: "#fee2e2", color: "#b91c1c" }}>
-                🔥 RESURFACED
+                {t.discovery.hub.resurfaced}
               </span>
             )}
             {isConsumed && (
               <span style={{ ...chipBase, background: "#dcfce7", color: "#166534" }}>
-                ✓ NAPISANE
+                {t.discovery.hub.written}
               </span>
             )}
             {detail.categories.map((c) => (
@@ -135,7 +137,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
           )}
 
           <h3 style={{ marginTop: 24, color: "var(--text)", fontSize: 15 }}>
-            Źródła ({detail.items.length})
+            {t.discovery.topic.sources} ({detail.items.length})
           </h3>
           {Array.from(groups.entries()).map(([host, group]) => (
             <div
@@ -157,7 +159,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                 }}
               >
                 <strong style={{ color: "var(--text)" }}>{host}</strong>{" "}
-                <span style={{ color: "var(--muted)" }}>· {group.length} itemów</span>
+                <span style={{ color: "var(--muted)" }}>· {group.length} {t.discovery.topic.itemsShort}</span>
               </div>
               {group.map((it, idx) => (
                 <div
@@ -216,7 +218,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                 fontSize: 14,
               }}
             >
-              Otwórz artykuł
+              {t.discovery.topic.openArticle}
             </button>
           ) : (
             <button
@@ -235,14 +237,14 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                 fontSize: 14,
               }}
             >
-              📝 Napisz artykuł
+              {t.discovery.topic.writeArticle}
             </button>
           )}
           <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.8 }}>
-            <div>Pierwsze pojawienie: {new Date(detail.created_at).toLocaleString()}</div>
-            <div>Ostatnia aktywność: {new Date(detail.last_activity_at).toLocaleString()}</div>
-            <div>Status: {detail.status}</div>
-            <div>Itemów: {detail.items.length}</div>
+            <div>{t.discovery.topic.firstSeen}: {new Date(detail.created_at).toLocaleString()}</div>
+            <div>{t.discovery.topic.lastActivity}: {new Date(detail.last_activity_at).toLocaleString()}</div>
+            <div>{t.discovery.topic.statusLabel}: {detail.status}</div>
+            <div>{t.discovery.topic.itemsCount}: {detail.items.length}</div>
           </div>
         </aside>
       </div>
