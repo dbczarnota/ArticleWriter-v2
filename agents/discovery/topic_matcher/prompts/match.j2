@@ -1,0 +1,10 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("task", "You decide whether a NEW news item is reporting on the SAME story as one of the EXISTING TOPICS the editor is already tracking. The user message contains the new item (TITLE + SUMMARY) and a list of existing topics (each: TOPIC_ID + TITLE + BLURB).\n\nReturn the matched_topic_id ONLY if the new item is genuinely about the same specific event, person, or developing story already represented by that topic. If it's the SAME PEOPLE or SAME GENERAL SUBJECT but a DIFFERENT event/incident/occasion, return null — that's a separate story.\n\nIf nothing matches, return matched_topic_id=null. Always state a one-sentence reasoning explaining your decision.") | trim }}
