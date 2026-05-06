@@ -300,7 +300,7 @@ class NullDiscoveryRepository:
             return
         f.error_count += 1
         f.last_error = error_message
-        if f.error_count >= disable_threshold:
+        if f.error_count >= disable_threshold and not f.disabled:
             f.disabled = True
 
     async def reset_feed_errors(self, feed_id: UUID) -> None:

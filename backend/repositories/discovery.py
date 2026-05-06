@@ -307,6 +307,16 @@ class PostgresDiscoveryRepository:
         limit: int = 100,
         offset: int = 0,
     ) -> list[DiscoveryTopic]:
+        """List topics for the UI.
+
+        Filters:
+        - `categories` (OR semantics): a topic matches if its categories list
+          contains ANY of the given values. e.g. categories=["Polityka", "Sport"]
+          returns topics tagged Polityka OR Sport, not both.
+        - `statuses` (IN semantics): topic.status must equal one of the given.
+        - `since`: topic.last_activity_at >= since.
+
+        Order: last_activity_at DESC. Pagination via limit/offset."""
         from sqlalchemy import cast, or_
         from sqlalchemy.dialects.postgresql import JSONB
 

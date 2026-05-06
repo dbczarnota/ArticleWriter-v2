@@ -30,6 +30,19 @@ from backend.secrets import Secrets, get_secrets
 
 router = APIRouter(prefix="/v2")
 
+# Lifted to module scope — rebuilt per-call inside _apply_article_domain_overrides
+# before this move, which was wasteful.
+_DOMAIN_OVERRIDE_KEY_MAP = {
+    "search_freshness": "default_search_freshness",
+    "num_queries": "default_num_queries",
+    "max_results": "default_max_results",
+    "min_source_signals": "default_min_source_signals",
+    "max_facts": "max_facts_in_article",
+    "max_quotes": "max_quotes_in_article",
+    "reflection_context_articles": "default_reflection_context_articles",
+}
+_DOMAIN_OVERRIDE_TUPLE_FIELDS = {"media_search_languages", "example_articles", "example_titles"}
+
 
 def _build_app_settings(*, req: ArticleRequest, org_domain_name: str, domain):
     """Build AppSettings the same way for both regular write_article and
@@ -660,23 +673,15 @@ def _apply_article_domain_overrides(domain: DomainConfig, overrides: dict) -> Do
     """
     from dataclasses import replace as dc_replace
 
-    _KEY_MAP = {
-        "search_freshness": "default_search_freshness",
-        "num_queries": "default_num_queries",
-        "max_results": "default_max_results",
-        "min_source_signals": "default_min_source_signals",
-        "max_facts": "max_facts_in_article",
-        "max_quotes": "max_quotes_in_article",
-        "reflection_context_articles": "default_reflection_context_articles",
-    }
-    _TUPLE_FIELDS = {"media_search_languages", "example_articles", "example_titles"}
-
     patches: dict = {}
     for k, v in overrides.items():
+        # Empty list/dict means "no override for this field" — caller cannot
+        # explicitly request "clear the org default to []" via the request body.
+        # This is intentional: per-article overrides are positive-only.
         if v is None or v == "" or v == [] or v == {}:
             continue
-        dc_key = _KEY_MAP.get(k, k)
-        if k in _TUPLE_FIELDS and isinstance(v, list):
+        dc_key = _DOMAIN_OVERRIDE_KEY_MAP.get(k, k)
+        if k in _DOMAIN_OVERRIDE_TUPLE_FIELDS and isinstance(v, list):
             v = tuple(v)
         patches[dc_key] = v
 

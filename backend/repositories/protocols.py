@@ -291,7 +291,18 @@ class DiscoveryRepository(Protocol):
         since: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[DiscoveryTopic]: ...
+    ) -> list[DiscoveryTopic]:
+        """List topics for the UI.
+
+        Filters:
+        - `categories` (OR semantics): a topic matches if its categories list
+          contains ANY of the given values. e.g. categories=["Polityka", "Sport"]
+          returns topics tagged Polityka OR Sport, not both.
+        - `statuses` (IN semantics): topic.status must equal one of the given.
+        - `since`: topic.last_activity_at >= since.
+
+        Order: last_activity_at DESC. Pagination via limit/offset."""
+        ...
     async def dismiss_topic(self, *, topic_id: UUID, org_code: str) -> None: ...
     async def restore_topic(self, *, topic_id: UUID, org_code: str) -> None: ...
 
