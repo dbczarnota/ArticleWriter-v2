@@ -129,11 +129,24 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
               {topic.blurb}
             </p>
           )}
-          <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--muted)", marginTop: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 16,
+              fontSize: 12,
+              color: "var(--muted)",
+              marginTop: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <span>📰 {topic.item_count} {t.discovery.hub.sourcesCount}</span>
             <span>⏱️ {new Date(topic.last_activity_at).toLocaleString()}</span>
+            {topic.feed_hosts.length > 0 && (
+              <span>🌐 {topic.feed_hosts.join(", ")}</span>
+            )}
           </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, alignItems: "flex-end" }}>
           {isConsumed ? (
             <button
               type="button"
@@ -167,6 +180,11 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
             >
               {t.discovery.topic.write}
             </button>
+          )}
+          {!isConsumed && (
+            <span style={{ fontSize: 11, color: "var(--muted)" }}>
+              {topic.item_count} {t.discovery.topic.itemsShort}
+            </span>
           )}
         </div>
       </div>

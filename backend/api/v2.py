@@ -6,6 +6,7 @@ from uuid import UUID
 
 import logfire
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from agents.pipeline.runner import run_pipeline
 from backend.api.schemas import ArticleRequest, ArticleUpdate, DomainConfigUpdate
@@ -445,7 +446,13 @@ async def put_domain_config_endpoint(
     return _org_config_to_dict(saved, domain_name=effective_domain)
 
 
-def _topic_to_json(t: DiscoveryTopic, *, new_items_since_consume: int = 0) -> dict:
+def _topic_to_json(
+    t: DiscoveryTopic,
+    *,
+    new_items_since_consume: int = 0,
+    item_count: int = 0,
+    feed_hosts: list[str] | None = None,
+) -> dict:
     return {
         "id": str(t.id),
         "title": t.title,
@@ -458,7 +465,25 @@ def _topic_to_json(t: DiscoveryTopic, *, new_items_since_consume: int = 0) -> di
         "consumed_at": t.consumed_at.isoformat() if t.consumed_at else None,
         "items_at_consume": t.items_at_consume,
         "new_items_since_consume": new_items_since_consume,
+        "item_count": item_count,
+        "feed_hosts": feed_hosts or [],
     }
+
+
+def _hosts_from_items(items: list) -> list[str]:
+    """Top-3 hostnames by frequency across items' canonical URLs."""
+    from collections import Counter
+    from urllib.parse import urlparse
+
+    counts: Counter[str] = Counter()
+    for it in items:
+        try:
+            host = urlparse(it.canonical_url).hostname or ""
+        except (ValueError, AttributeError):
+            host = ""
+        if host:
+            counts[host] += 1
+    return [h for h, _ in counts.most_common(3)]
 
 
 # ---------------------------------------------------------------------------
@@ -488,11 +513,20 @@ async def list_discovery_topics(
     )
     out: list[dict] = []
     for t in rows:
-        new_count = 0
-        if t.consumed_at is not None:
-            items = await discovery_repo.list_items_for_topic(topic_id=t.id, org_code=org.code)
-            new_count = sum(1 for it in items if it.fetched_at > t.consumed_at)
-        out.append(_topic_to_json(t, new_items_since_consume=new_count))
+        items = await discovery_repo.list_items_for_topic(topic_id=t.id, org_code=org.code)
+        new_count = (
+            sum(1 for it in items if it.fetched_at > t.consumed_at)
+            if t.consumed_at is not None
+            else 0
+        )
+        out.append(
+            _topic_to_json(
+                t,
+                new_items_since_consume=new_count,
+                item_count=len(items),
+                feed_hosts=_hosts_from_items(items),
+            )
+        )
     return out
 
 
@@ -510,7 +544,12 @@ async def get_discovery_topic(
         1 for it in items if topic.consumed_at is not None and it.fetched_at > topic.consumed_at
     )
     return {
-        **_topic_to_json(topic, new_items_since_consume=new_count),
+        **_topic_to_json(
+            topic,
+            new_items_since_consume=new_count,
+            item_count=len(items),
+            feed_hosts=_hosts_from_items(items),
+        ),
         "items": [
             {
                 "id": str(it.id),
@@ -554,10 +593,20 @@ async def restore_discovery_topic(
     return {"id": str(topic_id), "status": "open"}
 
 
+class WriteFromTopicOverrides(BaseModel):
+    """Optional overrides supplied from the pre-write dialog. When omitted,
+    the article is written using the topic's title + every item's URL — same
+    as the pre-dialog behavior."""
+
+    topic_override: str | None = None
+    urls: list[str] | None = None
+
+
 @router.post("/discovery/topics/{topic_id}/write_article", status_code=202)
 async def write_article_from_discovery_topic(
     topic_id: UUID,
     background_tasks: BackgroundTasks,
+    overrides: WriteFromTopicOverrides | None = None,
     user: AuthenticatedUser = Depends(get_current_user),
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
@@ -569,7 +618,27 @@ async def write_article_from_discovery_topic(
         raise HTTPException(status_code=404, detail="Topic not found")
 
     items = await discovery_repo.list_items_for_topic(topic_id=topic_id, org_code=org.code)
-    urls = [it.canonical_url for it in items]
+    all_urls = [it.canonical_url for it in items]
+
+    # Reject any override URL that isn't in this topic's source set — prevents
+    # the dialog from being abused to inject arbitrary URLs into the writer.
+    if overrides and overrides.urls is not None:
+        allowed = set(all_urls)
+        bad = [u for u in overrides.urls if u not in allowed]
+        if bad:
+            raise HTTPException(
+                status_code=400,
+                detail=f"URL not in topic's source set: {bad[0]}",
+            )
+        urls = list(overrides.urls) or all_urls
+    else:
+        urls = all_urls
+
+    final_topic = (
+        overrides.topic_override.strip()
+        if overrides and overrides.topic_override and overrides.topic_override.strip()
+        else topic.title
+    )
 
     cfg = get_secrets()
     domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
@@ -583,7 +652,7 @@ async def write_article_from_discovery_topic(
     author_name = f"{given} {family}".strip() or (user.email or None)
 
     req = ArticleRequest(
-        topic=topic.title,
+        topic=final_topic,
         urls=urls,
         additional_instructions=topic.blurb,
         author_name=author_name,
@@ -604,7 +673,7 @@ async def write_article_from_discovery_topic(
     background_tasks.add_task(
         _run_pipeline_from_topic_background,
         topic_id=topic_id,
-        items_at_consume=len(items),
+        items_at_consume=len(urls),
         discovery_repo=discovery_repo,
         article_id=article_id,
         req=req,

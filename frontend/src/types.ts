@@ -158,6 +158,8 @@ export interface DiscoveryTopicSummary {
   last_activity_at: string;
   created_at: string;
   new_items_since_consume: number;
+  item_count: number;
+  feed_hosts: string[];
 }
 
 export interface DiscoveryItem {

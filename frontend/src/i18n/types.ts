@@ -376,5 +376,15 @@ export interface Translations {
       dAgo: string;
     };
     hub: { resurfaced: string; written: string; sources: string; sourcesCount: string };
+    dialog: {
+      title: string;
+      topicLabel: string;
+      titleHint: string;
+      sourcesLabel: string;
+      copyTitle: string;
+      cancel: string;
+      submit: string;
+      submitting: string;
+    };
   };
 }

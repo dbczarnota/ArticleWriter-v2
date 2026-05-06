@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useDiscoveryFeeds } from "../lib/useDiscoveryFeeds";
 import { useDiscoveryTopics } from "../lib/useDiscoveryTopics";
 import { useDiscoveryItems } from "../lib/useDiscoveryItems";
-import { useApi } from "../lib/useApi";
 import {
   DiscoveryFiltersSidebar,
   type DiscoveryFiltersValue,
@@ -11,6 +10,7 @@ import { TopicsList } from "./TopicsList";
 import { ItemsTable } from "./ItemsTable";
 import { FeedsHealth } from "./FeedsHealth";
 import { TopicDetail } from "./TopicDetail";
+import { WriteFromTopicDialog } from "./WriteFromTopicDialog";
 import { useT } from "../i18n";
 
 type DiscoveryView = "topics" | "items" | "feeds";
@@ -19,6 +19,7 @@ export function DiscoveryHub() {
   const t = useT();
   const [view, setView] = useState<DiscoveryView>("topics");
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [writeFromTopicId, setWriteFromTopicId] = useState<string | null>(null);
   const [filters, setFilters] = useState<DiscoveryFiltersValue>({
     feedId: null,
     categories: [],
@@ -35,8 +36,6 @@ export function DiscoveryHub() {
     feedId: filters.feedId,
     categories: filters.categories,
   });
-  const { request } = useApi();
-
   // Build the category list from whatever the user has visible right now.
   // Backend has no "list categories with counts" endpoint, and the existing
   // /discovery/categories endpoint returns just names — driving the sidebar
@@ -48,16 +47,20 @@ export function DiscoveryHub() {
     return Array.from(set).sort().map((name) => ({ name }));
   }, [topics, items]);
 
-  async function startWrite(topicId: string) {
-    const resp = await request<{ article_id: string }>(
-      `/v2/discovery/topics/${topicId}/write_article`,
-      { method: "POST" }
-    );
+  function startWrite(topicId: string) {
+    // Open the pre-write dialog so the editor can review the title and
+    // toggle source URLs before the pipeline kicks off. The actual POST
+    // happens inside the dialog on Generate.
+    setWriteFromTopicId(topicId);
+  }
+
+  function onArticleSubmitted(articleId: string) {
+    setWriteFromTopicId(null);
     // Hand off to App.tsx, which owns the View state and selectedArticleId.
     // We use a window CustomEvent to keep DiscoveryHub decoupled from the
     // App-level view router.
     window.dispatchEvent(
-      new CustomEvent("discovery:open-article", { detail: { articleId: resp.article_id } })
+      new CustomEvent("discovery:open-article", { detail: { articleId } })
     );
   }
 
@@ -123,6 +126,13 @@ export function DiscoveryHub() {
           )}
         </div>
       </div>
+      {writeFromTopicId && (
+        <WriteFromTopicDialog
+          topicId={writeFromTopicId}
+          onCancel={() => setWriteFromTopicId(null)}
+          onSubmitted={onArticleSubmitted}
+        />
+      )}
     </div>
   );
 }

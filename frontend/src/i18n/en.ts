@@ -362,5 +362,15 @@ export const en: Translations = {
       dAgo: "d ago",
     },
     hub: { resurfaced: "🔥 RESURFACED", written: "✓ WRITTEN", sources: "Sources", sourcesCount: "sources" },
+    dialog: {
+      title: "Write article from topic",
+      topicLabel: "Topic",
+      titleHint: "Defaults to the topic title — edit it or copy one of the source titles below.",
+      sourcesLabel: "Sources (uncheck the ones you don't want)",
+      copyTitle: "Copy title",
+      cancel: "Cancel",
+      submit: "Generate article",
+      submitting: "Generating…",
+    },
   },
 };
