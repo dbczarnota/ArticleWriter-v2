@@ -12,6 +12,7 @@ filters by it. Application code MUST NOT construct ad-hoc SQL queries that bypas
 
 from __future__ import annotations
 
+from contextlib import AbstractAsyncContextManager
 from datetime import datetime
 from typing import Protocol
 from uuid import UUID
@@ -286,3 +287,15 @@ class DiscoveryRepository(Protocol):
     ) -> list[DiscoveryTopic]: ...
     async def dismiss_topic(self, *, topic_id: UUID, org_code: str) -> None: ...
     async def restore_topic(self, *, topic_id: UUID, org_code: str) -> None: ...
+
+    def try_acquire_feed_lock(self, feed_url: str) -> AbstractAsyncContextManager[bool]:
+        """Returns an async context manager that attempts a Postgres advisory
+        transaction lock keyed on feed_url.
+
+        Yields True if the lock was acquired (caller should proceed with
+        polling), False otherwise (caller should skip — another replica is
+        polling this feed right now). The lock is released automatically on
+        exit (transaction end).
+
+        Null implementation always yields True (single-process semantics)."""
+        ...

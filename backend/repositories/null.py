@@ -10,6 +10,7 @@ Also used in tests where pulling Postgres up is overkill.
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -432,3 +433,9 @@ class NullDiscoveryRepository:
         t = self._topics.get(topic_id)
         if t is not None and t.org_code == org_code:
             t.status = "open"
+
+    @asynccontextmanager
+    async def try_acquire_feed_lock(self, feed_url: str):
+        """No DB → no lock needed; single-process semantics always yields True."""
+        del feed_url
+        yield True

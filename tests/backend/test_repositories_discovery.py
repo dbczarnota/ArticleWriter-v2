@@ -324,3 +324,40 @@ async def test_list_items_for_topic_is_tenant_isolated(session_maker, org):
         topic_id=topic.id, org_code=org.code
     )
     assert len(items) == 1
+
+
+@pytest.mark.asyncio
+async def test_try_acquire_feed_lock_basic(session_maker):
+    """Lock acquisition succeeds for an unlocked feed_url."""
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    async with repo.try_acquire_feed_lock("https://example.com/rss") as acquired:
+        assert acquired is True
+
+
+@pytest.mark.asyncio
+async def test_try_acquire_feed_lock_blocks_concurrent(session_maker):
+    """A second concurrent attempt on the same feed_url returns False."""
+    import asyncio
+
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    holder_started = asyncio.Event()
+    holder_release = asyncio.Event()
+    second_acquired: list[bool] = []
+
+    async def hold_lock():
+        async with repo.try_acquire_feed_lock("https://example.com/rss") as acquired:
+            assert acquired is True
+            holder_started.set()
+            await holder_release.wait()
+
+    holder_task = asyncio.create_task(hold_lock())
+    await holder_started.wait()
+    async with repo.try_acquire_feed_lock("https://example.com/rss") as acquired:
+        second_acquired.append(acquired)
+    holder_release.set()
+    await holder_task
+    assert second_acquired == [False]

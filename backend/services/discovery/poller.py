@@ -46,42 +46,51 @@ async def poll_org_feeds(
         feed_row = runtime_by_url.get(cfg.url)
         if feed_row is None or feed_row.disabled:
             continue
-        try:
-            result = await fetch_feed(
-                cfg.url,
-                etag=feed_row.last_etag,
-                last_modified=feed_row.last_modified,
-            )
-        except FeedFetchError as e:
-            await repo.record_feed_error(feed_row.id, error_message=str(e))
-            logfire.warn(
-                "discovery.feed.error",
-                feed_id=str(feed_row.id),
-                feed_url=cfg.url,
-                error_type="FeedFetchError",
-                error_message=str(e),
-                consecutive_errors=feed_row.error_count + 1,
-            )
-            continue
+        async with repo.try_acquire_feed_lock(cfg.url) as acquired:
+            if not acquired:
+                logfire.info(
+                    "discovery.feed.skipped_locked",
+                    feed_id=str(feed_row.id),
+                    feed_url=cfg.url,
+                    reason="another_replica_polling",
+                )
+                continue
+            try:
+                result = await fetch_feed(
+                    cfg.url,
+                    etag=feed_row.last_etag,
+                    last_modified=feed_row.last_modified,
+                )
+            except FeedFetchError as e:
+                await repo.record_feed_error(feed_row.id, error_message=str(e))
+                logfire.warn(
+                    "discovery.feed.error",
+                    feed_id=str(feed_row.id),
+                    feed_url=cfg.url,
+                    error_type="FeedFetchError",
+                    error_message=str(e),
+                    consecutive_errors=feed_row.error_count + 1,
+                )
+                continue
 
-        await repo.record_feed_run(
-            feed_row.id,
-            last_etag=result.etag,
-            last_modified=result.last_modified,
-        )
-        feeds_polled += 1
-        if result.not_modified:
-            continue
-
-        for raw in result.items:
-            await process_item(
-                raw=raw,
-                org_code=org_code,
-                domain=domain,
-                feed_id=feed_row.id,
-                repo=repo,
+            await repo.record_feed_run(
+                feed_row.id,
+                last_etag=result.etag,
+                last_modified=result.last_modified,
             )
-            total_new += 1
+            feeds_polled += 1
+            if result.not_modified:
+                continue
+
+            for raw in result.items:
+                await process_item(
+                    raw=raw,
+                    org_code=org_code,
+                    domain=domain,
+                    feed_id=feed_row.id,
+                    repo=repo,
+                )
+                total_new += 1
 
     logfire.info(
         "discovery.poll.completed",

@@ -3,11 +3,12 @@ DiscoveryRepository protocol."""
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import logfire
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -336,3 +337,24 @@ class PostgresDiscoveryRepository:
                 .values(status="open", updated_at=_utcnow())
             )
             await session.commit()
+
+    @asynccontextmanager
+    async def try_acquire_feed_lock(self, feed_url: str):
+        """Attempt a Postgres advisory transaction lock keyed on feed_url.
+
+        Yields True if acquired (caller should poll the feed), False if another
+        replica holds the lock (caller should skip). Lock releases automatically
+        when the session transaction ends."""
+        async with self._session_maker() as session:
+            result = await session.execute(
+                text("SELECT pg_try_advisory_xact_lock(hashtext(:url))"),
+                {"url": feed_url},
+            )
+            acquired = bool(result.scalar())
+            try:
+                yield acquired
+            finally:
+                if acquired:
+                    await session.commit()  # releases the xact lock
+                else:
+                    await session.rollback()
