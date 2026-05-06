@@ -86,6 +86,48 @@ async def test_new_item_match_attaches_to_existing(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_existing_orphan_continues_full_pipeline(monkeypatch):
+    """An existing item with processed_at=NULL is an orphan from a prior crash.
+    process_item must FALL THROUGH the dedup short-circuit and run the full
+    pipeline so the orphan gets categorized + topic-matched + marked processed.
+    Prior bug: short-circuit was unconditional, so orphan retry in poll_org_feeds
+    looped on the same item every tick emitting discovery.item.duplicate."""
+    from backend.db.models import DiscoveryItem
+
+    repo = NullDiscoveryRepository()
+    feed = await repo.upsert_feed(org_code="org_t", feed_url="https://x/rss")
+
+    # Pre-seed an orphan: row exists, processed_at is None.
+    orphan = DiscoveryItem(
+        org_code="org_t",
+        canonical_url="https://x/a/1",
+        title="X",
+        categories=[],
+    )
+    await repo.upsert_item(orphan)
+    assert orphan.processed_at is None
+
+    classifier = AsyncMock(
+        return_value=CategoryDecision(categories=["Sport"], confidences={}, reasoning="")
+    )
+    matcher = AsyncMock(return_value=MatchDecision(matched_topic_id=None, reasoning=""))
+    writer = AsyncMock(return_value=TopicDescriptor(title="topic", blurb="b"))
+    monkeypatch.setattr("backend.services.discovery.pipeline.run_classifier_agent", classifier)
+    monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_matcher_agent", matcher)
+    monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_writer_agent", writer)
+
+    raw = RawFeedItem(title="X", url="https://x/a/1", guid="g1", summary="s", published_at=None)
+    out = await process_item(
+        raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo
+    )
+    # Pipeline ran (classifier was called) and orphan is now processed.
+    assert classifier.await_count == 1
+    assert out.processed_at is not None
+    assert out.categories == ["Sport"]
+    assert out.topic_id is not None
+
+
+@pytest.mark.asyncio
 async def test_duplicate_url_links_feed_no_reprocess(monkeypatch):
     repo = NullDiscoveryRepository()
     feed_a = await repo.upsert_feed(org_code="org_t", feed_url="https://a/rss")

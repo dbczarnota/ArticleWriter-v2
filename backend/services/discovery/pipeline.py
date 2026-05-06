@@ -58,7 +58,15 @@ async def process_item(
         item_canonical_url=canonical,
     ):
         existing = await repo.get_item_by_url(org_code=org_code, canonical_url=canonical)
-        if existing is not None:
+        # Short-circuit ONLY for items that completed the full pipeline
+        # (processed_at IS NOT NULL). An existing-but-unprocessed row is
+        # an orphan from a prior crash — fall through to the full pipeline
+        # so upsert_item below UPDATEs the row to a processed state.
+        # Without this check, the poller's orphan-retry path (F3) would
+        # call process_item on each orphan, hit this short-circuit, emit
+        # discovery.item.duplicate, return early — and the orphan would
+        # stay un-processed forever, retrying every tick.
+        if existing is not None and existing.processed_at is not None:
             await repo.add_item_to_feed_link(item_id=existing.id, feed_id=feed_id)
             logfire.info(
                 "discovery.item.duplicate",
