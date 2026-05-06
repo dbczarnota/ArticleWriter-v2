@@ -103,6 +103,55 @@ async def write_article(
     return {"id": str(article_id), "status": "running", "topic": req.topic}
 
 
+async def _run_pipeline_from_topic_background(
+    *,
+    topic_id: UUID,
+    items_at_consume: int,
+    discovery_repo: DiscoveryRepository,
+    article_id: UUID,
+    req: ArticleRequest,
+    app_settings: AppSettings,
+    domain,
+    cfg: Secrets,
+    org_code: str,
+    author_user_id: str,
+) -> None:
+    """Discovery-bridge background task: marks the source topic consumed
+    AS the pipeline begins, then delegates to the regular pipeline.
+    Marking inside the task instead of inside the endpoint means a pod
+    death between add_task and task start leaves the topic open, not
+    orphaned in 'consumed' state with no article."""
+    try:
+        await discovery_repo.mark_topic_consumed(
+            topic_id=topic_id, article_id=article_id, items_at_consume=items_at_consume
+        )
+        logfire.info(
+            "discovery.topic.write_article_started",
+            topic_id=str(topic_id),
+            article_id=str(article_id),
+            items_count=items_at_consume,
+        )
+    except Exception as e:
+        # If the consumed-marking fails, still try to write the article.
+        # The topic stays open, which is the safer default.
+        logfire.warn(
+            "discovery.topic.consume_marker_failed",
+            topic_id=str(topic_id),
+            article_id=str(article_id),
+            error_type=type(e).__name__,
+            error_message=str(e)[:500],
+        )
+    await _run_pipeline_background(
+        article_id=article_id,
+        req=req,
+        app_settings=app_settings,
+        domain=domain,
+        cfg=cfg,
+        org_code=org_code,
+        author_user_id=author_user_id,
+    )
+
+
 async def _run_pipeline_background(
     *,
     article_id: UUID,
@@ -530,7 +579,10 @@ async def write_article_from_discovery_topic(
     )
 
     background_tasks.add_task(
-        _run_pipeline_background,
+        _run_pipeline_from_topic_background,
+        topic_id=topic_id,
+        items_at_consume=len(items),
+        discovery_repo=discovery_repo,
         article_id=article_id,
         req=req,
         app_settings=app_settings,
@@ -540,16 +592,6 @@ async def write_article_from_discovery_topic(
         author_user_id=user.id,
     )
 
-    await discovery_repo.mark_topic_consumed(
-        topic_id=topic_id, article_id=article_id, items_at_consume=len(items)
-    )
-    logfire.info(
-        "discovery.topic.write_article_started",
-        topic_id=str(topic_id),
-        article_id=str(article_id),
-        urls_count=len(urls),
-        items_count=len(items),
-    )
     return {"topic_id": str(topic_id), "article_id": str(article_id), "status": "running"}
 
 

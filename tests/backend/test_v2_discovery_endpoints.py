@@ -194,6 +194,60 @@ async def test_write_article_marks_topic_consumed(monkeypatch, user, org, discov
         app.dependency_overrides.clear()
 
 
+@pytest.mark.asyncio
+async def test_write_article_does_not_mark_consumed_until_task_runs(monkeypatch, user, org, discovery_repo):
+    """Endpoint returns 202 immediately; topic stays 'open' until the
+    background task runs and marks it consumed. Simulating that the
+    task never runs leaves the topic open."""
+    from backend.repositories import get_article_repo, get_org_config_repo
+
+    class _StubArticleRepo:
+        async def create_running(self, **kwargs):
+            return uuid4()
+
+    class _StubOrgConfigRepo:
+        async def get(self, org_code):
+            from backend.repositories.null import NullOrgConfigRepository
+
+            return await NullOrgConfigRepository().get(org_code)
+
+        async def upsert(self, c):
+            return c
+
+        async def create_default(self, code):
+            from backend.db.models import OrgConfig
+
+            return OrgConfig(org_code=code, language="pl")
+
+    # Simulate task scheduled but never runs (pod death scenario)
+    async def _noop(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr("backend.api.v2._run_pipeline_from_topic_background", _noop)
+
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_current_org] = lambda: org
+    app.dependency_overrides[get_discovery_repo] = lambda: discovery_repo
+    app.dependency_overrides[get_article_repo] = lambda: _StubArticleRepo()
+    app.dependency_overrides[get_org_config_repo] = lambda: _StubOrgConfigRepo()
+
+    try:
+        topic = await discovery_repo.create_topic(
+            org_code=org.code, title="T", blurb="B", categories=[]
+        )
+        test_client = TestClient(app)
+        response = test_client.post(f"/v2/discovery/topics/{topic.id}/write_article")
+        assert response.status_code == 202
+
+        # Background task swapped to no-op; topic should still be 'open'.
+        # The actual mark_consumed lives inside the wrapper which never ran.
+        still_open = await discovery_repo.get_topic(topic_id=topic.id, org_code=org.code)
+        assert still_open is not None
+        assert still_open.status == "open"
+    finally:
+        app.dependency_overrides.clear()
+
+
 # ---------------------------------------------------------------------------
 # Task 23 — feeds + categories endpoints
 # ---------------------------------------------------------------------------
