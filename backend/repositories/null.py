@@ -194,6 +194,9 @@ class NullOrgRepository:
             return [self._local_dev]
         return []
 
+    async def list_all(self) -> list[Org]:
+        return [self._local_dev]
+
 
 class NullOrgConfigRepository:
     """Returns hardcoded styl_fm defaults for offline run.py path.

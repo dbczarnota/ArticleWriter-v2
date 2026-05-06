@@ -16,7 +16,7 @@ os.environ.setdefault(
     r"scripts\.kinde\.com/\.well-known/jwks",
 )
 
-import logfire  # noqa: E402  must come after the env var above
+import logfire
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import update
@@ -107,11 +107,15 @@ async def _fail_running_articles_on_shutdown() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    from backend.services.discovery.scheduler import start_scheduler, stop_scheduler
+
     # Verify DB connectivity at startup when DB_BACKEND=postgres; no-op otherwise.
     await init_db()
+    await start_scheduler()
     try:
         yield
     finally:
+        await stop_scheduler()
         await _fail_running_articles_on_shutdown()
         await close_db()
 

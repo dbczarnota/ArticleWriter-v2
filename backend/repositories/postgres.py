@@ -282,6 +282,11 @@ class PostgresOrgRepository:
             result = await session.execute(stmt)
             return list(result.scalars().all())
 
+    async def list_all(self) -> list[Org]:
+        async with self._session_maker() as session:
+            result = await session.execute(select(Org).order_by(Org.code))
+            return list(result.scalars().all())
+
 
 class PostgresOrgConfigRepository:
     def __init__(self, session_maker: async_sessionmaker[AsyncSession]) -> None:

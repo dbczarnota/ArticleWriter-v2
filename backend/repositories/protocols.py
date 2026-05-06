@@ -168,6 +168,12 @@ class OrgRepository(Protocol):
         Used for `GET /v2/orgs`. Order: by name."""
         ...
 
+    async def list_all(self) -> list[Org]:
+        """Return every org. Used by the discovery scheduler at startup
+        to register one polling job per org with discovery_enabled=True.
+        Order: stable (by primary key), unspecified beyond that."""
+        ...
+
 
 class OrgConfigRepository(Protocol):
     """Domain config per org. One row per org, upserted via Settings UI."""
