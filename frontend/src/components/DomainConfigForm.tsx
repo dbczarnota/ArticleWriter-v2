@@ -20,6 +20,7 @@ export const AVAILABLE_MODELS = [
   { id: "google-gla:gemini-pro-latest", label: "Gemini Pro Latest" },
   { id: "google-gla:gemini-flash-latest", label: "Gemini Flash Latest" },
   { id: "google-gla:gemini-flash-lite-latest", label: "Gemini Flash Lite Latest" },
+  { id: "groq:openai/gpt-oss-120b", label: "Groq OSS 120B (fast/cheap)" },
 ];
 
 type AgentKey = "search" | "scraping" | "parsing" | "extraction" | "adaptive_search" | "instructions" | "writer" | "reflection" | "followup";
@@ -509,6 +510,226 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
           >
             {dc.addArticle}
           </button>
+        </section>
+
+        {/* Discovery */}
+        <section id="discovery" style={{ display: sectionVisible("discovery") ? "block" : "none", marginBottom: 32 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{dc.sectionDiscovery}</h3>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>{dc.discoveryHint}</p>
+
+          {/* Master switch */}
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 12px",
+              background: form.discovery_enabled ? "var(--accent-lt)" : "var(--sidebar)",
+              border: `1px solid ${form.discovery_enabled ? "var(--accent)" : "var(--border)"}`,
+              borderRadius: "var(--radius)",
+              cursor: "pointer",
+              fontSize: 13,
+              marginBottom: 20,
+              width: "fit-content",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={form.discovery_enabled}
+              onChange={(e) => set("discovery_enabled", e.target.checked)}
+              style={{ accentColor: "var(--accent)" }}
+            />
+            {dc.discoveryEnabled}
+            <Tip text={dc.tipDiscoveryEnabled} />
+          </label>
+
+          {/* Window + threshold */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
+            <div>
+              <label style={labelStyle}>
+                {dc.discoveryTopicMatchingWindow}
+                <Tip text={dc.tipDiscoveryTopicMatchingWindow} />
+              </label>
+              <input
+                type="number"
+                value={form.discovery_topic_matching_window_days}
+                onChange={(e) => set("discovery_topic_matching_window_days", +e.target.value)}
+                min={1}
+                max={90}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>
+                {dc.discoveryFollowupThreshold}
+                <Tip text={dc.tipDiscoveryFollowupThreshold} />
+              </label>
+              <input
+                type="number"
+                value={form.discovery_followup_threshold}
+                onChange={(e) => set("discovery_followup_threshold", +e.target.value)}
+                min={1}
+                max={100}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          {/* Feeds */}
+          <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+            {dc.discoveryFeeds}
+            <Tip text={dc.tipDiscoveryFeeds} />
+          </h4>
+          {form.discovery_feeds.map((feed, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 100px auto", gap: 8, marginBottom: 8, alignItems: "center" }}>
+              <input
+                value={feed.url}
+                onChange={(e) => {
+                  const updated = [...form.discovery_feeds];
+                  updated[i] = { ...feed, url: e.target.value };
+                  set("discovery_feeds", updated);
+                }}
+                placeholder={dc.discoveryFeedUrlPlaceholder}
+                style={inputStyle}
+              />
+              <input
+                value={feed.name}
+                onChange={(e) => {
+                  const updated = [...form.discovery_feeds];
+                  updated[i] = { ...feed, name: e.target.value };
+                  set("discovery_feeds", updated);
+                }}
+                placeholder={dc.discoveryFeedName}
+                style={inputStyle}
+              />
+              <input
+                type="number"
+                value={feed.poll_interval_min}
+                onChange={(e) => {
+                  const updated = [...form.discovery_feeds];
+                  updated[i] = { ...feed, poll_interval_min: Math.max(1, +e.target.value) };
+                  set("discovery_feeds", updated);
+                }}
+                min={1}
+                max={1440}
+                style={inputStyle}
+                placeholder={dc.discoveryFeedInterval}
+              />
+              <button
+                type="button"
+                onClick={() => set("discovery_feeds", form.discovery_feeds.filter((_, j) => j !== i))}
+                style={{ background: "none", border: "none", fontSize: 13, color: "#ef4444", cursor: "pointer" }}
+              >
+                {dc.discoveryRemoveFeed}
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => set("discovery_feeds", [...form.discovery_feeds, { url: "", name: "", poll_interval_min: 15 }])}
+            style={{
+              padding: "6px 14px",
+              background: "none",
+              border: "1px dashed var(--border)",
+              borderRadius: "var(--radius)",
+              fontSize: 13,
+              color: "var(--muted)",
+              cursor: "pointer",
+              marginBottom: 24,
+            }}
+          >
+            {dc.discoveryAddFeed}
+          </button>
+
+          {/* Categories */}
+          <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+            {dc.discoveryCategories}
+            <Tip text={dc.tipDiscoveryCategories} />
+          </h4>
+          {form.discovery_categories.map((cat, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: 8, marginBottom: 8, alignItems: "start" }}>
+              <input
+                value={cat.name}
+                onChange={(e) => {
+                  const updated = [...form.discovery_categories];
+                  updated[i] = { ...cat, name: e.target.value };
+                  set("discovery_categories", updated);
+                }}
+                placeholder={dc.discoveryCategoryNamePlaceholder}
+                style={inputStyle}
+              />
+              <textarea
+                value={cat.description}
+                onChange={(e) => {
+                  const updated = [...form.discovery_categories];
+                  updated[i] = { ...cat, description: e.target.value };
+                  set("discovery_categories", updated);
+                }}
+                rows={2}
+                placeholder={dc.discoveryCategoryDescriptionPlaceholder}
+                style={{ ...inputStyle, resize: "vertical" }}
+              />
+              <button
+                type="button"
+                onClick={() => set("discovery_categories", form.discovery_categories.filter((_, j) => j !== i))}
+                style={{ background: "none", border: "none", fontSize: 13, color: "#ef4444", cursor: "pointer" }}
+              >
+                {dc.discoveryRemoveCategory}
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => set("discovery_categories", [...form.discovery_categories, { name: "", description: "" }])}
+            style={{
+              padding: "6px 14px",
+              background: "none",
+              border: "1px dashed var(--border)",
+              borderRadius: "var(--radius)",
+              fontSize: 13,
+              color: "var(--muted)",
+              cursor: "pointer",
+              marginBottom: 24,
+            }}
+          >
+            {dc.discoveryAddCategory}
+          </button>
+
+          {/* Models */}
+          <h4 style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+            {dc.sectionModels}
+            <Tip text={dc.tipDiscoveryAgentModels} />
+          </h4>
+          {([
+            ["discovery_classifier_model", "discovery_classifier_fallback_models", dc.discoveryClassifierModel],
+            ["discovery_matcher_model", "discovery_matcher_fallback_models", dc.discoveryMatcherModel],
+            ["discovery_topic_writer_model", "discovery_topic_writer_fallback_models", dc.discoveryTopicWriterModel],
+          ] as const).map(([modelKey, fallbackKey, label]) => (
+            <div key={modelKey} style={{ display: "grid", gridTemplateColumns: "200px 1fr 1fr", gap: 8, alignItems: "center", marginBottom: 8 }}>
+              <label style={{ ...labelStyle, marginBottom: 0 }}>{label}</label>
+              <select
+                value={form[modelKey] as string}
+                onChange={(e) => set(modelKey, e.target.value as DomainConfigData[typeof modelKey])}
+                style={inputStyle}
+              >
+                {AVAILABLE_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </select>
+              <div style={{ position: "relative" }}>
+                <input
+                  value={(form[fallbackKey] as string[]).join(", ")}
+                  onChange={(e) => {
+                    const vals = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
+                    set(fallbackKey, vals as DomainConfigData[typeof fallbackKey]);
+                  }}
+                  placeholder={dc.discoveryFallbacks}
+                  style={{ ...inputStyle, fontSize: 12, fontFamily: "monospace" }}
+                />
+                <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)" }}>
+                  <Tip text={dc.tipDiscoveryFallbacks} />
+                </span>
+              </div>
+            </div>
+          ))}
         </section>
       </div>
 

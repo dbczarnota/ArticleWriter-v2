@@ -37,6 +37,17 @@ const BASE_CONFIG: DomainConfigData = {
   example_titles: [],
   agent_models: {},
   agent_fallback_models: {},
+  discovery_enabled: false,
+  discovery_feeds: [],
+  discovery_categories: [],
+  discovery_topic_matching_window_days: 3,
+  discovery_followup_threshold: 5,
+  discovery_classifier_model: "google-gla:gemini-flash-lite-latest",
+  discovery_matcher_model: "google-gla:gemini-flash-lite-latest",
+  discovery_topic_writer_model: "google-gla:gemini-flash-lite-latest",
+  discovery_classifier_fallback_models: [],
+  discovery_matcher_fallback_models: [],
+  discovery_topic_writer_fallback_models: [],
   updated_at: null,
 };
 

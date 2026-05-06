@@ -79,6 +79,17 @@ export interface Article extends ArticleListItem {
   fallback_events: FallbackEvent[];
 }
 
+export interface FeedConfig {
+  url: string;
+  name: string;
+  poll_interval_min: number;
+}
+
+export interface CategoryConfig {
+  name: string;
+  description: string;
+}
+
 export interface DomainConfigData {
   org_code: string;
   domain_name: string;
@@ -112,5 +123,16 @@ export interface DomainConfigData {
   example_titles: string[];
   agent_models: Record<string, string>;
   agent_fallback_models: Record<string, string[]>;
+  discovery_enabled: boolean;
+  discovery_feeds: FeedConfig[];
+  discovery_categories: CategoryConfig[];
+  discovery_topic_matching_window_days: number;
+  discovery_followup_threshold: number;
+  discovery_classifier_model: string;
+  discovery_matcher_model: string;
+  discovery_topic_writer_model: string;
+  discovery_classifier_fallback_models: string[];
+  discovery_matcher_fallback_models: string[];
+  discovery_topic_writer_fallback_models: string[];
   updated_at: string | null;
 }

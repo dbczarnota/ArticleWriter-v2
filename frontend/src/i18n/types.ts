@@ -54,6 +54,7 @@ export interface Translations {
     reviewer: string;
     exampleTitles: string;
     exampleArticles: string;
+    discovery: string;
   };
   settings: {
     loading: string;
@@ -144,6 +145,37 @@ export interface Translations {
     tipReviewerInstructions: string;
     tipExampleTitles: string;
     tipExampleArticles: string;
+    // discovery
+    sectionDiscovery: string;
+    discoveryHint: string;
+    discoveryEnabled: string;
+    tipDiscoveryEnabled: string;
+    discoveryFeeds: string;
+    tipDiscoveryFeeds: string;
+    discoveryFeedUrl: string;
+    discoveryFeedName: string;
+    discoveryFeedInterval: string;
+    discoveryAddFeed: string;
+    discoveryRemoveFeed: string;
+    discoveryFeedUrlPlaceholder: string;
+    discoveryCategories: string;
+    tipDiscoveryCategories: string;
+    discoveryCategoryName: string;
+    discoveryCategoryDescription: string;
+    discoveryAddCategory: string;
+    discoveryRemoveCategory: string;
+    discoveryCategoryNamePlaceholder: string;
+    discoveryCategoryDescriptionPlaceholder: string;
+    discoveryTopicMatchingWindow: string;
+    tipDiscoveryTopicMatchingWindow: string;
+    discoveryFollowupThreshold: string;
+    tipDiscoveryFollowupThreshold: string;
+    discoveryClassifierModel: string;
+    discoveryMatcherModel: string;
+    discoveryTopicWriterModel: string;
+    tipDiscoveryAgentModels: string;
+    discoveryFallbacks: string;
+    tipDiscoveryFallbacks: string;
   };
   mediaTips: {
     youtube: string;
