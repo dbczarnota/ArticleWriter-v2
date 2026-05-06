@@ -370,6 +370,44 @@ class OrgConfig(SQLModel, table=True):
     )
     """Per-agent fallback model lists: {agent_key: [fallback1, fallback2]}."""
 
+    # ── Discovery ────────────────────────────────────────────────────────────
+    discovery_enabled: bool = Field(default=False)
+    discovery_feeds: list = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'[]'")),
+    )
+    """List of {url, name, poll_interval_min} dicts."""
+
+    discovery_categories: list = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'[]'")),
+    )
+    """List of {name, description} dicts."""
+
+    discovery_topic_matching_window_days: int = Field(default=3)
+    discovery_followup_threshold: int = Field(default=5)
+    discovery_classifier_model: str = Field(
+        default="google-gla:gemini-flash-lite-latest", max_length=128
+    )
+    discovery_matcher_model: str = Field(
+        default="google-gla:gemini-flash-lite-latest", max_length=128
+    )
+    discovery_topic_writer_model: str = Field(
+        default="google-gla:gemini-flash-lite-latest", max_length=128
+    )
+    discovery_classifier_fallback_models: list = Field(
+        default_factory=lambda: ["groq:openai/gpt-oss-120b"],
+        sa_column=Column(JSONB, nullable=False, server_default=text("""'["groq:openai/gpt-oss-120b"]'""")),
+    )
+    discovery_matcher_fallback_models: list = Field(
+        default_factory=lambda: ["groq:openai/gpt-oss-120b"],
+        sa_column=Column(JSONB, nullable=False, server_default=text("""'["groq:openai/gpt-oss-120b"]'""")),
+    )
+    discovery_topic_writer_fallback_models: list = Field(
+        default_factory=lambda: ["groq:openai/gpt-oss-120b"],
+        sa_column=Column(JSONB, nullable=False, server_default=text("""'["groq:openai/gpt-oss-120b"]'""")),
+    )
+
     updated_at: datetime = Field(
         default_factory=_utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False, server_default=text("now()")),

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, field_validator
 from pydantic import Field as PydanticField
@@ -48,6 +49,25 @@ class ArticleUpdate(BaseModel):
     marked_done_by_name: str | None = None
 
 
+class FeedConfigPayload(BaseModel):
+    url: str
+    name: str = ""
+    poll_interval_min: int = PydanticField(ge=1, le=1440, default=15)
+
+    @field_validator("url", mode="before")
+    @classmethod
+    def _validate_url(cls, v: str) -> str:
+        p = urlparse(v)
+        if not (p.scheme in ("http", "https") and p.netloc):
+            raise ValueError(f"Invalid feed URL: {v}")
+        return v
+
+
+class CategoryConfigPayload(BaseModel):
+    name: str
+    description: str
+
+
 class DomainConfigUpdate(BaseModel):
     domain_name: str | None = None
     """Org's editorial-domain identifier. None means 'leave it as-is'.
@@ -83,3 +103,20 @@ class DomainConfigUpdate(BaseModel):
     example_titles: list[str] = PydanticField(default_factory=list)
     agent_models: dict[str, str] = PydanticField(default_factory=dict)
     agent_fallback_models: dict[str, list[str]] = PydanticField(default_factory=dict)
+    discovery_enabled: bool = False
+    discovery_feeds: list[FeedConfigPayload] = PydanticField(default_factory=list)
+    discovery_categories: list[CategoryConfigPayload] = PydanticField(default_factory=list)
+    discovery_topic_matching_window_days: int = PydanticField(ge=1, le=90, default=3)
+    discovery_followup_threshold: int = PydanticField(ge=1, le=100, default=5)
+    discovery_classifier_model: str = "google-gla:gemini-flash-lite-latest"
+    discovery_matcher_model: str = "google-gla:gemini-flash-lite-latest"
+    discovery_topic_writer_model: str = "google-gla:gemini-flash-lite-latest"
+    discovery_classifier_fallback_models: list[str] = PydanticField(
+        default_factory=lambda: ["groq:openai/gpt-oss-120b"]
+    )
+    discovery_matcher_fallback_models: list[str] = PydanticField(
+        default_factory=lambda: ["groq:openai/gpt-oss-120b"]
+    )
+    discovery_topic_writer_fallback_models: list[str] = PydanticField(
+        default_factory=lambda: ["groq:openai/gpt-oss-120b"]
+    )
