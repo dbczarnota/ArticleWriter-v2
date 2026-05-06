@@ -22,6 +22,8 @@ dependencies = [
     "pgvector>=0.3.5",
     "alembic>=1.14",
     "pyjwt[crypto]>=2.10",
+    "feedparser>=6.0.12",
+    "apscheduler>=3.11.2",
 ]
 
 [dependency-groups]
