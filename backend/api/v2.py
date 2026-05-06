@@ -5,7 +5,7 @@ from datetime import datetime
 from uuid import UUID
 
 import logfire
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from agents.pipeline.runner import run_pipeline
@@ -643,7 +643,7 @@ class WriteFromTopicOverrides(BaseModel):
 async def write_article_from_discovery_topic(
     topic_id: UUID,
     background_tasks: BackgroundTasks,
-    overrides: WriteFromTopicOverrides | None = None,
+    overrides: WriteFromTopicOverrides | None = Body(default=None),
     user: AuthenticatedUser = Depends(get_current_user),
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),

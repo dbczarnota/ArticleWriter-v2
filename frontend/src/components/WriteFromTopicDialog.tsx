@@ -22,6 +22,7 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
   const [customUrls, setCustomUrls] = useState<string[]>([]);
   const [customUrlInput, setCustomUrlInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const mounted = useRef(true);
 
@@ -94,19 +95,33 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
   async function submit() {
     if (!detail) return;
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const body = {
         topic_override: topicTitle.trim() === detail.title ? null : topicTitle.trim(),
         urls: Array.from(selectedUrls),
       };
+      // useApi.request already sets Content-Type: application/json; passing
+      // it again here would just duplicate the header. Body is JSON.stringified
+      // here because fetch() doesn't auto-serialize a plain object.
       const resp = await request<{ article_id: string }>(
         `/v2/discovery/topics/${topicId}/write_article`,
-        { method: "POST", body: JSON.stringify(body), headers: { "content-type": "application/json" } },
+        { method: "POST", body: JSON.stringify(body) },
       );
-      if (mounted.current) onSubmitted(resp.article_id);
+      if (!mounted.current) return;
+      if (!resp || !resp.article_id) {
+        console.error("WriteFromTopicDialog: empty response", resp);
+        setSubmitError("Empty server response");
+        setSubmitting(false);
+        return;
+      }
+      onSubmitted(resp.article_id);
     } catch (err) {
       console.error("WriteFromTopicDialog: submit failed", err);
-      if (mounted.current) setSubmitting(false);
+      if (mounted.current) {
+        setSubmitError(err instanceof Error ? err.message : String(err));
+        setSubmitting(false);
+      }
     }
   }
 
@@ -425,6 +440,20 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
           )}
         </div>
 
+        {submitError && (
+          <div
+            style={{
+              padding: "8px 20px",
+              borderTop: "1px solid var(--border)",
+              background: "#fef2f2",
+              color: "#b91c1c",
+              fontSize: 12,
+              wordBreak: "break-word",
+            }}
+          >
+            {submitError}
+          </div>
+        )}
         <footer
           style={{
             padding: "12px 20px",
