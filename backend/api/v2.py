@@ -12,10 +12,20 @@ from backend.api.schemas import ArticleRequest, ArticleUpdate, DomainConfigUpdat
 from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
 from backend.config import AppSettings, apply_org_models
-from backend.db.models import Org, OrgConfig
+from backend.db.models import DiscoveryTopic, Org, OrgConfig
 from backend.domain import DomainConfig, get_domain_config
-from backend.repositories import get_article_repo, get_org_config_repo, get_org_repo
-from backend.repositories.protocols import ArticleRepository, OrgConfigRepository, OrgRepository
+from backend.repositories import (
+    get_article_repo,
+    get_discovery_repo,
+    get_org_config_repo,
+    get_org_repo,
+)
+from backend.repositories.protocols import (
+    ArticleRepository,
+    DiscoveryRepository,
+    OrgConfigRepository,
+    OrgRepository,
+)
 from backend.secrets import Secrets, get_secrets
 
 router = APIRouter(prefix="/v2")
@@ -353,6 +363,236 @@ async def put_domain_config_endpoint(
     config = OrgConfig(org_code=org.code, **payload)
     saved = await org_config_repo.upsert(config)
     return _org_config_to_dict(saved, domain_name=effective_domain)
+
+
+def _topic_to_json(t: DiscoveryTopic, *, new_items_since_consume: int = 0) -> dict:
+    return {
+        "id": str(t.id),
+        "title": t.title,
+        "blurb": t.blurb,
+        "categories": list(t.categories),
+        "status": t.status,
+        "first_seen_at": t.first_seen_at.isoformat() if t.first_seen_at else None,
+        "last_activity_at": t.last_activity_at.isoformat() if t.last_activity_at else None,
+        "consumed_article_id": str(t.consumed_article_id) if t.consumed_article_id else None,
+        "consumed_at": t.consumed_at.isoformat() if t.consumed_at else None,
+        "items_at_consume": t.items_at_consume,
+        "new_items_since_consume": new_items_since_consume,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Discovery — topics
+# ---------------------------------------------------------------------------
+
+
+@router.get("/discovery/topics")
+async def list_discovery_topics(
+    org: Org = Depends(get_current_org),
+    discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
+    category: list[str] = Query(default_factory=list),
+    status: list[str] = Query(default_factory=lambda: ["open", "resurfaced"]),
+    since: datetime | None = None,
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> list[dict]:
+    rows = await discovery_repo.list_topics_for_ui(
+        org_code=org.code,
+        categories=category or None,
+        statuses=status or None,
+        since=since,
+        limit=limit,
+        offset=offset,
+    )
+    out: list[dict] = []
+    for t in rows:
+        new_count = 0
+        if t.consumed_at is not None:
+            items = await discovery_repo.list_items_for_topic(t.id)
+            new_count = sum(1 for it in items if it.fetched_at > t.consumed_at)
+        out.append(_topic_to_json(t, new_items_since_consume=new_count))
+    return out
+
+
+@router.get("/discovery/topics/{topic_id}")
+async def get_discovery_topic(
+    topic_id: UUID,
+    org: Org = Depends(get_current_org),
+    discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
+) -> dict:
+    topic = await discovery_repo.get_topic(topic_id=topic_id, org_code=org.code)
+    if topic is None:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    items = await discovery_repo.list_items_for_topic(topic_id)
+    new_count = sum(
+        1 for it in items
+        if topic.consumed_at is not None and it.fetched_at > topic.consumed_at
+    )
+    return {
+        **_topic_to_json(topic, new_items_since_consume=new_count),
+        "items": [
+            {
+                "id": str(it.id),
+                "canonical_url": it.canonical_url,
+                "title": it.title,
+                "summary": it.summary,
+                "categories": list(it.categories),
+                "fetched_at": it.fetched_at.isoformat() if it.fetched_at else None,
+                "published_at": it.published_at.isoformat() if it.published_at else None,
+            }
+            for it in items
+        ],
+    }
+
+
+@router.post("/discovery/topics/{topic_id}/dismiss")
+async def dismiss_discovery_topic(
+    topic_id: UUID,
+    user: AuthenticatedUser = Depends(get_current_user),
+    org: Org = Depends(get_current_org),
+    discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
+) -> dict:
+    topic = await discovery_repo.get_topic(topic_id=topic_id, org_code=org.code)
+    if topic is None:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    await discovery_repo.dismiss_topic(topic_id=topic_id, org_code=org.code)
+    logfire.info("discovery.topic.dismissed", topic_id=str(topic_id), user_id=user.id)
+    return {"id": str(topic_id), "status": "dismissed"}
+
+
+@router.post("/discovery/topics/{topic_id}/restore")
+async def restore_discovery_topic(
+    topic_id: UUID,
+    org: Org = Depends(get_current_org),
+    discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
+) -> dict:
+    topic = await discovery_repo.get_topic(topic_id=topic_id, org_code=org.code)
+    if topic is None:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    await discovery_repo.restore_topic(topic_id=topic_id, org_code=org.code)
+    return {"id": str(topic_id), "status": "open"}
+
+
+@router.post("/discovery/topics/{topic_id}/write_article", status_code=202)
+async def write_article_from_discovery_topic(
+    topic_id: UUID,
+    background_tasks: BackgroundTasks,
+    user: AuthenticatedUser = Depends(get_current_user),
+    org: Org = Depends(get_current_org),
+    discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
+    article_repo: ArticleRepository = Depends(get_article_repo),
+    org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
+) -> dict:
+    topic = await discovery_repo.get_topic(topic_id=topic_id, org_code=org.code)
+    if topic is None:
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    items = await discovery_repo.list_items_for_topic(topic_id)
+    urls = [it.canonical_url for it in items]
+
+    cfg = get_secrets()
+    domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
+    if domain is None:
+        raise HTTPException(
+            status_code=412,
+            detail=f"No domain config found for org '{org.code}'.",
+        )
+    base = AppSettings(domain=org.domain_name)
+    base = apply_org_models(base, domain)
+
+    given = getattr(user, "given_name", None) or ""
+    family = getattr(user, "family_name", None) or ""
+    author_name = f"{given} {family}".strip() or (user.email or None)
+
+    req = ArticleRequest(
+        topic=topic.title,
+        urls=urls,
+        additional_instructions=topic.blurb,
+        author_name=author_name,
+    )
+    app_settings = AppSettings.from_request(req, base=base)
+
+    article_id = await article_repo.create_running(
+        org_code=org.code,
+        author_user_id=user.id,
+        author_email=user.email,
+        author_name=req.author_name,
+        domain_name=org.domain_name,
+        topic=req.topic,
+        additional_instructions=req.additional_instructions,
+        input_urls=urls,
+    )
+
+    background_tasks.add_task(
+        _run_pipeline_background,
+        article_id=article_id,
+        req=req,
+        app_settings=app_settings,
+        domain=domain,
+        cfg=cfg,
+        org_code=org.code,
+        author_user_id=user.id,
+    )
+
+    await discovery_repo.mark_topic_consumed(
+        topic_id=topic_id, article_id=article_id, items_at_consume=len(items)
+    )
+    logfire.info(
+        "discovery.topic.write_article_started",
+        topic_id=str(topic_id),
+        article_id=str(article_id),
+        urls_count=len(urls),
+        items_count=len(items),
+    )
+    return {"topic_id": str(topic_id), "article_id": str(article_id), "status": "running"}
+
+
+# ---------------------------------------------------------------------------
+# Discovery — feeds + categories
+# ---------------------------------------------------------------------------
+
+
+@router.get("/discovery/feeds")
+async def list_discovery_feeds(
+    org: Org = Depends(get_current_org),
+    discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
+) -> list[dict]:
+    feeds = await discovery_repo.list_feeds_for_org(org.code)
+    return [
+        {
+            "id": str(f.id),
+            "feed_url": f.feed_url,
+            "last_fetched_at": f.last_fetched_at.isoformat() if f.last_fetched_at else None,
+            "last_error": f.last_error,
+            "error_count": f.error_count,
+            "disabled": f.disabled,
+        }
+        for f in feeds
+    ]
+
+
+@router.post("/discovery/feeds/{feed_id}/reset")
+async def reset_discovery_feed(
+    feed_id: UUID,
+    org: Org = Depends(get_current_org),
+    discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
+) -> dict:
+    feeds = await discovery_repo.list_feeds_for_org(org.code)
+    if not any(f.id == feed_id for f in feeds):
+        raise HTTPException(status_code=404, detail="Feed not found")
+    await discovery_repo.reset_feed_errors(feed_id)
+    return {"id": str(feed_id), "error_count": 0, "disabled": False}
+
+
+@router.get("/discovery/categories")
+async def list_discovery_categories(
+    org: Org = Depends(get_current_org),
+    org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
+) -> list[dict]:
+    domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
+    if domain is None:
+        return []
+    return [{"name": c.name, "description": c.description} for c in domain.discovery_categories]
 
 
 def _apply_article_domain_overrides(domain: DomainConfig, overrides: dict) -> DomainConfig:
