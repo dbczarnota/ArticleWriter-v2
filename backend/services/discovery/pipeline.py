@@ -112,7 +112,10 @@ async def process_item(
         topic_id_for_item = match_decision.matched_topic_id
         if topic_id_for_item is None:
             descriptor = await run_topic_writer_agent(
-                title=raw.title, summary=raw.summary, config=_writer_config(domain)
+                title=raw.title,
+                summary=raw.summary,
+                language=domain.language,
+                config=_writer_config(domain),
             )
             topic = await repo.create_topic(
                 org_code=org_code,

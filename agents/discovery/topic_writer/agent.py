@@ -24,10 +24,14 @@ async def run_topic_writer_agent(
     *,
     title: str,
     summary: str | None,
+    language: str = "pl",
     config: ExtractionAgentConfig,
     _agent: Agent[Any, Any] | None = None,
 ) -> TopicDescriptor:
-    user_prompt = f"ITEM TITLE: {title}\n\nITEM SUMMARY: {summary or '(no summary)'}"
+    user_prompt = (
+        f"OUTPUT LANGUAGE: {language}\n\n"
+        f"ITEM TITLE: {title}\n\nITEM SUMMARY: {summary or '(no summary)'}"
+    )
 
     output, _model, _tin, _tout = await run_simple_agent(
         prompts_dir=_PROMPTS_DIR,
