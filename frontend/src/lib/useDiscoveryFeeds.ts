@@ -12,6 +12,10 @@ export function useDiscoveryFeeds() {
     try {
       const rows = await request<DiscoveryFeed[]>("/v2/discovery/feeds");
       setFeeds(rows);
+    } catch (err) {
+      // Don't swallow silently — UI shows "Loading…" → "no feeds" without
+      // any signal that the request failed. Surface to console at minimum.
+      console.error("useDiscoveryFeeds: request failed", err);
     } finally {
       setLoading(false);
     }

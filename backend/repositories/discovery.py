@@ -214,6 +214,10 @@ class PostgresDiscoveryRepository:
         async with self._session_maker() as session:
             stmt = select(DiscoveryItem).where(DiscoveryItem.org_code == org_code)  # type: ignore[arg-type]
             if feed_id is not None:
+                # Outer WHERE already constrains DiscoveryItem.org_code; the
+                # IN-subquery on the link table inherits that constraint via
+                # the join on DiscoveryItem.id, so foreign-org item_ids
+                # cannot match any row the outer query considers.
                 stmt = stmt.where(
                     DiscoveryItem.id.in_(  # type: ignore[arg-type]
                         select(DiscoveryItemFeed.item_id).where(  # type: ignore[arg-type]
@@ -393,6 +397,11 @@ class PostgresDiscoveryRepository:
                 ]
                 stmt = stmt.where(or_(*clauses))
             if feed_id is not None:
+                # Defense-in-depth: also pin the subquery to org_code so a
+                # caller passing a foreign-org feed_id cannot use response
+                # cardinality as an enumeration oracle. UUID uniqueness alone
+                # would prevent a real row leak via the outer org_code filter,
+                # but we don't want this to depend on collision-free luck.
                 stmt = stmt.where(
                     DiscoveryTopic.id.in_(  # type: ignore[arg-type]
                         select(DiscoveryItem.topic_id)  # type: ignore[arg-type]
@@ -400,7 +409,10 @@ class PostgresDiscoveryRepository:
                             DiscoveryItemFeed,
                             DiscoveryItemFeed.item_id == DiscoveryItem.id,  # type: ignore[arg-type]
                         )
-                        .where(DiscoveryItemFeed.feed_id == feed_id)  # type: ignore[arg-type]
+                        .where(
+                            DiscoveryItemFeed.feed_id == feed_id,  # type: ignore[arg-type]
+                            DiscoveryItem.org_code == org_code,  # type: ignore[arg-type]
+                        )
                     )
                 )
             stmt = stmt.order_by(DiscoveryTopic.last_activity_at.desc()).limit(limit).offset(offset)  # type: ignore[arg-type]

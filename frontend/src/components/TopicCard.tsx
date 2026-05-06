@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DiscoveryTopicSummary, DiscoveryItem } from "../types";
 import { useDiscoveryTopicDetail } from "../lib/useDiscoveryTopicDetail";
 import { useT } from "../i18n";
@@ -16,6 +16,12 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
   const [error, setError] = useState<string | null>(null);
   const { load } = useDiscoveryTopicDetail();
 
+  // Guard against state updates after unmount when the user changes filters
+  // mid-fetch — `load` is async and the component can disappear before it
+  // resolves.
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
   async function toggle(e: React.MouseEvent) {
     e.stopPropagation();
     const next = !open;
@@ -23,9 +29,9 @@ export function TopicCard({ topic, onWrite, onSelect }: Props) {
     if (next && items === null && !error) {
       try {
         const detail = await load(topic.id);
-        setItems(detail.items);
+        if (mountedRef.current) setItems(detail.items);
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        if (mountedRef.current) setError(err instanceof Error ? err.message : String(err));
       }
     }
   }

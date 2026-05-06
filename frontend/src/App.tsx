@@ -100,7 +100,16 @@ export default function App() {
           onClose={() => setSidebarOpen(false)}
           onExpand={() => setSidebarOpen(true)}
         />
-        <main style={{ flex: 1, overflow: "auto", padding: isMobile ? 12 : 24 }}>
+        <main
+          style={{
+            flex: 1,
+            overflow: "auto",
+            // DiscoveryHub renders edge-to-edge (own sidebar + scroll regions),
+            // so the standard <main> padding would clip its bottom and leave
+            // gaps around its sidebar.
+            padding: view === "discovery" ? 0 : isMobile ? 12 : 24,
+          }}
+        >
           {view === "list" && (
             <p style={{ color: "var(--muted)" }}>
               {loading ? t.app.loading : t.app.selectArticleHint}

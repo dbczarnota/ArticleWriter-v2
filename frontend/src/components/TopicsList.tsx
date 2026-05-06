@@ -19,8 +19,8 @@ export function TopicsList({ topics, loading, onWrite, onSelect }: Props) {
   }
   return (
     <div>
-      {topics.map((t) => (
-        <TopicCard key={t.id} topic={t} onWrite={onWrite} onSelect={onSelect} />
+      {topics.map((topic) => (
+        <TopicCard key={topic.id} topic={topic} onWrite={onWrite} onSelect={onSelect} />
       ))}
     </div>
   );

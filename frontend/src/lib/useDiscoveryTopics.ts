@@ -35,6 +35,8 @@ export function useDiscoveryTopics(filters: DiscoveryTopicFilters) {
         `/v2/discovery/topics?${params.toString()}`,
       );
       setTopics(rows);
+    } catch (err) {
+      console.error("useDiscoveryTopics: request failed", err);
     } finally {
       setLoading(false);
     }

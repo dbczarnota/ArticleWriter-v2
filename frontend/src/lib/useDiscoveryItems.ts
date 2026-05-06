@@ -31,6 +31,8 @@ export function useDiscoveryItems(filters: DiscoveryItemFilters) {
         `/v2/discovery/items?${params.toString()}`,
       );
       setItems(rows);
+    } catch (err) {
+      console.error("useDiscoveryItems: request failed", err);
     } finally {
       setLoading(false);
     }
