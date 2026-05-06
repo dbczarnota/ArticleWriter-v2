@@ -4,7 +4,6 @@ existing topic or needs a new one."""
 from __future__ import annotations
 
 import pathlib
-import time
 from typing import Any
 from uuid import UUID
 
@@ -12,9 +11,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 
 from agents._base.config import ExtractionAgentConfig
-from agents._base.prompt_renderer import model_format_style, render_prompt
-from agents._base.resilient import run_with_fallback
-from agents._base.run_context import record_agent_call
+from agents._base.simple_agent import run_simple_agent
 
 _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
 
@@ -49,41 +46,21 @@ async def run_topic_matcher_agent(
         f"EXISTING TOPICS:\n{cand_block}"
     )
 
-    if _agent is not None:
-        _t0 = time.perf_counter()
-        result = await _agent.run(user_prompt)
-        _model_used = config.model
-    else:
-
-        def _factory(m: str) -> tuple[Agent[Any, Any], str]:
-            sys_prompt = render_prompt(
-                _PROMPTS_DIR / "match.j2",
-                format_style=model_format_style(m),
-            )
-            return Agent(m, output_type=MatchDecision), sys_prompt
-
-        _t0 = time.perf_counter()
-        result, _model_used = await run_with_fallback(
-            (config.model, *config.fallback_models),
-            agent_factory=_factory,
-            user_prompt=user_prompt,
-            agent_name="discovery_topic_matcher",
-        )
-
-    _u = result.usage()
-    record_agent_call(
-        "discovery_topic_matcher",
-        _model_used,
-        _u.input_tokens or 0,
-        _u.output_tokens or 0,
-        (time.perf_counter() - _t0) * 1000,
+    output, _model, _tin, _tout = await run_simple_agent(
+        prompts_dir=_PROMPTS_DIR,
+        prompt_name="match.j2",
+        output_type=MatchDecision,
+        agent_name="discovery_topic_matcher",
+        user_prompt=user_prompt,
+        config=config,
+        _agent=_agent,
     )
 
     # Validate the LLM didn't hallucinate a UUID outside the candidate list.
     # TODO(perf): swap LLM-judge for embedding pre-filter when topic count
     # per matching window > ~200; spec section "Out of scope".
     valid_ids = {c.id for c in candidates}
-    matched = result.output.matched_topic_id
+    matched = output.matched_topic_id
     if matched is not None and matched not in valid_ids:
         matched = None
-    return MatchDecision(matched_topic_id=matched, reasoning=result.output.reasoning)
+    return MatchDecision(matched_topic_id=matched, reasoning=output.reasoning)

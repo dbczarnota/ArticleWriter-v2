@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import pathlib
-import time
 from typing import Any
 
 from pydantic import BaseModel
 from pydantic_ai import Agent
 
 from agents._base.config import ExtractionAgentConfig
-from agents._base.prompt_renderer import model_format_style, render_prompt
-from agents._base.resilient import run_with_fallback
-from agents._base.run_context import record_agent_call
+from agents._base.simple_agent import run_simple_agent
 from backend.domain import CategoryConfig
 
 _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
@@ -44,39 +41,19 @@ async def run_classifier_agent(
         f"TITLE: {title}\n\nSUMMARY: {summary or '(no summary)'}\n\nCATEGORIES:\n{cat_block}"
     )
 
-    if _agent is not None:
-        _t0 = time.perf_counter()
-        result = await _agent.run(user_prompt)
-        _model_used = config.model
-    else:
-
-        def _factory(m: str) -> tuple[Agent[Any, Any], str]:
-            sys_prompt = render_prompt(
-                _PROMPTS_DIR / "classify.j2",
-                format_style=model_format_style(m),
-            )
-            return Agent(m, output_type=CategoryDecision), sys_prompt
-
-        _t0 = time.perf_counter()
-        result, _model_used = await run_with_fallback(
-            (config.model, *config.fallback_models),
-            agent_factory=_factory,
-            user_prompt=user_prompt,
-            agent_name="discovery_classifier",
-        )
-
-    _u = result.usage()
-    record_agent_call(
-        "discovery_classifier",
-        _model_used,
-        _u.input_tokens or 0,
-        _u.output_tokens or 0,
-        (time.perf_counter() - _t0) * 1000,
+    output, _model, _tin, _tout = await run_simple_agent(
+        prompts_dir=_PROMPTS_DIR,
+        prompt_name="classify.j2",
+        output_type=CategoryDecision,
+        agent_name="discovery_classifier",
+        user_prompt=user_prompt,
+        config=config,
+        _agent=_agent,
     )
 
     valid = {c.name for c in categories}
     return CategoryDecision(
-        categories=[c for c in result.output.categories if c in valid],
-        confidences={k: v for k, v in result.output.confidences.items() if k in valid},
-        reasoning=result.output.reasoning,
+        categories=[c for c in output.categories if c in valid],
+        confidences={k: v for k, v in output.confidences.items() if k in valid},
+        reasoning=output.reasoning,
     )
