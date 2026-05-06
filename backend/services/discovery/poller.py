@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlparse
 
 import logfire
 
@@ -46,6 +47,17 @@ async def poll_org_feeds(
     for cfg in domain.discovery_feeds:
         feed_row = runtime_by_url.get(cfg.url)
         if feed_row is None or feed_row.disabled:
+            continue
+        parsed = urlparse(cfg.url)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            await repo.record_feed_error(
+                feed_row.id, error_message=f"invalid feed URL scheme: {cfg.url[:200]}"
+            )
+            logfire.warn(
+                "discovery.feed.invalid_url",
+                feed_id=str(feed_row.id),
+                feed_url=cfg.url,
+            )
             continue
         async with repo.try_acquire_feed_lock(cfg.url) as acquired:
             if not acquired:
