@@ -327,6 +327,31 @@ async def test_list_items_for_topic_is_tenant_isolated(session_maker, org):
 
 
 @pytest.mark.asyncio
+async def test_list_topics_for_ui_org_filtered(session_maker, org):
+    """Topics from another org never surface in our UI list."""
+    from backend.db.models import Org
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    other = Org(code="other_org", domain_name="other", name="Other")
+    async with session_maker() as session:
+        session.add(other)
+        await session.commit()
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    mine = await repo.create_topic(
+        org_code=org.code, title="mine", blurb="b", categories=[]
+    )
+    theirs = await repo.create_topic(
+        org_code="other_org", title="theirs", blurb="b", categories=[]
+    )
+
+    rows = await repo.list_topics_for_ui(org_code=org.code)
+    ids = {t.id for t in rows}
+    assert mine.id in ids
+    assert theirs.id not in ids
+
+
+@pytest.mark.asyncio
 async def test_try_acquire_feed_lock_basic(session_maker):
     """Lock acquisition succeeds for an unlocked feed_url."""
     from backend.repositories.discovery import PostgresDiscoveryRepository

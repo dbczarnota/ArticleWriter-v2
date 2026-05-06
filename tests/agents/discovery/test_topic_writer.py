@@ -45,3 +45,26 @@ async def test_empty_title_or_blurb_raises():
             config=ExtractionAgentConfig(),
             _agent=agent,
         )
+
+
+@pytest.mark.asyncio
+async def test_topic_writer_empty_title_raises():
+    """Empty title from LLM must raise — never let an empty-titled topic
+    leak into the matcher's candidate pool."""
+    agent = _make_writer_agent(title="   ", blurb="ok")
+    with pytest.raises(ValueError, match="empty title or blurb"):
+        await run_topic_writer_agent(
+            title="t", summary="s",
+            config=ExtractionAgentConfig(), _agent=agent,
+        )
+
+
+@pytest.mark.asyncio
+async def test_topic_writer_empty_blurb_raises():
+    """Same for blurb."""
+    agent = _make_writer_agent(title="ok", blurb="")
+    with pytest.raises(ValueError, match="empty title or blurb"):
+        await run_topic_writer_agent(
+            title="t", summary="s",
+            config=ExtractionAgentConfig(), _agent=agent,
+        )

@@ -275,6 +275,56 @@ async def test_reset_feed_clears_errors(client, discovery_repo, org):
 
 
 @pytest.mark.asyncio
+async def test_write_article_from_topic_with_zero_items(monkeypatch, user, org, discovery_repo):
+    """Topic with no items: bridge still issues a 202; URLs list is empty
+    so the pipeline falls back to its search stage (driven by topic.title
+    alone). This is desired behavior — operators can request 'write about
+    this trending topic' without curating URLs."""
+    from backend.repositories import get_article_repo, get_org_config_repo
+
+    class _StubArticleRepo:
+        async def create_running(self, **kwargs):
+            return uuid4()
+
+    class _StubOrgConfigRepo:
+        async def get(self, org_code):
+            from backend.db.models import OrgConfig
+            return OrgConfig(org_code=org_code, language="pl")
+
+        async def upsert(self, c):
+            return c
+
+        async def create_default(self, code):
+            from backend.db.models import OrgConfig
+            return OrgConfig(org_code=code, language="pl")
+
+    async def _noop(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr("backend.api.v2._run_pipeline_from_topic_background", _noop)
+
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_current_org] = lambda: org
+    app.dependency_overrides[get_discovery_repo] = lambda: discovery_repo
+    app.dependency_overrides[get_article_repo] = lambda: _StubArticleRepo()
+    app.dependency_overrides[get_org_config_repo] = lambda: _StubOrgConfigRepo()
+
+    try:
+        topic = await discovery_repo.create_topic(
+            org_code=org.code, title="T", blurb="B", categories=[]
+        )
+        # Note: NO items attached to this topic
+        test_client = TestClient(app)
+        response = test_client.post(f"/v2/discovery/topics/{topic.id}/write_article")
+        assert response.status_code == 202
+        body = response.json()
+        assert body["status"] == "running"
+        assert body["topic_id"] == str(topic.id)
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
 async def test_list_categories_returns_domain_categories(monkeypatch, user, org, discovery_repo):
     """OrgConfigRepo stub so get_domain_config returns a DomainConfig.
     With styl_fm domain, discovery_categories will be whatever the domain defines."""
