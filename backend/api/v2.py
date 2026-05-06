@@ -31,6 +31,25 @@ from backend.secrets import Secrets, get_secrets
 router = APIRouter(prefix="/v2")
 
 
+def _build_app_settings(*, req: ArticleRequest, org_domain_name: str, domain):
+    """Build AppSettings the same way for both regular write_article and
+    the discovery topic bridge. Includes:
+    - apply_org_models from DomainConfig (per-agent model overrides)
+    - per-request agent overrides via from_request
+    - reflection.max_rounds from domain.reflection_rounds
+    Returns the assembled AppSettings."""
+    from dataclasses import replace as dc_replace
+
+    base = AppSettings(domain=org_domain_name)
+    base = apply_org_models(base, domain)
+    if domain.reflection_rounds != 1:
+        base = dc_replace(
+            base,
+            reflection=dc_replace(base.reflection, max_rounds=domain.reflection_rounds),
+        )
+    return AppSettings.from_request(req, base=base)
+
+
 @router.post("/write_article", status_code=202)
 async def write_article(
     req: ArticleRequest,
@@ -61,15 +80,7 @@ async def write_article(
         domain = _apply_article_domain_overrides(domain, req.domain_overrides)
 
     # Build settings: org models first (lower priority), per-request agent overrides on top.
-    base = AppSettings(domain=org.domain_name)
-    base = apply_org_models(base, domain)
-    if domain.reflection_rounds != 1:
-        from dataclasses import replace as dc_replace
-
-        base = dc_replace(
-            base, reflection=dc_replace(base.reflection, max_rounds=domain.reflection_rounds)
-        )
-    app_settings = AppSettings.from_request(req, base=base)
+    app_settings = _build_app_settings(req=req, org_domain_name=org.domain_name, domain=domain)
 
     article_id = await article_repo.create_running(
         org_code=org.code,
@@ -552,9 +563,6 @@ async def write_article_from_discovery_topic(
             status_code=412,
             detail=f"No domain config found for org '{org.code}'.",
         )
-    base = AppSettings(domain=org.domain_name)
-    base = apply_org_models(base, domain)
-
     given = getattr(user, "given_name", None) or ""
     family = getattr(user, "family_name", None) or ""
     author_name = f"{given} {family}".strip() or (user.email or None)
@@ -565,7 +573,7 @@ async def write_article_from_discovery_topic(
         additional_instructions=topic.blurb,
         author_name=author_name,
     )
-    app_settings = AppSettings.from_request(req, base=base)
+    app_settings = _build_app_settings(req=req, org_domain_name=org.domain_name, domain=domain)
 
     article_id = await article_repo.create_running(
         org_code=org.code,

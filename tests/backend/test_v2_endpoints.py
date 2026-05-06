@@ -359,3 +359,20 @@ def test_put_domain_config_partial_body_preserves_discovery_feeds():
     dumped = partial.model_dump(exclude_unset=True)
     assert "target_word_count" in dumped
     assert "discovery_feeds" not in dumped  # caller didn't send it; merge layer keeps existing
+
+
+# ---------------------------------------------------------------------------
+# _build_app_settings — shared helper for write_article paths
+# ---------------------------------------------------------------------------
+
+
+def test_build_app_settings_applies_reflection_rounds():
+    """Both write_article paths should honor org-level reflection_rounds."""
+    from backend.api.schemas import ArticleRequest
+    from backend.api.v2 import _build_app_settings
+    from backend.domain import DomainConfig
+
+    req = ArticleRequest(topic="t")
+    domain = DomainConfig(name="d", description="t", reflection_rounds=3)
+    settings = _build_app_settings(req=req, org_domain_name="d", domain=domain)
+    assert settings.reflection.max_rounds == 3
