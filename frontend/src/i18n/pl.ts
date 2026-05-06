@@ -365,8 +365,11 @@ export const pl: Translations = {
     dialog: {
       title: "Napisz artykuł z tematu",
       topicLabel: "Temat",
-      sourcesLabel: "Źródła (odznacz te, których nie chcesz)",
+      sourcesLabel: "Źródła (odznacz te, których nie chcesz; możesz też dodać własne)",
       copyTitle: "Kopiuj tytuł",
+      addUrl: "Dodaj URL",
+      addUrlPlaceholder: "https://…",
+      removeUrl: "Usuń URL",
       cancel: "Anuluj",
       submit: "Generuj artykuł",
       submitting: "Generuję…",

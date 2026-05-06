@@ -620,16 +620,11 @@ async def write_article_from_discovery_topic(
     items = await discovery_repo.list_items_for_topic(topic_id=topic_id, org_code=org.code)
     all_urls = [it.canonical_url for it in items]
 
-    # Reject any override URL that isn't in this topic's source set — prevents
-    # the dialog from being abused to inject arbitrary URLs into the writer.
+    # Editor's choice: deselect discovered URLs, add their own, mix both.
+    # Same trust boundary as POST /v2/write_article — the regular flow
+    # already accepts arbitrary URLs from the user, so there's nothing
+    # to gate beyond the auth check.
     if overrides and overrides.urls is not None:
-        allowed = set(all_urls)
-        bad = [u for u in overrides.urls if u not in allowed]
-        if bad:
-            raise HTTPException(
-                status_code=400,
-                detail=f"URL not in topic's source set: {bad[0]}",
-            )
         urls = list(overrides.urls) or all_urls
     else:
         urls = all_urls

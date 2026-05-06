@@ -381,6 +381,9 @@ export interface Translations {
       topicLabel: string;
       sourcesLabel: string;
       copyTitle: string;
+      addUrl: string;
+      addUrlPlaceholder: string;
+      removeUrl: string;
       cancel: string;
       submit: string;
       submitting: string;

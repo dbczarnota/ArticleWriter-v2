@@ -15,6 +15,12 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
   const [detail, setDetail] = useState<DiscoveryTopicDetail | null>(null);
   const [topicTitle, setTopicTitle] = useState("");
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+  // URLs the editor pasted in addition to the discovered sources.
+  // Stored separately so the discovered list keeps its full metadata
+  // (title + copy button) while customs render as bare URLs with a
+  // remove button.
+  const [customUrls, setCustomUrls] = useState<string[]>([]);
+  const [customUrlInput, setCustomUrlInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const mounted = useRef(true);
@@ -49,6 +55,40 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
     } catch {
       // clipboard blocked — silent fallback (the title is still visible)
     }
+  }
+
+  function addCustomUrl() {
+    const raw = customUrlInput.trim();
+    if (!raw) return;
+    // Accept anything that parses as an http(s) URL — same lenience as the
+    // regular write-article form. Bad URLs would surface in the pipeline.
+    let normalized: string;
+    try {
+      const parsed = new URL(raw);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return;
+      normalized = parsed.toString();
+    } catch {
+      return;
+    }
+    if (
+      customUrls.includes(normalized) ||
+      detail?.items.some((it) => it.canonical_url === normalized)
+    ) {
+      setCustomUrlInput("");
+      return;
+    }
+    setCustomUrls((prev) => [...prev, normalized]);
+    setSelectedUrls((prev) => new Set(prev).add(normalized));
+    setCustomUrlInput("");
+  }
+
+  function removeCustomUrl(url: string) {
+    setCustomUrls((prev) => prev.filter((u) => u !== url));
+    setSelectedUrls((prev) => {
+      const next = new Set(prev);
+      next.delete(url);
+      return next;
+    });
   }
 
   async function submit() {
@@ -178,7 +218,7 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
                   marginBottom: 6,
                 }}
               >
-                {t.discovery.dialog.sourcesLabel} ({selectedUrls.size}/{detail.items.length})
+                {t.discovery.dialog.sourcesLabel} ({selectedUrls.size}/{detail.items.length + customUrls.length})
               </label>
               <div
                 style={{
@@ -268,6 +308,118 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
                     </button>
                   </div>
                 ))}
+                {customUrls.map((url) => (
+                  <div
+                    key={url}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "10px 12px",
+                      borderTop: "1px solid var(--border)",
+                      background: "var(--accent-lt)",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedUrls.has(url)}
+                      onChange={() => toggleUrl(url)}
+                      disabled={submitting}
+                      style={{ flexShrink: 0 }}
+                    />
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        fontSize: 13,
+                        color: "var(--text)",
+                        textDecoration: "none",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {url} ↗
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => removeCustomUrl(url)}
+                      disabled={submitting}
+                      title={t.discovery.dialog.removeUrl}
+                      style={{
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 6,
+                        background: "var(--white)",
+                        color: "var(--muted)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius)",
+                        cursor: submitting ? "default" : "pointer",
+                      }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginTop: 8,
+                }}
+              >
+                <input
+                  type="url"
+                  inputMode="url"
+                  value={customUrlInput}
+                  onChange={(e) => setCustomUrlInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCustomUrl();
+                    }
+                  }}
+                  disabled={submitting}
+                  placeholder={t.discovery.dialog.addUrlPlaceholder}
+                  style={{
+                    flex: 1,
+                    padding: "8px 10px",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius)",
+                    fontSize: 13,
+                    background: "var(--white)",
+                    color: "var(--text)",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={addCustomUrl}
+                  disabled={submitting || !customUrlInput.trim()}
+                  style={{
+                    padding: "8px 14px",
+                    background: "var(--white)",
+                    color: "var(--accent)",
+                    border: "1px solid var(--accent)",
+                    borderRadius: "var(--radius)",
+                    cursor: submitting || !customUrlInput.trim() ? "default" : "pointer",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    opacity: !customUrlInput.trim() ? 0.5 : 1,
+                  }}
+                >
+                  {t.discovery.dialog.addUrl}
+                </button>
               </div>
             </>
           )}
