@@ -47,33 +47,41 @@ _last_run_at: dict[str, float] = {}
 
 
 async def _poll_org_safely(org_code: str) -> None:
-    """Wrap poll_org_feeds: load fresh config, run, never raise."""
-    try:
-        org_repo = get_org_repo()
-        cfg_repo = get_org_config_repo()
-        org = await org_repo.get(org_code)
-        if org is None:
-            return
+    """Wrap poll_org_feeds: load fresh config, run, never raise.
 
-        from backend.domain import get_domain_config
+    Each org-tick is a fresh asyncio task (created in _master_tick) and
+    therefore starts in a clean OTEL context. Setting baggage at the top
+    here ensures any sub-spans the tick emits (config-load DB calls,
+    upstream poll_org_feeds nested baggage, etc) inherit org_code so a
+    Logfire query `WHERE attributes['org_code'] = X` returns the whole
+    timeline."""
+    with logfire.set_baggage(org_code=org_code):
+        try:
+            org_repo = get_org_repo()
+            cfg_repo = get_org_config_repo()
+            org = await org_repo.get(org_code)
+            if org is None:
+                return
 
-        domain = await get_domain_config(org_code, org.domain_name, cfg_repo)
-        if domain is None or not domain.discovery_enabled:
-            return
-        await poll_org_feeds(
-            org_code=org_code,
-            domain=domain,
-            repo=get_discovery_repo(),
-        )
-    except Exception as e:
-        # Master tick must never propagate; one org's failure cannot
-        # take down the scheduler thread.
-        logfire.warn(
-            "discovery.scheduler.org_tick_failed",
-            org_code=org_code,
-            error_type=type(e).__name__,
-            error_message=str(e)[:500],
-        )
+            from backend.domain import get_domain_config
+
+            domain = await get_domain_config(org_code, org.domain_name, cfg_repo)
+            if domain is None or not domain.discovery_enabled:
+                return
+            await poll_org_feeds(
+                org_code=org_code,
+                domain=domain,
+                repo=get_discovery_repo(),
+            )
+        except Exception as e:
+            # Master tick must never propagate; one org's failure cannot
+            # take down the scheduler thread.
+            logfire.warn(
+                "discovery.scheduler.org_tick_failed",
+                org_code=org_code,
+                error_type=type(e).__name__,
+                error_message=str(e)[:500],
+            )
 
 
 async def _master_tick() -> None:
