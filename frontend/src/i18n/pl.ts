@@ -137,7 +137,7 @@ export const pl: Translations = {
     tipExampleTitles: "Wzorcowe tytuły artykułów Twojej redakcji. Agent follow-up generuje alternatywne tytuły naśladując dokładnie ten styl — długość, emocje, użycie wielkich liter, strukturę zdania.",
     tipExampleArticles: "Pełne artykuły jako 'few-shot examples'. Agent instrukcji analizuje je tworząc brief dla pisarza. Im lepszy przykład, tym dokładniej pipeline odwzorowuje styl i strukturę redakcji.",
     sectionDiscovery: "Discovery (odkrywanie tematów z RSS)",
-    discoveryHint: "Co N minut sprawdzamy skonfigurowane feedy RSS, kategoryzujemy nowe artykuły wg Twoich tagów i grupujemy je w tematy. Klikając „napiśz” na temacie wysyłasz go do standardowego pipeline’u artykułowego.",
+    discoveryHint: "Co N minut sprawdzamy skonfigurowane feedy RSS, kategoryzujemy nowe artykuły wg Twoich tagów i grupujemy je w tematy. Klikając „napisz” na temacie wysyłasz go do standardowego pipeline’u artykułowego.",
     discoveryEnabled: "Discovery włączone",
     tipDiscoveryEnabled: "Master switch. Wyłączone = scheduler nic nie polluje dla tej orgi.",
     discoveryFeeds: "Feedy RSS",
