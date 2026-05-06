@@ -359,3 +359,32 @@ async def test_list_categories_returns_domain_categories(monkeypatch, user, org,
         assert isinstance(response.json(), list)
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_list_topics_filters_by_feed_id(client, discovery_repo, org):
+    feed_a = await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://a/rss")
+    feed_b = await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://b/rss")
+    topic_a = await discovery_repo.create_topic(
+        org_code=org.code, title="A", blurb="b", categories=[]
+    )
+    topic_b = await discovery_repo.create_topic(
+        org_code=org.code, title="B", blurb="b", categories=[]
+    )
+    item_a = await discovery_repo.upsert_item(
+        DiscoveryItem(
+            org_code=org.code, canonical_url="https://a/x", title="x", topic_id=topic_a.id
+        )
+    )
+    item_b = await discovery_repo.upsert_item(
+        DiscoveryItem(
+            org_code=org.code, canonical_url="https://b/y", title="y", topic_id=topic_b.id
+        )
+    )
+    await discovery_repo.add_item_to_feed_link(item_id=item_a.id, feed_id=feed_a.id)
+    await discovery_repo.add_item_to_feed_link(item_id=item_b.id, feed_id=feed_b.id)
+
+    response = client.get("/v2/discovery/topics", params={"feed_id": str(feed_a.id)})
+    assert response.status_code == 200
+    rows = response.json()
+    assert {r["id"] for r in rows} == {str(topic_a.id)}

@@ -472,6 +472,7 @@ async def list_discovery_topics(
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
     category: list[str] = Query(default_factory=list),
     status: list[str] = Query(default_factory=lambda: ["open", "resurfaced"]),
+    feed_id: UUID | None = Query(default=None),
     since: datetime | None = None,
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
@@ -481,6 +482,7 @@ async def list_discovery_topics(
         categories=category or None,
         statuses=status or None,
         since=since,
+        feed_id=feed_id,
         limit=limit,
         offset=offset,
     )

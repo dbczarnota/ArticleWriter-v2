@@ -418,6 +418,7 @@ class NullDiscoveryRepository:
         categories: list[str] | None = None,
         statuses: list[str] | None = None,
         since: datetime | None = None,
+        feed_id: UUID | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[DiscoveryTopic]:
@@ -429,6 +430,14 @@ class NullDiscoveryRepository:
             rows = [t for t in rows if t.status in set(statuses)]
         if since is not None:
             rows = [t for t in rows if t.last_activity_at >= since]
+        if feed_id is not None:
+            items_in_feed = {iid for (iid, fid) in self._item_feeds if fid == feed_id}
+            topic_ids_in_feed = {
+                it.topic_id
+                for it in self._items.values()
+                if it.id in items_in_feed and it.topic_id is not None
+            }
+            rows = [t for t in rows if t.id in topic_ids_in_feed]
         rows.sort(key=lambda t: t.last_activity_at, reverse=True)
         return rows[offset : offset + limit]
 

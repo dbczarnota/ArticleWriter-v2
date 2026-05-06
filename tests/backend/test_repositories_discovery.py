@@ -379,3 +379,28 @@ async def test_try_acquire_feed_lock_blocks_concurrent(session_maker):
     holder_release.set()
     await holder_task
     assert second_acquired == [False]
+
+
+@pytest.mark.asyncio
+async def test_list_topics_for_ui_filters_by_feed_id(session_maker, org):
+    from backend.db.models import DiscoveryItem
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    feed_a = await repo.upsert_feed(org_code=org.code, feed_url="https://a/rss")
+    feed_b = await repo.upsert_feed(org_code=org.code, feed_url="https://b/rss")
+    topic_a = await repo.create_topic(org_code=org.code, title="A", blurb="b", categories=[])
+    topic_b = await repo.create_topic(org_code=org.code, title="B", blurb="b", categories=[])
+    item_a = DiscoveryItem(
+        org_code=org.code, canonical_url="https://a/x", title="x", topic_id=topic_a.id
+    )
+    item_a = await repo.upsert_item(item_a)
+    item_b = DiscoveryItem(
+        org_code=org.code, canonical_url="https://b/y", title="y", topic_id=topic_b.id
+    )
+    item_b = await repo.upsert_item(item_b)
+    await repo.add_item_to_feed_link(item_id=item_a.id, feed_id=feed_a.id)
+    await repo.add_item_to_feed_link(item_id=item_b.id, feed_id=feed_b.id)
+
+    rows = await repo.list_topics_for_ui(org_code=org.code, feed_id=feed_a.id)
+    assert {t.id for t in rows} == {topic_a.id}

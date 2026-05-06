@@ -306,6 +306,7 @@ class PostgresDiscoveryRepository:
         categories: list[str] | None = None,
         statuses: list[str] | None = None,
         since: datetime | None = None,
+        feed_id: UUID | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[DiscoveryTopic]:
@@ -317,6 +318,7 @@ class PostgresDiscoveryRepository:
           returns topics tagged Polityka OR Sport, not both.
         - `statuses` (IN semantics): topic.status must equal one of the given.
         - `since`: topic.last_activity_at >= since.
+        - `feed_id`: only topics that have at least one item attached to that feed.
 
         Order: last_activity_at DESC. Pagination via limit/offset."""
         from sqlalchemy import cast, or_
@@ -336,6 +338,17 @@ class PostgresDiscoveryRepository:
                     for cat in categories
                 ]
                 stmt = stmt.where(or_(*clauses))
+            if feed_id is not None:
+                stmt = stmt.where(
+                    DiscoveryTopic.id.in_(  # type: ignore[arg-type]
+                        select(DiscoveryItem.topic_id)  # type: ignore[arg-type]
+                        .join(
+                            DiscoveryItemFeed,
+                            DiscoveryItemFeed.item_id == DiscoveryItem.id,  # type: ignore[arg-type]
+                        )
+                        .where(DiscoveryItemFeed.feed_id == feed_id)  # type: ignore[arg-type]
+                    )
+                )
             stmt = stmt.order_by(DiscoveryTopic.last_activity_at.desc()).limit(limit).offset(offset)  # type: ignore[arg-type]
             result = await session.execute(stmt)
             return list(result.scalars().all())

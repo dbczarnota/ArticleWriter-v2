@@ -289,6 +289,7 @@ class DiscoveryRepository(Protocol):
         categories: list[str] | None = None,
         statuses: list[str] | None = None,
         since: datetime | None = None,
+        feed_id: UUID | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[DiscoveryTopic]:
@@ -300,6 +301,7 @@ class DiscoveryRepository(Protocol):
           returns topics tagged Polityka OR Sport, not both.
         - `statuses` (IN semantics): topic.status must equal one of the given.
         - `since`: topic.last_activity_at >= since.
+        - `feed_id`: only topics that have at least one item attached to that feed.
 
         Order: last_activity_at DESC. Pagination via limit/offset."""
         ...
