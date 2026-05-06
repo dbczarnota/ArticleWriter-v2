@@ -319,12 +319,14 @@ def test_write_article_response_includes_id(client_as, org_a):
 
 
 def test_domain_config_validates_feed_url():
-    from backend.api.schemas import DomainConfigUpdate
+    from backend.api.schemas import DomainConfigUpdate, FeedConfigPayload
 
     with pytest.raises(ValueError):
         DomainConfigUpdate(
             domain_name="t",
-            discovery_feeds=[{"url": "not a url", "name": "", "poll_interval_min": 15}],
+            discovery_feeds=[
+                FeedConfigPayload(url="not a url", name="", poll_interval_min=15)
+            ],
         )
 
 
@@ -336,15 +338,21 @@ def test_domain_config_validates_window_range():
 
 
 def test_domain_config_accepts_valid_discovery_block():
-    from backend.api.schemas import DomainConfigUpdate
+    from backend.api.schemas import (
+        CategoryConfigPayload,
+        DomainConfigUpdate,
+        FeedConfigPayload,
+    )
 
     cfg = DomainConfigUpdate(
         domain_name="t",
         discovery_enabled=True,
         discovery_feeds=[
-            {"url": "https://example.com/rss", "name": "Test", "poll_interval_min": 10}
+            FeedConfigPayload(url="https://example.com/rss", name="Test", poll_interval_min=10)
         ],
-        discovery_categories=[{"name": "Sport", "description": "About sports"}],
+        discovery_categories=[
+            CategoryConfigPayload(name="Sport", description="About sports")
+        ],
         discovery_topic_matching_window_days=3,
         discovery_followup_threshold=5,
     )

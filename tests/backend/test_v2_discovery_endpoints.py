@@ -5,6 +5,7 @@ via FastAPI's dependency_overrides. Mirrors test_v2_endpoints.py."""
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from uuid import uuid4
 
 import pytest
@@ -39,7 +40,7 @@ def discovery_repo() -> NullDiscoveryRepository:
 
 
 @pytest.fixture
-def client(user, org, discovery_repo) -> TestClient:
+def client(user, org, discovery_repo) -> Generator[TestClient, None, None]:
     app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[get_current_org] = lambda: org
     app.dependency_overrides[get_discovery_repo] = lambda: discovery_repo
