@@ -8,14 +8,11 @@ import {
   type DiscoveryFiltersValue,
 } from "./DiscoveryFiltersSidebar";
 import { TopicsList } from "./TopicsList";
+import { ItemsTable } from "./ItemsTable";
 
 type DiscoveryView = "topics" | "items" | "feeds";
 
-// Tasks 9 & 10 will replace these inline stubs with real components.
-// Kept inline so this task ships standalone with a working Topics view.
-const ItemsTablePlaceholder = () => (
-  <div style={{ padding: 24, color: "var(--muted)" }}>(widok Itemy — w toku)</div>
-);
+// Task 10 will replace this inline stub with the real component.
 const FeedsHealthPlaceholder = () => (
   <div style={{ padding: 24, color: "var(--muted)" }}>(widok Feedy — w toku)</div>
 );
@@ -34,7 +31,7 @@ export function DiscoveryHub() {
     categories: filters.categories,
     statuses: filters.statuses,
   });
-  const { items } = useDiscoveryItems({
+  const { items, loading: itemsLoading } = useDiscoveryItems({
     feedId: filters.feedId,
     categories: filters.categories,
   });
@@ -107,7 +104,7 @@ export function DiscoveryHub() {
           {view === "topics" && (
             <TopicsList topics={topics} loading={topicsLoading} onWrite={startWrite} />
           )}
-          {view === "items" && <ItemsTablePlaceholder />}
+          {view === "items" && <ItemsTable items={items} loading={itemsLoading} />}
           {view === "feeds" && <FeedsHealthPlaceholder />}
         </div>
       </div>
