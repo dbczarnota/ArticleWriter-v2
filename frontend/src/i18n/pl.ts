@@ -365,7 +365,6 @@ export const pl: Translations = {
     dialog: {
       title: "Napisz artykuł z tematu",
       topicLabel: "Temat",
-      titleHint: "Domyślnie tytuł tematu — możesz go edytować lub skopiować jeden z tytułów źródeł niżej.",
       sourcesLabel: "Źródła (odznacz te, których nie chcesz)",
       copyTitle: "Kopiuj tytuł",
       cancel: "Anuluj",

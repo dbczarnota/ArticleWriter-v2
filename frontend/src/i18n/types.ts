@@ -379,7 +379,6 @@ export interface Translations {
     dialog: {
       title: string;
       topicLabel: string;
-      titleHint: string;
       sourcesLabel: string;
       copyTitle: string;
       cancel: string;
