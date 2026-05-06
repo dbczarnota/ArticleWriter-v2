@@ -404,3 +404,40 @@ async def test_list_topics_for_ui_filters_by_feed_id(session_maker, org):
 
     rows = await repo.list_topics_for_ui(org_code=org.code, feed_id=feed_a.id)
     assert {t.id for t in rows} == {topic_a.id}
+
+
+@pytest.mark.asyncio
+async def test_list_items_for_org_filters(session_maker, org):
+    from backend.db.models import DiscoveryItem
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    feed_a = await repo.upsert_feed(org_code=org.code, feed_url="https://a/rss")
+    feed_b = await repo.upsert_feed(org_code=org.code, feed_url="https://b/rss")
+    item_a = await repo.upsert_item(
+        DiscoveryItem(
+            org_code=org.code,
+            canonical_url="https://a/1",
+            title="A",
+            categories=["Polityka"],
+        )
+    )
+    item_b = await repo.upsert_item(
+        DiscoveryItem(
+            org_code=org.code,
+            canonical_url="https://b/1",
+            title="B",
+            categories=["Sport"],
+        )
+    )
+    await repo.add_item_to_feed_link(item_id=item_a.id, feed_id=feed_a.id)
+    await repo.add_item_to_feed_link(item_id=item_b.id, feed_id=feed_b.id)
+
+    all_items = await repo.list_items_for_org(org_code=org.code)
+    assert {it.id for it in all_items} == {item_a.id, item_b.id}
+
+    by_feed = await repo.list_items_for_org(org_code=org.code, feed_id=feed_a.id)
+    assert {it.id for it in by_feed} == {item_a.id}
+
+    by_cat = await repo.list_items_for_org(org_code=org.code, categories=["Polityka"])
+    assert {it.id for it in by_cat} == {item_a.id}

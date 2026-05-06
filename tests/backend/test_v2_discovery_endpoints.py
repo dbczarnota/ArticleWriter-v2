@@ -388,3 +388,34 @@ async def test_list_topics_filters_by_feed_id(client, discovery_repo, org):
     assert response.status_code == 200
     rows = response.json()
     assert {r["id"] for r in rows} == {str(topic_a.id)}
+
+
+@pytest.mark.asyncio
+async def test_list_items_returns_filtered_rows(client, discovery_repo, org):
+    feed_a = await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://a/rss")
+    item = await discovery_repo.upsert_item(
+        DiscoveryItem(
+            org_code=org.code,
+            canonical_url="https://a/1",
+            title="A",
+            categories=["Polityka"],
+        )
+    )
+    await discovery_repo.add_item_to_feed_link(item_id=item.id, feed_id=feed_a.id)
+
+    response = client.get("/v2/discovery/items", params={"feed_id": str(feed_a.id)})
+    assert response.status_code == 200
+    rows = response.json()
+    assert len(rows) == 1
+    assert rows[0]["title"] == "A"
+    assert rows[0]["categories"] == ["Polityka"]
+
+
+@pytest.mark.asyncio
+async def test_list_items_tenant_isolated(client, discovery_repo, org):
+    other = await discovery_repo.upsert_item(
+        DiscoveryItem(org_code="org_other", canonical_url="https://x", title="X")
+    )
+    response = client.get("/v2/discovery/items")
+    assert response.status_code == 200
+    assert other.canonical_url not in [r["canonical_url"] for r in response.json()]

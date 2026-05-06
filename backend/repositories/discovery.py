@@ -181,6 +181,42 @@ class PostgresDiscoveryRepository:
             )
             return list(result.scalars().all())
 
+    async def list_items_for_org(
+        self,
+        *,
+        org_code: str,
+        feed_id: UUID | None = None,
+        categories: list[str] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[DiscoveryItem]:
+        from sqlalchemy import cast, or_
+        from sqlalchemy.dialects.postgresql import JSONB
+
+        async with self._session_maker() as session:
+            stmt = select(DiscoveryItem).where(DiscoveryItem.org_code == org_code)  # type: ignore[arg-type]
+            if feed_id is not None:
+                stmt = stmt.where(
+                    DiscoveryItem.id.in_(  # type: ignore[arg-type]
+                        select(DiscoveryItemFeed.item_id).where(  # type: ignore[arg-type]
+                            DiscoveryItemFeed.feed_id == feed_id  # type: ignore[arg-type]
+                        )
+                    )
+                )
+            if categories:
+                clauses = [
+                    DiscoveryItem.categories.op("@>")(cast([c], JSONB))  # type: ignore[arg-type]
+                    for c in categories
+                ]
+                stmt = stmt.where(or_(*clauses))
+            stmt = (
+                stmt.order_by(DiscoveryItem.fetched_at.desc())  # type: ignore[arg-type]
+                .limit(limit)
+                .offset(offset)
+            )
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
+
     # ── Topics ───────────────────────────────────────────────────────────
     async def list_active_topics(self, *, org_code: str, window_days: int) -> list[DiscoveryTopic]:
         cutoff = datetime.now(UTC) - timedelta(days=window_days)

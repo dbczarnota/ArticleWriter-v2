@@ -342,6 +342,24 @@ class NullDiscoveryRepository:
         rows.sort(key=lambda it: it.fetched_at)
         return rows[:limit]
 
+    async def list_items_for_org(
+        self,
+        *,
+        org_code: str,
+        feed_id: UUID | None = None,
+        categories: list[str] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[DiscoveryItem]:
+        rows = [it for it in self._items.values() if it.org_code == org_code]
+        if feed_id is not None:
+            item_ids_in_feed = {iid for (iid, fid) in self._item_feeds if fid == feed_id}
+            rows = [it for it in rows if it.id in item_ids_in_feed]
+        if categories:
+            rows = [it for it in rows if any(c in it.categories for c in categories)]
+        rows.sort(key=lambda it: it.fetched_at, reverse=True)
+        return rows[offset : offset + limit]
+
     # ── Topics ───────────────────────────────────────────────────────────
     async def list_active_topics(self, *, org_code: str, window_days: int) -> list[DiscoveryTopic]:
         cutoff = _utcnow() - timedelta(days=window_days)

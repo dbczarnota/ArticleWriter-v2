@@ -240,6 +240,25 @@ class DiscoveryRepository(Protocol):
         (classifier crashed, etc) sit here until a future tick retries them."""
         ...
 
+    async def list_items_for_org(
+        self,
+        *,
+        org_code: str,
+        feed_id: UUID | None = None,
+        categories: list[str] | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[DiscoveryItem]:
+        """List items for the UI's raw-items view.
+
+        Filters:
+        - `feed_id`: items linked (via discovery_item_feed) to that feed.
+        - `categories` (OR semantics): item.categories contains ANY of given.
+
+        Order: fetched_at DESC. Pagination via limit/offset.
+        Tenant-isolated by `org_code`."""
+        ...
+
     # ── Topics ───────────────────────────────────────────────────────────
     async def list_active_topics(
         self, *, org_code: str, window_days: int

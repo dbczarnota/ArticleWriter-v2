@@ -618,6 +618,37 @@ async def write_article_from_discovery_topic(
     return {"topic_id": str(topic_id), "article_id": str(article_id), "status": "running"}
 
 
+@router.get("/discovery/items")
+async def list_discovery_items(
+    org: Org = Depends(get_current_org),
+    discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
+    feed_id: UUID | None = Query(default=None),
+    category: list[str] = Query(default_factory=list),
+    limit: int = Query(100, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> list[dict]:
+    items = await discovery_repo.list_items_for_org(
+        org_code=org.code,
+        feed_id=feed_id,
+        categories=category or None,
+        limit=limit,
+        offset=offset,
+    )
+    return [
+        {
+            "id": str(it.id),
+            "canonical_url": it.canonical_url,
+            "title": it.title,
+            "summary": it.summary,
+            "categories": list(it.categories),
+            "topic_id": str(it.topic_id) if it.topic_id else None,
+            "fetched_at": it.fetched_at.isoformat() if it.fetched_at else None,
+            "published_at": it.published_at.isoformat() if it.published_at else None,
+        }
+        for it in items
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Discovery — feeds + categories
 # ---------------------------------------------------------------------------
