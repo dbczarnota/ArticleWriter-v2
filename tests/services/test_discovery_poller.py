@@ -33,6 +33,70 @@ async def test_disabled_returns_zero_no_calls(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_first_poll_truncates_to_five_most_recent(monkeypatch):
+    """A brand new feed (last_fetched_at IS NULL) shouldn't ingest its
+    entire backlog — RSS feeds typically expose 30+ historical items.
+    Only the 5 most recent (by published_at) reach process_item."""
+    from datetime import UTC, datetime, timedelta
+
+    repo = NullDiscoveryRepository()
+    base = datetime(2026, 5, 6, 12, 0, 0, tzinfo=UTC)
+    items = [
+        RawFeedItem(
+            title=f"item-{i}",
+            url=f"https://x/{i}",
+            guid=f"g{i}",
+            summary="s",
+            published_at=base - timedelta(hours=i),
+        )
+        for i in range(10)
+    ]
+    fetcher = AsyncMock(
+        return_value=FetchResult(items=items, etag='"a"', last_modified=None, not_modified=False)
+    )
+    proc = AsyncMock()
+    monkeypatch.setattr("backend.services.discovery.poller.fetch_feed", fetcher)
+    monkeypatch.setattr("backend.services.discovery.poller.process_item", proc)
+    domain = _domain([FeedConfig(url="https://x/rss")])
+
+    n = await poll_org_feeds(org_code="org_t", domain=domain, repo=repo)
+
+    assert n == 5
+    assert proc.await_count == 5
+    # The 5 picked must be the most recent — items 0..4 (i=0 is newest).
+    processed_urls = {call.kwargs["raw"].url for call in proc.await_args_list}
+    assert processed_urls == {f"https://x/{i}" for i in range(5)}
+
+
+@pytest.mark.asyncio
+async def test_second_poll_processes_all_items(monkeypatch):
+    """After the first run sets last_fetched_at, subsequent polls
+    process everything the feed returns (dedup short-circuit handles
+    repeats)."""
+    repo = NullDiscoveryRepository()
+    items = [
+        RawFeedItem(title=f"item-{i}", url=f"https://x/{i}", guid=f"g{i}", summary="s", published_at=None)
+        for i in range(8)
+    ]
+    fetcher = AsyncMock(
+        return_value=FetchResult(items=items, etag='"a"', last_modified=None, not_modified=False)
+    )
+    proc = AsyncMock()
+    monkeypatch.setattr("backend.services.discovery.poller.fetch_feed", fetcher)
+    monkeypatch.setattr("backend.services.discovery.poller.process_item", proc)
+    domain = _domain([FeedConfig(url="https://x/rss")])
+
+    # First poll sets last_fetched_at via record_feed_run.
+    await poll_org_feeds(org_code="org_t", domain=domain, repo=repo)
+    proc.reset_mock()
+
+    # Second poll should hit all 8 items (no truncation).
+    n = await poll_org_feeds(org_code="org_t", domain=domain, repo=repo)
+    assert n == 8
+    assert proc.await_count == 8
+
+
+@pytest.mark.asyncio
 async def test_iterates_feeds_and_processes_new_items(monkeypatch):
     repo = NullDiscoveryRepository()
     fetcher = AsyncMock(

@@ -13,6 +13,14 @@ from backend.repositories.protocols import DiscoveryRepository
 from backend.services.discovery.feed_fetcher import FeedFetchError, RawFeedItem, fetch_feed
 from backend.services.discovery.pipeline import process_item
 
+# On the very first poll for a newly-added feed, only ingest this many of
+# the most-recent entries. RSS feeds often expose 30+ historical items;
+# pulling them all on day 1 floods Discovery with stale stories that the
+# editor never wanted to see. Subsequent polls process whatever the feed
+# returns — the dedup short-circuit in process_item handles repeats so
+# new items get picked up cleanly.
+FIRST_POLL_INITIAL_ITEMS = 5
+
 
 async def poll_org_feeds(
     *,
@@ -95,6 +103,7 @@ async def poll_org_feeds(
                         )
                         continue
 
+                    is_first_poll = feed_row.last_fetched_at is None
                     await repo.record_feed_run(
                         feed_row.id,
                         last_etag=result.etag,
@@ -104,7 +113,22 @@ async def poll_org_feeds(
                     if result.not_modified:
                         continue
 
-                    for raw in result.items:
+                    items_to_process = result.items
+                    if is_first_poll and len(items_to_process) > FIRST_POLL_INITIAL_ITEMS:
+                        items_to_process = sorted(
+                            items_to_process,
+                            key=lambda r: r.published_at or datetime.min.replace(tzinfo=UTC),
+                            reverse=True,
+                        )[:FIRST_POLL_INITIAL_ITEMS]
+                        logfire.info(
+                            "discovery.feed.first_poll_truncated",
+                            feed_id=str(feed_row.id),
+                            feed_url=cfg.url,
+                            total_items=len(result.items),
+                            ingested=len(items_to_process),
+                        )
+
+                    for raw in items_to_process:
                         try:
                             await process_item(
                                 raw=raw,
