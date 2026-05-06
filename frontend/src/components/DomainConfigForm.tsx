@@ -580,6 +580,24 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
             {dc.discoveryFeeds}
             <Tip text={dc.tipDiscoveryFeeds} />
           </h4>
+          {form.discovery_feeds.length > 0 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "2fr 1fr 100px auto",
+                gap: 8,
+                marginBottom: 4,
+                fontSize: 11,
+                color: "var(--muted)",
+                fontWeight: 500,
+              }}
+            >
+              <span>{dc.discoveryFeedUrl}</span>
+              <span>{dc.discoveryFeedName}</span>
+              <span>{dc.discoveryFeedInterval}</span>
+              <span></span>
+            </div>
+          )}
           {form.discovery_feeds.map((feed, i) => (
             <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 100px auto", gap: 8, marginBottom: 8, alignItems: "center" }}>
               <input
@@ -646,6 +664,23 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
             {dc.discoveryCategories}
             <Tip text={dc.tipDiscoveryCategories} />
           </h4>
+          {form.discovery_categories.length > 0 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 2fr auto",
+                gap: 8,
+                marginBottom: 4,
+                fontSize: 11,
+                color: "var(--muted)",
+                fontWeight: 500,
+              }}
+            >
+              <span>{dc.discoveryCategoryName}</span>
+              <span>{dc.discoveryCategoryDescription}</span>
+              <span></span>
+            </div>
+          )}
           {form.discovery_categories.map((cat, i) => (
             <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: 8, marginBottom: 8, alignItems: "start" }}>
               <input
