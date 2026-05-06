@@ -115,6 +115,10 @@ async def poll_org_feeds(
 
                     items_to_process = result.items
                     if is_first_poll and len(items_to_process) > FIRST_POLL_INITIAL_ITEMS:
+                        # Brand new feed — keep only the FIRST_POLL_INITIAL_ITEMS
+                        # most recent. The published_at of the oldest of those
+                        # becomes the implicit floor that future polls enforce
+                        # via get_min_published_at_for_feed.
                         items_to_process = sorted(
                             items_to_process,
                             key=lambda r: r.published_at or datetime.min.replace(tzinfo=UTC),
@@ -127,6 +131,24 @@ async def poll_org_feeds(
                             total_items=len(result.items),
                             ingested=len(items_to_process),
                         )
+                    elif not is_first_poll:
+                        floor = await repo.get_min_published_at_for_feed(feed_id=feed_row.id)
+                        if floor is not None:
+                            before = len(items_to_process)
+                            items_to_process = [
+                                r
+                                for r in items_to_process
+                                if r.published_at is None or r.published_at >= floor
+                            ]
+                            dropped = before - len(items_to_process)
+                            if dropped:
+                                logfire.info(
+                                    "discovery.feed.stale_items_dropped",
+                                    feed_id=str(feed_row.id),
+                                    feed_url=cfg.url,
+                                    dropped=dropped,
+                                    floor=floor.isoformat(),
+                                )
 
                     for raw in items_to_process:
                         try:

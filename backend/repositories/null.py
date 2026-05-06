@@ -321,6 +321,15 @@ class NullDiscoveryRepository:
             if it.id in item_ids and it.fetched_at >= since
         )
 
+    async def get_min_published_at_for_feed(self, *, feed_id: UUID) -> datetime | None:
+        item_ids = {item_id for (item_id, fid) in self._item_feeds if fid == feed_id}
+        pubs = [
+            it.published_at
+            for it in self._items.values()
+            if it.id in item_ids and it.published_at is not None
+        ]
+        return min(pubs) if pubs else None
+
     # ── Items ────────────────────────────────────────────────────────────
     async def get_item_by_url(self, *, org_code: str, canonical_url: str) -> DiscoveryItem | None:
         for it in self._items.values():

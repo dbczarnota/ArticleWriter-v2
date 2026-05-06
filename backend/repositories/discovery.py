@@ -119,6 +119,19 @@ class PostgresDiscoveryRepository:
             )
             return int(result.scalar() or 0)
 
+    async def get_min_published_at_for_feed(self, *, feed_id: UUID) -> datetime | None:
+        async with self._session_maker() as session:
+            result = await session.execute(
+                select(func.min(DiscoveryItem.published_at))  # type: ignore[arg-type]
+                .select_from(DiscoveryItem)
+                .join(
+                    DiscoveryItemFeed,
+                    DiscoveryItemFeed.item_id == DiscoveryItem.id,  # type: ignore[arg-type]
+                )
+                .where(DiscoveryItemFeed.feed_id == feed_id)  # type: ignore[arg-type]
+            )
+            return result.scalar()
+
     # ── Items ────────────────────────────────────────────────────────────
     async def get_item_by_url(self, *, org_code: str, canonical_url: str) -> DiscoveryItem | None:
         async with self._session_maker() as session:

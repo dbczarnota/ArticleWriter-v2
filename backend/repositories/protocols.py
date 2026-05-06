@@ -229,6 +229,17 @@ class DiscoveryRepository(Protocol):
         item's fetched_at >= since. Used by the feed-health endpoint."""
         ...
 
+    async def get_min_published_at_for_feed(self, *, feed_id: UUID) -> datetime | None:
+        """Lowest published_at across items linked to this feed. None when
+        no items are linked yet, or when none of them carry a published_at.
+
+        Used by the poller as a stale-item floor: after the first poll
+        truncates to N newest items, the floor is the published_at of the
+        oldest of those N. On every subsequent poll, items strictly older
+        than this floor are dropped before they reach process_item — so the
+        feed's historical backlog never gets backfilled."""
+        ...
+
     # ── Items ────────────────────────────────────────────────────────────
     async def get_item_by_url(
         self, *, org_code: str, canonical_url: str
