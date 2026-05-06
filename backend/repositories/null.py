@@ -325,8 +325,13 @@ class NullDiscoveryRepository:
         if (item_id, feed_id) not in self._item_feeds:
             self._item_feeds.append((item_id, feed_id))
 
-    async def list_items_for_topic(self, topic_id: UUID) -> list[DiscoveryItem]:
-        return [it for it in self._items.values() if it.topic_id == topic_id]
+    async def list_items_for_topic(
+        self, *, topic_id: UUID, org_code: str
+    ) -> list[DiscoveryItem]:
+        return [
+            it for it in self._items.values()
+            if it.topic_id == topic_id and it.org_code == org_code
+        ]
 
     # ── Topics ───────────────────────────────────────────────────────────
     async def list_active_topics(self, *, org_code: str, window_days: int) -> list[DiscoveryTopic]:

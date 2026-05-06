@@ -152,11 +152,16 @@ class PostgresDiscoveryRepository:
             await session.execute(stmt)
             await session.commit()
 
-    async def list_items_for_topic(self, topic_id: UUID) -> list[DiscoveryItem]:
+    async def list_items_for_topic(
+        self, *, topic_id: UUID, org_code: str
+    ) -> list[DiscoveryItem]:
         async with self._session_maker() as session:
             result = await session.execute(
                 select(DiscoveryItem)
-                .where(DiscoveryItem.topic_id == topic_id)  # type: ignore[arg-type]
+                .where(
+                    DiscoveryItem.topic_id == topic_id,  # type: ignore[arg-type]
+                    DiscoveryItem.org_code == org_code,  # type: ignore[arg-type]
+                )
                 .order_by(DiscoveryItem.fetched_at)  # type: ignore[arg-type]
             )
             return list(result.scalars().all())

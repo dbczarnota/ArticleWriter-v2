@@ -410,7 +410,7 @@ async def list_discovery_topics(
     for t in rows:
         new_count = 0
         if t.consumed_at is not None:
-            items = await discovery_repo.list_items_for_topic(t.id)
+            items = await discovery_repo.list_items_for_topic(topic_id=t.id, org_code=org.code)
             new_count = sum(1 for it in items if it.fetched_at > t.consumed_at)
         out.append(_topic_to_json(t, new_items_since_consume=new_count))
     return out
@@ -425,7 +425,7 @@ async def get_discovery_topic(
     topic = await discovery_repo.get_topic(topic_id=topic_id, org_code=org.code)
     if topic is None:
         raise HTTPException(status_code=404, detail="Topic not found")
-    items = await discovery_repo.list_items_for_topic(topic_id)
+    items = await discovery_repo.list_items_for_topic(topic_id=topic_id, org_code=org.code)
     new_count = sum(
         1 for it in items if topic.consumed_at is not None and it.fetched_at > topic.consumed_at
     )
@@ -488,7 +488,7 @@ async def write_article_from_discovery_topic(
     if topic is None:
         raise HTTPException(status_code=404, detail="Topic not found")
 
-    items = await discovery_repo.list_items_for_topic(topic_id)
+    items = await discovery_repo.list_items_for_topic(topic_id=topic_id, org_code=org.code)
     urls = [it.canonical_url for it in items]
 
     cfg = get_secrets()

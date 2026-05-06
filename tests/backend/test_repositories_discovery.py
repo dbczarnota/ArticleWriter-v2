@@ -289,3 +289,38 @@ async def test_dismiss_then_restore(session_maker, org):
     await repo.restore_topic(topic_id=t.id, org_code=org.code)
     fetched = await repo.get_topic(topic_id=t.id, org_code=org.code)
     assert fetched is not None and fetched.status == "open"
+
+
+@pytest.mark.asyncio
+async def test_list_items_for_topic_is_tenant_isolated(session_maker, org):
+    """A topic_id from org_a must not leak items via org_b's repo call."""
+    from backend.db.models import DiscoveryItem, Org
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    # Create a second org
+    org_b = Org(code="org_other", domain_name="other", name="Other")
+    async with session_maker() as session:
+        session.add(org_b)
+        await session.commit()
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    topic = await repo.create_topic(
+        org_code=org.code, title="T", blurb="b", categories=[]
+    )
+    item = DiscoveryItem(
+        org_code=org.code, canonical_url="https://e.com/x",
+        title="X", categories=[], topic_id=topic.id,
+    )
+    await repo.upsert_item(item)
+
+    # Same topic_id, but other org_code → empty result
+    items = await repo.list_items_for_topic(
+        topic_id=topic.id, org_code="org_other"
+    )
+    assert items == []
+
+    # Correct org_code → finds item
+    items = await repo.list_items_for_topic(
+        topic_id=topic.id, org_code=org.code
+    )
+    assert len(items) == 1
