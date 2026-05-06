@@ -222,6 +222,12 @@ class DiscoveryRepository(Protocol):
         disable_threshold: int = 10,
     ) -> None: ...
     async def reset_feed_errors(self, feed_id: UUID) -> None: ...
+    async def count_items_for_feed_since(
+        self, *, feed_id: UUID, since: datetime
+    ) -> int:
+        """Count items linked to this feed via discovery_item_feed where the
+        item's fetched_at >= since. Used by the feed-health endpoint."""
+        ...
 
     # ── Items ────────────────────────────────────────────────────────────
     async def get_item_by_url(

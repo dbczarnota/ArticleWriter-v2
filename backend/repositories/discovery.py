@@ -101,6 +101,24 @@ class PostgresDiscoveryRepository:
             )
             await session.commit()
 
+    async def count_items_for_feed_since(
+        self, *, feed_id: UUID, since: datetime
+    ) -> int:
+        async with self._session_maker() as session:
+            result = await session.execute(
+                select(func.count())
+                .select_from(DiscoveryItem)
+                .join(
+                    DiscoveryItemFeed,
+                    DiscoveryItemFeed.item_id == DiscoveryItem.id,  # type: ignore[arg-type]
+                )
+                .where(
+                    DiscoveryItemFeed.feed_id == feed_id,  # type: ignore[arg-type]
+                    DiscoveryItem.fetched_at >= since,  # type: ignore[arg-type]
+                )
+            )
+            return int(result.scalar() or 0)
+
     # ── Items ────────────────────────────────────────────────────────────
     async def get_item_by_url(self, *, org_code: str, canonical_url: str) -> DiscoveryItem | None:
         async with self._session_maker() as session:

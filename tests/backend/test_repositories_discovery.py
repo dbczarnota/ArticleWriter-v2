@@ -441,3 +441,40 @@ async def test_list_items_for_org_filters(session_maker, org):
 
     by_cat = await repo.list_items_for_org(org_code=org.code, categories=["Polityka"])
     assert {it.id for it in by_cat} == {item_a.id}
+
+
+@pytest.mark.asyncio
+async def test_count_items_for_feed_since(session_maker, org):
+    from datetime import datetime, timedelta
+
+    from backend.db.models import DiscoveryItem
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    feed = await repo.upsert_feed(org_code=org.code, feed_url="https://x/rss")
+    now = datetime.now(UTC)
+
+    fresh = await repo.upsert_item(
+        DiscoveryItem(
+            org_code=org.code,
+            canonical_url="https://x/1",
+            title="fresh",
+            fetched_at=now - timedelta(hours=2),
+        )
+    )
+    stale = await repo.upsert_item(
+        DiscoveryItem(
+            org_code=org.code,
+            canonical_url="https://x/2",
+            title="stale",
+            fetched_at=now - timedelta(hours=48),
+        )
+    )
+
+    await repo.add_item_to_feed_link(item_id=fresh.id, feed_id=feed.id)
+    await repo.add_item_to_feed_link(item_id=stale.id, feed_id=feed.id)
+
+    count = await repo.count_items_for_feed_since(
+        feed_id=feed.id, since=now - timedelta(hours=24)
+    )
+    assert count == 1

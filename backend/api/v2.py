@@ -659,18 +659,27 @@ async def list_discovery_feeds(
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
 ) -> list[dict]:
+    from datetime import UTC, timedelta
+
     feeds = await discovery_repo.list_feeds_for_org(org.code)
-    return [
-        {
-            "id": str(f.id),
-            "feed_url": f.feed_url,
-            "last_fetched_at": f.last_fetched_at.isoformat() if f.last_fetched_at else None,
-            "last_error": f.last_error,
-            "error_count": f.error_count,
-            "disabled": f.disabled,
-        }
-        for f in feeds
-    ]
+    since = datetime.now(UTC) - timedelta(hours=24)
+    out: list[dict] = []
+    for f in feeds:
+        items_24h = await discovery_repo.count_items_for_feed_since(
+            feed_id=f.id, since=since
+        )
+        out.append(
+            {
+                "id": str(f.id),
+                "feed_url": f.feed_url,
+                "last_fetched_at": f.last_fetched_at.isoformat() if f.last_fetched_at else None,
+                "last_error": f.last_error,
+                "error_count": f.error_count,
+                "disabled": f.disabled,
+                "items_24h_count": items_24h,
+            }
+        )
+    return out
 
 
 @router.post("/discovery/feeds/{feed_id}/reset")

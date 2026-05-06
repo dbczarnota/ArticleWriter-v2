@@ -267,6 +267,22 @@ async def test_list_feeds_returns_runtime_state(client, discovery_repo, org):
 
 
 @pytest.mark.asyncio
+async def test_list_feeds_includes_items_24h_count(client, discovery_repo, org):
+    feed = await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://x/rss")
+    item = await discovery_repo.upsert_item(
+        DiscoveryItem(org_code=org.code, canonical_url="https://x/1", title="A")
+    )
+    await discovery_repo.add_item_to_feed_link(item_id=item.id, feed_id=feed.id)
+
+    response = client.get("/v2/discovery/feeds")
+    assert response.status_code == 200
+    rows = response.json()
+    assert len(rows) == 1
+    assert rows[0]["items_24h_count"] == 1
+    assert "last_fetched_at" in rows[0]
+
+
+@pytest.mark.asyncio
 async def test_reset_feed_clears_errors(client, discovery_repo, org):
     f = await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://x/rss")
     await discovery_repo.record_feed_error(f.id, error_message="boom")

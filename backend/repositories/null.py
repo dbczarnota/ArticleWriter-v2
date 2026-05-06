@@ -311,6 +311,16 @@ class NullDiscoveryRepository:
         f.last_error = None
         f.disabled = False
 
+    async def count_items_for_feed_since(
+        self, *, feed_id: UUID, since: datetime
+    ) -> int:
+        item_ids = {item_id for (item_id, fid) in self._item_feeds if fid == feed_id}
+        return sum(
+            1
+            for it in self._items.values()
+            if it.id in item_ids and it.fetched_at >= since
+        )
+
     # ── Items ────────────────────────────────────────────────────────────
     async def get_item_by_url(self, *, org_code: str, canonical_url: str) -> DiscoveryItem | None:
         for it in self._items.values():
