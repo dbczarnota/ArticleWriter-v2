@@ -10,11 +10,14 @@ Also used in tests where pulling Postgres up is overkill.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from backend.db.models import (
     Article,
+    DiscoveryFeed,
+    DiscoveryItem,
+    DiscoveryTopic,
     EmbedCandidate,
     Fact,
     FallbackEvent,
@@ -25,6 +28,10 @@ from backend.db.models import (
 )
 
 _log = logging.getLogger(__name__)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(UTC)
 
 # Stable seed values used by run.py's NullAuthenticator path so a developer can
 # rely on the same identifiers across runs.
@@ -235,3 +242,194 @@ class NullOrgConfigRepository:
 
     async def create_default(self, org_code: str) -> OrgConfig:
         return OrgConfig(org_code=org_code)
+
+
+class NullDiscoveryRepository:
+    """No-op DiscoveryRepository for local-dev and tests. Keeps an
+    in-memory store so test harnesses that read after write get
+    deterministic data, but emits no Logfire events."""
+
+    def __init__(self) -> None:
+        self._feeds: dict[UUID, DiscoveryFeed] = {}
+        self._items: dict[UUID, DiscoveryItem] = {}
+        self._topics: dict[UUID, DiscoveryTopic] = {}
+        self._item_feeds: list[tuple[UUID, UUID]] = []
+
+    # ── Feeds ────────────────────────────────────────────────────────────
+    async def list_feeds_for_org(self, org_code: str) -> list[DiscoveryFeed]:
+        return [f for f in self._feeds.values() if f.org_code == org_code]
+
+    async def upsert_feed(self, *, org_code: str, feed_url: str) -> DiscoveryFeed:
+        for f in self._feeds.values():
+            if f.org_code == org_code and f.feed_url == feed_url:
+                return f
+        f = DiscoveryFeed(org_code=org_code, feed_url=feed_url)
+        self._feeds[f.id] = f
+        return f
+
+    async def record_feed_run(
+        self,
+        feed_id: UUID,
+        *,
+        last_etag: str | None,
+        last_modified: str | None,
+    ) -> None:
+        f = self._feeds.get(feed_id)
+        if f is None:
+            return
+        f.last_fetched_at = _utcnow()
+        f.last_etag = last_etag
+        f.last_modified = last_modified
+        f.error_count = 0
+        f.last_error = None
+
+    async def record_feed_error(
+        self,
+        feed_id: UUID,
+        *,
+        error_message: str,
+        disable_threshold: int = 10,
+    ) -> None:
+        f = self._feeds.get(feed_id)
+        if f is None:
+            return
+        f.error_count += 1
+        f.last_error = error_message
+        if f.error_count >= disable_threshold:
+            f.disabled = True
+
+    async def reset_feed_errors(self, feed_id: UUID) -> None:
+        f = self._feeds.get(feed_id)
+        if f is None:
+            return
+        f.error_count = 0
+        f.last_error = None
+        f.disabled = False
+
+    # ── Items ────────────────────────────────────────────────────────────
+    async def get_item_by_url(
+        self, *, org_code: str, canonical_url: str
+    ) -> DiscoveryItem | None:
+        for it in self._items.values():
+            if it.org_code == org_code and it.canonical_url == canonical_url:
+                return it
+        return None
+
+    async def upsert_item(self, item: DiscoveryItem) -> DiscoveryItem:
+        self._items[item.id] = item
+        return item
+
+    async def add_item_to_feed_link(self, *, item_id: UUID, feed_id: UUID) -> None:
+        if (item_id, feed_id) not in self._item_feeds:
+            self._item_feeds.append((item_id, feed_id))
+
+    async def list_items_for_topic(self, topic_id: UUID) -> list[DiscoveryItem]:
+        return [it for it in self._items.values() if it.topic_id == topic_id]
+
+    # ── Topics ───────────────────────────────────────────────────────────
+    async def list_active_topics(
+        self, *, org_code: str, window_days: int
+    ) -> list[DiscoveryTopic]:
+        cutoff = _utcnow() - timedelta(days=window_days)
+        return [
+            t
+            for t in self._topics.values()
+            if t.org_code == org_code and t.last_activity_at >= cutoff
+        ]
+
+    async def create_topic(
+        self,
+        *,
+        org_code: str,
+        title: str,
+        blurb: str,
+        categories: list[str],
+    ) -> DiscoveryTopic:
+        t = DiscoveryTopic(
+            org_code=org_code, title=title, blurb=blurb, categories=list(categories)
+        )
+        self._topics[t.id] = t
+        return t
+
+    async def attach_item_to_topic(
+        self,
+        *,
+        item_id: UUID,
+        topic_id: UUID,
+        item_categories: list[str],
+    ) -> DiscoveryTopic:
+        topic = self._topics[topic_id]
+        topic.categories = list(dict.fromkeys(topic.categories + item_categories))
+        topic.last_activity_at = _utcnow()
+        item = self._items.get(item_id)
+        if item is not None:
+            item.topic_id = topic_id
+        return topic
+
+    async def mark_topic_consumed(
+        self,
+        *,
+        topic_id: UUID,
+        article_id: UUID,
+        items_at_consume: int,
+    ) -> None:
+        t = self._topics[topic_id]
+        t.status = "consumed"
+        t.consumed_article_id = article_id
+        t.consumed_at = _utcnow()
+        t.items_at_consume = items_at_consume
+
+    async def check_resurface(
+        self, *, topic_id: UUID, threshold: int
+    ) -> bool:
+        t = self._topics[topic_id]
+        if t.consumed_at is None:
+            return False
+        new_count = sum(
+            1
+            for it in self._items.values()
+            if it.topic_id == topic_id and it.fetched_at > t.consumed_at
+        )
+        if new_count >= threshold:
+            t.status = "resurfaced"
+            return True
+        return False
+
+    async def get_topic(
+        self, *, topic_id: UUID, org_code: str
+    ) -> DiscoveryTopic | None:
+        t = self._topics.get(topic_id)
+        if t is None or t.org_code != org_code:
+            return None
+        return t
+
+    async def list_topics_for_ui(
+        self,
+        *,
+        org_code: str,
+        categories: list[str] | None = None,
+        statuses: list[str] | None = None,
+        since: datetime | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[DiscoveryTopic]:
+        rows = [t for t in self._topics.values() if t.org_code == org_code]
+        if categories:
+            cat_set = set(categories)
+            rows = [t for t in rows if cat_set & set(t.categories)]
+        if statuses:
+            rows = [t for t in rows if t.status in set(statuses)]
+        if since is not None:
+            rows = [t for t in rows if t.last_activity_at >= since]
+        rows.sort(key=lambda t: t.last_activity_at, reverse=True)
+        return rows[offset : offset + limit]
+
+    async def dismiss_topic(self, *, topic_id: UUID, org_code: str) -> None:
+        t = self._topics.get(topic_id)
+        if t is not None and t.org_code == org_code:
+            t.status = "dismissed"
+
+    async def restore_topic(self, *, topic_id: UUID, org_code: str) -> None:
+        t = self._topics.get(topic_id)
+        if t is not None and t.org_code == org_code:
+            t.status = "open"
