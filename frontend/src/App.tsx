@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "./lib/useAuth";
 import { useArticles } from "./lib/useArticles";
 import { useMediaQuery } from "./lib/useMediaQuery";
@@ -38,11 +38,6 @@ export default function App() {
     markDone,
   } = useArticles();
 
-  if (!NULL_AUTH) {
-    if (isLoading) return <div style={{ padding: 32 }}>{t.app.loading}</div>;
-    if (!isAuthenticated) return <LoginGate />;
-  }
-
   function selectArticle(id: string) {
     setSelectedArticleId(id);
     setView("article");
@@ -52,6 +47,26 @@ export default function App() {
     // Refresh the list whenever the user navigates so co-workers' new
     // articles show up without needing a tab switch.
     refresh();
+  }
+
+  // Keep a ref to the latest selectArticle so the cross-view event listener
+  // (registered once on mount) always calls the current closure. selectArticle
+  // is redefined every render and captures isMobile/refresh by closure.
+  // Hooks must run before any conditional early return below.
+  const selectArticleRef = useRef(selectArticle);
+  selectArticleRef.current = selectArticle;
+  useEffect(() => {
+    function onOpenArticle(e: Event) {
+      const ce = e as CustomEvent<{ articleId: string }>;
+      selectArticleRef.current(ce.detail.articleId);
+    }
+    window.addEventListener("discovery:open-article", onOpenArticle);
+    return () => window.removeEventListener("discovery:open-article", onOpenArticle);
+  }, []);
+
+  if (!NULL_AUTH) {
+    if (isLoading) return <div style={{ padding: 32 }}>{t.app.loading}</div>;
+    if (!isAuthenticated) return <LoginGate />;
   }
 
   return (
