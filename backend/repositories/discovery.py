@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import logfire
-from sqlalchemy import select, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -271,13 +271,11 @@ class PostgresDiscoveryRepository:
             topic = await session.get(DiscoveryTopic, topic_id)
             if topic is None or topic.consumed_at is None:
                 return False
-            count_result = await session.execute(
-                select(DiscoveryItem.id).where(  # type: ignore[arg-type]
-                    DiscoveryItem.topic_id == topic_id,  # type: ignore[arg-type]
-                    DiscoveryItem.fetched_at > topic.consumed_at,  # type: ignore[arg-type]
-                )
+            count_stmt = select(func.count()).select_from(DiscoveryItem).where(
+                DiscoveryItem.topic_id == topic_id,  # type: ignore[arg-type]
+                DiscoveryItem.fetched_at > topic.consumed_at,  # type: ignore[arg-type]
             )
-            new_count = len(list(count_result.scalars().all()))
+            new_count = (await session.execute(count_stmt)).scalar_one() or 0
             if new_count < threshold:
                 return False
             topic.status = "resurfaced"
