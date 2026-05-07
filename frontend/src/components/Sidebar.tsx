@@ -4,6 +4,7 @@ import type { DateRange } from "../lib/useArticles";
 import { formatRangeLabel } from "../lib/datePresets";
 import { useT, useLang } from "../i18n";
 import { DateRangePicker } from "./DateRangePicker";
+import { Button } from "./ui/Button";
 
 const STATUS_DOT: Record<string, string> = {
   done: "#22c55e",
@@ -183,20 +184,9 @@ export function Sidebar({
         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em" }}>
           {t.sidebar.articles}
         </span>
-        <button
-          onClick={onNew}
-          style={{
-            background: "var(--accent)",
-            color: "var(--white)",
-            border: "none",
-            borderRadius: "var(--radius)",
-            padding: "4px 10px",
-            fontSize: 12,
-            fontWeight: 500,
-          }}
-        >
+        <Button variant="primary" size="sm" onClick={onNew}>
           {t.sidebar.newArticle}
-        </button>
+        </Button>
       </div>
 
       <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", display: "flex", gap: 6, flexWrap: "wrap" }}>

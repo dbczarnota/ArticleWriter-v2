@@ -1,5 +1,6 @@
 import { UserMenu } from "./UserMenu";
 import { Logo } from "./Logo";
+import { Button } from "./ui/Button";
 import { useLang, useT } from "../i18n";
 
 interface TopbarProps {
@@ -54,22 +55,9 @@ export function Topbar({ onSettings, onDiscovery, onToggleSidebar, sidebarOpen }
         <Logo />
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-        <button
-          onClick={onDiscovery}
-          style={{
-            background: "none",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            padding: "4px 10px",
-            fontSize: 13,
-            color: "var(--text)",
-            cursor: "pointer",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-lt)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-        >
+        <Button variant="ghost" size="sm" onClick={onDiscovery}>
           {t.topbar.discovery}
-        </button>
+        </Button>
         <div style={{ display: "flex", gap: 4, fontSize: 12, color: "var(--muted)" }}>
           {(["pl", "en"] as const).map((l) => (
             <button

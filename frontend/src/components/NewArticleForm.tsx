@@ -4,6 +4,7 @@ import { useArticles } from "../lib/useArticles";
 import { useAuth } from "../lib/useAuth";
 import { useT } from "../i18n";
 import { AVAILABLE_MODELS } from "./DomainConfigForm";
+import { Button } from "./ui/Button";
 
 const MEDIA_KEYS = [
   { key: "youtube_search", label: "YouTube" },
@@ -355,23 +356,15 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
 
         {error && <p style={{ color: "#ef4444", fontSize: 13 }}>{error}</p>}
 
-        <button
+        <Button
           type="submit"
+          variant="primary"
+          size="md"
           disabled={loading || !topic.trim()}
-          style={{
-            padding: "10px 20px",
-            background: loading || !topic.trim() ? "var(--border)" : "var(--accent)",
-            color: loading || !topic.trim() ? "var(--muted)" : "var(--white)",
-            border: "none",
-            borderRadius: "var(--radius)",
-            fontSize: 14,
-            fontWeight: 500,
-            alignSelf: "flex-start",
-            cursor: loading || !topic.trim() ? "default" : "pointer",
-          }}
+          style={{ alignSelf: "flex-start" }}
         >
           {loading ? na.generating : na.generate}
-        </button>
+        </Button>
       </form>
     </div>
   );

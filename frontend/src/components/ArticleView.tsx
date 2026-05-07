@@ -5,6 +5,8 @@ import { useArticles } from "../lib/useArticles";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
+import { Button } from "./ui/Button";
+import { CopyIcon } from "./ui/icons";
 
 // Reject anything that isn't http(s). Source URLs come from the pipeline
 // (which scraped third-party articles); a malicious source could carry a
@@ -260,43 +262,19 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
           width: isMobile ? "100%" : "auto",
           justifyContent: isMobile ? "flex-start" : "flex-start",
         }}>
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleCopy}
+            iconLeft={<CopyIcon />}
+            style={copied ? { background: "var(--success)", color: "var(--white)", borderColor: "var(--success)" } : undefined}
             title={av.copyHtml}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 14px",
-              background: copied ? "#22c55e" : "var(--white)",
-              color: copied ? "#fff" : "var(--accent)",
-              border: `1px solid ${copied ? "#22c55e" : "var(--accent)"}`,
-              borderRadius: "var(--radius)",
-              fontSize: 13,
-              cursor: "pointer",
-              transition: "background 0.15s, color 0.15s, border-color 0.15s",
-            }}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
             {copied ? av.copied : av.copyHtml}
-          </button>
-          <button
-            onClick={handleExport}
-            style={{
-              padding: "6px 14px",
-              background: "var(--accent)",
-              color: "var(--white)",
-              border: "none",
-              borderRadius: "var(--radius)",
-              fontSize: 13,
-              cursor: "pointer",
-            }}
-          >
+          </Button>
+          <Button variant="primary" size="sm" onClick={handleExport}>
             {av.exportHtml}
-          </button>
+          </Button>
         </div>
       </div>
 
