@@ -31,12 +31,12 @@ describe("useApi (NULL_AUTH)", () => {
     expect(result.current.authReady).toBe(true);
     expect(typeof result.current.request).toBe("function");
 
-    global.fetch = vi.fn().mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response('{"ok":true}', { status: 200 }));
     await act(async () => {
       const res = await result.current.request<{ ok: boolean }>("/v2/health");
       expect(res.ok).toBe(true);
     });
-    const call = (global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const call = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
     const headers = call[1].headers as Record<string, string>;
     expect(headers["X-Org-Code"]).toBe("__local_dev__");
     expect(headers["Authorization"]).toBeUndefined();
@@ -44,7 +44,18 @@ describe("useApi (NULL_AUTH)", () => {
 
   it("throws when response is not ok", async () => {
     const { result } = renderHook(() => useApi());
-    global.fetch = vi.fn().mockResolvedValue(new Response("nope", { status: 500 }));
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response("nope", { status: 500 }));
     await expect(result.current.request("/v2/x")).rejects.toThrow(/500/);
+  });
+
+  it("returns a stable `request` reference across re-renders", () => {
+    // The whole motivation for the ref pattern in useApi is to keep
+    // `request` identity-stable so consumer useEffect([request]) doesn't
+    // re-fire on unrelated parent re-renders. Lock that contract.
+    const { result, rerender } = renderHook(() => useApi());
+    const first = result.current.request;
+    rerender();
+    rerender();
+    expect(result.current.request).toBe(first);
   });
 });

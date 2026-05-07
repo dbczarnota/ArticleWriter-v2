@@ -3,6 +3,7 @@ import type { DiscoveryTopicSummary, DiscoveryItem } from "../types";
 import { useDiscoveryTopicDetail } from "../lib/useDiscoveryTopicDetail";
 import { useT } from "../i18n";
 import { Button } from "./ui/Button";
+import { safeHref } from "../lib/safeHref";
 
 // Monochrome 13×13 outline icons matching the copy-button style
 // (stroke=currentColor, no fill). Kept inline so the meta row can
@@ -331,7 +332,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
             items.map((it) => (
               <a
                 key={it.id}
-                href={it.canonical_url}
+                href={safeHref(it.canonical_url)}
                 target="_blank"
                 rel="noreferrer noopener"
                 onClick={(e) => e.stopPropagation()}

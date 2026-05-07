@@ -1,6 +1,7 @@
 import type { DiscoveryItem } from "../types";
 import { StatusMessage } from "./ui/StatusMessage";
 import { useT } from "../i18n";
+import { safeHref } from "../lib/safeHref";
 
 interface Props {
   items: DiscoveryItem[];
@@ -45,7 +46,7 @@ export function ItemsTable({ items, loading }: Props) {
           >
             <td style={{ padding: "12px 24px" }}>
               <a
-                href={it.canonical_url}
+                href={safeHref(it.canonical_url)}
                 target="_blank"
                 rel="noreferrer noopener"
                 style={{ fontWeight: 500, color: "var(--text)", textDecoration: "none" }}

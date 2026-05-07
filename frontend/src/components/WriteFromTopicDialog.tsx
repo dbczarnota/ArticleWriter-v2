@@ -4,6 +4,7 @@ import { useApi } from "../lib/useApi";
 import { useFocusTrap } from "../lib/useFocusTrap";
 import { useT } from "../i18n";
 import { Button } from "./ui/Button";
+import { safeHref } from "../lib/safeHref";
 
 interface Props {
   topicId: string;
@@ -321,7 +322,7 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
                         {it.title}
                       </div>
                       <a
-                        href={it.canonical_url}
+                        href={safeHref(it.canonical_url)}
                         target="_blank"
                         rel="noreferrer noopener"
                         style={{
@@ -389,7 +390,7 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
                       style={{ flexShrink: 0 }}
                     />
                     <a
-                      href={url}
+                      href={safeHref(url)}
                       target="_blank"
                       rel="noreferrer noopener"
                       style={{

@@ -4,6 +4,7 @@ import type { DiscoveryItem, DiscoveryTopicDetail } from "../types";
 import { useT } from "../i18n";
 import { Button } from "./ui/Button";
 import { StatusMessage } from "./ui/StatusMessage";
+import { safeHref } from "../lib/safeHref";
 
 interface Props {
   topicId: string;
@@ -214,7 +215,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <a
-                      href={it.canonical_url}
+                      href={safeHref(it.canonical_url)}
                       target="_blank"
                       rel="noreferrer noopener"
                       style={{

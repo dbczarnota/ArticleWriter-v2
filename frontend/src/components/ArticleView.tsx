@@ -7,14 +7,7 @@ import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { Button } from "./ui/Button";
 import { CopyIcon } from "./ui/icons";
-
-// Reject anything that isn't http(s). Source URLs come from the pipeline
-// (which scraped third-party articles); a malicious source could carry a
-// javascript: link that would execute on click.
-function safeHref(url: string | null | undefined): string {
-  if (!url) return "#";
-  return url.startsWith("http://") || url.startsWith("https://") ? url : "#";
-}
+import { safeHref } from "../lib/safeHref";
 
 interface ArticleViewProps {
   articleId: string;
