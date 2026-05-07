@@ -710,7 +710,9 @@ async def write_article_from_discovery_topic(
     # already accepts arbitrary URLs from the user, so there's nothing
     # to gate beyond the auth check.
     if overrides and overrides.urls is not None:
-        urls = list(overrides.urls) or all_urls
+        # Explicit empty list means "no pre-seeded URLs" — respect that.
+        # `None` (not present) is what falls back to all topic items.
+        urls = list(overrides.urls)
     else:
         urls = all_urls
 

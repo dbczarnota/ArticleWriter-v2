@@ -483,3 +483,50 @@ async def test_list_items_tenant_isolated(client, discovery_repo, org):
     response = client.get("/v2/discovery/items")
     assert response.status_code == 200
     assert other.canonical_url not in [r["canonical_url"] for r in response.json()]
+
+
+@pytest.mark.asyncio
+async def test_write_article_from_topic_respects_explicit_empty_urls(
+    client, discovery_repo, org_config_repo, org
+):
+    """An explicit empty `urls: []` in the override body must NOT silently
+    fall back to all topic URLs — that would defeat the editor's choice
+    to write with no pre-seeded URLs (search-only mode)."""
+    from backend.repositories import get_article_repo
+
+    topic = await discovery_repo.create_topic(
+        org_code=org.code, title="T", blurb="b", categories=[]
+    )
+    item = await discovery_repo.upsert_item(
+        DiscoveryItem(
+            org_code=org.code, canonical_url="https://x/1", title="X", topic_id=topic.id
+        )
+    )
+    feed = await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://x/rss")
+    await discovery_repo.add_item_to_feed_link(item_id=item.id, feed_id=feed.id)
+    org_config_repo.discovery_feeds = [
+        {"url": "https://x/rss", "name": "X", "poll_interval_min": 15}
+    ]
+
+    captured: dict[str, list[str]] = {"urls": ["__not_set__"]}
+
+    class _StubArticle:
+        async def create_running(self, *, input_urls=None, **kw):
+            captured["urls"] = list(input_urls or [])
+            return uuid4()
+        async def get(self, *a, **kw): return None
+        async def mark_failed(self, *a, **kw): pass
+        async def complete(self, *a, **kw): pass
+
+    app.dependency_overrides[get_article_repo] = lambda: _StubArticle()
+
+    response = client.post(
+        f"/v2/discovery/topics/{topic.id}/write_article",
+        json={"urls": []},
+    )
+    assert response.status_code == 202, response.text
+    assert captured["urls"] == [], (
+        f"Expected empty list when override is []; got {captured['urls']!r}"
+    )
+
+    app.dependency_overrides.pop(get_article_repo, None)
