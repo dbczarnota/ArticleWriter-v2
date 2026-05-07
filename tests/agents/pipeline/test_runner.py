@@ -198,11 +198,39 @@ async def test_pipeline_runs_extra_search_round(mocked_agents):
     ]
 
     settings = AppSettings(
-        pipeline=PipelineFlags(adaptive_search=True, reflection=False, followup=False)
+        pipeline=PipelineFlags(
+            adaptive_search=True,
+            reflection=False,
+            followup=False,
+            min_source_signals=3,  # initial extraction (2 signals) < target → adaptive runs
+        )
     )
     await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
     assert mocked_agents["serper"].call_count == 1
     assert mocked_agents["extraction"].call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_adaptive_search_skipped_when_signals_already_sufficient(mocked_agents):
+    """When initial extraction yields signals >= min_source_signals, the
+    adaptive_search branch should NOT fire — its decide-agent LLM call is
+    wasted work."""
+    from agents.pipeline.runner import run_pipeline
+
+    # _EXTRACTION = 1 fact + 1 quote = 2 signals. Set target=2 so initial
+    # extraction already meets it → adaptive must be skipped entirely.
+    settings = AppSettings(
+        pipeline=PipelineFlags(
+            adaptive_search=True,
+            reflection=False,
+            followup=False,
+            min_source_signals=2,
+        )
+    )
+    await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
+    mocked_agents["adaptive"].assert_not_called()
+    # Extraction ran exactly once — adaptive loop never invoked it again.
+    assert mocked_agents["extraction"].call_count == 1
 
 
 @pytest.mark.asyncio
@@ -238,16 +266,30 @@ async def test_pipeline_adaptive_respects_max_rounds(mocked_agents):
     mocked_agents["serper"].return_value = [
         SearchResult(url="https://e.com/extra", title="E", snippet="s", source="web")
     ]
-    mocked_agents["extraction"].side_effect = [
-        _EXTRACTION,
-        ExtractionResult(facts=[], quotes=[], keywords=[]),
-    ]
+    # Initial extraction returns 1 signal (< target=2), so adaptive enters.
+    # Adaptive's extra round returns 1 more signal, lifting us to target.
+    initial_extraction = ExtractionResult(
+        facts=[Fact("Fakt 1", "ctx", source_urls=["https://e.com/1"])],
+        quotes=[],
+        keywords=["kw1"],
+    )
+    extra_extraction = ExtractionResult(
+        facts=[Fact("Extra fakt", "ctx", source_urls=["https://e.com/extra"])],
+        quotes=[],
+        keywords=["kw2"],
+    )
+    mocked_agents["extraction"].side_effect = [initial_extraction, extra_extraction]
 
     settings = AppSettings(
         adaptive_search_agent=dataclasses.replace(
             AdaptiveSearchAgentConfig(), max_additional_rounds=1
         ),
-        pipeline=PipelineFlags(adaptive_search=True, reflection=False, followup=False),
+        pipeline=PipelineFlags(
+            adaptive_search=True,
+            reflection=False,
+            followup=False,
+            min_source_signals=2,  # initial extraction (1 signal) < target → adaptive runs
+        ),
     )
     await run_pipeline("topic", settings=settings, domain=_DOMAIN, serper_api_key="k")
     assert mocked_agents["adaptive"].call_count == 1

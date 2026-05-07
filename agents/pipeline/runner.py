@@ -358,9 +358,20 @@ async def _run_pipeline_inner(
         )
 
         # Stage 2: Adaptive search loop
-        if settings.pipeline.adaptive_search:
+        # Skip adaptive search entirely when initial extraction already
+        # meets the signal target — the decide-agent call costs an LLM
+        # round-trip per pipeline run that has nothing to add.
+        _initial_signals = len(extraction.facts) + len(extraction.quotes)
+        _target = settings.pipeline.min_source_signals
+        if settings.pipeline.adaptive_search and _initial_signals >= _target:
+            logfire.info(
+                "pipeline.adaptive_search.skipped",
+                reason="signals_already_sufficient",
+                signal_count=_initial_signals,
+                target=_target,
+            )
+        if settings.pipeline.adaptive_search and _initial_signals < _target:
             _stage_t0 = time.perf_counter()
-            _target = settings.pipeline.min_source_signals
             await _article_repo.set_pipeline_stage(_article_id, "adaptive_search")
             with logfire.span(
                 "pipeline.stage.adaptive_search",
