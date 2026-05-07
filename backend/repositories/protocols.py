@@ -142,6 +142,12 @@ class ArticleRepository(Protocol):
         """Toggle editorial done flag. Stores who made the change. No-op when article not found (idempotent)."""
         ...
 
+    async def count_running_for_org(self, org_code: str) -> int:
+        """Number of articles currently in `running` status for this org.
+        Used as a concurrent-run guard on write endpoints to cap LLM
+        spend by a single tenant."""
+        ...
+
 
 class OrgRepository(Protocol):
     """Org CRUD. Rows are bootstrapped from JWT claims at first request."""

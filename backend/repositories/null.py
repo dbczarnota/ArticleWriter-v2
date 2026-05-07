@@ -156,6 +156,12 @@ class NullArticleRepository:
             marked_done,
         )
 
+    async def count_running_for_org(self, org_code: str) -> int:
+        # NullArticleRepository doesn't actually persist — return 0 so
+        # local-dev / null backend never hits the rate limit.
+        del org_code
+        return 0
+
 
 class NullOrgRepository:
     """OrgRepository that returns a hardcoded local-dev org, so run.py + NullAuth still works."""

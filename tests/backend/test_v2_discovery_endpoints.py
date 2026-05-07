@@ -169,6 +169,9 @@ async def test_write_article_marks_topic_consumed(monkeypatch, user, org, discov
         async def get(self, *args, **kwargs):
             return None
 
+        async def count_running_for_org(self, org_code: str) -> int:
+            return 0
+
     class _StubOrgConfigRepo:
         async def get(self, org_code):
             from backend.repositories.null import NullOrgConfigRepository
@@ -233,6 +236,9 @@ async def test_write_article_does_not_mark_consumed_until_task_runs(
     class _StubArticleRepo:
         async def create_running(self, **kwargs):
             return uuid4()
+
+        async def count_running_for_org(self, org_code: str) -> int:
+            return 0
 
     class _StubOrgConfigRepo:
         async def get(self, org_code):
@@ -351,6 +357,9 @@ async def test_write_article_from_topic_with_zero_items(monkeypatch, user, org, 
     class _StubArticleRepo:
         async def create_running(self, **kwargs):
             return uuid4()
+
+        async def count_running_for_org(self, org_code: str) -> int:
+            return 0
 
     class _StubOrgConfigRepo:
         async def get(self, org_code):
@@ -517,6 +526,7 @@ async def test_write_article_from_topic_respects_explicit_empty_urls(
         async def get(self, *a, **kw): return None
         async def mark_failed(self, *a, **kw): pass
         async def complete(self, *a, **kw): pass
+        async def count_running_for_org(self, org_code: str) -> int: return 0
 
     app.dependency_overrides[get_article_repo] = lambda: _StubArticle()
 

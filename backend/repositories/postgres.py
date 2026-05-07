@@ -235,6 +235,19 @@ class PostgresArticleRepository:
             )
 
 
+    async def count_running_for_org(self, org_code: str) -> int:
+        from sqlalchemy import func
+
+        async with self._session_maker() as session:
+            result = await session.execute(
+                select(func.count(Article.id)).where(
+                    Article.org_code == org_code,  # type: ignore[arg-type]
+                    Article.status == "running",  # type: ignore[arg-type]
+                )
+            )
+            return int(result.scalar() or 0)
+
+
 class PostgresOrgRepository:
     """OrgRepository implementation backed by Postgres."""
 

@@ -44,6 +44,8 @@ _DOMAIN_OVERRIDE_KEY_MAP = {
 }
 _DOMAIN_OVERRIDE_TUPLE_FIELDS = {"media_search_languages", "example_articles", "example_titles"}
 
+_MAX_CONCURRENT_RUNNING_PER_ORG = 5
+
 
 def _build_app_settings(*, req: ArticleRequest, org_domain_name: str, domain):
     """Build AppSettings the same way for both regular write_article and
@@ -88,6 +90,16 @@ async def write_article(
         raise HTTPException(
             status_code=412,
             detail=f"No domain config found for org '{org.code}'. Run seed script or configure via PUT /v2/domain-config.",
+        )
+
+    running_count = await article_repo.count_running_for_org(org.code)
+    if running_count >= _MAX_CONCURRENT_RUNNING_PER_ORG:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Org has {running_count} articles currently running "
+                f"(cap: {_MAX_CONCURRENT_RUNNING_PER_ORG}). Wait for one to finish."
+            ),
         )
 
     if req.domain_overrides:
@@ -739,6 +751,17 @@ async def write_article_from_discovery_topic(
             status_code=412,
             detail=f"No domain config found for org '{org.code}'.",
         )
+
+    running_count = await article_repo.count_running_for_org(org.code)
+    if running_count >= _MAX_CONCURRENT_RUNNING_PER_ORG:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Org has {running_count} articles currently running "
+                f"(cap: {_MAX_CONCURRENT_RUNNING_PER_ORG}). Wait for one to finish."
+            ),
+        )
+
     given = getattr(user, "given_name", None) or ""
     family = getattr(user, "family_name", None) or ""
     author_name = f"{given} {family}".strip() or (user.email or None)

@@ -75,6 +75,13 @@ class _StubArticleRepo:
     async def mark_failed(self, *_a, **_kw):  # pragma: no cover
         raise NotImplementedError
 
+    async def count_running_for_org(self, org_code: str) -> int:
+        return sum(
+            1
+            for a in self.articles.values()
+            if a.org_code == org_code and a.status == "running"
+        )
+
 
 class _StubOrgRepo:
     def __init__(self, orgs: list[Org]) -> None:
@@ -311,6 +318,49 @@ def test_write_article_response_includes_id(client_as, org_a):
     UUID(body["id"])  # must be a valid UUID
     assert body["status"] == "running"
     assert body["topic"] == "Test topic"
+
+
+def test_write_article_returns_429_when_too_many_running(client_as, org_a):
+    """The 6th concurrent write request returns 429. Server-side guard
+    against runaway LLM costs from a single user/org."""
+    from backend.repositories import get_org_config_repo
+    from backend.repositories.null import NullOrgConfigRepository
+
+    user = AuthenticatedUser(id="u1", email=None, org_codes=["org_a"])
+
+    class _RateLimitedRepo:
+        async def count_running_for_org(self, org_code: str) -> int:
+            return 5  # at cap
+
+        async def create_running(self, **_kw):
+            return uuid4()
+
+        async def get(self, *_a, **_kw):
+            return None
+
+        async def list_by_org(self, **_kw):
+            return []
+
+        async def mark_failed(self, *_a, **_kw):
+            pass
+
+        async def complete(self, *_a, **_kw):
+            pass
+
+    from backend.main import app
+    from backend.repositories import get_article_repo
+
+    client = client_as(user=user, org=org_a)
+    # client_as sets get_article_repo to stub_article_repo; override AFTER
+    # so our rate-limited repo wins.
+    app.dependency_overrides[get_article_repo] = lambda: _RateLimitedRepo()
+    app.dependency_overrides[get_org_config_repo] = lambda: NullOrgConfigRepository()
+
+    r = client.post("/v2/write_article", json={"topic": "x"})
+    assert r.status_code == 429
+    body = r.json()
+    detail = body.get("detail", "").lower()
+    assert "running" in detail or "concurrent" in detail or "cap" in detail
 
 
 # ---------------------------------------------------------------------------
