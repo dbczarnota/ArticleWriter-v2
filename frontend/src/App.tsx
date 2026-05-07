@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useAuth } from "./lib/useAuth";
 import { useArticles } from "./lib/useArticles";
 import { useMediaQuery } from "./lib/useMediaQuery";
@@ -8,8 +8,10 @@ import { Topbar } from "./components/Topbar";
 import { Sidebar } from "./components/Sidebar";
 import { ArticleView } from "./components/ArticleView";
 import { NewArticleForm } from "./components/NewArticleForm";
-import { SettingsView } from "./components/SettingsView";
-import { DiscoveryHub } from "./components/DiscoveryHub";
+import { StatusMessage } from "./components/ui/StatusMessage";
+
+const SettingsView = lazy(() => import("./components/SettingsView").then((m) => ({ default: m.SettingsView })));
+const DiscoveryHub = lazy(() => import("./components/DiscoveryHub").then((m) => ({ default: m.DiscoveryHub })));
 
 type View = "list" | "article" | "new" | "settings" | "discovery";
 
@@ -131,8 +133,16 @@ export default function App() {
               }}
             />
           )}
-          {view === "settings" && <SettingsView />}
-          {view === "discovery" && <DiscoveryHub />}
+          {view === "settings" && (
+            <Suspense fallback={<StatusMessage kind="loading">{t.app.loading}</StatusMessage>}>
+              <SettingsView />
+            </Suspense>
+          )}
+          {view === "discovery" && (
+            <Suspense fallback={<StatusMessage kind="loading">{t.app.loading}</StatusMessage>}>
+              <DiscoveryHub />
+            </Suspense>
+          )}
         </main>
       </div>
     </div>
