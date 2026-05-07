@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import DOMPurify from "dompurify";
 import type { Article, Fact, Quote } from "../types";
 import { useArticles } from "../lib/useArticles";
 import { useMediaQuery } from "../lib/useMediaQuery";
@@ -313,7 +314,15 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {!isFailed && article.html && (
         <div
           className="article-html"
-          dangerouslySetInnerHTML={{ __html: article.html }}
+          // Article HTML comes from the LLM pipeline. Even though we control the
+          // pipeline, prompt-injection from any third-party source URL could
+          // smuggle <script> or onerror= payloads into the output. DOMPurify
+          // strips all script/event-handler vectors while keeping the
+          // formatting tags the writer actually emits (h1-h3, p, ul, ol, li,
+          // blockquote, a, strong, em).
+          dangerouslySetInnerHTML={{
+            __html: DOMPurify.sanitize(article.html, { USE_PROFILES: { html: true } }),
+          }}
           style={{
             padding: 20,
             background: "var(--white)",
