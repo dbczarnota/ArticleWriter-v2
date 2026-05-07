@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useApi } from "../lib/useApi";
 import type { DiscoveryItem, DiscoveryTopicDetail } from "../types";
 import { useT } from "../i18n";
+import { Button } from "./ui/Button";
 
 interface Props {
   topicId: string;
@@ -277,24 +278,14 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
               {t.discovery.topic.openArticle}
             </button>
           ) : (
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="md"
+              style={{ width: "100%", marginBottom: 16 }}
               onClick={() => onWrite(topicId)}
-              style={{
-                width: "100%",
-                padding: "10px 16px",
-                background: "var(--accent)",
-                color: "var(--white)",
-                border: 0,
-                borderRadius: "var(--radius)",
-                cursor: "pointer",
-                fontWeight: 500,
-                marginBottom: 16,
-                fontSize: 14,
-              }}
             >
               {t.discovery.topic.writeArticle}
-            </button>
+            </Button>
           )}
           <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.8 }}>
             <div>

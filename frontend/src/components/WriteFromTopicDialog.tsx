@@ -3,6 +3,7 @@ import type { DiscoveryTopicDetail } from "../types";
 import { useApi } from "../lib/useApi";
 import { useFocusTrap } from "../lib/useFocusTrap";
 import { useT } from "../i18n";
+import { Button } from "./ui/Button";
 
 interface Props {
   topicId: string;
@@ -462,24 +463,14 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
                     boxSizing: "border-box",
                   }}
                 />
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
+                  size="md"
                   onClick={addCustomUrl}
                   disabled={submitting || !customUrlInput.trim()}
-                  style={{
-                    padding: "8px 14px",
-                    background: "var(--white)",
-                    color: "var(--accent)",
-                    border: "1px solid var(--accent)",
-                    borderRadius: "var(--radius)",
-                    cursor: submitting || !customUrlInput.trim() ? "default" : "pointer",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    opacity: !customUrlInput.trim() ? 0.5 : 1,
-                  }}
                 >
                   {t.discovery.dialog.addUrl}
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -508,40 +499,17 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
             gap: 8,
           }}
         >
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={submitting}
-            style={{
-              padding: "8px 14px",
-              background: "var(--sidebar)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius)",
-              color: "var(--text)",
-              cursor: submitting ? "default" : "pointer",
-              fontSize: 13,
-            }}
-          >
+          <Button variant="ghost" size="md" onClick={onCancel} disabled={submitting}>
             {t.discovery.dialog.cancel}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
             onClick={submit}
             disabled={submitting || !detail || selectedUrls.size === 0 || !topicTitle.trim()}
-            style={{
-              padding: "8px 14px",
-              background: "var(--accent)",
-              border: 0,
-              borderRadius: "var(--radius)",
-              color: "var(--white)",
-              cursor: submitting ? "default" : "pointer",
-              fontSize: 13,
-              fontWeight: 500,
-              opacity: submitting || selectedUrls.size === 0 || !topicTitle.trim() ? 0.6 : 1,
-            }}
           >
             {submitting ? t.discovery.dialog.submitting : t.discovery.dialog.submit}
-          </button>
+          </Button>
         </footer>
       </div>
     </div>

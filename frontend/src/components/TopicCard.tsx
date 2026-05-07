@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { DiscoveryTopicSummary, DiscoveryItem } from "../types";
 import { useDiscoveryTopicDetail } from "../lib/useDiscoveryTopicDetail";
 import { useT } from "../i18n";
+import { Button } from "./ui/Button";
 
 // Monochrome 13×13 outline icons matching the copy-button style
 // (stroke=currentColor, no fill). Kept inline so the meta row can
@@ -94,11 +95,6 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore }: Pr
         if (mountedRef.current) setError(err instanceof Error ? err.message : String(err));
       }
     }
-  }
-
-  function handleWrite(e: React.MouseEvent) {
-    e.stopPropagation();
-    onWrite(topic.id);
   }
 
   function handleBodyClick() {
@@ -291,38 +287,13 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore }: Pr
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, alignItems: "flex-end" }}>
           {isConsumed ? (
-            <button
-              type="button"
-              disabled
-              style={{
-                padding: "6px 12px",
-                background: "var(--sidebar)",
-                color: "var(--muted)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                fontSize: 13,
-                cursor: "default",
-              }}
-            >
+            <Button variant="ghost" size="sm" disabled>
               {t.discovery.topic.openArticle}
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              onClick={handleWrite}
-              style={{
-                padding: "6px 12px",
-                background: "var(--accent)",
-                color: "var(--white)",
-                border: 0,
-                borderRadius: "var(--radius)",
-                cursor: "pointer",
-                fontWeight: 500,
-                fontSize: 13,
-              }}
-            >
+            <Button variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); onWrite(topic.id); }}>
               {t.discovery.topic.write}
-            </button>
+            </Button>
           )}
           {!isConsumed && (
             <span style={{ fontSize: 11, color: "var(--muted)" }}>
