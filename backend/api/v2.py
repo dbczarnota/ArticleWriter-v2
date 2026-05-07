@@ -581,17 +581,18 @@ async def list_discovery_topics(
     if sort not in _SORT_KEYS:
         raise HTTPException(status_code=400, detail=f"Invalid sort: {sort}")
 
-    # Fetch all matching topics (without limit/offset) so we can sort by
-    # derived fields (item_count) before paginating. The repo orders by
-    # last_activity_at DESC; we re-sort per the requested key. Org-scope
-    # caps total topic count, so pulling the full set into Python is fine.
+    # NOTE: we pull the full set (cap 200) and re-sort in Python because
+    # sort keys include derived fields (item_count) we haven't denormalized
+    # to SQL yet. Acceptable while orgs have <=200 active topics; beyond
+    # that we need item_count on the topic row. See backlog: a future
+    # plan should denormalize discovery_topics.item_count.
     rows = await discovery_repo.list_topics_for_ui(
         org_code=org.code,
         categories=category or None,
         statuses=status or None,
         since=since,
         feed_id=feed_id,
-        limit=10_000,
+        limit=200,
         offset=0,
     )
     out: list[dict] = []
