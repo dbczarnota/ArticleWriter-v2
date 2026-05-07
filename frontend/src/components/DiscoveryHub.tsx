@@ -13,6 +13,7 @@ import { FeedsHealth } from "./FeedsHealth";
 import { TopicDetail } from "./TopicDetail";
 import { WriteFromTopicDialog } from "./WriteFromTopicDialog";
 import { useT } from "../i18n";
+import { TopicsIcon, ItemsIcon, FeedsIcon } from "./ui/icons";
 
 type DiscoveryView = "topics" | "items" | "feeds";
 
@@ -116,14 +117,29 @@ export function DiscoveryHub() {
             background: "var(--white)",
           }}
         >
-          <button type="button" onClick={() => setView("topics")} disabled={view === "topics"} style={tabBtn(view === "topics")}>
-            📚 {t.discovery.views.topics}
+          <button
+            type="button"
+            onClick={() => setView("topics")}
+            disabled={view === "topics"}
+            style={{ ...tabBtn(view === "topics"), display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <TopicsIcon /> {t.discovery.views.topics}
           </button>
-          <button type="button" onClick={() => setView("items")} disabled={view === "items"} style={tabBtn(view === "items")}>
-            📰 {t.discovery.views.items}
+          <button
+            type="button"
+            onClick={() => setView("items")}
+            disabled={view === "items"}
+            style={{ ...tabBtn(view === "items"), display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <ItemsIcon /> {t.discovery.views.items}
           </button>
-          <button type="button" onClick={() => setView("feeds")} disabled={view === "feeds"} style={tabBtn(view === "feeds")}>
-            🔌 {t.discovery.views.feeds}
+          <button
+            type="button"
+            onClick={() => setView("feeds")}
+            disabled={view === "feeds"}
+            style={{ ...tabBtn(view === "feeds"), display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <FeedsIcon /> {t.discovery.views.feeds}
           </button>
           {view === "topics" && !selectedTopicId && (
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
