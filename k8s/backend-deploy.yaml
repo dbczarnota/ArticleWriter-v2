@@ -37,6 +37,8 @@ spec:
               value: kinde
             - name: DB_BACKEND
               value: postgres
+            - name: CORS_ALLOWED_ORIGINS
+              value: "https://app.headlinesforge.com"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:

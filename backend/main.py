@@ -132,11 +132,26 @@ logfire.instrument_fastapi(
     excluded_urls=["/health", "/v2/articles(/.*)?$"],
 )
 
+# CORS: default to wildcard for local dev. In prod, set CORS_ALLOWED_ORIGINS
+# to a comma-separated list of frontend origins (e.g.
+# "https://app.headlinesforge.com"). Wildcard means any page can trigger
+# authenticated requests once the user is signed in via Kinde — fine for
+# dev, dangerous for prod (LLM-cost amplification via CSRF-style attacks).
+_cors_origins_env = os.environ.get("CORS_ALLOWED_ORIGINS", "*").strip()
+_cors_origins: list[str] = (
+    ["*"]
+    if _cors_origins_env == "*"
+    else [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Browsers reject credentials + wildcard origin combos. Only enable
+    # credentials when the allowlist is explicit.
+    allow_credentials=_cors_origins != ["*"],
 )
 
 app.include_router(v2_router)
