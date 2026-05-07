@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../lib/useAuth";
 import { useT } from "../i18n";
 
@@ -10,11 +10,32 @@ export function UserMenu({ onSettings }: UserMenuProps) {
   const { user, logout } = useAuth();
   const t = useT();
   const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={wrapperRef} style={{ position: "relative" }}>
       <button
         onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
         style={{
           background: "none",
           border: "1px solid var(--border)",
@@ -27,7 +48,9 @@ export function UserMenu({ onSettings }: UserMenuProps) {
         {user?.email ?? t.userMenu.account} ▾
       </button>
       {open && (
-        <div style={{
+        <div
+          role="menu"
+          style={{
           position: "absolute",
           right: 0,
           top: "calc(100% + 4px)",
@@ -39,12 +62,14 @@ export function UserMenu({ onSettings }: UserMenuProps) {
           overflow: "hidden",
         }}>
           <button
+            role="menuitem"
             onClick={() => { setOpen(false); onSettings(); }}
             style={{ display: "block", width: "100%", padding: "8px 16px", textAlign: "left", background: "none", border: "none", fontSize: 13 }}
           >
             {t.userMenu.settings}
           </button>
           <button
+            role="menuitem"
             onClick={() => logout()}
             style={{ display: "block", width: "100%", padding: "8px 16px", textAlign: "left", background: "none", border: "none", fontSize: 13, color: "var(--muted)" }}
           >
