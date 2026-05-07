@@ -119,8 +119,13 @@ class PostgresArticleRepository:
                     session.add(child)
 
             await session.commit()
-        event_name = "article.completed" if status == "done" else "article.failed"
-        logfire.info(
+        # article.completed at info, article.failed at warn — keeps the two
+        # event levels consistent with mark_failed elsewhere and makes
+        # default-level Logfire filters surface failures correctly.
+        is_failed = status != "done"
+        event_name = "article.failed" if is_failed else "article.completed"
+        emit = logfire.warn if is_failed else logfire.info
+        emit(
             event_name,
             article_id=str(article_id),
             status=status,

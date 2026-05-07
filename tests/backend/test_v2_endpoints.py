@@ -20,6 +20,48 @@ from backend.db.models import Article, Fact, Org, Quote
 from backend.repositories import get_article_repo, get_org_repo
 
 
+def test_domain_override_key_map_covers_renamed_fields():
+    """If a DomainConfigUpdate field has a different name than its
+    DomainConfig equivalent, _DOMAIN_OVERRIDE_KEY_MAP must list the
+    rename — otherwise per-article overrides silently drop on the floor."""
+    from dataclasses import fields as dc_fields
+
+    from backend.api.schemas import DomainConfigUpdate
+    from backend.api.v2 import _DOMAIN_OVERRIDE_KEY_MAP
+    from backend.domain import DomainConfig
+
+    update_fields = set(DomainConfigUpdate.model_fields.keys())
+    domain_fields = {f.name for f in dc_fields(DomainConfig)}
+
+    # Caller-controlled or non-override fields — these are NOT meant to be
+    # patched per-article via domain_overrides.
+    KNOWN_NON_OVERRIDE = {
+        "domain_name",
+        # Discovery is editor-managed via Settings, not per-article.
+        "discovery_enabled",
+        "discovery_feeds",
+        "discovery_categories",
+        "discovery_topic_matching_window_days",
+        "discovery_followup_threshold",
+        "discovery_classifier_model",
+        "discovery_classifier_fallback_models",
+        "discovery_matcher_model",
+        "discovery_matcher_fallback_models",
+        "discovery_topic_writer_model",
+        "discovery_topic_writer_fallback_models",
+    }
+    for upd_name in update_fields:
+        if upd_name in KNOWN_NON_OVERRIDE:
+            continue
+        target = _DOMAIN_OVERRIDE_KEY_MAP.get(upd_name, upd_name)
+        assert target in domain_fields, (
+            f"DomainConfigUpdate.{upd_name} maps to '{target}' but "
+            f"DomainConfig has no such field. Either add a mapping in "
+            f"_DOMAIN_OVERRIDE_KEY_MAP, mark it KNOWN_NON_OVERRIDE, or "
+            f"remove the field from the update schema."
+        )
+
+
 def _org(code: str, domain: str = "styl_fm", name: str | None = None) -> Org:
     now = datetime.now(UTC)
     return Org(

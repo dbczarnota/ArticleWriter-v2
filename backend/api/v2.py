@@ -138,7 +138,15 @@ async def write_article(
         article_repo=article_repo,
     )
 
-    return {"id": str(article_id), "status": "running", "topic": req.topic}
+    # `id` kept as a deprecated alias; consumers should migrate to `article_id`,
+    # which is what the discovery-bridge endpoint also returns. One-canonical-name
+    # contract reduces the if/else in clients.
+    return {
+        "id": str(article_id),
+        "article_id": str(article_id),
+        "status": "running",
+        "topic": req.topic,
+    }
 
 
 async def _run_pipeline_from_topic_background(
@@ -683,6 +691,7 @@ async def dismiss_discovery_topic(
 @router.post("/discovery/topics/{topic_id}/restore")
 async def restore_discovery_topic(
     topic_id: UUID,
+    user: AuthenticatedUser = Depends(get_current_user),
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
 ) -> dict:
@@ -690,6 +699,12 @@ async def restore_discovery_topic(
     if topic is None:
         raise HTTPException(status_code=404, detail="Topic not found")
     await discovery_repo.restore_topic(topic_id=topic_id, org_code=org.code)
+    logfire.info(
+        "discovery.topic.restored",
+        topic_id=str(topic_id),
+        user_id=user.id,
+        org_code=org.code,
+    )
     return {"id": str(topic_id), "status": "open"}
 
 
