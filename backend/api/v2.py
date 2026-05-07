@@ -123,6 +123,7 @@ async def write_article(
         cfg=cfg,
         org_code=org.code,
         author_user_id=user.id,
+        article_repo=article_repo,
     )
 
     return {"id": str(article_id), "status": "running", "topic": req.topic}
@@ -140,6 +141,7 @@ async def _run_pipeline_from_topic_background(
     cfg: Secrets,
     org_code: str,
     author_user_id: str,
+    article_repo: ArticleRepository | None = None,
 ) -> None:
     """Discovery-bridge background task: marks the source topic consumed
     AS the pipeline begins, then delegates to the regular pipeline.
@@ -174,6 +176,7 @@ async def _run_pipeline_from_topic_background(
         cfg=cfg,
         org_code=org_code,
         author_user_id=author_user_id,
+        article_repo=article_repo,
     )
 
 
@@ -186,16 +189,23 @@ async def _run_pipeline_background(
     cfg: Secrets,
     org_code: str,
     author_user_id: str,
+    article_repo: ArticleRepository | None = None,
 ) -> None:
     """Run the pipeline and persist the result. Errors are swallowed here —
     runner already marks the article as failed in the DB on exceptions.
 
     Wall-clock-bounded by `app_settings.pipeline.total_timeout_s` (default 15 min).
-    On timeout the runner's exception handler marks the article failed before
-    asyncio.wait_for re-raises TimeoutError, so the user never sees a
-    perpetually-running article even if every per-call timeout misfires.
+    On timeout `asyncio.wait_for` injects `CancelledError` (a `BaseException`)
+    into the runner — the runner's `except Exception` doesn't catch it, so
+    we mark the article failed here ourselves. Otherwise the row stays in
+    `running` until the next pod restart's startup sweeper.
     """
     import asyncio
+
+    from backend.repositories import get_article_repo
+
+    if article_repo is None:
+        article_repo = get_article_repo()
 
     try:
         await asyncio.wait_for(
@@ -220,10 +230,44 @@ async def _run_pipeline_background(
             org_code=org_code,
             timeout_s=app_settings.pipeline.total_timeout_s,
         )
-        # Runner's exception handler still marks the article as failed.
+        try:
+            await article_repo.mark_failed(
+                article_id,
+                error_status="failed",
+                errors=[
+                    {
+                        "stage": "pipeline",
+                        "error": f"Total pipeline timeout ({app_settings.pipeline.total_timeout_s}s)",
+                    }
+                ],
+            )
+        except Exception as mark_err:
+            logfire.error(
+                "pipeline.mark_failed_after_timeout_failed",
+                article_id=str(article_id),
+                error_type=type(mark_err).__name__,
+                error_message=str(mark_err)[:500],
+            )
     except Exception:
-        # Runner handles DB failure marking internally for non-timeout errors.
-        pass
+        # Belt-and-suspenders: runner normally marks failures itself, but
+        # if it raised before reaching the persistence step the row would
+        # be stuck in `running`. Only mark when status is still `running`
+        # to avoid clobbering a real status set by the runner.
+        try:
+            row = await article_repo.get(article_id, org_code=org_code)
+            if row is not None and row.status == "running":
+                await article_repo.mark_failed(
+                    article_id,
+                    error_status="failed",
+                    errors=[
+                        {
+                            "stage": "pipeline",
+                            "error": "Pipeline raised before reaching persistence.",
+                        }
+                    ],
+                )
+        except Exception:
+            pass
 
 
 @router.get("/me")
@@ -725,6 +769,7 @@ async def write_article_from_discovery_topic(
         cfg=cfg,
         org_code=org.code,
         author_user_id=user.id,
+        article_repo=article_repo,
     )
 
     return {"topic_id": str(topic_id), "article_id": str(article_id), "status": "running"}

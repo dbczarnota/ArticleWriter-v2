@@ -384,3 +384,66 @@ def test_build_app_settings_applies_reflection_rounds():
     domain = DomainConfig(name="d", description="t", reflection_rounds=3)
     settings = _build_app_settings(req=req, org_domain_name="d", domain=domain)
     assert settings.reflection.max_rounds == 3
+
+
+@pytest.mark.asyncio
+async def test_pipeline_background_marks_failed_on_timeout(monkeypatch):
+    """When wait_for times out, the article must transition to 'failed'.
+    Stuck-running rows are the worst UX in the article list — they require
+    a pod restart to clear."""
+    import asyncio
+    from dataclasses import replace as dc_replace
+
+    from backend.api import v2 as v2_mod
+    from backend.api.schemas import ArticleRequest
+    from backend.config import AppSettings
+    from backend.secrets import Secrets
+
+    captured: dict = {}
+
+    class _Repo:
+        async def create_running(self, **kw):
+            return uuid4()
+
+        async def mark_failed(
+            self, article_id, *, error_status, errors, insufficient_sources_detail=None
+        ):
+            captured["mark_failed_with"] = (article_id, error_status, errors)
+
+        async def complete(self, *a, **kw):
+            captured["complete_called"] = True
+
+        async def get(self, *a, **kw):
+            return None
+
+    async def _slow(*a, **kw):
+        await asyncio.sleep(60)
+
+    monkeypatch.setattr(v2_mod, "run_pipeline", _slow)
+
+    base = AppSettings(domain="styl_fm")
+    settings = dc_replace(base, pipeline=dc_replace(base.pipeline, total_timeout_s=0.05))
+
+    cfg = Secrets(serper_api_key="x", jina_api_key=None)
+    req = ArticleRequest(topic="t")
+
+    class _D:
+        name = "styl_fm"
+        reflection_rounds = 1
+
+    article_id = uuid4()
+    repo = _Repo()
+    await v2_mod._run_pipeline_background(
+        article_id=article_id,
+        req=req,
+        app_settings=settings,
+        domain=_D(),
+        cfg=cfg,
+        org_code="org_t",
+        author_user_id="u1",
+        article_repo=repo,  # type: ignore[arg-type]
+    )
+    assert "mark_failed_with" in captured, "Timeout must call mark_failed on the article repo"
+    assert captured["mark_failed_with"][0] == article_id
+    assert captured["mark_failed_with"][1] == "failed"
+    assert "timeout" in captured["mark_failed_with"][2][0]["error"].lower()
