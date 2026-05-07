@@ -1,5 +1,6 @@
 import type { DiscoveryTopicSummary } from "../types";
 import { TopicCard } from "./TopicCard";
+import { StatusMessage } from "./ui/StatusMessage";
 import { useT } from "../i18n";
 
 interface Props {
@@ -13,12 +14,8 @@ interface Props {
 
 export function TopicsList({ topics, loading, onWrite, onSelect, onDismiss, onRestore }: Props) {
   const t = useT();
-  if (loading) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.topic.loading}</div>;
-  }
-  if (topics.length === 0) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.topic.empty}</div>;
-  }
+  if (loading) return <StatusMessage kind="loading">{t.discovery.topic.loading}</StatusMessage>;
+  if (topics.length === 0) return <StatusMessage kind="empty">{t.discovery.topic.empty}</StatusMessage>;
   return (
     <div>
       {topics.map((topic) => (

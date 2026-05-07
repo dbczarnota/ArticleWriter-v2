@@ -3,6 +3,7 @@ import { useApi } from "../lib/useApi";
 import type { DiscoveryItem, DiscoveryTopicDetail } from "../types";
 import { useT } from "../i18n";
 import { Button } from "./ui/Button";
+import { StatusMessage } from "./ui/StatusMessage";
 
 interface Props {
   topicId: string;
@@ -48,7 +49,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
     );
   }
   if (!detail) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.topic.loading}</div>;
+    return <StatusMessage kind="loading">{t.discovery.topic.loading}</StatusMessage>;
   }
 
   // Group items by hostname.

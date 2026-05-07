@@ -1,4 +1,5 @@
 import type { DiscoveryFeed } from "../types";
+import { StatusMessage } from "./ui/StatusMessage";
 import { useT } from "../i18n";
 import type { Translations } from "../i18n";
 
@@ -34,16 +35,8 @@ function hostname(url: string): string {
 
 export function FeedsHealth({ feeds, loading }: Props) {
   const t = useT();
-  if (loading) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.topic.loading}</div>;
-  }
-  if (feeds.length === 0) {
-    return (
-      <div style={{ padding: 24, color: "var(--muted)" }}>
-        {t.discovery.feed.emptyHint}
-      </div>
-    );
-  }
+  if (loading) return <StatusMessage kind="loading">{t.discovery.topic.loading}</StatusMessage>;
+  if (feeds.length === 0) return <StatusMessage kind="empty">{t.discovery.feed.emptyHint}</StatusMessage>;
 
   return (
     <div

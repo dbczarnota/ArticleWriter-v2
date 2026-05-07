@@ -1,4 +1,5 @@
 import type { DiscoveryItem } from "../types";
+import { StatusMessage } from "./ui/StatusMessage";
 import { useT } from "../i18n";
 
 interface Props {
@@ -8,12 +9,8 @@ interface Props {
 
 export function ItemsTable({ items, loading }: Props) {
   const t = useT();
-  if (loading) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.topic.loading}</div>;
-  }
-  if (items.length === 0) {
-    return <div style={{ padding: 24, color: "var(--muted)" }}>{t.discovery.item.empty}</div>;
-  }
+  if (loading) return <StatusMessage kind="loading">{t.discovery.topic.loading}</StatusMessage>;
+  if (items.length === 0) return <StatusMessage kind="empty">{t.discovery.item.empty}</StatusMessage>;
 
   const chip: React.CSSProperties = {
     display: "inline-flex",
