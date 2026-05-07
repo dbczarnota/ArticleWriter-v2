@@ -150,7 +150,10 @@ async def _run_pipeline_from_topic_background(
     orphaned in 'consumed' state with no article."""
     try:
         await discovery_repo.mark_topic_consumed(
-            topic_id=topic_id, article_id=article_id, items_at_consume=items_at_consume
+            topic_id=topic_id,
+            article_id=article_id,
+            items_at_consume=items_at_consume,
+            org_code=org_code,
         )
         logfire.info(
             "discovery.topic.write_article_started",

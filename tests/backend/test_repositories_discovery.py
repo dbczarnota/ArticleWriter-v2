@@ -225,7 +225,9 @@ async def test_mark_topic_consumed_and_resurface(session_maker, org):
         )
         await repo.upsert_item(item)
 
-    await repo.mark_topic_consumed(topic_id=topic.id, article_id=article.id, items_at_consume=2)
+    await repo.mark_topic_consumed(
+        topic_id=topic.id, article_id=article.id, items_at_consume=2, org_code=org.code
+    )
 
     # No new items yet
     flipped = await repo.check_resurface(topic_id=topic.id, threshold=3)
@@ -478,3 +480,22 @@ async def test_count_items_for_feed_since(session_maker, org):
         feed_id=feed.id, since=now - timedelta(hours=24)
     )
     assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_mark_topic_consumed_is_tenant_isolated(session_maker, org):
+    """Cross-tenant guard: mark_topic_consumed with a wrong org_code must
+    NOT mutate the topic, even when topic_id is real."""
+    from uuid import uuid4
+
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    a = await repo.create_topic(org_code=org.code, title="A", blurb="b", categories=[])
+    await repo.mark_topic_consumed(
+        topic_id=a.id, article_id=uuid4(), items_at_consume=1, org_code="org_other"
+    )
+    fresh = await repo.get_topic(topic_id=a.id, org_code=org.code)
+    assert fresh is not None
+    assert fresh.status == "open", "Foreign org must not be able to mark topic consumed"
+    assert fresh.consumed_at is None

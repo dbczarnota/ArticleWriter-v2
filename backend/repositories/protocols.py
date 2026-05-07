@@ -306,7 +306,13 @@ class DiscoveryRepository(Protocol):
         topic_id: UUID,
         article_id: UUID,
         items_at_consume: int,
-    ) -> None: ...
+        org_code: str,
+    ) -> None:
+        """Mark a topic consumed by a successful article generation.
+        Tenant-isolated: WHERE clause requires both topic_id AND org_code,
+        so a forged topic_id from another org cannot mutate this one's
+        topics."""
+        ...
     async def check_resurface(
         self,
         *,

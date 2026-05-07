@@ -421,8 +421,11 @@ class NullDiscoveryRepository:
         topic_id: UUID,
         article_id: UUID,
         items_at_consume: int,
+        org_code: str,
     ) -> None:
-        t = self._topics[topic_id]
+        t = self._topics.get(topic_id)
+        if t is None or t.org_code != org_code:
+            return
         t.status = "consumed"
         t.consumed_article_id = article_id
         t.consumed_at = _utcnow()

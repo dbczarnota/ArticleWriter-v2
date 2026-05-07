@@ -324,11 +324,15 @@ class PostgresDiscoveryRepository:
         topic_id: UUID,
         article_id: UUID,
         items_at_consume: int,
+        org_code: str,
     ) -> None:
         async with self._session_maker() as session:
             await session.execute(
                 update(DiscoveryTopic)
-                .where(DiscoveryTopic.id == topic_id)  # type: ignore[arg-type]
+                .where(
+                    DiscoveryTopic.id == topic_id,  # type: ignore[arg-type]
+                    DiscoveryTopic.org_code == org_code,  # type: ignore[arg-type]
+                )
                 .values(
                     status="consumed",
                     consumed_article_id=article_id,
