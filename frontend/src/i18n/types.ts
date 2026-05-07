@@ -364,8 +364,9 @@ export interface Translations {
       toggleSources: string;
       dismiss: string;
       restore: string;
+      emptyHint: string;
     };
-    item: { empty: string; uncategorized: string; colItem: string; colCategories: string; colSeen: string };
+    item: { empty: string; emptyHint: string; uncategorized: string; colItem: string; colCategories: string; colSeen: string };
     feed: {
       lastFetched: string;
       errors: string;

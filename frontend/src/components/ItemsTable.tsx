@@ -10,7 +10,8 @@ interface Props {
 export function ItemsTable({ items, loading }: Props) {
   const t = useT();
   if (loading) return <StatusMessage kind="loading">{t.discovery.topic.loading}</StatusMessage>;
-  if (items.length === 0) return <StatusMessage kind="empty">{t.discovery.item.empty}</StatusMessage>;
+  if (items.length === 0)
+    return <StatusMessage kind="empty" hint={t.discovery.item.emptyHint}>{t.discovery.item.empty}</StatusMessage>;
 
   const chip: React.CSSProperties = {
     display: "inline-flex",

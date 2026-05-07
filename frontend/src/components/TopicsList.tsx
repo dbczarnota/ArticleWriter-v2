@@ -16,7 +16,8 @@ interface Props {
 export function TopicsList({ topics, loading, onWrite, onSelect, onDismiss, onRestore, pendingActionId }: Props) {
   const t = useT();
   if (loading) return <StatusMessage kind="loading">{t.discovery.topic.loading}</StatusMessage>;
-  if (topics.length === 0) return <StatusMessage kind="empty">{t.discovery.topic.empty}</StatusMessage>;
+  if (topics.length === 0)
+    return <StatusMessage kind="empty" hint={t.discovery.topic.emptyHint}>{t.discovery.topic.empty}</StatusMessage>;
   return (
     <div>
       {topics.map((topic) => (

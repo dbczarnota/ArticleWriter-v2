@@ -350,8 +350,9 @@ export const pl: Translations = {
       toggleSources: "toggle sources",
       dismiss: "Odrzuć",
       restore: "Przywróć",
+      emptyHint: "Spróbuj zdjąć filtry kategorii lub zmienić okno czasowe.",
     },
-    item: { empty: "Brak itemów dla tego filtra.", uncategorized: "(brak)", colItem: "Item", colCategories: "Kategorie", colSeen: "Pojawiło się" },
+    item: { empty: "Brak itemów dla tego filtra.", emptyHint: "Itemy pojawiają się po pobraniu RSS. Sprawdź zakładkę Feedy.", uncategorized: "(brak)", colItem: "Item", colCategories: "Kategorie", colSeen: "Pojawiło się" },
     feed: {
       lastFetched: "Ostatnie pobranie",
       errors: "Liczba błędów",

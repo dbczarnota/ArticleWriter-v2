@@ -350,8 +350,9 @@ export const en: Translations = {
       toggleSources: "toggle sources",
       dismiss: "Dismiss",
       restore: "Restore",
+      emptyHint: "Try removing category filters or widening the time window.",
     },
-    item: { empty: "No items for this filter.", uncategorized: "(none)", colItem: "Item", colCategories: "Categories", colSeen: "Seen" },
+    item: { empty: "No items for this filter.", emptyHint: "Items appear after the RSS poll runs. Check the Feeds tab.", uncategorized: "(none)", colItem: "Item", colCategories: "Categories", colSeen: "Seen" },
     feed: {
       lastFetched: "Last fetched",
       errors: "Error count",
