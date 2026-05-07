@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { DiscoveryTopicDetail } from "../types";
 import { useApi } from "../lib/useApi";
+import { useFocusTrap } from "../lib/useFocusTrap";
 import { useT } from "../i18n";
 
 interface Props {
@@ -26,6 +27,7 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const mounted = useRef(true);
+  const dialogRef = useFocusTrap<HTMLDivElement>(true);
 
   useEffect(() => () => { mounted.current = false; }, []);
 
@@ -154,6 +156,10 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
       onClick={onCancel}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="write-dialog-title"
         style={{
           background: "var(--white)",
           border: "1px solid var(--border)",
@@ -176,7 +182,7 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
             alignItems: "center",
           }}
         >
-          <h3 style={{ margin: 0, fontSize: 16, color: "var(--text)" }}>
+          <h3 id="write-dialog-title" style={{ margin: 0, fontSize: 16, color: "var(--text)" }}>
             {t.discovery.dialog.title}
           </h3>
           <button
