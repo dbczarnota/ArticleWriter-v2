@@ -361,6 +361,9 @@ class NullDiscoveryRepository:
         rows.sort(key=lambda it: it.fetched_at)
         return rows[:limit]
 
+    async def list_feed_ids_for_item(self, *, item_id: UUID) -> list[UUID]:
+        return [feed_id for (i, feed_id) in self._item_feeds if i == item_id]
+
     async def list_items_for_org(
         self,
         *,

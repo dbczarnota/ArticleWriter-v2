@@ -216,6 +216,15 @@ class PostgresDiscoveryRepository:
             )
             return list(result.scalars().all())
 
+    async def list_feed_ids_for_item(self, *, item_id: UUID) -> list[UUID]:
+        async with self._session_maker() as session:
+            result = await session.execute(
+                select(DiscoveryItemFeed.feed_id).where(  # type: ignore[arg-type]
+                    DiscoveryItemFeed.item_id == item_id  # type: ignore[arg-type]
+                )
+            )
+            return [row[0] for row in result.all()]
+
     async def list_items_for_org(
         self,
         *,

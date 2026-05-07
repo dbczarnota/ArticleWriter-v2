@@ -257,6 +257,13 @@ class DiscoveryRepository(Protocol):
         (classifier crashed, etc) sit here until a future tick retries them."""
         ...
 
+    async def list_feed_ids_for_item(self, *, item_id: UUID) -> list[UUID]:
+        """Return every `feed_id` linked to this item via discovery_item_feed.
+        Used by orphan recovery: when a previously-fetched item retries the
+        full pipeline, we need to relink it to its ACTUAL originating feed,
+        not a placeholder. Order: stable by primary key, unspecified beyond."""
+        ...
+
     async def list_items_for_org(
         self,
         *,

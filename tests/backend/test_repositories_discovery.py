@@ -483,6 +483,23 @@ async def test_count_items_for_feed_since(session_maker, org):
 
 
 @pytest.mark.asyncio
+async def test_list_feed_ids_for_item_returns_existing_links(session_maker, org):
+    from backend.db.models import DiscoveryItem
+    from backend.repositories.discovery import PostgresDiscoveryRepository
+
+    repo = PostgresDiscoveryRepository(session_maker)
+    feed_a = await repo.upsert_feed(org_code=org.code, feed_url="https://a/rss")
+    feed_b = await repo.upsert_feed(org_code=org.code, feed_url="https://b/rss")
+    item = await repo.upsert_item(
+        DiscoveryItem(org_code=org.code, canonical_url="https://x/1", title="T")
+    )
+    await repo.add_item_to_feed_link(item_id=item.id, feed_id=feed_a.id)
+    await repo.add_item_to_feed_link(item_id=item.id, feed_id=feed_b.id)
+    feed_ids = await repo.list_feed_ids_for_item(item_id=item.id)
+    assert set(feed_ids) == {feed_a.id, feed_b.id}
+
+
+@pytest.mark.asyncio
 async def test_mark_topic_consumed_is_tenant_isolated(session_maker, org):
     """Cross-tenant guard: mark_topic_consumed with a wrong org_code must
     NOT mutate the topic, even when topic_id is real."""

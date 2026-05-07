@@ -239,6 +239,41 @@ async def test_one_failing_item_does_not_kill_the_loop(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_orphan_retry_uses_original_feed_id(monkeypatch):
+    """An orphan item that originally came from feed B must be re-linked to
+    feed B on retry, not to whatever runtime_feeds[0] happens to be."""
+    from backend.db.models import DiscoveryItem
+
+    repo = NullDiscoveryRepository()
+    feed_a = await repo.upsert_feed(org_code="org_t", feed_url="https://a/rss")
+    feed_b = await repo.upsert_feed(org_code="org_t", feed_url="https://b/rss")
+
+    # Pre-seed an orphan from feed B, processed_at=None.
+    orphan = DiscoveryItem(
+        org_code="org_t", canonical_url="https://b/1", title="T", processed_at=None
+    )
+    orphan = await repo.upsert_item(orphan)
+    await repo.add_item_to_feed_link(item_id=orphan.id, feed_id=feed_b.id)
+
+    fetcher = AsyncMock(
+        return_value=FetchResult(items=[], etag=None, last_modified=None, not_modified=False)
+    )
+    captured_feed_ids: list = []
+    async def _capture(*, raw, org_code, domain, feed_id, repo):
+        captured_feed_ids.append(feed_id)
+
+    monkeypatch.setattr("backend.services.discovery.poller.fetch_feed", fetcher)
+    monkeypatch.setattr("backend.services.discovery.poller.process_item", _capture)
+    domain = _domain([FeedConfig(url="https://a/rss"), FeedConfig(url="https://b/rss")])
+
+    await poll_org_feeds(org_code="org_t", domain=domain, repo=repo)
+
+    # Orphan should be retried with feed B (its origin), not feed A.
+    assert feed_b.id in captured_feed_ids, f"Expected feed_b.id={feed_b.id} in {captured_feed_ids}"
+    assert feed_a.id not in captured_feed_ids, f"feed_a.id={feed_a.id} should not appear"
+
+
+@pytest.mark.asyncio
 async def test_fetch_error_increments_error_count(monkeypatch):
     repo = NullDiscoveryRepository()
     fetcher = AsyncMock(side_effect=FeedFetchError("boom"))

@@ -188,16 +188,24 @@ async def poll_org_feeds(
                     summary=orphan.summary,
                     published_at=orphan.published_at,
                 )
-                # Use the first runtime feed as a placeholder feed_id for baggage.
-                # An orphan was created from at least one feed, so runtime_feeds
-                # should not be empty, but guard defensively.
-                if not runtime_feeds:
+                # Look up the orphan's ACTUAL originating feed. Falling back
+                # to runtime_feeds[0] would corrupt feed→item attribution by
+                # linking the item to a feed it never came from.
+                feed_ids = await repo.list_feed_ids_for_item(item_id=orphan.id)
+                if feed_ids:
+                    feed_id_for_retry = feed_ids[0]
+                elif runtime_feeds:
+                    # No prior link (very old data?) — fall back to the org's
+                    # first feed, since processing the item is more important
+                    # than perfect attribution.
+                    feed_id_for_retry = runtime_feeds[0].id
+                else:
                     continue
                 await process_item(
                     raw=raw,
                     org_code=org_code,
                     domain=domain,
-                    feed_id=runtime_feeds[0].id,
+                    feed_id=feed_id_for_retry,
                     repo=repo,
                 )
                 orphans_retried += 1
