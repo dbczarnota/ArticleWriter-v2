@@ -771,10 +771,20 @@ async def list_discovery_items(
 async def list_discovery_feeds(
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
+    org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ) -> list[dict]:
     from datetime import UTC, timedelta
 
     feeds = await discovery_repo.list_feeds_for_org(org.code)
+    # Only show feeds that are still in the domain config. discovery_feeds
+    # rows persist after the editor removes a URL from Settings (we don't
+    # delete the row because discovery_item_feed links would dangle), but
+    # they shouldn't appear in the sidebar anymore.
+    domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
+    if domain is not None:
+        configured_urls = {cfg.url for cfg in domain.discovery_feeds}
+        feeds = [f for f in feeds if f.feed_url in configured_urls]
+
     since = datetime.now(UTC) - timedelta(hours=24)
     out: list[dict] = []
     for f in feeds:

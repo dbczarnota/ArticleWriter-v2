@@ -13,9 +13,9 @@ from fastapi.testclient import TestClient
 
 from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
-from backend.db.models import DiscoveryItem, Org
+from backend.db.models import DiscoveryItem, Org, OrgConfig
 from backend.main import app
-from backend.repositories import get_discovery_repo
+from backend.repositories import get_discovery_repo, get_org_config_repo
 from backend.repositories.null import NullDiscoveryRepository
 
 
@@ -39,11 +39,37 @@ def discovery_repo() -> NullDiscoveryRepository:
     return NullDiscoveryRepository()
 
 
+class _StubOrgConfigRepo:
+    """Test-only OrgConfig repo. `discovery_feeds` is mutable so individual
+    tests can seed which feed URLs the org has in its config."""
+
+    def __init__(self) -> None:
+        self.discovery_feeds: list[dict] = []
+
+    async def get(self, org_code: str) -> OrgConfig | None:
+        return OrgConfig(
+            org_code=org_code,
+            description="t",
+            language="pl",
+            discovery_enabled=True,
+            discovery_feeds=list(self.discovery_feeds),
+        )
+
+    async def upsert(self, *_args, **_kwargs) -> None:  # pragma: no cover
+        return None
+
+
 @pytest.fixture
-def client(user, org, discovery_repo) -> Generator[TestClient, None, None]:
+def org_config_repo() -> _StubOrgConfigRepo:
+    return _StubOrgConfigRepo()
+
+
+@pytest.fixture
+def client(user, org, discovery_repo, org_config_repo) -> Generator[TestClient, None, None]:
     app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[get_current_org] = lambda: org
     app.dependency_overrides[get_discovery_repo] = lambda: discovery_repo
+    app.dependency_overrides[get_org_config_repo] = lambda: org_config_repo
     yield_client = TestClient(app)
     yield yield_client
     app.dependency_overrides.clear()
@@ -257,8 +283,9 @@ async def test_write_article_does_not_mark_consumed_until_task_runs(
 
 
 @pytest.mark.asyncio
-async def test_list_feeds_returns_runtime_state(client, discovery_repo, org):
+async def test_list_feeds_returns_runtime_state(client, discovery_repo, org_config_repo, org):
     await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://x/rss")
+    org_config_repo.discovery_feeds = [{"url": "https://x/rss", "name": "X", "poll_interval_min": 15}]
     response = client.get("/v2/discovery/feeds")
     assert response.status_code == 200
     rows = response.json()
@@ -268,12 +295,13 @@ async def test_list_feeds_returns_runtime_state(client, discovery_repo, org):
 
 
 @pytest.mark.asyncio
-async def test_list_feeds_includes_items_24h_count(client, discovery_repo, org):
+async def test_list_feeds_includes_items_24h_count(client, discovery_repo, org_config_repo, org):
     feed = await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://x/rss")
     item = await discovery_repo.upsert_item(
         DiscoveryItem(org_code=org.code, canonical_url="https://x/1", title="A")
     )
     await discovery_repo.add_item_to_feed_link(item_id=item.id, feed_id=feed.id)
+    org_config_repo.discovery_feeds = [{"url": "https://x/rss", "name": "X", "poll_interval_min": 15}]
 
     response = client.get("/v2/discovery/feeds")
     assert response.status_code == 200
@@ -281,6 +309,25 @@ async def test_list_feeds_includes_items_24h_count(client, discovery_repo, org):
     assert len(rows) == 1
     assert rows[0]["items_24h_count"] == 1
     assert "last_fetched_at" in rows[0]
+
+
+@pytest.mark.asyncio
+async def test_list_feeds_hides_orphan_runtime_rows(client, discovery_repo, org_config_repo, org):
+    """A discovery_feeds row may persist after the editor removes its URL
+    from the domain config (we don't delete to keep discovery_item_feed
+    links valid). Such orphans must NOT appear in the API response —
+    otherwise the sidebar shows a stale 'tvn24.pl' the user already removed."""
+    await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://kept.example/rss")
+    await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://orphan.example/rss")
+    org_config_repo.discovery_feeds = [
+        {"url": "https://kept.example/rss", "name": "Kept", "poll_interval_min": 15}
+    ]
+
+    response = client.get("/v2/discovery/feeds")
+    assert response.status_code == 200
+    rows = response.json()
+    urls = {r["feed_url"] for r in rows}
+    assert urls == {"https://kept.example/rss"}
 
 
 @pytest.mark.asyncio
