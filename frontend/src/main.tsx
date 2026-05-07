@@ -1,3 +1,4 @@
+import "@fontsource-variable/inter/wght.css";
 import { KindeProvider } from "@kinde-oss/kinde-auth-react";
 import React, { useState } from "react";
 import ReactDOM from "react-dom/client";

@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
     "@kinde-oss/kinde-auth-react": "^5.11.2",
     "@types/dompurify": "^3.0.5",
     "date-fns": "^4.1.0",

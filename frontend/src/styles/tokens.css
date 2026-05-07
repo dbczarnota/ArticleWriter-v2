@@ -8,7 +8,7 @@
   --accent-lt: #fff7ed;
   --white: #ffffff;
 
-  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font: "Inter Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --radius: 6px;
   --sidebar-width: 280px;
 }
