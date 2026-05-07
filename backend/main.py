@@ -120,7 +120,26 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         await close_db()
 
 
-app = FastAPI(title="ArticleWriter v2", version="2.0", lifespan=lifespan)
+app = FastAPI(
+    title="ArticleWriter v2",
+    version="2.0",
+    description=(
+        "Backend for HeadlinesForge / Styl.fm — article-generation pipeline "
+        "plus Discovery RSS-driven topic surfacing. All `/v2/*` endpoints are "
+        "tenant-scoped via `X-Org-Code` + Kinde JWT."
+    ),
+    openapi_tags=[
+        {"name": "articles", "description": "Article CRUD and generation entry point."},
+        {"name": "discovery-topics", "description": "Discovery story-topic clustering."},
+        {"name": "discovery-items", "description": "Raw RSS items pre-clustering."},
+        {"name": "discovery-feeds", "description": "RSS feed runtime state and health."},
+        {"name": "discovery-categories", "description": "Editor-defined classification tags."},
+        {"name": "orgs", "description": "Tenant org bootstrap and listing."},
+        {"name": "domain-config", "description": "Per-org editorial configuration."},
+        {"name": "users", "description": "Caller identity."},
+    ],
+    lifespan=lifespan,
+)
 # Quiet the noisy paths from auto-tracing:
 # - /health: K8s liveness/readiness probe, fires every few seconds.
 # - /v2/articles and /v2/articles/{id}: list refreshes + article switches

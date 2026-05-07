@@ -66,7 +66,12 @@ def _build_app_settings(*, req: ArticleRequest, org_domain_name: str, domain):
     return AppSettings.from_request(req, base=base)
 
 
-@router.post("/write_article", status_code=202)
+@router.post(
+    "/write_article",
+    status_code=202,
+    summary="Start article generation for the calling org",
+    tags=["articles"],
+)
 async def write_article(
     req: ArticleRequest,
     background_tasks: BackgroundTasks,
@@ -75,10 +80,12 @@ async def write_article(
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
     article_repo: ArticleRepository = Depends(get_article_repo),
 ) -> dict:
-    """Start article generation in the background and return immediately.
-
-    Returns 202 Accepted with {id, status, topic} so the frontend can navigate
-    to the article and poll GET /v2/articles/{id} until status != 'running'.
+    """Creates an article row in `running` state and kicks off the multi-agent
+    pipeline as a background task. Returns 202 immediately with `{id, status,
+    topic}` so the frontend can navigate to the article and poll
+    GET /v2/articles/{id} until `status != 'running'`. Domain config is
+    resolved per the calling org's `org_code`; per-request `domain_overrides`
+    are merged on top of the stored org defaults.
     """
     # Pull secrets inside the function rather than as a FastAPI Depends arg.
     # When `cfg` was an arg, instrument_fastapi serialized it into the span's
@@ -293,20 +300,34 @@ async def _run_pipeline_background(
             pass
 
 
-@router.get("/me")
+@router.get(
+    "/me",
+    summary="Return the calling user's identity",
+    tags=["users"],
+)
 async def get_me(user: AuthenticatedUser = Depends(get_current_user)) -> dict:
-    """Return the current user from JWT (or NullAuth fallback for run.py)."""
+    """Returns the current user resolved from the bearer JWT (or the
+    NullAuth fallback identity used by `run.py` in local-dev). Used by the
+    frontend on boot to show name/email and to gate UI on the user's
+    `org_codes` claim.
+    """
     return user.model_dump()
 
 
-@router.get("/orgs")
+@router.get(
+    "/orgs",
+    summary="List orgs the calling user belongs to",
+    tags=["orgs"],
+)
 async def list_my_orgs(
     user: AuthenticatedUser = Depends(get_current_user),
     org_repo: OrgRepository = Depends(get_org_repo),
 ) -> list[dict]:
-    """List orgs the current user belongs to (per JWT claim), enriched with
-    domain_name from our DB. Orgs not yet synced/mapped are returned with
-    `domain_name=None` so the frontend can prompt for setup."""
+    """Returns the orgs declared in the user's JWT `org_codes` claim,
+    enriched with each org's `domain_name` from our DB. Orgs not yet
+    synced or mapped come back with `domain_name=None` so the frontend can
+    prompt for first-time setup via PUT /v2/domain-config.
+    """
     orgs = await org_repo.list_for_user(user.org_codes)
     return [
         {
@@ -318,7 +339,11 @@ async def list_my_orgs(
     ]
 
 
-@router.get("/articles")
+@router.get(
+    "/articles",
+    summary="List articles for the calling org",
+    tags=["articles"],
+)
 async def list_articles(
     org: Org = Depends(get_current_org),
     article_repo: ArticleRepository = Depends(get_article_repo),
@@ -327,12 +352,11 @@ async def list_articles(
     created_after: datetime | None = Query(None),
     created_before: datetime | None = Query(None),
 ) -> list[dict]:
-    """Tenant-filtered article list, newest first. Returns minimal projection;
-    full article via GET /v2/articles/{id}.
-
-    `created_after` / `created_before` accept ISO-8601 datetimes (e.g.
-    '2026-04-28T00:00:00Z') and bound the result inclusively. None means
-    no bound on that side."""
+    """Returns a tenant-filtered article list (newest first) using a minimal
+    projection — fetch the full article via GET /v2/articles/{id}. Filtered
+    by the calling org's `org_code`; supports pagination (`limit`/`offset`)
+    and inclusive ISO-8601 bounds via `created_after` / `created_before`.
+    """
     articles = await article_repo.list_by_org(
         org_code=org.code,
         limit=limit,
@@ -359,16 +383,22 @@ async def list_articles(
     ]
 
 
-@router.get("/articles/{article_id}")
+@router.get(
+    "/articles/{article_id}",
+    summary="Get one article with all child rows",
+    tags=["articles"],
+)
 async def get_article(
     article_id: UUID,
     org: Org = Depends(get_current_org),
     article_repo: ArticleRepository = Depends(get_article_repo),
 ) -> dict:
-    """Full article including all child rows (facts, quotes, embed candidates,
-    usage events, fallback events). Returns 404 when the article doesn't
-    exist OR exists but belongs to a different org — no existence leak across
-    tenants."""
+    """Returns one full article including its facts, quotes, embed
+    candidates, usage events, and fallback events. Returns 404 when the
+    article does not exist or belongs to a different org — no existence
+    leak across tenants. Polled by the frontend during pipeline execution
+    to surface live `pipeline_stage` updates.
+    """
     article = await article_repo.get(article_id, org_code=org.code)
     if article is None:
         raise HTTPException(status_code=404, detail="Article not found")
@@ -456,14 +486,22 @@ async def get_article(
     }
 
 
-@router.patch("/articles/{article_id}")
+@router.patch(
+    "/articles/{article_id}",
+    summary="Mark an article done / undone",
+    tags=["articles"],
+)
 async def patch_article(
     article_id: UUID,
     body: ArticleUpdate,
     org: Org = Depends(get_current_org),
     article_repo: ArticleRepository = Depends(get_article_repo),
 ) -> dict:
-    """Partial update — currently only `marked_done` flag."""
+    """Partial update of an article — currently flips the `marked_done`
+    flag and records `marked_done_by_name` on transitions to true. Used by
+    the editor UI to dismiss a finished article from the active list;
+    scoped to the calling org's `org_code`.
+    """
     await article_repo.set_marked_done(
         article_id,
         org_code=org.code,
@@ -473,29 +511,43 @@ async def patch_article(
     return {"ok": True}
 
 
-@router.get("/domain-config")
+@router.get(
+    "/domain-config",
+    summary="Get the calling org's domain config",
+    tags=["domain-config"],
+)
 async def get_domain_config_endpoint(
     org: Org = Depends(get_current_org),
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ) -> dict:
-    """Return the current org's domain config. 404 if not yet configured."""
+    """Returns the editorial / pipeline configuration stored for the
+    calling org (guidelines, search params, agent models, discovery feeds,
+    example articles, etc.). Returns 404 when the org has not yet been
+    configured — the frontend uses that to gate the Settings UI into
+    first-run mode.
+    """
     config = await org_config_repo.get(org.code)
     if config is None:
         raise HTTPException(status_code=404, detail="Domain config not found for this org")
     return _org_config_to_dict(config, domain_name=org.domain_name)
 
 
-@router.put("/domain-config")
+@router.put(
+    "/domain-config",
+    summary="Upsert the calling org's domain config",
+    tags=["domain-config"],
+)
 async def put_domain_config_endpoint(
     body: DomainConfigUpdate,
     org: Org = Depends(get_current_org),
     org_repo: OrgRepository = Depends(get_org_repo),
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ) -> dict:
-    """Upsert the org's domain config. Returns the saved config.
-
-    `domain_name` is dispatched to the orgs table (it doesn't live in
-    org_configs); everything else is upserted on org_configs.
+    """Upserts the calling org's editorial config and returns the saved
+    state. `domain_name` is dispatched to the `orgs` table (it does not
+    live in `org_configs`); everything else is merged onto the existing
+    `org_configs` row, so unset fields keep their previously stored
+    values. Used by the Settings UI to persist editor changes.
     """
     patch = body.model_dump(exclude_unset=True)
     new_domain_name = patch.pop("domain_name", None)
@@ -574,7 +626,11 @@ def _hosts_from_items(items: list) -> list[str]:
 _SORT_KEYS = {"last_activity", "first_seen", "item_count"}
 
 
-@router.get("/discovery/topics")
+@router.get(
+    "/discovery/topics",
+    summary="List Discovery topics for the calling org",
+    tags=["discovery-topics"],
+)
 async def list_discovery_topics(
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
@@ -586,6 +642,13 @@ async def list_discovery_topics(
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[dict]:
+    """Returns clustered story topics surfaced by the Discovery pipeline,
+    filtered by the calling org's `org_code`. Supports filtering by
+    `category`, `status`, `feed_id`, and a `since` cutoff; pagination via
+    `limit`/`offset`. The `sort` query param is one of `last_activity` /
+    `first_seen` / `item_count` and drives the order in which topics
+    appear in the editor sidebar.
+    """
     if sort not in _SORT_KEYS:
         raise HTTPException(status_code=400, detail=f"Invalid sort: {sort}")
 
@@ -636,12 +699,22 @@ async def list_discovery_topics(
     return out[offset : offset + limit]
 
 
-@router.get("/discovery/topics/{topic_id}")
+@router.get(
+    "/discovery/topics/{topic_id}",
+    summary="Get one Discovery topic with its items",
+    tags=["discovery-topics"],
+)
 async def get_discovery_topic(
     topic_id: UUID,
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
 ) -> dict:
+    """Returns a single Discovery topic plus every RSS item clustered into
+    it, scoped to the calling org's `org_code`. Returns 404 if the topic
+    does not exist or belongs to another org. Used by the topic-detail
+    drawer in the UI to render the source list before the editor decides
+    whether to write an article.
+    """
     topic = await discovery_repo.get_topic(topic_id=topic_id, org_code=org.code)
     if topic is None:
         raise HTTPException(status_code=404, detail="Topic not found")
@@ -673,13 +746,22 @@ async def get_discovery_topic(
     }
 
 
-@router.post("/discovery/topics/{topic_id}/dismiss")
+@router.post(
+    "/discovery/topics/{topic_id}/dismiss",
+    summary="Dismiss a Discovery topic",
+    tags=["discovery-topics"],
+)
 async def dismiss_discovery_topic(
     topic_id: UUID,
     user: AuthenticatedUser = Depends(get_current_user),
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
 ) -> dict:
+    """Marks a Discovery topic as `dismissed`, removing it from the
+    default editor sidebar (open + resurfaced). The topic and its items
+    are kept in the DB so future RSS items will not re-cluster into a
+    fresh duplicate; restore via POST /discovery/topics/{topic_id}/restore.
+    """
     topic = await discovery_repo.get_topic(topic_id=topic_id, org_code=org.code)
     if topic is None:
         raise HTTPException(status_code=404, detail="Topic not found")
@@ -688,13 +770,22 @@ async def dismiss_discovery_topic(
     return {"id": str(topic_id), "status": "dismissed"}
 
 
-@router.post("/discovery/topics/{topic_id}/restore")
+@router.post(
+    "/discovery/topics/{topic_id}/restore",
+    summary="Restore a dismissed Discovery topic",
+    tags=["discovery-topics"],
+)
 async def restore_discovery_topic(
     topic_id: UUID,
     user: AuthenticatedUser = Depends(get_current_user),
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
 ) -> dict:
+    """Reverses a prior dismissal by flipping the topic's status back to
+    `open`, returning it to the default editor sidebar. Use when a topic
+    was dismissed by mistake or has become newsworthy again; scoped to
+    the calling org's `org_code`.
+    """
     topic = await discovery_repo.get_topic(topic_id=topic_id, org_code=org.code)
     if topic is None:
         raise HTTPException(status_code=404, detail="Topic not found")
@@ -718,7 +809,12 @@ class WriteFromTopicOverrides(BaseModel):
     urls: list[str] | None = None
 
 
-@router.post("/discovery/topics/{topic_id}/write_article", status_code=202)
+@router.post(
+    "/discovery/topics/{topic_id}/write_article",
+    status_code=202,
+    summary="Write an article from a Discovery topic",
+    tags=["discovery-topics"],
+)
 async def write_article_from_discovery_topic(
     topic_id: UUID,
     background_tasks: BackgroundTasks,
@@ -729,6 +825,13 @@ async def write_article_from_discovery_topic(
     article_repo: ArticleRepository = Depends(get_article_repo),
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ) -> dict:
+    """Bridges a Discovery topic into the article-generation pipeline,
+    using the topic's title + blurb + clustered item URLs as the seed.
+    Optional `overrides` from the pre-write dialog can replace the topic,
+    instructions, or URL set. Returns 202 immediately; the pipeline runs
+    as a background task and the source topic is marked `consumed` once
+    the task starts.
+    """
     topic = await discovery_repo.get_topic(topic_id=topic_id, org_code=org.code)
     if topic is None:
         raise HTTPException(status_code=404, detail="Topic not found")
@@ -819,7 +922,11 @@ async def write_article_from_discovery_topic(
     return {"topic_id": str(topic_id), "article_id": str(article_id), "status": "running"}
 
 
-@router.get("/discovery/items")
+@router.get(
+    "/discovery/items",
+    summary="List raw Discovery RSS items",
+    tags=["discovery-items"],
+)
 async def list_discovery_items(
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
@@ -828,6 +935,12 @@ async def list_discovery_items(
     limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ) -> list[dict]:
+    """Returns the raw RSS items ingested for the calling org, before /
+    independent of topic clustering. Each item carries its `topic_id` (or
+    `None` if not yet clustered). Filterable by `feed_id` and
+    `category`; used by the Discovery debug view to inspect what the
+    crawler has actually pulled in.
+    """
     items = await discovery_repo.list_items_for_org(
         org_code=org.code,
         feed_id=feed_id,
@@ -856,12 +969,22 @@ async def list_discovery_items(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/discovery/feeds")
+@router.get(
+    "/discovery/feeds",
+    summary="List Discovery RSS feeds with health stats",
+    tags=["discovery-feeds"],
+)
 async def list_discovery_feeds(
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ) -> list[dict]:
+    """Returns each RSS feed configured for the calling org, with runtime
+    health (`last_fetched_at`, `last_error`, `error_count`, `disabled`)
+    plus a 24-hour ingestion count. Feeds whose URL was removed from the
+    org's config are excluded — leftover rows persist for referential
+    integrity but do not surface in the UI.
+    """
     from datetime import UTC, timedelta
 
     feeds = await discovery_repo.list_feeds_for_org(org.code)
@@ -894,12 +1017,21 @@ async def list_discovery_feeds(
     return out
 
 
-@router.post("/discovery/feeds/{feed_id}/reset")
+@router.post(
+    "/discovery/feeds/{feed_id}/reset",
+    summary="Reset a Discovery feed's error state",
+    tags=["discovery-feeds"],
+)
 async def reset_discovery_feed(
     feed_id: UUID,
     org: Org = Depends(get_current_org),
     discovery_repo: DiscoveryRepository = Depends(get_discovery_repo),
 ) -> dict:
+    """Clears `error_count` and the `disabled` flag on a feed, allowing
+    the scheduler to attempt fetches again. Use after fixing an upstream
+    feed issue (URL change, transient outage); 404s if the feed is not
+    bound to the calling org.
+    """
     feeds = await discovery_repo.list_feeds_for_org(org.code)
     if not any(f.id == feed_id for f in feeds):
         raise HTTPException(status_code=404, detail="Feed not found")
@@ -907,11 +1039,21 @@ async def reset_discovery_feed(
     return {"id": str(feed_id), "error_count": 0, "disabled": False}
 
 
-@router.get("/discovery/categories")
+@router.get(
+    "/discovery/categories",
+    summary="List Discovery categories for the calling org",
+    tags=["discovery-categories"],
+)
 async def list_discovery_categories(
     org: Org = Depends(get_current_org),
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ) -> list[dict]:
+    """Returns the editor-defined classification tags (name + description)
+    that the Discovery classifier uses to label incoming items. Sourced
+    from the org's domain config; returns an empty list when the org has
+    no config yet. Used to populate the category filter chips above the
+    topics list.
+    """
     domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
     if domain is None:
         return []
