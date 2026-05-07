@@ -68,9 +68,11 @@ interface Props {
   onSelect?: (topicId: string) => void;
   onDismiss?: (topicId: string) => void;
   onRestore?: (topicId: string) => void;
+  pendingActionId?: string | null;
 }
 
-export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore }: Props) {
+export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pendingActionId }: Props) {
+  const isPending = pendingActionId === topic.id;
   const t = useT();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<DiscoveryItem[] | null>(null);
@@ -249,15 +251,17 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore }: Pr
               <button
                 type="button"
                 onClick={handleDismiss}
+                disabled={isPending}
                 style={{
                   background: "none",
                   border: 0,
                   padding: 0,
                   fontSize: 12,
                   color: "var(--muted)",
-                  cursor: "pointer",
+                  cursor: isPending ? "default" : "pointer",
                   textDecoration: "underline",
                   textUnderlineOffset: 2,
+                  opacity: isPending ? 0.5 : undefined,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = "var(--error-fg)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted)"; }}
@@ -269,15 +273,17 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore }: Pr
               <button
                 type="button"
                 onClick={handleRestore}
+                disabled={isPending}
                 style={{
                   background: "none",
                   border: 0,
                   padding: 0,
                   fontSize: 12,
                   color: "var(--accent)",
-                  cursor: "pointer",
+                  cursor: isPending ? "default" : "pointer",
                   textDecoration: "underline",
                   textUnderlineOffset: 2,
+                  opacity: isPending ? 0.5 : undefined,
                 }}
               >
                 {t.discovery.topic.restore}

@@ -28,6 +28,7 @@ export function DiscoveryHub() {
     statuses: ["open", "resurfaced"],
   });
   const [sort, setSort] = useState<DiscoveryTopicSort>("item_count");
+  const [pendingTopicAction, setPendingTopicAction] = useState<string | null>(null);
 
   const { feeds, loading: feedsLoading } = useDiscoveryFeeds();
   const { topics, loading: topicsLoading, refresh: refreshTopics } = useDiscoveryTopics({
@@ -60,20 +61,26 @@ export function DiscoveryHub() {
   }
 
   async function dismissTopic(topicId: string) {
+    setPendingTopicAction(topicId);
     try {
       await request(`/v2/discovery/topics/${topicId}/dismiss`, { method: "POST" });
       await refreshTopics();
     } catch (err) {
       console.error("DiscoveryHub: dismiss failed", err);
+    } finally {
+      setPendingTopicAction(null);
     }
   }
 
   async function restoreTopic(topicId: string) {
+    setPendingTopicAction(topicId);
     try {
       await request(`/v2/discovery/topics/${topicId}/restore`, { method: "POST" });
       await refreshTopics();
     } catch (err) {
       console.error("DiscoveryHub: restore failed", err);
+    } finally {
+      setPendingTopicAction(null);
     }
   }
 
@@ -184,6 +191,7 @@ export function DiscoveryHub() {
                   onSelect={setSelectedTopicId}
                   onDismiss={dismissTopic}
                   onRestore={restoreTopic}
+                  pendingActionId={pendingTopicAction}
                 />
               )}
               {view === "items" && <ItemsTable items={items} loading={itemsLoading} />}

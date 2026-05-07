@@ -10,9 +10,10 @@ interface Props {
   onSelect?: (topicId: string) => void;
   onDismiss?: (topicId: string) => void;
   onRestore?: (topicId: string) => void;
+  pendingActionId?: string | null;
 }
 
-export function TopicsList({ topics, loading, onWrite, onSelect, onDismiss, onRestore }: Props) {
+export function TopicsList({ topics, loading, onWrite, onSelect, onDismiss, onRestore, pendingActionId }: Props) {
   const t = useT();
   if (loading) return <StatusMessage kind="loading">{t.discovery.topic.loading}</StatusMessage>;
   if (topics.length === 0) return <StatusMessage kind="empty">{t.discovery.topic.empty}</StatusMessage>;
@@ -26,6 +27,7 @@ export function TopicsList({ topics, loading, onWrite, onSelect, onDismiss, onRe
           onSelect={onSelect}
           onDismiss={onDismiss}
           onRestore={onRestore}
+          pendingActionId={pendingActionId}
         />
       ))}
     </div>
