@@ -13,10 +13,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from backend.db.models import DiscoveryFeed, DiscoveryItem, DiscoveryItemFeed, DiscoveryTopic
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
+from backend.db.utils import utcnow as _utcnow
 
 
 class PostgresDiscoveryRepository:

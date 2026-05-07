@@ -6,7 +6,7 @@ Sessions are short-lived: one per call. No long-lived sessions / unit-of-work.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
 from uuid import UUID, uuid4
 
 import logfire
@@ -24,10 +24,7 @@ from backend.db.models import (
     Quote,
     UsageEvent,
 )
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
+from backend.db.utils import utcnow as _utcnow
 
 
 class PostgresArticleRepository:
@@ -240,7 +237,7 @@ class PostgresArticleRepository:
 
         async with self._session_maker() as session:
             result = await session.execute(
-                select(func.count(Article.id)).where(
+                select(func.count(Article.id)).where(  # type: ignore[arg-type]
                     Article.org_code == org_code,  # type: ignore[arg-type]
                     Article.status == "running",  # type: ignore[arg-type]
                 )

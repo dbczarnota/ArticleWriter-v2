@@ -23,7 +23,7 @@ Status values for Article:
 # NOTE: do NOT add `from __future__ import annotations` — it stringifies all annotations
 # and SQLModel/SQLAlchemy 2.0 can't resolve the Relationship target classes from strings.
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -37,10 +37,7 @@ from backend.db.orgconfig_defaults import (
     DEFAULT_GUIDELINES,
     DEFAULT_HTML_FORMAT,
 )
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
+from backend.db.utils import utcnow as _utcnow
 
 
 class Org(SQLModel, table=True):

@@ -31,9 +31,7 @@ from backend.db.models import (
 _log = logging.getLogger(__name__)
 
 
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
-
+from backend.db.utils import utcnow as _utcnow  # noqa: E402
 
 # Stable seed values used by run.py's NullAuthenticator path so a developer can
 # rely on the same identifiers across runs.
