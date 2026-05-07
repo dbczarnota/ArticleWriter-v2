@@ -348,9 +348,9 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
                         alignItems: "center",
                         justifyContent: "center",
                         padding: 6,
-                        background: copiedUrl === it.title ? "#22c55e" : "var(--white)",
+                        background: copiedUrl === it.title ? "var(--success)" : "var(--white)",
                         color: copiedUrl === it.title ? "#fff" : "var(--accent)",
-                        border: `1px solid ${copiedUrl === it.title ? "#22c55e" : "var(--accent)"}`,
+                        border: `1px solid ${copiedUrl === it.title ? "var(--success)" : "var(--accent)"}`,
                         borderRadius: "var(--radius)",
                         cursor: submitting ? "default" : "pointer",
                         transition: "background 0.15s, color 0.15s, border-color 0.15s",
@@ -481,8 +481,8 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
             style={{
               padding: "8px 20px",
               borderTop: "1px solid var(--border)",
-              background: "#fef2f2",
-              color: "#b91c1c",
+              background: "var(--error-lt)",
+              color: "var(--error-fg)",
               fontSize: 12,
               wordBreak: "break-word",
             }}

@@ -174,12 +174,12 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore }: Pr
         >
           <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4, flexWrap: "wrap" }}>
             {isResurfaced && (
-              <span style={{ ...chipBase, background: "#fee2e2", color: "#b91c1c" }}>
+              <span style={{ ...chipBase, background: "var(--error-lt)", color: "var(--error-fg)" }}>
                 {t.discovery.hub.resurfaced}
               </span>
             )}
             {isConsumed && (
-              <span style={{ ...chipBase, background: "#dcfce7", color: "#166534" }}>
+              <span style={{ ...chipBase, background: "var(--success-lt)", color: "var(--success-fg)" }}>
                 {t.discovery.hub.written}
               </span>
             )}
@@ -259,7 +259,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore }: Pr
                   textDecoration: "underline",
                   textUnderlineOffset: 2,
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "#b91c1c"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--error-fg)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted)"; }}
               >
                 {t.discovery.topic.dismiss}
@@ -316,7 +316,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore }: Pr
             {t.discovery.topic.sources}
           </div>
           {error ? (
-            <div style={{ color: "#b91c1c", fontSize: 13 }}>{t.discovery.topic.error}: {error}</div>
+            <div style={{ color: "var(--error-fg)", fontSize: 13 }}>{t.discovery.topic.error}: {error}</div>
           ) : items === null ? (
             <div style={{ color: "var(--muted)", fontSize: 13 }}>{t.discovery.topic.loading}</div>
           ) : items.length === 0 ? (

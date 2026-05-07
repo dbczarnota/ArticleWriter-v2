@@ -442,7 +442,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
               <button
                 type="button"
                 onClick={() => set("example_titles", form.example_titles.filter((_, j) => j !== i))}
-                style={{ background: "none", border: "none", fontSize: 13, color: "#ef4444", cursor: "pointer", flexShrink: 0 }}
+                style={{ background: "none", border: "none", fontSize: 13, color: "var(--error)", cursor: "pointer", flexShrink: 0 }}
               >
                 {dc.removeTitle}
               </button>
@@ -478,7 +478,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
                 <button
                   type="button"
                   onClick={() => set("example_articles", form.example_articles.filter((_, j) => j !== i))}
-                  style={{ background: "none", border: "none", fontSize: 12, color: "#ef4444", cursor: "pointer" }}
+                  style={{ background: "none", border: "none", fontSize: 12, color: "var(--error)", cursor: "pointer" }}
                 >
                   {dc.removeTitle}
                 </button>
@@ -636,7 +636,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
               <button
                 type="button"
                 onClick={() => set("discovery_feeds", form.discovery_feeds.filter((_, j) => j !== i))}
-                style={{ background: "none", border: "none", fontSize: 13, color: "#ef4444", cursor: "pointer" }}
+                style={{ background: "none", border: "none", fontSize: 13, color: "var(--error)", cursor: "pointer" }}
               >
                 {dc.discoveryRemoveFeed}
               </button>
@@ -707,7 +707,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
               <button
                 type="button"
                 onClick={() => set("discovery_categories", form.discovery_categories.filter((_, j) => j !== i))}
-                style={{ background: "none", border: "none", fontSize: 13, color: "#ef4444", cursor: "pointer" }}
+                style={{ background: "none", border: "none", fontSize: 13, color: "var(--error)", cursor: "pointer" }}
               >
                 {dc.discoveryRemoveCategory}
               </button>
@@ -800,7 +800,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
         >
           {saving ? dc.saving : dc.save}
         </button>
-        {error && <span style={{ fontSize: 12, color: "#ef4444" }}>{error}</span>}
+        {error && <span style={{ fontSize: 12, color: "var(--error)" }}>{error}</span>}
         {!error && !saving && <span style={{ fontSize: 12, color: "var(--muted)" }}>{dc.saveHint}</span>}
       </div>
     </div>

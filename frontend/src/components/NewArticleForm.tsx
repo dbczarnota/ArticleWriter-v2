@@ -354,7 +354,7 @@ export function NewArticleForm({ onCreated }: NewArticleFormProps) {
           )}
         </div>
 
-        {error && <p style={{ color: "#ef4444", fontSize: 13 }}>{error}</p>}
+        {error && <p style={{ color: "var(--error)", fontSize: 13 }}>{error}</p>}
 
         <Button
           type="submit"
@@ -403,7 +403,7 @@ function ExampleList({ placeholder, addLabel, rows = 1, onChange, inputStyle }: 
           }
           {items.length > 1 && (
             <button type="button" onClick={() => remove(i)}
-              style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 12, flexShrink: 0, paddingTop: 6 }}>
+              style={{ background: "none", border: "none", color: "var(--error)", cursor: "pointer", fontSize: 12, flexShrink: 0, paddingTop: 6 }}>
               ✕
             </button>
           )}

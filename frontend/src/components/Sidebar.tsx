@@ -7,9 +7,9 @@ import { DateRangePicker } from "./DateRangePicker";
 import { Button } from "./ui/Button";
 
 const STATUS_DOT: Record<string, string> = {
-  done: "#22c55e",
-  running: "#f59e0b",
-  failed: "#ef4444",
+  done: "var(--success)",
+  running: "var(--warning)",
+  failed: "var(--error)",
   insufficient_sources: "#f97316",
 };
 
@@ -305,7 +305,7 @@ export function Sidebar({
               }}
             >
               {a.marked_done ? (
-                <span style={{ color: "#22c55e", fontWeight: 700, fontSize: 14, flexShrink: 0, lineHeight: 1, marginTop: 3 }}>✓</span>
+                <span style={{ color: "var(--success)", fontWeight: 700, fontSize: 14, flexShrink: 0, lineHeight: 1, marginTop: 3 }}>✓</span>
               ) : (a.status === "failed" || a.status === "insufficient_sources") ? (
                 // Red disc with white ✕ — clearly different from the orange/green
                 // dots so failed articles read at a glance in a long list.
@@ -313,7 +313,7 @@ export function Sidebar({
                   width: 14,
                   height: 14,
                   borderRadius: "50%",
-                  background: "#ef4444",
+                  background: "var(--error)",
                   color: "#fff",
                   fontSize: 10,
                   fontWeight: 700,

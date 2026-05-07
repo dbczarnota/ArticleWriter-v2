@@ -19,9 +19,9 @@ function relTime(iso: string | null, t: Translations): string {
 }
 
 function statusOf(f: DiscoveryFeed, t: Translations): { label: string; bg: string; fg: string } {
-  if (f.disabled) return { label: t.discovery.feed.disabled, bg: "#fee2e2", fg: "#b91c1c" };
-  if (f.error_count >= 3) return { label: t.discovery.feed.degraded, bg: "#fef3c7", fg: "#92400e" };
-  return { label: t.discovery.feed.healthy, bg: "#dcfce7", fg: "#166534" };
+  if (f.disabled) return { label: t.discovery.feed.disabled, bg: "var(--error-lt)", fg: "var(--error-fg)" };
+  if (f.error_count >= 3) return { label: t.discovery.feed.degraded, bg: "var(--warning-lt)", fg: "var(--warning-fg)" };
+  return { label: t.discovery.feed.healthy, bg: "var(--success-lt)", fg: "var(--success-fg)" };
 }
 
 function hostname(url: string): string {
@@ -112,7 +112,7 @@ export function FeedsHealth({ feeds, loading }: Props) {
                 <div
                   style={{
                     fontWeight: 500,
-                    color: f.error_count > 0 ? "#92400e" : "#166534",
+                    color: f.error_count > 0 ? "var(--warning-fg)" : "var(--success-fg)",
                   }}
                 >
                   {f.error_count}
@@ -127,7 +127,7 @@ export function FeedsHealth({ feeds, loading }: Props) {
               <div
                 style={{
                   fontSize: 12,
-                  color: "#b91c1c",
+                  color: "var(--error-fg)",
                   marginTop: 8,
                   wordBreak: "break-word",
                 }}

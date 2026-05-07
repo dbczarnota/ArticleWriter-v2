@@ -42,7 +42,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
 
   if (error) {
     return (
-      <div style={{ padding: 24, color: "#b91c1c" }}>
+      <div style={{ padding: 24, color: "var(--error-fg)" }}>
         {t.discovery.topic.error}: {error}
       </div>
     );
@@ -131,12 +131,12 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
                 {isResurfaced && (
-                  <span style={{ ...chipBase, background: "#fee2e2", color: "#b91c1c" }}>
+                  <span style={{ ...chipBase, background: "var(--error-lt)", color: "var(--error-fg)" }}>
                     {t.discovery.hub.resurfaced}
                   </span>
                 )}
                 {isConsumed && (
-                  <span style={{ ...chipBase, background: "#dcfce7", color: "#166534" }}>
+                  <span style={{ ...chipBase, background: "var(--success-lt)", color: "var(--success-fg)" }}>
                     {t.discovery.hub.written}
                   </span>
                 )}

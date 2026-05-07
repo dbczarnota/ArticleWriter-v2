@@ -10,7 +10,7 @@ export function SettingsView() {
   const t = useT();
 
   if (loading) return <p style={{ color: "var(--muted)" }}>{t.settings.loading}</p>;
-  if (!config) return <p style={{ color: "#ef4444" }}>{t.settings.notFound}</p>;
+  if (!config) return <p style={{ color: "var(--error)" }}>{t.settings.notFound}</p>;
 
   return (
     <div style={{ display: "flex", gap: 32, alignItems: "flex-start" }}>

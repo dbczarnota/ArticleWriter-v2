@@ -58,7 +58,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
     };
   }, [articleId]);
 
-  if (error) return <p style={{ color: "#ef4444" }}>{av.error}: {error}</p>;
+  if (error) return <p style={{ color: "var(--error)" }}>{av.error}: {error}</p>;
   if (!article) return <p style={{ color: "var(--muted)" }}>{av.loading}</p>;
 
   const STAGE_LABELS: Record<string, string> = {
@@ -240,9 +240,9 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
                     setArticle((a) => a ? { ...a, marked_done: !done } : a);
                   }
                 }}
-                style={{ width: 14, height: 14, accentColor: "#22c55e", cursor: "pointer" }}
+                style={{ width: 14, height: 14, accentColor: "var(--success)", cursor: "pointer" }}
               />
-              <span style={{ fontWeight: article.marked_done ? 600 : 400, color: article.marked_done ? "#22c55e" : "var(--muted)" }}>
+              <span style={{ fontWeight: article.marked_done ? 600 : 400, color: article.marked_done ? "var(--success)" : "var(--muted)" }}>
                 {article.marked_done ? `${av.markDone} ✓` : av.markDone}
               </span>
               {article.marked_done && article.marked_done_by_name && (
@@ -282,12 +282,12 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {isFailed && (
         <div style={{
           padding: 16,
-          background: "#fef2f2",
+          background: "var(--error-lt)",
           border: "1px solid #fecaca",
           borderRadius: "var(--radius)",
           marginBottom: 20,
         }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "#b91c1c", marginBottom: 4 }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--error-fg)", marginBottom: 4 }}>
             {av.failedTitle}
           </p>
           <p style={{ fontSize: 12, color: "#7f1d1d" }}>
@@ -351,14 +351,14 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         <CollapsibleSection prominent title={av.socialMedia} count={article.embed_candidates.length}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[...article.embed_candidates].sort((a, b) => (b.competitor_source_url ? 1 : 0) - (a.competitor_source_url ? 1 : 0)).map((e) => (
-              <div key={e.id} style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "#fffbeb" : "var(--white)", border: `1px solid ${e.competitor_source_url ? "#f59e0b" : "var(--border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
+              <div key={e.id} style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "#fffbeb" : "var(--white)", border: `1px solid ${e.competitor_source_url ? "var(--warning)" : "var(--border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
                 {e.thumbnail_url && <img src={e.thumbnail_url} alt="" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 4, flexShrink: 0 }} />}
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--muted)" }}>{e.source}</span>
                     {e.channel && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {e.channel}</span>}
                     {e.competitor_source_url && (
-                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#b45309", background: "#fef3c7", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.04em" }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#b45309", background: "var(--warning-lt)", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.04em" }}>
                         {av.competitorStar}
                       </span>
                     )}
@@ -368,8 +368,8 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
                   </a>
                   {e.description && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.description}</p>}
                   {e.competitor_source_url && (
-                    <p style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
-                      {av.sourceLabel} <a href={safeHref(e.competitor_source_url)} target="_blank" rel="noreferrer" style={{ color: "#92400e", textDecoration: "underline", wordBreak: "break-all" }}>{e.competitor_source_url}</a>
+                    <p style={{ fontSize: 11, color: "var(--warning-fg)", marginTop: 4 }}>
+                      {av.sourceLabel} <a href={safeHref(e.competitor_source_url)} target="_blank" rel="noreferrer" style={{ color: "var(--warning-fg)", textDecoration: "underline", wordBreak: "break-all" }}>{e.competitor_source_url}</a>
                     </p>
                   )}
                 </div>
@@ -408,7 +408,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
           {/* Sources */}
           <CollapsibleSection prominent title={av.sourcesUsed} count={usedSources.length} defaultOpen>
             {usedSources.map((url) => (
-              <div key={url} style={{ borderLeft: "3px solid #22c55e", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
+              <div key={url} style={{ borderLeft: "3px solid var(--success)", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
                 <a href={safeHref(url)} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>{url}</a>
               </div>
             ))}
@@ -490,8 +490,8 @@ function CorroborationBadge({ count }: { count: number }) {
       display: "inline-block",
       fontSize: 10,
       fontWeight: 700,
-      color: "#166534",
-      background: "#dcfce7",
+      color: "var(--success-fg)",
+      background: "var(--success-lt)",
       border: "1px solid #86efac",
       borderRadius: 10,
       padding: "1px 6px",
