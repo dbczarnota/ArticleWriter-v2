@@ -496,12 +496,20 @@ async def test_list_items_tenant_isolated(client, discovery_repo, org):
 
 @pytest.mark.asyncio
 async def test_write_article_from_topic_respects_explicit_empty_urls(
-    client, discovery_repo, org_config_repo, org
+    client, discovery_repo, org_config_repo, org, monkeypatch
 ):
     """An explicit empty `urls: []` in the override body must NOT silently
     fall back to all topic URLs — that would defeat the editor's choice
     to write with no pre-seeded URLs (search-only mode)."""
+    from unittest.mock import AsyncMock
+
+    from backend.api import v2 as v2_mod
     from backend.repositories import get_article_repo
+
+    # Stub the bridge background task so the real pipeline doesn't fire
+    # (otherwise FastAPI BackgroundTasks would call run_pipeline → external
+    # APIs → the test hangs on the 15-min total_timeout_s).
+    monkeypatch.setattr(v2_mod, "_run_pipeline_from_topic_background", AsyncMock())
 
     topic = await discovery_repo.create_topic(
         org_code=org.code, title="T", blurb="b", categories=[]

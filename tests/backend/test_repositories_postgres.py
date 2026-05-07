@@ -385,8 +385,10 @@ async def test_complete_failed_status_emits_article_failed_event(session_maker, 
         org_code="org_evt3", author_user_id="u", domain_name="org_evt3", topic="t"
     )
 
-    info_mock = MagicMock()
-    monkeypatch.setattr(logfire, "info", info_mock)
+    # complete() with status='failed' emits at warn level (not info) so
+    # default-level Logfire filters surface failures.
+    warn_mock = MagicMock()
+    monkeypatch.setattr(logfire, "warn", warn_mock)
 
     await repo.complete(
         article_id,
@@ -405,8 +407,8 @@ async def test_complete_failed_status_emits_article_failed_event(session_maker, 
         total_duration_ms=10.0,
     )
 
-    info_mock.assert_called_once()
-    args, kwargs = info_mock.call_args
+    warn_mock.assert_called_once()
+    args, kwargs = warn_mock.call_args
     assert args[0] == "article.failed"
     assert kwargs["status"] == "failed"
     assert kwargs["errors_count"] == 1
