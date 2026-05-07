@@ -383,13 +383,17 @@ class NullDiscoveryRepository:
         return rows[offset : offset + limit]
 
     # ── Topics ───────────────────────────────────────────────────────────
-    async def list_active_topics(self, *, org_code: str, window_days: int) -> list[DiscoveryTopic]:
+    async def list_active_topics(
+        self, *, org_code: str, window_days: int, limit: int = 100
+    ) -> list[DiscoveryTopic]:
         cutoff = _utcnow() - timedelta(days=window_days)
-        return [
+        rows = [
             t
             for t in self._topics.values()
             if t.org_code == org_code and t.last_activity_at >= cutoff
         ]
+        rows.sort(key=lambda t: t.last_activity_at, reverse=True)
+        return rows[:limit]
 
     async def create_topic(
         self,

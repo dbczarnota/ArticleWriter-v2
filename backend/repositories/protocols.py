@@ -285,8 +285,13 @@ class DiscoveryRepository(Protocol):
 
     # ── Topics ───────────────────────────────────────────────────────────
     async def list_active_topics(
-        self, *, org_code: str, window_days: int
-    ) -> list[DiscoveryTopic]: ...
+        self, *, org_code: str, window_days: int, limit: int = 100
+    ) -> list[DiscoveryTopic]:
+        """Active topics within the matching window. Capped at `limit`
+        (default 100) ordered by last_activity_at DESC — recent topics
+        are more likely matcher candidates and the cap prevents the
+        matcher prompt from ballooning beyond its token budget."""
+        ...
     async def create_topic(
         self,
         *,

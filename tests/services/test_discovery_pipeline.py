@@ -193,3 +193,41 @@ async def test_classifier_returning_empty_lands_in_uncategorized(monkeypatch):
         raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo
     )
     assert item.categories == []
+
+
+@pytest.mark.asyncio
+async def test_topic_matcher_receives_at_most_100_candidates(monkeypatch):
+    """Matcher prompt size has to be bounded — a busy week shouldn't push
+    100+ candidate blurbs into the prompt and balloon token cost."""
+    repo = NullDiscoveryRepository()
+    feed = await repo.upsert_feed(org_code="org_t", feed_url="https://x/rss")
+
+    # Seed 250 active topics — well above the cap.
+    for i in range(250):
+        await repo.create_topic(
+            org_code="org_t", title=f"T{i}", blurb=f"b{i}", categories=["Sport"]
+        )
+
+    classifier = AsyncMock(
+        return_value=CategoryDecision(categories=["Sport"], confidences={}, reasoning="")
+    )
+    captured: dict = {}
+
+    async def _matcher(*, title, summary, candidates, config):
+        captured["count"] = len(candidates)
+        return MatchDecision(matched_topic_id=None, reasoning="")
+
+    writer = AsyncMock(return_value=TopicDescriptor(title="N", blurb="b"))
+    monkeypatch.setattr("backend.services.discovery.pipeline.run_classifier_agent", classifier)
+    monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_matcher_agent", _matcher)
+    monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_writer_agent", writer)
+
+    raw = RawFeedItem(title="X", url="https://x/a/1", guid="g", summary=None, published_at=None)
+    await process_item(
+        raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo
+    )
+
+    assert "count" in captured
+    assert captured["count"] <= 100, (
+        f"Matcher got {captured['count']} candidates — cap of 100 broken"
+    )

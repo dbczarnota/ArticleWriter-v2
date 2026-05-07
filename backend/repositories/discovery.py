@@ -266,14 +266,19 @@ class PostgresDiscoveryRepository:
             return list(result.scalars().all())
 
     # ── Topics ───────────────────────────────────────────────────────────
-    async def list_active_topics(self, *, org_code: str, window_days: int) -> list[DiscoveryTopic]:
+    async def list_active_topics(
+        self, *, org_code: str, window_days: int, limit: int = 100
+    ) -> list[DiscoveryTopic]:
         cutoff = datetime.now(UTC) - timedelta(days=window_days)
         async with self._session_maker() as session:
             result = await session.execute(
-                select(DiscoveryTopic).where(
+                select(DiscoveryTopic)
+                .where(
                     DiscoveryTopic.org_code == org_code,  # type: ignore[arg-type]
                     DiscoveryTopic.last_activity_at >= cutoff,  # type: ignore[arg-type]
                 )
+                .order_by(DiscoveryTopic.last_activity_at.desc())  # type: ignore[arg-type]
+                .limit(limit)
             )
             return list(result.scalars().all())
 
