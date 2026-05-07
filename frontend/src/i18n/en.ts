@@ -39,6 +39,7 @@ export const en: Translations = {
   },
   topbar: {
     discovery: "Discovery",
+    settings: "Settings",
   },
   userMenu: {
     account: "account",

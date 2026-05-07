@@ -1,6 +1,7 @@
 import { UserMenu } from "./UserMenu";
 import { Logo } from "./Logo";
 import { Button } from "./ui/Button";
+import { SettingsIcon } from "./ui/icons";
 import { useLang, useT } from "../i18n";
 
 interface TopbarProps {
@@ -57,6 +58,16 @@ export function Topbar({ onSettings, onDiscovery, onToggleSidebar, sidebarOpen }
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <Button variant="ghost" size="sm" onClick={onDiscovery}>
           {t.topbar.discovery}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onSettings}
+          iconLeft={<SettingsIcon />}
+          title={t.topbar.settings}
+          aria-label={t.topbar.settings}
+        >
+          {t.topbar.settings}
         </Button>
         <div style={{ display: "flex", gap: 4, fontSize: 12, color: "var(--muted)" }}>
           {(["pl", "en"] as const).map((l) => (
