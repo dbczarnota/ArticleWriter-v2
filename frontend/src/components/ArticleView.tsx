@@ -6,6 +6,14 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
 
+// Reject anything that isn't http(s). Source URLs come from the pipeline
+// (which scraped third-party articles); a malicious source could carry a
+// javascript: link that would execute on click.
+function safeHref(url: string | null | undefined): string {
+  if (!url) return "#";
+  return url.startsWith("http://") || url.startsWith("https://") ? url : "#";
+}
+
 interface ArticleViewProps {
   articleId: string;
   currentUserId?: string;
@@ -377,13 +385,13 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
                       </span>
                     )}
                   </div>
-                  <a href={e.url} target="_blank" rel="noreferrer" style={{ fontWeight: 500, color: "var(--accent)", wordBreak: "break-word" }}>
+                  <a href={safeHref(e.url)} target="_blank" rel="noreferrer" style={{ fontWeight: 500, color: "var(--accent)", wordBreak: "break-word" }}>
                     {e.title ?? e.url}
                   </a>
                   {e.description && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.description}</p>}
                   {e.competitor_source_url && (
                     <p style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
-                      {av.sourceLabel} <a href={e.competitor_source_url} target="_blank" rel="noreferrer" style={{ color: "#92400e", textDecoration: "underline", wordBreak: "break-all" }}>{e.competitor_source_url}</a>
+                      {av.sourceLabel} <a href={safeHref(e.competitor_source_url)} target="_blank" rel="noreferrer" style={{ color: "#92400e", textDecoration: "underline", wordBreak: "break-all" }}>{e.competitor_source_url}</a>
                     </p>
                   )}
                 </div>
@@ -423,13 +431,13 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
           <CollapsibleSection prominent title={av.sourcesUsed} count={usedSources.length} defaultOpen>
             {usedSources.map((url) => (
               <div key={url} style={{ borderLeft: "3px solid #22c55e", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
-                <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>{url}</a>
+                <a href={safeHref(url)} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>{url}</a>
               </div>
             ))}
             <CollapsibleSection title={av.sourcesUnused} count={uniqueUnused.length}>
               {uniqueUnused.map((url) => (
                 <div key={url} style={{ borderLeft: "3px solid var(--border)", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
-                  <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--muted)", wordBreak: "break-all" }}>{url}</a>
+                  <a href={safeHref(url)} target="_blank" rel="noreferrer" style={{ color: "var(--muted)", wordBreak: "break-all" }}>{url}</a>
                 </div>
               ))}
             </CollapsibleSection>
@@ -486,7 +494,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {article.input_urls.map((u) => (
-                  <a key={u} href={u} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "var(--accent)", wordBreak: "break-all" }}>{u}</a>
+                  <a key={u} href={safeHref(u)} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "var(--accent)", wordBreak: "break-all" }}>{u}</a>
                 ))}
               </div>
             )}
@@ -521,7 +529,7 @@ function SourceList({ urls }: { urls: string[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 4 }}>
       {urls.map((u) => (
-        <a key={u} href={u} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "var(--accent)", wordBreak: "break-all" }}>
+        <a key={u} href={safeHref(u)} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "var(--accent)", wordBreak: "break-all" }}>
           {u}
         </a>
       ))}
