@@ -30,6 +30,7 @@ async def run_instructions_agent(
     domain: DomainConfig,
     config: InstructionsAgentConfig,
     additional_instructions: str | None = None,
+    article_template: str | None = None,
     _agent: Agent[Any, Any] | None = None,
 ) -> WritingBrief:
     """Select best facts/quotes and create writing instructions for WriterAgent."""
@@ -55,6 +56,8 @@ async def run_instructions_agent(
         f"AVAILABLE QUOTES:\n{quotes_text or '(none)'}\n\n"
         f"KEYWORDS: {keywords_text}"
     )
+    if article_template:
+        material += f"\n\n### TEMPLATE INSTRUCTIONS:\n{article_template}"
     if additional_instructions:
         material += f"\n\n### Additional Instructions and Context:\n{additional_instructions}\nThey are very important and must be included."
 
