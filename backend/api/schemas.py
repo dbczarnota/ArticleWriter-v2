@@ -7,6 +7,12 @@ from pydantic import BaseModel, field_validator
 from pydantic import Field as PydanticField
 
 
+class ArticleTemplateItem(BaseModel):
+    id: str
+    name: str
+    body: str
+
+
 class ArticleRequest(BaseModel):
     topic: str
     domain: str = "styl_fm"
@@ -22,6 +28,10 @@ class ArticleRequest(BaseModel):
     domain_overrides: dict[str, Any] = {}
     """Per-article domain config overrides. Keys match DomainConfigUpdate field names.
     Non-empty values replace the org's saved config for this article run only."""
+    raw_facts_text: str | None = None
+    """Raw editor-provided text to be parsed for facts and quotes."""
+    article_template: str | None = None
+    """Resolved template body (not ID). Frontend sends the body directly."""
 
     @field_validator("topic", mode="before")
     @classmethod
@@ -41,6 +51,26 @@ class ArticleRequest(BaseModel):
         v = v.strip()
         if len(v) > 2000:
             raise ValueError("additional_instructions must be at most 2000 characters")
+        return v or None
+
+    @field_validator("raw_facts_text", mode="before")
+    @classmethod
+    def _validate_raw_facts(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip()
+        if len(v) > 10_000:
+            raise ValueError("raw_facts_text must be at most 10 000 characters")
+        return v or None
+
+    @field_validator("article_template", mode="before")
+    @classmethod
+    def _validate_article_template(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip()
+        if len(v) > 5_000:
+            raise ValueError("article_template must be at most 5 000 characters")
         return v or None
 
 
@@ -120,3 +150,4 @@ class DomainConfigUpdate(BaseModel):
     discovery_topic_writer_fallback_models: list[str] = PydanticField(
         default_factory=lambda: ["groq:openai/gpt-oss-120b"]
     )
+    article_templates: list[ArticleTemplateItem] = PydanticField(default_factory=list)
