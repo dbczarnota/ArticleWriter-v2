@@ -37,6 +37,7 @@ const BASE_CONFIG: DomainConfigData = {
   example_titles: [],
   agent_models: {},
   agent_fallback_models: {},
+  article_templates: [],
   discovery_enabled: false,
   discovery_feeds: [],
   discovery_categories: [],
