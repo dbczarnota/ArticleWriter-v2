@@ -545,6 +545,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         <header
           style={{
             padding: "16px 20px",
@@ -879,7 +880,24 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
                   size="md"
                   disabled={loading || extracting || !topic.trim()}
                 >
-                  {extracting ? na.step2Extracting : na.next}
+                  {extracting ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: 12,
+                          height: 12,
+                          border: "2px solid currentColor",
+                          borderTopColor: "transparent",
+                          borderRadius: "50%",
+                          animation: "spin 0.8s linear infinite",
+                        }}
+                      />
+                      {na.step2Extracting}
+                    </span>
+                  ) : (
+                    na.next
+                  )}
                 </Button>
               ) : (
                 <Button
