@@ -58,6 +58,7 @@ export interface Translations {
     reviewer: string;
     exampleTitles: string;
     exampleArticles: string;
+    templates: string;
     discovery: string;
   };
   settings: {
@@ -121,6 +122,15 @@ export interface Translations {
     sectionArticles: string;
     articleLabel: string;
     addArticle: string;
+    // templates
+    sectionTemplates: string;
+    templateName: string;
+    templateNamePlaceholder: string;
+    templateBody: string;
+    templateBodyPlaceholder: string;
+    addTemplate: string;
+    removeTemplate: string;
+    tipTemplates: string;
     // actions
     saving: string;
     save: string;
@@ -209,6 +219,11 @@ export interface Translations {
     instructionsPlaceholder: string;
     urlsLabel: string;
     urlsPlaceholder: string;
+    templateLabel: string;
+    templateNone: string;
+    templateAdHocPlaceholder: string;
+    factsLabel: string;
+    factsPlaceholder: string;
     advanced: string;
     advancedHint: string;
     headingSettings: string;

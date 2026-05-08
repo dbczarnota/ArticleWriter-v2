@@ -90,6 +90,12 @@ export interface CategoryConfig {
   description: string;
 }
 
+export interface ArticleTemplate {
+  id: string;
+  name: string;
+  body: string;
+}
+
 export interface DomainConfigData {
   org_code: string;
   domain_name: string;
@@ -123,6 +129,7 @@ export interface DomainConfigData {
   example_titles: string[];
   agent_models: Record<string, string>;
   agent_fallback_models: Record<string, string[]>;
+  article_templates: ArticleTemplate[];
   discovery_enabled: boolean;
   discovery_feeds: FeedConfig[];
   discovery_categories: CategoryConfig[];
