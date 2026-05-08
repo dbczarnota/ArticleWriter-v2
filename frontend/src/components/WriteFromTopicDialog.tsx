@@ -155,7 +155,6 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
         zIndex: 100,
         padding: 16,
       }}
-      onClick={onCancel}
     >
       <div
         ref={dialogRef}

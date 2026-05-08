@@ -374,7 +374,6 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
         zIndex: 100,
         padding: 16,
       }}
-      onClick={() => { if (onCancel && !loading) onCancel(); }}
     >
       <div
         ref={dialogRef}
