@@ -241,10 +241,10 @@ async def _run_pipeline_inner(
             topic=topic,
             urls=list(urls or []),
             additional_instructions=additional_instructions or "",
+            raw_facts_text=raw_facts_text or "",
+            article_template=article_template or "",
             domain=_domain_dict,
             settings=_settings_dict,
-            has_raw_facts=bool(raw_facts_text),
-            has_article_template=bool(article_template),
         )
 
         # Stage 1: Research
@@ -386,7 +386,11 @@ async def _run_pipeline_inner(
         # Mini-stage: extract facts from editor-provided raw text (if any).
         # Runs only when raw_facts_text is non-empty — zero cost otherwise.
         if raw_facts_text:
-            with logfire.span("pipeline.stage.text_extraction", domain=domain.name):
+            with logfire.span(
+                "pipeline.stage.text_extraction",
+                domain=domain.name,
+                raw_text_len=len(raw_facts_text),
+            ):
                 try:
                     editor_extraction = await extract_facts_from_text(
                         raw_text=raw_facts_text,

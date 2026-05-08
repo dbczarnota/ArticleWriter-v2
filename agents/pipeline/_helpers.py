@@ -254,6 +254,11 @@ async def extract_facts_from_text(
             ],
             keywords=result.output.keywords,
         )
-    except Exception:
-        logfire.warn("pipeline.text_extraction.failed", raw_text_len=len(raw_text))
+    except Exception as e:
+        logfire.warn(
+            "pipeline.text_extraction.failed",
+            raw_text_len=len(raw_text),
+            error_type=type(e).__name__,
+            error=str(e),
+        )
         return ExtractionResult(facts=[], quotes=[], keywords=[])
