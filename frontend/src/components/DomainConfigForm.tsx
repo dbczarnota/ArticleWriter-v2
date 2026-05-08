@@ -512,6 +512,66 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
           </button>
         </section>
 
+        {/* Szablony artykułów */}
+        <section id="szablony" style={{ display: sectionVisible("szablony") ? "block" : "none", marginBottom: 32 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            {dc.sectionTemplates}
+            <Tip text={dc.tipTemplates} />
+          </h3>
+          {(form.article_templates ?? []).map((tmpl, i) => (
+            <div key={tmpl.id} style={{ marginBottom: 16, padding: "12px 14px", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
+                <input
+                  value={tmpl.name}
+                  onChange={(e) => {
+                    const updated = [...(form.article_templates ?? [])];
+                    updated[i] = { ...updated[i], name: e.target.value };
+                    set("article_templates", updated);
+                  }}
+                  placeholder={dc.templateNamePlaceholder}
+                  style={{ ...inputStyle, fontWeight: 500, flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => set("article_templates", (form.article_templates ?? []).filter((_, j) => j !== i))}
+                  style={{ background: "none", border: "none", fontSize: 12, color: "var(--error)", cursor: "pointer", flexShrink: 0 }}
+                >
+                  {dc.removeTemplate}
+                </button>
+              </div>
+              <textarea
+                value={tmpl.body}
+                onChange={(e) => {
+                  const updated = [...(form.article_templates ?? [])];
+                  updated[i] = { ...updated[i], body: e.target.value };
+                  set("article_templates", updated);
+                }}
+                placeholder={dc.templateBodyPlaceholder}
+                rows={5}
+                style={{ ...inputStyle, resize: "vertical", fontFamily: "monospace", fontSize: 12 }}
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => set("article_templates", [
+              { id: crypto.randomUUID(), name: "", body: "" },
+              ...(form.article_templates ?? []),
+            ])}
+            style={{
+              padding: "6px 14px",
+              background: "none",
+              border: "1px dashed var(--border)",
+              borderRadius: "var(--radius)",
+              fontSize: 13,
+              color: "var(--muted)",
+              cursor: "pointer",
+            }}
+          >
+            {dc.addTemplate}
+          </button>
+        </section>
+
         {/* Discovery */}
         <section id="discovery" style={{ display: sectionVisible("discovery") ? "block" : "none", marginBottom: 32 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{dc.sectionDiscovery}</h3>
