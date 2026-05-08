@@ -367,6 +367,12 @@ class OrgConfig(SQLModel, table=True):
     )
     """Per-agent fallback model lists: {agent_key: [fallback1, fallback2]}."""
 
+    article_templates: list = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'[]'")),
+    )
+    """List of editorial templates: [{id: str, name: str, body: str}]."""
+
     # ── Discovery ────────────────────────────────────────────────────────────
     discovery_enabled: bool = Field(default=False)
     discovery_feeds: list = Field(
