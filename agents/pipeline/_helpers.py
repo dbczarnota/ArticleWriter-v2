@@ -10,10 +10,17 @@ to keep the orchestration entry point focused on flow control.
 from __future__ import annotations
 
 import re
-from typing import Literal
+import time
+from typing import Any, Literal
 
-from agents._base.types import EmbedCandidate, ParsedArticle
-from agents.extraction.agent import ExtractionResult
+import logfire
+from pydantic_ai import Agent
+
+from agents._base.config import ExtractionAgentConfig
+from agents._base.resilient import run_with_fallback
+from agents._base.run_context import record_agent_call
+from agents._base.types import EmbedCandidate, Fact, ParsedArticle, Quote
+from agents.extraction.agent import ExtractionOutput, ExtractionResult
 
 
 def filter_by_date(
@@ -196,3 +203,57 @@ def merge_extraction(base: ExtractionResult, extra: ExtractionResult) -> Extract
         quotes=list(base_quotes.values()),
         keywords=merged_keywords,
     )
+
+
+async def extract_facts_from_text(
+    raw_text: str,
+    topic: str,
+    language: str,
+    config: ExtractionAgentConfig,
+) -> ExtractionResult:
+    """Extract facts and quotes from editor-provided raw text.
+
+    Runs a single LLM call using the same ExtractionOutput schema as the main
+    extraction agent. All returned items carry source_urls=["editor-provided"].
+    Soft-fails to an empty result on LLM error so the pipeline never halts.
+    """
+    sys_prompt = (
+        f"You are an editorial assistant. Extract facts and direct quotes from the "
+        f"editor-provided text below in the context of the topic: '{topic}'. "
+        f"Use 'editor-provided' as the source URL for all items. "
+        f"Language: {language}. Be thorough but only include what is explicitly stated."
+    )
+
+    def _factory(m: str) -> tuple[Agent[Any, Any], str]:
+        return Agent(m, output_type=ExtractionOutput), sys_prompt
+
+    try:
+        t0 = time.perf_counter()
+        result, model_used = await run_with_fallback(
+            (config.model, *config.fallback_models),
+            agent_factory=_factory,
+            user_prompt=raw_text,
+            agent_name="text_extraction",
+        )
+        u = result.usage()
+        record_agent_call(
+            "text_extraction",
+            model_used,
+            u.input_tokens or 0,
+            u.output_tokens or 0,
+            (time.perf_counter() - t0) * 1000,
+        )
+        return ExtractionResult(
+            facts=[
+                Fact(text=f.text, context=f.context, source_urls=["editor-provided"])
+                for f in result.output.facts
+            ],
+            quotes=[
+                Quote(text=q.text, speaker=q.speaker, context=q.context, source_urls=["editor-provided"])
+                for q in result.output.quotes
+            ],
+            keywords=result.output.keywords,
+        )
+    except Exception:
+        logfire.warn("pipeline.text_extraction.failed", raw_text_len=len(raw_text))
+        return ExtractionResult(facts=[], quotes=[], keywords=[])
