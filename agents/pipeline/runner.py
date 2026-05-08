@@ -44,6 +44,21 @@ def _ensure_user_urls(sources: list[str], user_urls: list[str] | None) -> list[s
     return sources + [u for u in user_urls if u not in seen]
 
 
+def _merge_pre_injected(
+    extracted: ExtractionResult,
+    pre_injected: ExtractionResult | None,
+) -> ExtractionResult:
+    """Merge pre-injected facts/quotes/keywords with standard pipeline extraction.
+    Pre-injected items are prepended — the template controls how they are weighted."""
+    if pre_injected is None:
+        return extracted
+    return ExtractionResult(
+        facts=[*pre_injected.facts, *extracted.facts],
+        quotes=[*pre_injected.quotes, *extracted.quotes],
+        keywords=[*pre_injected.keywords, *extracted.keywords],
+    )
+
+
 async def run_pipeline(
     topic: str,
     *,
