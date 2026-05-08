@@ -17,6 +17,7 @@ from agents.media_search.agent import run_media_search
 from agents.parsing.agent import run_parsing_agent
 from agents.pipeline._adaptive_search import adaptive_search_loop
 from agents.pipeline._helpers import (
+    extract_facts_from_text,
     extract_social_from_content,
     extract_social_from_search,
     filter_by_date,
@@ -68,6 +69,8 @@ async def run_pipeline(
     jina_api_key: str | None = None,
     urls: list[str] | None = None,
     additional_instructions: str | None = None,
+    raw_facts_text: str | None = None,
+    article_template: str | None = None,
     debug: bool = False,
     org_code: str = "__local_dev__",
     author_user_id: str = "local-dev",
@@ -84,6 +87,8 @@ async def run_pipeline(
         org_code=org_code,
         urls_count=len(urls) if urls else 0,
         has_additional_instructions=bool(additional_instructions),
+        has_raw_facts=bool(raw_facts_text),
+        has_article_template=bool(article_template),
     ):
         return await _run_pipeline_inner(
             topic=topic,
@@ -93,6 +98,8 @@ async def run_pipeline(
             jina_api_key=jina_api_key,
             urls=urls,
             additional_instructions=additional_instructions,
+            raw_facts_text=raw_facts_text,
+            article_template=article_template,
             debug=debug,
             org_code=org_code,
             author_user_id=author_user_id,
@@ -109,6 +116,8 @@ async def _run_pipeline_inner(
     jina_api_key: str | None,
     urls: list[str] | None,
     additional_instructions: str | None,
+    raw_facts_text: str | None = None,
+    article_template: str | None = None,
     debug: bool,
     org_code: str,
     author_user_id: str,
@@ -234,6 +243,8 @@ async def _run_pipeline_inner(
             additional_instructions=additional_instructions or "",
             domain=_domain_dict,
             settings=_settings_dict,
+            has_raw_facts=bool(raw_facts_text),
+            has_article_template=bool(article_template),
         )
 
         # Stage 1: Research
@@ -371,6 +382,27 @@ async def _run_pipeline_inner(
             quotes_count=len(extraction.quotes),
             keywords_count=len(extraction.keywords),
         )
+
+        # Mini-stage: extract facts from editor-provided raw text (if any).
+        # Runs only when raw_facts_text is non-empty — zero cost otherwise.
+        if raw_facts_text:
+            with logfire.span("pipeline.stage.text_extraction", domain=domain.name):
+                try:
+                    editor_extraction = await extract_facts_from_text(
+                        raw_text=raw_facts_text,
+                        topic=topic,
+                        language=domain.language,
+                        config=settings.extraction,
+                    )
+                    extraction = _merge_pre_injected(extraction, editor_extraction)
+                    logfire.info(
+                        "pipeline.text_extraction.merged",
+                        editor_facts=len(editor_extraction.facts),
+                        editor_quotes=len(editor_extraction.quotes),
+                    )
+                except Exception as e:
+                    _errors.append({"stage": "text_extraction", "error": str(e)})
+                    log.error("text_extraction", e)
 
         # Stage 2: Adaptive search loop
         # Skip adaptive search entirely when initial extraction already
@@ -537,6 +569,7 @@ async def _run_pipeline_inner(
                     domain=domain,
                     config=settings.instructions,
                     additional_instructions=additional_instructions,
+                    article_template=article_template,
                 )
                 log.instructions_done(brief)
             except Exception as e:
