@@ -7,6 +7,9 @@ const mockSubmitArticle = vi.fn();
 vi.mock("../lib/useArticles", () => ({
   useArticles: () => ({ submitArticle: mockSubmitArticle }),
 }));
+vi.mock("../lib/useApi", () => ({
+  useApi: () => ({ request: vi.fn().mockResolvedValue({ article_templates: [] }) }),
+}));
 vi.mock("../lib/useAuth", () => ({
   useAuth: () => ({ user: { id: "u1", email: "u@e.com", givenName: "Foo", familyName: "Bar" } }),
 }));
@@ -20,6 +23,11 @@ vi.mock("../i18n", () => ({
       instructionsPlaceholder: "Focus on...",
       urlsLabel: "URLs",
       urlsPlaceholder: "One URL per line",
+      templateLabel: "Template",
+      templateNone: "(none)",
+      templateAdHocPlaceholder: "Write template instructions...",
+      factsLabel: "Facts",
+      factsPlaceholder: "Paste facts...",
       advanced: "Advanced",
       advancedHint: "...",
       headingSettings: "New article — settings",

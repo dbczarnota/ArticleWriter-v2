@@ -135,6 +135,8 @@ export function useArticles() {
     agents?: Record<string, Record<string, unknown>>;
     domain_overrides?: Record<string, unknown>;
     author_name?: string;
+    raw_facts_text?: string;
+    article_template?: string;
   }): Promise<Article> {
     return request<Article>("/v2/write_article", {
       method: "POST",

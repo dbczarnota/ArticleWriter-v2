@@ -1,11 +1,13 @@
 // frontend/src/components/NewArticleForm.tsx
 import { useEffect, useState } from "react";
 import { useArticles } from "../lib/useArticles";
+import { useApi } from "../lib/useApi";
 import { useAuth } from "../lib/useAuth";
 import { useT } from "../i18n";
 import { useFocusTrap } from "../lib/useFocusTrap";
 import { AVAILABLE_MODELS } from "./DomainConfigForm";
 import { Button } from "./ui/Button";
+import type { ArticleTemplate, DomainConfigData } from "../types";
 
 const MEDIA_KEYS = [
   { key: "youtube_search", label: "YouTube" },
@@ -37,6 +39,7 @@ interface NewArticleFormProps {
 
 export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
   const { submitArticle } = useArticles();
+  const { request } = useApi();
   const { user } = useAuth();
   const t = useT();
   const na = t.newArticle;
@@ -46,8 +49,21 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
   const [topic, setTopic] = useState("");
   const [instructions, setInstructions] = useState("");
   const [urlsText, setUrlsText] = useState("");
+  const [rawFacts, setRawFacts] = useState("");
+  const [orgTemplates, setOrgTemplates] = useState<ArticleTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [adHocTemplate, setAdHocTemplate] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch org templates so the editor can pick one. 404 (org not configured) is silently ignored.
+  useEffect(() => {
+    let cancelled = false;
+    void request<DomainConfigData>("/v2/domain-config")
+      .then((d) => { if (!cancelled && d?.article_templates) setOrgTemplates(d.article_templates); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [request]);
 
   // Agent model overrides (separate from domain_overrides because scraping needs field remapping)
   const [agentModels, setAgentModels] = useState<Record<string, string>>({});
@@ -133,6 +149,9 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
 
       const author_name =
         [user?.givenName, user?.familyName].filter(Boolean).join(" ") || user?.email || undefined;
+      const resolvedTemplate = selectedTemplateId
+        ? (orgTemplates.find((tmpl) => tmpl.id === selectedTemplateId)?.body ?? "")
+        : adHocTemplate;
       const result = await submitArticle({
         topic: topic.trim(),
         additional_instructions: instructions.trim() || undefined,
@@ -140,6 +159,8 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
         agents: Object.keys(agents).length > 0 ? agents : undefined,
         domain_overrides: Object.keys(ov).length > 0 ? ov : undefined,
         author_name,
+        article_template: resolvedTemplate.trim() || undefined,
+        raw_facts_text: rawFacts.trim() || undefined,
       });
       setLoading(false);
       onCreated(result.id);
@@ -190,6 +211,58 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
       <div style={{ marginTop: 14 }}>
         <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{na.urlsLabel}</label>
         <textarea value={urlsText} onChange={(e) => setUrlsText(e.target.value)} rows={3} placeholder={na.urlsPlaceholder} style={{ ...inputStyle, resize: "vertical", fontFamily: "monospace" }} />
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{na.templateLabel}</label>
+        {orgTemplates.length > 0 && (
+          <select
+            value={selectedTemplateId}
+            onChange={(e) => { setSelectedTemplateId(e.target.value); setAdHocTemplate(""); }}
+            disabled={loading}
+            style={{ ...inputStyle, marginBottom: 6 }}
+          >
+            <option value="">{na.templateNone}</option>
+            {orgTemplates.map((tmpl) => (
+              <option key={tmpl.id} value={tmpl.id}>{tmpl.name || tmpl.id}</option>
+            ))}
+          </select>
+        )}
+        {selectedTemplateId ? (
+          <div style={{
+            padding: "8px 10px",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius)",
+            fontSize: 12,
+            color: "var(--muted)",
+            fontFamily: "monospace",
+            maxHeight: 120,
+            overflowY: "auto",
+            background: "var(--accent-lt)",
+            whiteSpace: "pre-wrap",
+          }}>
+            {orgTemplates.find((tmpl) => tmpl.id === selectedTemplateId)?.body}
+          </div>
+        ) : (
+          <textarea
+            value={adHocTemplate}
+            onChange={(e) => setAdHocTemplate(e.target.value)}
+            disabled={loading}
+            placeholder={na.templateAdHocPlaceholder}
+            rows={3}
+            style={{ ...inputStyle, resize: "vertical" }}
+          />
+        )}
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{na.factsLabel}</label>
+        <textarea
+          value={rawFacts}
+          onChange={(e) => setRawFacts(e.target.value)}
+          disabled={loading}
+          placeholder={na.factsPlaceholder}
+          rows={4}
+          style={{ ...inputStyle, resize: "vertical" }}
+        />
       </div>
     </>
   );
