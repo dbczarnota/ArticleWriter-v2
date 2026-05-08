@@ -13,7 +13,7 @@ import { StatusMessage } from "./components/ui/StatusMessage";
 const SettingsView = lazy(() => import("./components/SettingsView").then((m) => ({ default: m.SettingsView })));
 const DiscoveryHub = lazy(() => import("./components/DiscoveryHub").then((m) => ({ default: m.DiscoveryHub })));
 
-type View = "list" | "article" | "new" | "settings" | "discovery";
+type View = "list" | "article" | "settings" | "discovery";
 
 const NULL_AUTH = import.meta.env.VITE_AUTH_BACKEND === "null";
 
@@ -23,6 +23,7 @@ export default function App() {
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [view, setView] = useState<View>("list");
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+  const [newModalOpen, setNewModalOpen] = useState(false);
   const [newFormKey, setNewFormKey] = useState(0);
   // Default: open on desktop, closed on mobile (drawer must not cover content
   // out of the gate). The user toggles via the hamburger in Topbar.
@@ -86,7 +87,7 @@ export default function App() {
           onSelect={selectArticle}
           onNew={() => {
             setNewFormKey((k) => k + 1);
-            setView("new");
+            setNewModalOpen(true);
             if (isMobile) setSidebarOpen(false);
             refresh();
           }}
@@ -124,15 +125,6 @@ export default function App() {
               onMarkDone={(id, done) => markDone(id, done, [user?.givenName, user?.familyName].filter(Boolean).join(" ") || user?.email || undefined)}
             />
           )}
-          {view === "new" && (
-            <NewArticleForm
-              key={newFormKey}
-              onCreated={(id) => {
-                refresh();
-                selectArticle(id);
-              }}
-            />
-          )}
           {view === "settings" && (
             <Suspense fallback={<StatusMessage kind="loading">{t.app.loading}</StatusMessage>}>
               <SettingsView />
@@ -145,6 +137,17 @@ export default function App() {
           )}
         </main>
       </div>
+      {newModalOpen && (
+        <NewArticleForm
+          key={newFormKey}
+          onCancel={() => setNewModalOpen(false)}
+          onCreated={(id) => {
+            setNewModalOpen(false);
+            refresh();
+            selectArticle(id);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -211,6 +211,21 @@ export interface Translations {
     urlsPlaceholder: string;
     advanced: string;
     advancedHint: string;
+    headingSettings: string;
+    settingsButton: string;
+    backToBasic: string;
+    cancel: string;
+    tabs: {
+      topic: string;
+      models: string;
+      search: string;
+      media: string;
+      guidelines: string;
+      html: string;
+      reviewer: string;
+      titles: string;
+      articles: string;
+    };
     // advanced sections
     sectionModels: string;
     defaultModel: string;
