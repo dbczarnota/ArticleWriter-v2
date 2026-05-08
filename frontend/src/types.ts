@@ -96,6 +96,23 @@ export interface ArticleTemplate {
   body: string;
 }
 
+export interface EditorFact {
+  text: string;
+  context: string;
+}
+
+export interface EditorQuote {
+  text: string;
+  speaker: string;
+  context: string;
+}
+
+export interface EditorExtraction {
+  facts: EditorFact[];
+  quotes: EditorQuote[];
+  keywords: string[];
+}
+
 export interface DomainConfigData {
   org_code: string;
   domain_name: string;

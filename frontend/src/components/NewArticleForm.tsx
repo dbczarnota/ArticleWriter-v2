@@ -7,7 +7,7 @@ import { useT } from "../i18n";
 import { useFocusTrap } from "../lib/useFocusTrap";
 import { AVAILABLE_MODELS } from "./DomainConfigForm";
 import { Button } from "./ui/Button";
-import type { ArticleTemplate, DomainConfigData } from "../types";
+import type { ArticleTemplate, DomainConfigData, EditorExtraction } from "../types";
 
 const MEDIA_KEYS = [
   { key: "youtube_search", label: "YouTube" },
@@ -46,6 +46,8 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
 
   const [mode, setMode] = useState<"basic" | "settings">("basic");
   const [activeTab, setActiveTab] = useState<TabId>("topic");
+  const [step, setStep] = useState<"step1" | "step2">("step1");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [topic, setTopic] = useState("");
   const [instructions, setInstructions] = useState("");
   const [urlsText, setUrlsText] = useState("");
@@ -53,6 +55,9 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
   const [orgTemplates, setOrgTemplates] = useState<ArticleTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [adHocTemplate, setAdHocTemplate] = useState("");
+  const [extraction, setExtraction] = useState<EditorExtraction | null>(null);
+  const [skipWebResearch, setSkipWebResearch] = useState(false);
+  const [extracting, setExtracting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,39 +124,71 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
     else if (!raw) set(key, null);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // Step 1 → step 2 transition. Calls the backend extract endpoint and shows
+  // the editable list. Skipped when raw facts are empty (pipeline submit goes
+  // straight from step 1).
+  async function goToStep2() {
+    if (!rawFacts.trim()) return;
+    setExtracting(true);
+    setError(null);
+    try {
+      const result = await request<EditorExtraction>("/v2/extract_editor_facts", {
+        method: "POST",
+        body: JSON.stringify({ topic: topic.trim(), raw_facts_text: rawFacts.trim() }),
+      });
+      setExtraction({
+        facts: result.facts.map((f) => ({ text: f.text, context: f.context })),
+        quotes: result.quotes.map((q) => ({ text: q.text, speaker: q.speaker, context: q.context })),
+        keywords: result.keywords ?? [],
+      });
+      setStep("step2");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setExtracting(false);
+    }
+  }
+
+  function buildAgentOverrides(): Record<string, Record<string, unknown>> {
+    const agents: Record<string, Record<string, unknown>> = {};
+    const allAgentKeys = new Set([...Object.keys(agentModels), ...Object.keys(agentFallbacks)]);
+    for (const key of allAgentKeys) {
+      const model = agentModels[key];
+      const fallbackStr = agentFallbacks[key] ?? "";
+      const fallbacks = fallbackStr.split(",").map((s) => s.trim()).filter(Boolean);
+      if (!model && fallbacks.length === 0) continue;
+      if (key === "scraping") {
+        agents[key] = {
+          ...(model ? { filter_model: model } : {}),
+          ...(fallbacks.length ? { filter_fallback_models: fallbacks } : {}),
+        };
+      } else {
+        agents[key] = {
+          ...(model ? { model } : {}),
+          ...(fallbacks.length ? { fallback_models: fallbacks } : {}),
+        };
+      }
+    }
+    return agents;
+  }
+
+  async function submitToPipeline() {
     if (!topic.trim()) return;
     setLoading(true);
     setError(null);
     try {
       const urls = urlsText.split("\n").map((u) => u.trim()).filter(Boolean);
-
-      const agents: Record<string, Record<string, unknown>> = {};
-      const allAgentKeys = new Set([...Object.keys(agentModels), ...Object.keys(agentFallbacks)]);
-      for (const key of allAgentKeys) {
-        const model = agentModels[key];
-        const fallbackStr = agentFallbacks[key] ?? "";
-        const fallbacks = fallbackStr.split(",").map((s) => s.trim()).filter(Boolean);
-        if (!model && fallbacks.length === 0) continue;
-        if (key === "scraping") {
-          agents[key] = {
-            ...(model ? { filter_model: model } : {}),
-            ...(fallbacks.length ? { filter_fallback_models: fallbacks } : {}),
-          };
-        } else {
-          agents[key] = {
-            ...(model ? { model } : {}),
-            ...(fallbacks.length ? { fallback_models: fallbacks } : {}),
-          };
-        }
-      }
-
+      const agents = buildAgentOverrides();
       const author_name =
         [user?.givenName, user?.familyName].filter(Boolean).join(" ") || user?.email || undefined;
       const resolvedTemplate = selectedTemplateId
         ? (orgTemplates.find((tmpl) => tmpl.id === selectedTemplateId)?.body ?? "")
         : adHocTemplate;
+
+      // When step 2 is in play, send the (possibly edited) extraction directly
+      // and the pipeline skips its in-pipeline text_extraction stage. Otherwise
+      // fall back to raw_facts_text (legacy single-step path).
+      const useStep2 = step === "step2" && extraction !== null;
       const result = await submitArticle({
         topic: topic.trim(),
         additional_instructions: instructions.trim() || undefined,
@@ -160,13 +197,31 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
         domain_overrides: Object.keys(ov).length > 0 ? ov : undefined,
         author_name,
         article_template: resolvedTemplate.trim() || undefined,
-        raw_facts_text: rawFacts.trim() || undefined,
+        raw_facts_text: useStep2 ? undefined : (rawFacts.trim() || undefined),
+        editor_extraction: useStep2 && extraction
+          ? {
+              facts: extraction.facts.filter((f) => f.text.trim()),
+              quotes: extraction.quotes.filter((q) => q.text.trim()),
+              keywords: extraction.keywords,
+            }
+          : undefined,
+        skip_web_research: useStep2 ? skipWebResearch : undefined,
       });
       setLoading(false);
       onCreated(result.id);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
       setLoading(false);
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!topic.trim()) return;
+    if (step === "step1" && rawFacts.trim()) {
+      await goToStep2();
+    } else {
+      await submitToPipeline();
     }
   }
 
@@ -212,6 +267,26 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
         <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{na.urlsLabel}</label>
         <textarea value={urlsText} onChange={(e) => setUrlsText(e.target.value)} rows={3} placeholder={na.urlsPlaceholder} style={{ ...inputStyle, resize: "vertical", fontFamily: "monospace" }} />
       </div>
+      <div style={{ marginTop: 14 }}>
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((v) => !v)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--muted)",
+            fontSize: 12,
+            cursor: "pointer",
+            padding: "2px 0",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted)"; }}
+        >
+          {advancedOpen ? na.advancedToggleHide : na.advancedToggleShow}
+        </button>
+      </div>
+      {advancedOpen && (
+        <>
       <div style={{ marginTop: 14 }}>
         <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{na.templateLabel}</label>
         {orgTemplates.length > 0 && (
@@ -264,6 +339,8 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
           style={{ ...inputStyle, resize: "vertical" }}
         />
       </div>
+        </>
+      )}
     </>
   );
 
@@ -478,7 +555,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
           }}
         >
           <h3 id="new-article-title" style={{ margin: 0, fontSize: 16, color: "var(--text)" }}>
-            {isSettings ? na.headingSettings : na.heading}
+            {step === "step2" ? na.step2Heading : (isSettings ? na.headingSettings : na.heading)}
           </h3>
           {onCancel && (
             <button
@@ -505,7 +582,145 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
           onSubmit={handleSubmit}
           style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}
         >
-          {isSettings ? (
+          {step === "step2" ? (
+            // ── Step 2: review / edit extracted facts and quotes ─────────
+            <div style={{ padding: 20, overflowY: "auto", flex: 1 }}>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 16px" }}>
+                {na.step2Hint}
+              </p>
+
+              {/* Facts list */}
+              <h4 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 8px", color: "var(--text)" }}>
+                {na.step2FactsLabel} ({extraction?.facts.length ?? 0})
+              </h4>
+              {extraction && extraction.facts.length === 0 && (
+                <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 10px" }}>{na.step2NoFacts}</p>
+              )}
+              {extraction?.facts.map((f, i) => (
+                <div key={`f-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, color: "var(--muted)" }}>{na.step2FactText} {i + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => setExtraction((prev) => prev ? { ...prev, facts: prev.facts.filter((_, j) => j !== i) } : prev)}
+                      style={{ background: "none", border: "none", fontSize: 11, color: "var(--error)", cursor: "pointer" }}
+                    >
+                      {na.step2RemoveFact}
+                    </button>
+                  </div>
+                  <textarea
+                    value={f.text}
+                    onChange={(e) => setExtraction((prev) => {
+                      if (!prev) return prev;
+                      const facts = [...prev.facts];
+                      facts[i] = { ...facts[i], text: e.target.value };
+                      return { ...prev, facts };
+                    })}
+                    rows={2}
+                    style={{ ...inputStyle, resize: "vertical", marginBottom: 4 }}
+                  />
+                  <input
+                    value={f.context}
+                    onChange={(e) => setExtraction((prev) => {
+                      if (!prev) return prev;
+                      const facts = [...prev.facts];
+                      facts[i] = { ...facts[i], context: e.target.value };
+                      return { ...prev, facts };
+                    })}
+                    placeholder={na.step2FactContext}
+                    style={{ ...inputStyle, fontSize: 12 }}
+                  />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setExtraction((prev) => prev ? { ...prev, facts: [...prev.facts, { text: "", context: "" }] } : prev)}
+                style={{ padding: "4px 10px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: "pointer", marginBottom: 20 }}
+              >
+                {na.step2AddFact}
+              </button>
+
+              {/* Quotes list */}
+              <h4 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 8px", color: "var(--text)" }}>
+                {na.step2QuotesLabel} ({extraction?.quotes.length ?? 0})
+              </h4>
+              {extraction && extraction.quotes.length === 0 && (
+                <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 10px" }}>{na.step2NoQuotes}</p>
+              )}
+              {extraction?.quotes.map((q, i) => (
+                <div key={`q-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, color: "var(--muted)" }}>{na.step2QuoteText} {i + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => setExtraction((prev) => prev ? { ...prev, quotes: prev.quotes.filter((_, j) => j !== i) } : prev)}
+                      style={{ background: "none", border: "none", fontSize: 11, color: "var(--error)", cursor: "pointer" }}
+                    >
+                      {na.step2RemoveQuote}
+                    </button>
+                  </div>
+                  <textarea
+                    value={q.text}
+                    onChange={(e) => setExtraction((prev) => {
+                      if (!prev) return prev;
+                      const quotes = [...prev.quotes];
+                      quotes[i] = { ...quotes[i], text: e.target.value };
+                      return { ...prev, quotes };
+                    })}
+                    rows={2}
+                    style={{ ...inputStyle, resize: "vertical", marginBottom: 4 }}
+                  />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 4 }}>
+                    <input
+                      value={q.speaker}
+                      onChange={(e) => setExtraction((prev) => {
+                        if (!prev) return prev;
+                        const quotes = [...prev.quotes];
+                        quotes[i] = { ...quotes[i], speaker: e.target.value };
+                        return { ...prev, quotes };
+                      })}
+                      placeholder={na.step2QuoteSpeaker}
+                      style={{ ...inputStyle, fontSize: 12 }}
+                    />
+                    <input
+                      value={q.context}
+                      onChange={(e) => setExtraction((prev) => {
+                        if (!prev) return prev;
+                        const quotes = [...prev.quotes];
+                        quotes[i] = { ...quotes[i], context: e.target.value };
+                        return { ...prev, quotes };
+                      })}
+                      placeholder={na.step2QuoteContext}
+                      style={{ ...inputStyle, fontSize: 12 }}
+                    />
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setExtraction((prev) => prev ? { ...prev, quotes: [...prev.quotes, { text: "", speaker: "", context: "" }] } : prev)}
+                style={{ padding: "4px 10px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: "pointer", marginBottom: 20 }}
+              >
+                {na.step2AddQuote}
+              </button>
+
+              {/* Web search toggle */}
+              <div style={{ marginTop: 8, padding: "10px 12px", background: "var(--accent-lt)", borderRadius: "var(--radius)" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={!skipWebResearch}
+                    onChange={(e) => setSkipWebResearch(!e.target.checked)}
+                    style={{ accentColor: "var(--accent)" }}
+                  />
+                  <span style={{ fontWeight: 500 }}>{na.step2WebSearchLabel}</span>
+                </label>
+                <p style={{ fontSize: 11, color: "var(--muted)", margin: "4px 0 0 24px" }}>
+                  {na.step2WebSearchHint}
+                </p>
+              </div>
+            </div>
+          ) : isSettings ? (
             // ── Settings mode: sidebar tabs + active panel ───────────────
             <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
               <nav
@@ -594,48 +809,88 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
               gap: 8,
             }}
           >
-            <button
-              type="button"
-              onClick={() => setMode(isSettings ? "basic" : "settings")}
-              disabled={loading}
-              style={{
-                background: "none",
-                border: "none",
-                color: "var(--muted)",
-                fontSize: 13,
-                cursor: loading ? "default" : "pointer",
-                padding: "4px 0",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted)"; }}
-            >
-              {isSettings ? na.backToBasic : (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                  </svg>
-                  {na.settingsButton}
-                </>
-              )}
-            </button>
+            {step === "step2" ? (
+              <button
+                type="button"
+                onClick={() => { setStep("step1"); setError(null); }}
+                disabled={loading}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--muted)",
+                  fontSize: 13,
+                  cursor: loading ? "default" : "pointer",
+                  padding: "4px 0",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted)"; }}
+              >
+                {na.back}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMode(isSettings ? "basic" : "settings")}
+                disabled={loading || extracting}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "var(--muted)",
+                  fontSize: 13,
+                  cursor: (loading || extracting) ? "default" : "pointer",
+                  padding: "4px 0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted)"; }}
+              >
+                {isSettings ? na.backToBasic : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    {na.settingsButton}
+                  </>
+                )}
+              </button>
+            )}
             <div style={{ display: "flex", gap: 8 }}>
               {onCancel && (
-                <Button variant="ghost" size="md" onClick={onCancel} disabled={loading} type="button">
+                <Button variant="ghost" size="md" onClick={onCancel} disabled={loading || extracting} type="button">
                   {na.cancel}
                 </Button>
               )}
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                disabled={loading || !topic.trim()}
-              >
-                {loading ? na.generating : na.generate}
-              </Button>
+              {step === "step2" ? (
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={loading || !topic.trim()}
+                >
+                  {loading ? na.generating : na.generateArticle}
+                </Button>
+              ) : rawFacts.trim() ? (
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={loading || extracting || !topic.trim()}
+                >
+                  {extracting ? na.step2Extracting : na.next}
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={loading || !topic.trim()}
+                >
+                  {loading ? na.generating : na.generate}
+                </Button>
+              )}
             </div>
           </footer>
         </form>

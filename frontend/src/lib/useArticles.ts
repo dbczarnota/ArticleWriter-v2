@@ -137,6 +137,12 @@ export function useArticles() {
     author_name?: string;
     raw_facts_text?: string;
     article_template?: string;
+    editor_extraction?: {
+      facts: { text: string; context: string }[];
+      quotes: { text: string; speaker: string; context: string }[];
+      keywords: string[];
+    };
+    skip_web_research?: boolean;
   }): Promise<Article> {
     return request<Article>("/v2/write_article", {
       method: "POST",
