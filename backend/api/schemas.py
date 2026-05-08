@@ -13,6 +13,54 @@ class ArticleTemplateItem(BaseModel):
     body: str
 
 
+class EditorFactItem(BaseModel):
+    text: str
+    context: str = ""
+
+
+class EditorQuoteItem(BaseModel):
+    text: str
+    speaker: str = ""
+    context: str = ""
+
+
+class EditorExtractionPayload(BaseModel):
+    """Pre-extracted editor facts/quotes/keywords sent from the modal step 2.
+    When present, run_pipeline uses this directly and skips the in-pipeline
+    text_extraction stage."""
+    facts: list[EditorFactItem] = []
+    quotes: list[EditorQuoteItem] = []
+    keywords: list[str] = []
+
+
+class ExtractEditorFactsRequest(BaseModel):
+    """POST /v2/extract_editor_facts body — used by the modal's step 2 to
+    preview what the LLM extracted from the editor's raw text."""
+    topic: str
+    raw_facts_text: str
+    language: str | None = None
+
+    @field_validator("topic", mode="before")
+    @classmethod
+    def _validate_topic(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("topic must not be empty")
+        if len(v) > 300:
+            raise ValueError("topic must be at most 300 characters")
+        return v
+
+    @field_validator("raw_facts_text", mode="before")
+    @classmethod
+    def _validate_raw_facts(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("raw_facts_text must not be empty")
+        if len(v) > 10_000:
+            raise ValueError("raw_facts_text must be at most 10 000 characters")
+        return v
+
+
 class ArticleRequest(BaseModel):
     topic: str
     domain: str = "styl_fm"
@@ -29,9 +77,16 @@ class ArticleRequest(BaseModel):
     """Per-article domain config overrides. Keys match DomainConfigUpdate field names.
     Non-empty values replace the org's saved config for this article run only."""
     raw_facts_text: str | None = None
-    """Raw editor-provided text to be parsed for facts and quotes."""
+    """Raw editor-provided text to be parsed for facts and quotes (legacy path).
+    Used when editor_extraction is None — pipeline runs the text_extraction stage."""
+    editor_extraction: EditorExtractionPayload | None = None
+    """Pre-extracted (and optionally edited) editor facts/quotes from modal step 2.
+    When present, pipeline skips the text_extraction stage and merges these directly."""
     article_template: str | None = None
     """Resolved template body (not ID). Frontend sends the body directly."""
+    skip_web_research: bool = False
+    """When true, pipeline skips search/scraping/parsing/extraction stages — article
+    is written ONLY from editor-provided facts. Set from the modal step 2 checkbox."""
 
     @field_validator("topic", mode="before")
     @classmethod

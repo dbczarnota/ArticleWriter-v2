@@ -26,6 +26,15 @@ class CategoryConfig:
 
 
 @dataclass(frozen=True)
+class ArticleTemplate:
+    """Article template option stored in DomainConfig.article_templates."""
+
+    id: str
+    name: str
+    body: str
+
+
+@dataclass(frozen=True)
 class DomainConfig:
     name: str
     description: str
@@ -89,6 +98,9 @@ class DomainConfig:
         default_factory=lambda: ["groq:openai/gpt-oss-120b"]
     )
 
+    article_templates: list[ArticleTemplate] = field(default_factory=list)
+    """Available article templates for this domain."""
+
 
 def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:
     return DomainConfig(
@@ -150,6 +162,10 @@ def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:
         discovery_topic_writer_fallback_models=list(
             config.discovery_topic_writer_fallback_models or []
         ),
+        article_templates=[
+            ArticleTemplate(id=t["id"], name=t["name"], body=t["body"])
+            for t in (config.article_templates or [])
+        ],
     )
 
 

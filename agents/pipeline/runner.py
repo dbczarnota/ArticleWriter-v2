@@ -71,6 +71,8 @@ async def run_pipeline(
     additional_instructions: str | None = None,
     raw_facts_text: str | None = None,
     article_template: str | None = None,
+    editor_extraction: object | None = None,
+    skip_web_research: bool = False,
     debug: bool = False,
     org_code: str = "__local_dev__",
     author_user_id: str = "local-dev",
@@ -79,7 +81,13 @@ async def run_pipeline(
     """Pipeline entry. `org_code` + `author_user_id` are persistence context;
     they identify which Kinde org owns the article and which user authored it.
     Defaults match the run.py local-dev path so existing callers keep working;
-    backend/api/v2.py overrides them from the JWT + X-Org-Code header."""
+    backend/api/v2.py overrides them from the JWT + X-Org-Code header.
+
+    `editor_extraction`: pre-extracted/edited editor facts from the modal step 2.
+    When set, the in-pipeline text_extraction stage is skipped and this is merged
+    directly. Type is `object` here to avoid an import cycle on the schema model.
+    `skip_web_research`: when True, search/scraping/parsing/extraction are skipped
+    entirely and the article is written from editor-only facts."""
     with logfire.span(
         "pipeline.run",
         topic=topic,
@@ -89,6 +97,8 @@ async def run_pipeline(
         has_additional_instructions=bool(additional_instructions),
         has_raw_facts=bool(raw_facts_text),
         has_article_template=bool(article_template),
+        has_editor_extraction=editor_extraction is not None,
+        skip_web_research=skip_web_research,
     ):
         return await _run_pipeline_inner(
             topic=topic,
@@ -100,6 +110,8 @@ async def run_pipeline(
             additional_instructions=additional_instructions,
             raw_facts_text=raw_facts_text,
             article_template=article_template,
+            editor_extraction=editor_extraction,
+            skip_web_research=skip_web_research,
             debug=debug,
             org_code=org_code,
             author_user_id=author_user_id,
@@ -118,6 +130,8 @@ async def _run_pipeline_inner(
     additional_instructions: str | None,
     raw_facts_text: str | None = None,
     article_template: str | None = None,
+    editor_extraction: object | None = None,
+    skip_web_research: bool = False,
     debug: bool,
     org_code: str,
     author_user_id: str,
@@ -259,13 +273,17 @@ async def _run_pipeline_inner(
         _stage_t0 = time.perf_counter()
         with logfire.span("pipeline.stage.research", topic=topic, domain=domain.name):
             try:
-                search_results = await run_search_agent(
-                    topic,
-                    config=settings.search,
-                    domain_language=domain.language,
-                    serper_api_key=serper_api_key,
-                )
-                log.search_done(search_results)
+                if skip_web_research:
+                    logfire.info("pipeline.research.skipped", reason="skip_web_research_flag")
+                    search_results = []
+                else:
+                    search_results = await run_search_agent(
+                        topic,
+                        config=settings.search,
+                        domain_language=domain.language,
+                        serper_api_key=serper_api_key,
+                    )
+                    log.search_done(search_results)
             except Exception as e:
                 _errors.append({"stage": "search", "error": str(e)})
                 log.error("search", e)
@@ -383,26 +401,54 @@ async def _run_pipeline_inner(
             keywords_count=len(extraction.keywords),
         )
 
-        # Mini-stage: extract facts from editor-provided raw text (if any).
-        # Runs only when raw_facts_text is non-empty — zero cost otherwise.
-        if raw_facts_text:
+        # Editor-provided facts merge.
+        # Path A: editor_extraction (param) — pre-extracted/edited in modal step 2.
+        # Path B: raw_facts_text — legacy single-step flow, runs LLM to extract.
+        # Path A wins when both present (front explicitly provided structured data).
+        if editor_extraction is not None:
+            from agents._base.types import Fact, Quote
+
+            _editor_extracted = ExtractionResult(
+                facts=[
+                    Fact(text=f.text, context=f.context or "", source_urls=["editor-provided"])
+                    for f in editor_extraction.facts
+                ],
+                quotes=[
+                    Quote(
+                        text=q.text,
+                        speaker=q.speaker or "",
+                        context=q.context or "",
+                        source_urls=["editor-provided"],
+                    )
+                    for q in editor_extraction.quotes
+                ],
+                keywords=list(editor_extraction.keywords or []),
+            )
+            extraction = _merge_pre_injected(extraction, _editor_extracted)
+            logfire.info(
+                "pipeline.editor_extraction.merged",
+                editor_facts=len(_editor_extracted.facts),
+                editor_quotes=len(_editor_extracted.quotes),
+            )
+        elif raw_facts_text:
+            # Legacy: extract facts from raw text inside the pipeline.
             with logfire.span(
                 "pipeline.stage.text_extraction",
                 domain=domain.name,
                 raw_text_len=len(raw_facts_text),
             ):
                 try:
-                    editor_extraction = await extract_facts_from_text(
+                    _editor_text_extraction = await extract_facts_from_text(
                         raw_text=raw_facts_text,
                         topic=topic,
                         language=domain.language,
                         config=settings.extraction,
                     )
-                    extraction = _merge_pre_injected(extraction, editor_extraction)
+                    extraction = _merge_pre_injected(extraction, _editor_text_extraction)
                     logfire.info(
                         "pipeline.text_extraction.merged",
-                        editor_facts=len(editor_extraction.facts),
-                        editor_quotes=len(editor_extraction.quotes),
+                        editor_facts=len(_editor_text_extraction.facts),
+                        editor_quotes=len(_editor_text_extraction.quotes),
                     )
                 except Exception as e:
                     _errors.append({"stage": "text_extraction", "error": str(e)})
@@ -414,14 +460,21 @@ async def _run_pipeline_inner(
         # round-trip per pipeline run that has nothing to add.
         _initial_signals = len(extraction.facts) + len(extraction.quotes)
         _target = settings.pipeline.min_source_signals
-        if settings.pipeline.adaptive_search and _initial_signals >= _target:
+        if settings.pipeline.adaptive_search and skip_web_research:
+            logfire.info(
+                "pipeline.adaptive_search.skipped",
+                reason="skip_web_research_flag",
+                signal_count=_initial_signals,
+                target=_target,
+            )
+        elif settings.pipeline.adaptive_search and _initial_signals >= _target:
             logfire.info(
                 "pipeline.adaptive_search.skipped",
                 reason="signals_already_sufficient",
                 signal_count=_initial_signals,
                 target=_target,
             )
-        if settings.pipeline.adaptive_search and _initial_signals < _target:
+        if settings.pipeline.adaptive_search and not skip_web_research and _initial_signals < _target:
             _stage_t0 = time.perf_counter()
             await _article_repo.set_pipeline_stage(_article_id, "adaptive_search")
             with logfire.span(
@@ -490,15 +543,18 @@ async def _run_pipeline_inner(
         _stage_t0 = time.perf_counter()
         with logfire.span("pipeline.stage.media_search", domain=domain.name):
             try:
-                embed_candidates, media_errors = await run_media_search(
-                    topic,
-                    domain=domain,
-                    serper_api_key=serper_api_key,
-                    freshness=settings.search.search_freshness,
-                    context_articles=ranked_articles[:2],
-                    log=log,
-                )
-                log.media_search_done(embed_candidates, media_errors)
+                if skip_web_research:
+                    logfire.info("pipeline.media_search.skipped", reason="skip_web_research_flag")
+                else:
+                    embed_candidates, media_errors = await run_media_search(
+                        topic,
+                        domain=domain,
+                        serper_api_key=serper_api_key,
+                        freshness=settings.search.search_freshness,
+                        context_articles=ranked_articles[:2],
+                        log=log,
+                    )
+                    log.media_search_done(embed_candidates, media_errors)
             except Exception as e:
                 _errors.append({"stage": "media_search", "error": str(e)})
                 log.error("media_search", e)

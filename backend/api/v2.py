@@ -9,7 +9,12 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Qu
 from pydantic import BaseModel
 
 from agents.pipeline.runner import run_pipeline
-from backend.api.schemas import ArticleRequest, ArticleUpdate, DomainConfigUpdate
+from backend.api.schemas import (
+    ArticleRequest,
+    ArticleUpdate,
+    DomainConfigUpdate,
+    ExtractEditorFactsRequest,
+)
 from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
 from backend.config import AppSettings, apply_org_models
@@ -249,6 +254,8 @@ async def _run_pipeline_background(
                 additional_instructions=req.additional_instructions,
                 raw_facts_text=req.raw_facts_text,
                 article_template=req.article_template,
+                editor_extraction=req.editor_extraction,
+                skip_web_research=req.skip_web_research,
                 org_code=org_code,
                 author_user_id=author_user_id,
                 _article_id=article_id,
@@ -300,6 +307,42 @@ async def _run_pipeline_background(
                 )
         except Exception:
             pass
+
+
+@router.post(
+    "/extract_editor_facts",
+    summary="Preview LLM-extracted facts and quotes from editor's raw text",
+    tags=["articles"],
+)
+async def extract_editor_facts_endpoint(
+    body: ExtractEditorFactsRequest,
+    org: Org = Depends(get_current_org),
+    org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
+) -> dict:
+    """Modal step 2 calls this with the raw fact-text the editor pasted; we run
+    `extract_facts_from_text` standalone and return structured facts/quotes for
+    the editor to review and edit before generating the article. Language defaults
+    to the org's domain config when not provided in the request."""
+    from agents._base.config import ExtractionAgentConfig
+    from agents.pipeline._helpers import extract_facts_from_text
+
+    language = body.language
+    if not language:
+        cfg = await org_config_repo.get(org.code)
+        language = (cfg.language if cfg else None) or "pl"
+    result = await extract_facts_from_text(
+        raw_text=body.raw_facts_text,
+        topic=body.topic,
+        language=language,
+        config=ExtractionAgentConfig(),
+    )
+    return {
+        "facts": [{"text": f.text, "context": f.context} for f in result.facts],
+        "quotes": [
+            {"text": q.text, "speaker": q.speaker, "context": q.context} for q in result.quotes
+        ],
+        "keywords": list(result.keywords),
+    }
 
 
 @router.get(
