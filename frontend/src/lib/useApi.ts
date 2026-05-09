@@ -34,8 +34,12 @@ export function useApi() {
         : ((orgsRaw as KindeOrgsPayload | null)?.orgCodes ?? []);
       orgCode = orgStr ?? orgsArr[0] ?? "";
     }
+    // FormData bodies must NOT have Content-Type set — the browser auto-sets
+    // it with the right multipart boundary. Setting application/json here
+    // would break multipart uploads (image, file inputs, etc.).
+    const isFormData = options.body instanceof FormData;
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       "X-Org-Code": orgCode,
       ...(options.headers as Record<string, string> | undefined),
     };

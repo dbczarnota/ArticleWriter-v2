@@ -99,12 +99,14 @@ export interface ArticleTemplate {
 export interface EditorFact {
   text: string;
   context: string;
+  source: string;
 }
 
 export interface EditorQuote {
   text: string;
   speaker: string;
   context: string;
+  source: string;
 }
 
 export interface EditorExtraction {

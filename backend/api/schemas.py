@@ -16,12 +16,16 @@ class ArticleTemplateItem(BaseModel):
 class EditorFactItem(BaseModel):
     text: str
     context: str = ""
+    source: str = "editor-provided"
+    """Origin marker used by the writer. Known values: "editor-provided"
+    (raw text) or "editor-provided-photo" (extracted from an uploaded image)."""
 
 
 class EditorQuoteItem(BaseModel):
     text: str
     speaker: str = ""
     context: str = ""
+    source: str = "editor-provided"
 
 
 class EditorExtractionPayload(BaseModel):

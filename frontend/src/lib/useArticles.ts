@@ -138,8 +138,8 @@ export function useArticles() {
     raw_facts_text?: string;
     article_template?: string;
     editor_extraction?: {
-      facts: { text: string; context: string }[];
-      quotes: { text: string; speaker: string; context: string }[];
+      facts: { text: string; context: string; source: string }[];
+      quotes: { text: string; speaker: string; context: string; source: string }[];
       keywords: string[];
     };
     skip_web_research?: boolean;

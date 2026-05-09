@@ -410,7 +410,11 @@ async def _run_pipeline_inner(
 
             _editor_extracted = ExtractionResult(
                 facts=[
-                    Fact(text=f.text, context=f.context or "", source_urls=["editor-provided"])
+                    Fact(
+                        text=f.text,
+                        context=f.context or "",
+                        source_urls=[getattr(f, "source", None) or "editor-provided"],
+                    )
                     for f in editor_extraction.facts
                 ],
                 quotes=[
@@ -418,7 +422,7 @@ async def _run_pipeline_inner(
                         text=q.text,
                         speaker=q.speaker or "",
                         context=q.context or "",
-                        source_urls=["editor-provided"],
+                        source_urls=[getattr(q, "source", None) or "editor-provided"],
                     )
                     for q in editor_extraction.quotes
                 ],

@@ -224,6 +224,10 @@ export interface Translations {
     templateAdHocPlaceholder: string;
     factsLabel: string;
     factsPlaceholder: string;
+    imageLabel: string;
+    addImage: string;
+    removeImage: string;
+    imageHint: string;
     advancedToggleShow: string;
     advancedToggleHide: string;
     next: string;

@@ -5,16 +5,21 @@ from datetime import datetime
 from uuid import UUID
 
 import logfire
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Body,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+)
 from pydantic import BaseModel
 
 from agents.pipeline.runner import run_pipeline
-from backend.api.schemas import (
-    ArticleRequest,
-    ArticleUpdate,
-    DomainConfigUpdate,
-    ExtractEditorFactsRequest,
-)
+from backend.api.schemas import ArticleRequest, ArticleUpdate, DomainConfigUpdate
 from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
 from backend.config import AppSettings, apply_org_models
@@ -311,38 +316,102 @@ async def _run_pipeline_background(
 
 @router.post(
     "/extract_editor_facts",
-    summary="Preview LLM-extracted facts and quotes from editor's raw text",
+    summary="Preview LLM-extracted facts and quotes from editor's raw text and/or image",
     tags=["articles"],
 )
 async def extract_editor_facts_endpoint(
-    body: ExtractEditorFactsRequest,
+    topic: str = Form(...),
+    raw_facts_text: str | None = Form(None),
+    language: str | None = Form(None),
+    image: UploadFile | None = File(None),
     org: Org = Depends(get_current_org),
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ) -> dict:
-    """Modal step 2 calls this with the raw fact-text the editor pasted; we run
-    `extract_facts_from_text` standalone and return structured facts/quotes for
-    the editor to review and edit before generating the article. Language defaults
-    to the org's domain config when not provided in the request."""
-    from agents._base.config import ExtractionAgentConfig
-    from agents.pipeline._helpers import extract_facts_from_text
+    """Modal step 1 → step 2 transition. Accepts multipart with topic + optional
+    raw_facts_text + optional image upload. Runs text and image extractions in
+    parallel, tags each item's `source` so the modal can show "📷" badges and
+    the writer can distinguish text- vs photo-derived material. Language
+    defaults to the org's domain config when not provided."""
+    import asyncio
 
-    language = body.language
+    import logfire
+
+    from agents._base.config import ExtractionAgentConfig
+    from agents.pipeline._helpers import extract_facts_from_image, extract_facts_from_text
+
+    text = (raw_facts_text or "").strip()
+    image_bytes = await image.read() if image is not None else b""
+    image_media_type = (image.content_type if image is not None else None) or "image/jpeg"
+
+    if not text and not image_bytes:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one of raw_facts_text or image must be provided",
+        )
+    if text and len(text) > 10_000:
+        raise HTTPException(status_code=400, detail="raw_facts_text must be at most 10 000 characters")
+    # 10 MiB cap — avoids unbounded memory/LLM cost from accidental huge uploads.
+    if image_bytes and len(image_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="image must be at most 10 MiB")
+
     if not language:
         cfg = await org_config_repo.get(org.code)
         language = (cfg.language if cfg else None) or "pl"
-    result = await extract_facts_from_text(
-        raw_text=body.raw_facts_text,
-        topic=body.topic,
-        language=language,
-        config=ExtractionAgentConfig(),
-    )
-    return {
-        "facts": [{"text": f.text, "context": f.context} for f in result.facts],
-        "quotes": [
-            {"text": q.text, "speaker": q.speaker, "context": q.context} for q in result.quotes
-        ],
-        "keywords": list(result.keywords),
-    }
+    config = ExtractionAgentConfig()
+
+    with logfire.span(
+        "api.extract_editor_facts",
+        topic=topic,
+        text_len=len(text),
+        has_image=bool(image_bytes),
+        image_bytes=len(image_bytes),
+    ):
+        # Run both extractions concurrently when both inputs are present so the
+        # editor doesn't wait sequentially. Each helper soft-fails to an empty
+        # ExtractionResult on LLM error, so the gather call is exception-safe.
+        tasks = []
+        text_idx: int | None = None
+        image_idx: int | None = None
+        if text:
+            text_idx = len(tasks)
+            tasks.append(extract_facts_from_text(text, topic, language, config))
+        if image_bytes:
+            image_idx = len(tasks)
+            tasks.append(
+                extract_facts_from_image(image_bytes, image_media_type, topic, language, config)
+            )
+        results = await asyncio.gather(*tasks)
+        text_result = results[text_idx] if text_idx is not None else None
+        image_result = results[image_idx] if image_idx is not None else None
+
+    facts: list[dict] = []
+    quotes: list[dict] = []
+    keywords: list[str] = []
+    if text_result is not None:
+        facts.extend(
+            {"text": f.text, "context": f.context, "source": "editor-provided"}
+            for f in text_result.facts
+        )
+        quotes.extend(
+            {"text": q.text, "speaker": q.speaker, "context": q.context, "source": "editor-provided"}
+            for q in text_result.quotes
+        )
+        keywords.extend(text_result.keywords)
+    if image_result is not None:
+        facts.extend(
+            {"text": f.text, "context": f.context, "source": "editor-provided-photo"}
+            for f in image_result.facts
+        )
+        quotes.extend(
+            {"text": q.text, "speaker": q.speaker, "context": q.context, "source": "editor-provided-photo"}
+            for q in image_result.quotes
+        )
+        keywords.extend(image_result.keywords)
+    # Dedupe keywords preserving order; facts/quotes left as-is so the editor
+    # can review and remove duplicates manually if both sources produced them.
+    keywords = list(dict.fromkeys(keywords))
+
+    return {"facts": facts, "quotes": quotes, "keywords": keywords}
 
 
 @router.get(
