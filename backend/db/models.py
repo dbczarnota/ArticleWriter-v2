@@ -605,7 +605,7 @@ class StreamSubscription(SQLModel, table=True):
     stream_url: str = Field(max_length=2048)
     status: str = Field(default="active", max_length=16)
     """One of: active, paused, stopped."""
-    chunk_duration_seconds: int = Field(default=30)
+    chunk_duration_seconds: int = Field(default=120)
     created_at: datetime = Field(
         default_factory=_utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),

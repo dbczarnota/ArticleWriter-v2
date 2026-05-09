@@ -26,7 +26,7 @@ _log = logging.getLogger(__name__)
 class SubscriptionCreate(BaseModel):
     name: str
     stream_url: str
-    chunk_duration_seconds: int = 30
+    chunk_duration_seconds: int = 120
 
 
 class SubscriptionResponse(BaseModel):
