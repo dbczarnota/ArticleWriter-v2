@@ -13,6 +13,7 @@ from backend.domain import DomainConfig
 def _make_domain() -> DomainConfig:
     """Create a minimal DomainConfig for testing."""
     import dataclasses
+
     kwargs: dict = {}
     for f in dataclasses.fields(DomainConfig):
         if f.name not in kwargs:

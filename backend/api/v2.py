@@ -324,6 +324,7 @@ async def extract_editor_facts_endpoint(
     raw_facts_text: str | None = Form(None),
     language: str | None = Form(None),
     image: UploadFile | None = File(None),
+    image_instructions: str | None = Form(None),
     org: Org = Depends(get_current_org),
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ) -> dict:
@@ -378,7 +379,10 @@ async def extract_editor_facts_endpoint(
         if image_bytes:
             image_idx = len(tasks)
             tasks.append(
-                extract_facts_from_image(image_bytes, image_media_type, topic, language, config)
+                extract_facts_from_image(
+                    image_bytes, image_media_type, topic, language, config,
+                    image_instructions=image_instructions or None,
+                )
             )
         results = await asyncio.gather(*tasks)
         text_result = results[text_idx] if text_idx is not None else None

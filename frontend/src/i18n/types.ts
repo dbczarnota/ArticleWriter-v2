@@ -128,6 +128,8 @@ export interface Translations {
     templateNamePlaceholder: string;
     templateBody: string;
     templateBodyPlaceholder: string;
+    templateImageInstructions: string;
+    templateImageInstructionsPlaceholder: string;
     addTemplate: string;
     removeTemplate: string;
     tipTemplates: string;

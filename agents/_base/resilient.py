@@ -63,7 +63,7 @@ async def run_with_fallback(
     model_list: Sequence[str],
     *,
     agent_factory: Callable[[str], tuple[Agent[Any, Any], str]],
-    user_prompt: str,
+    user_prompt: str | list[Any],
     message_history: list[ModelMessage] | None = None,
     timeout: float = 300.0,
     agent_name: str = "",

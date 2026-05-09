@@ -14,6 +14,7 @@ import time
 from typing import Any, Literal
 
 import logfire
+from pydantic import BaseModel
 from pydantic_ai import Agent, BinaryContent
 
 from agents._base.config import ExtractionAgentConfig
@@ -271,15 +272,20 @@ async def extract_facts_from_text(
         return ExtractionResult(facts=[], quotes=[], keywords=[])
 
 
-# Vision model used to describe images uploaded in the modal step 1.
-# Gemini Flash supports image input and is fast enough for an interactive
-# extract-preview UX. This mirrors the IG prototype's VISION_MODEL choice.
-_IMAGE_VISION_MODEL = "google-gla:gemini-flash-latest"
+class _ImageFactData(BaseModel):
+    text: str
+    context: str
 
-_IMAGE_VISION_SYSTEM = (
-    "Jesteś agentem opisującym zdjęcie dla redakcji serwisu lifestyle. "
-    "Twój opis jest BAZĄ FAKTÓW dla pisarza artykułu — musi być bogaty, "
-    "konkretny i wierny temu, co widać. "
+
+class _ImageExtractionOutput(BaseModel):
+    facts: list[_ImageFactData]
+    keywords: list[str]
+
+
+_IMAGE_EXTRACTION_SYSTEM_BASE = (
+    "Jesteś agentem wyciągającym fakty ze zdjęcia dla redakcji serwisu lifestyle. "
+    "Na podstawie obrazu zwróć listę konkretnych, rzeczowych faktów — co widać, "
+    "jak wygląda, co ma na sobie, jaka atmosfera, oświetlenie, lokalizacja, nastrój. "
     "\n\n"
     "Nie identyfikuj twarzy ani osób. Tożsamość osoby zostanie podana w prompcie. "
     "\n\n"
@@ -292,25 +298,12 @@ _IMAGE_VISION_SYSTEM = (
     "w obiektyw', 'pewna siebie poza')."
 )
 
-_IMAGE_VISION_USER_TEMPLATE = (
+_IMAGE_EXTRACTION_USER = (
     "Osoba/temat materiału: {topic}.\n\n"
-    "Opisz szczegółowo. Strukturyzuj odpowiedź w sekcjach:\n\n"
-    "## Ujęcie i kompozycja\n"
-    "Plan, kąt, oświetlenie, pora dnia, nastrój światła, dominujące kolory.\n\n"
-    "## Postać i emocje\n"
-    "Pozycja ciała, gest, układ rąk, mimika. Co dokładnie robi osoba w kadrze "
-    "I jaką emocję wyraża — radość, zmysłowość, pewność siebie, prowokacja, "
-    "skupienie, dystans. Postawa: napięta, swobodna, dominująca, otwarta.\n\n"
-    "## Stylizacja\n"
-    "Strój, kolory, fasony, dodatki, fryzura, makijaż. Charakterystyczne detale.\n\n"
-    "## Sceneria i tło\n"
-    "Lokalizacja, elementy w tle, klimat miejsca.\n\n"
-    "## Atmosfera całości\n"
-    "Vibe kadru jednym akapitem — co czuje czytelnik patrząc na to zdjęcie. "
-    "Glamour, tabloid-sensacja, dolce vita, codzienność, prowokacja, melancholia? "
-    "Energia kadru: spokój, dynamika, intensywność, lekkość?\n\n"
-    "## Inne szczegóły\n"
-    "Cokolwiek pominiętego (rekwizyt, gest, detal stylizacyjny, nietypowy element)."
+    "Wyciągnij fakty ze zdjęcia. Każdy fakt to jedno konkretne, rzeczowe "
+    "stwierdzenie o tym, co widać: kompozycja, oświetlenie, strój, stylizacja, "
+    "kolory, emocje widoczne w mimice i postawie, sceneria, atmosfera kadru. "
+    "Nie cytuj — fakty tylko, bez cudzysłowów. Język: {language}."
 )
 
 
@@ -320,17 +313,26 @@ async def extract_facts_from_image(
     topic: str,
     language: str,
     config: ExtractionAgentConfig,
+    *,
+    image_instructions: str | None = None,
 ) -> ExtractionResult:
-    """Two-step image → facts pipeline: a vision LLM produces a rich Polish
-    description (composition + emotion/vibe), then `extract_facts_from_text`
-    parses that description into structured Fact/Quote items.
+    """Single-step image → facts pipeline using the standard agent pattern.
 
-    All returned items carry source_urls=["editor-provided-photo"] so the
-    instructions agent and the modal step-2 UI can distinguish image-derived
-    facts from text-derived ones.
+    Uses ExtractionAgentConfig (model + fallback_models) and run_with_fallback
+    exactly like other pipeline agents. No quotes — images have no quotable text.
+    All returned facts carry source_urls=["editor-provided-photo"].
+    Soft-fails to an empty result on LLM error.
+    """
+    sys_prompt = _IMAGE_EXTRACTION_SYSTEM_BASE
+    if image_instructions:
+        sys_prompt += f"\n\n## Dodatkowe instrukcje redakcji\n{image_instructions}"
 
-    Soft-fails to an empty result on LLM error — the pipeline never halts on
-    image extraction failure (the editor can always paste raw text instead)."""
+    user_msg = _IMAGE_EXTRACTION_USER.format(topic=topic, language=language)
+    user_prompt_parts: list[Any] = [user_msg, BinaryContent(data=image_bytes, media_type=media_type)]
+
+    def _factory(m: str) -> tuple[Agent[Any, Any], str]:
+        return Agent(m, output_type=_ImageExtractionOutput), sys_prompt
+
     with logfire.span(
         "pipeline.image_extraction",
         media_type=media_type,
@@ -338,46 +340,33 @@ async def extract_facts_from_image(
         topic=topic,
     ):
         try:
-            # Step 1: vision → free-form description
             t0 = time.perf_counter()
-            agent = Agent(_IMAGE_VISION_MODEL, system_prompt=_IMAGE_VISION_SYSTEM)
-            user_msg = _IMAGE_VISION_USER_TEMPLATE.format(topic=topic)
-            vision_result = await agent.run(
-                [user_msg, BinaryContent(data=image_bytes, media_type=media_type)]
+            result, model_used = await run_with_fallback(
+                (config.model, *config.fallback_models),
+                agent_factory=_factory,
+                user_prompt=user_prompt_parts,
+                agent_name="image_extraction",
             )
-            description = (
-                vision_result.output if isinstance(vision_result.output, str) else str(vision_result.output)
-            )
-            u = vision_result.usage()
+            u = result.usage()
             record_agent_call(
-                "image_vision",
-                _IMAGE_VISION_MODEL,
+                "image_extraction",
+                model_used,
                 u.input_tokens or 0,
                 u.output_tokens or 0,
                 (time.perf_counter() - t0) * 1000,
             )
-            logfire.info(
-                "pipeline.image_extraction.described",
-                model=_IMAGE_VISION_MODEL,
-                description_len=len(description),
-            )
-
-            # Step 2: structured extraction from description, tagged as photo source.
-            result = await extract_facts_from_text(
-                raw_text=description,
-                topic=topic,
-                language=language,
-                config=config,
-                source_marker="editor-provided-photo",
-                agent_name="image_text_extraction",
-            )
+            output = result.output
+            facts = [
+                Fact(text=f.text, context=f.context, source_urls=["editor-provided-photo"])
+                for f in output.facts
+            ]
             logfire.info(
                 "pipeline.image_extraction.completed",
-                facts=len(result.facts),
-                quotes=len(result.quotes),
-                keywords=len(result.keywords),
+                facts=len(facts),
+                keywords=len(output.keywords),
+                model=model_used,
             )
-            return result
+            return ExtractionResult(facts=facts, quotes=[], keywords=output.keywords)
         except Exception as e:
             logfire.warn(
                 "pipeline.image_extraction.failed",

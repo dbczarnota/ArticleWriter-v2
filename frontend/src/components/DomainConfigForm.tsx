@@ -550,12 +550,26 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
                 rows={5}
                 style={{ ...inputStyle, resize: "vertical", fontFamily: "monospace", fontSize: 12 }}
               />
+              <label style={{ display: "block", fontSize: 12, color: "var(--muted)", margin: "8px 0 4px" }}>
+                {dc.templateImageInstructions}
+              </label>
+              <textarea
+                value={tmpl.image_instructions ?? ""}
+                onChange={(e) => {
+                  const updated = [...(form.article_templates ?? [])];
+                  updated[i] = { ...updated[i], image_instructions: e.target.value };
+                  set("article_templates", updated);
+                }}
+                placeholder={dc.templateImageInstructionsPlaceholder}
+                rows={2}
+                style={{ ...inputStyle, resize: "vertical", fontSize: 12 }}
+              />
             </div>
           ))}
           <button
             type="button"
             onClick={() => set("article_templates", [
-              { id: crypto.randomUUID(), name: "", body: "" },
+              { id: crypto.randomUUID(), name: "", body: "", image_instructions: "" },
               ...(form.article_templates ?? []),
             ])}
             style={{

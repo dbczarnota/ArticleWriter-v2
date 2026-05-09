@@ -11,6 +11,7 @@ class ArticleTemplateItem(BaseModel):
     id: str
     name: str
     body: str
+    image_instructions: str = ""
 
 
 class EditorFactItem(BaseModel):

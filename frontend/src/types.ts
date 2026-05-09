@@ -94,6 +94,7 @@ export interface ArticleTemplate {
   id: string;
   name: string;
   body: string;
+  image_instructions?: string;
 }
 
 export interface EditorFact {

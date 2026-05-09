@@ -150,6 +150,10 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
       fd.append("topic", topic.trim());
       if (rawFacts.trim()) fd.append("raw_facts_text", rawFacts.trim());
       if (imageFile) fd.append("image", imageFile);
+      const selectedTemplate = orgTemplates.find((tmpl) => tmpl.id === selectedTemplateId);
+      if (imageFile && selectedTemplate?.image_instructions) {
+        fd.append("image_instructions", selectedTemplate.image_instructions);
+      }
       const result = await request<EditorExtraction>("/v2/extract_editor_facts", {
         method: "POST",
         body: fd,

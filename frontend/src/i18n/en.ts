@@ -120,6 +120,8 @@ export const en: Translations = {
     templateNamePlaceholder: "e.g. Photo description",
     templateBody: "Template instructions",
     templateBodyPlaceholder: "Write editorial instructions for this template...",
+    templateImageInstructions: "Image extraction instructions",
+    templateImageInstructionsPlaceholder: "Additional instructions for extracting facts from photos when this template is active...",
     addTemplate: "+ Add template",
     removeTemplate: "Remove",
     tipTemplates: "Templates are reusable editorial instructions. The editor picks a template when creating an article.",

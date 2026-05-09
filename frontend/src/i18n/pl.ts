@@ -120,6 +120,8 @@ export const pl: Translations = {
     templateNamePlaceholder: "np. Opis zdjęcia",
     templateBody: "Instrukcje szablonu",
     templateBodyPlaceholder: "Napisz instrukcje redakcyjne dla tego szablonu...",
+    templateImageInstructions: "Instrukcje ekstrakcji zdjęć",
+    templateImageInstructionsPlaceholder: "Dodatkowe instrukcje dla agenta wyciągającego fakty ze zdjęć przy aktywnym szablonie...",
     addTemplate: "+ Dodaj szablon",
     removeTemplate: "Usuń",
     tipTemplates: "Szablony to instrukcje redakcyjne wielokrotnego użytku. Redaktor wybiera szablon przy tworzeniu artykułu.",

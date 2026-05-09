@@ -3,7 +3,11 @@ from __future__ import annotations
 
 import asyncio
 import time
+from typing import TYPE_CHECKING
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from backend.api.schemas import EditorExtractionPayload
 
 import logfire
 
@@ -71,7 +75,7 @@ async def run_pipeline(
     additional_instructions: str | None = None,
     raw_facts_text: str | None = None,
     article_template: str | None = None,
-    editor_extraction: object | None = None,
+    editor_extraction: EditorExtractionPayload | None = None,
     skip_web_research: bool = False,
     debug: bool = False,
     org_code: str = "__local_dev__",
@@ -85,7 +89,7 @@ async def run_pipeline(
 
     `editor_extraction`: pre-extracted/edited editor facts from the modal step 2.
     When set, the in-pipeline text_extraction stage is skipped and this is merged
-    directly. Type is `object` here to avoid an import cycle on the schema model.
+    directly. Imported under TYPE_CHECKING to avoid pulling backend schemas at runtime.
     `skip_web_research`: when True, search/scraping/parsing/extraction are skipped
     entirely and the article is written from editor-only facts."""
     with logfire.span(
@@ -130,7 +134,7 @@ async def _run_pipeline_inner(
     additional_instructions: str | None,
     raw_facts_text: str | None = None,
     article_template: str | None = None,
-    editor_extraction: object | None = None,
+    editor_extraction: EditorExtractionPayload | None = None,
     skip_web_research: bool = False,
     debug: bool,
     org_code: str,
@@ -413,7 +417,7 @@ async def _run_pipeline_inner(
                     Fact(
                         text=f.text,
                         context=f.context or "",
-                        source_urls=[getattr(f, "source", None) or "editor-provided"],
+                        source_urls=[f.source or "editor-provided"],
                     )
                     for f in editor_extraction.facts
                 ],
@@ -422,7 +426,7 @@ async def _run_pipeline_inner(
                         text=q.text,
                         speaker=q.speaker or "",
                         context=q.context or "",
-                        source_urls=[getattr(q, "source", None) or "editor-provided"],
+                        source_urls=[q.source or "editor-provided"],
                     )
                     for q in editor_extraction.quotes
                 ],
