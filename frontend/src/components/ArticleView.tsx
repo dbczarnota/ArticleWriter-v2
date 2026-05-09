@@ -615,7 +615,7 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
           {attachment.post_url}
         </a>
         {attachment.media_url && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
             <a
               href={safeHref(attachment.media_url)}
               target="_blank"
@@ -637,6 +637,28 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
             >
               ⬇ {isVideo ? t.socialMediaDownloadVideo : t.socialMediaDownloadPhoto}
             </a>
+            {isVideo && (
+              <a
+                href={safeHref(attachment.media_url)}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "var(--muted)",
+                  background: "var(--white)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  padding: "3px 10px",
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                ▶ {t.socialMediaOpenVideo}
+              </a>
+            )}
             <span
               title={t.socialMediaMediaUrlWarning}
               style={{

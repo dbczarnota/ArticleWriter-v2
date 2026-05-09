@@ -333,6 +333,7 @@ export const pl: Translations = {
     socialMediaSourceBadge: "źródło artykułu",
     socialMediaDownloadPhoto: "Pobierz zdjęcie",
     socialMediaDownloadVideo: "Pobierz wideo",
+    socialMediaOpenVideo: "Otwórz wideo",
     socialMediaMediaUrlWarning: "Link tymczasowy — aktywny dopóki Instagram/X.com go nie usunie. Pobierz jak najszybciej.",
     competitorStar: "★ u konkurencji",
     sourceLabel: "źródło:",

@@ -370,6 +370,7 @@ export interface Translations {
     socialMediaSourceBadge: string;
     socialMediaDownloadPhoto: string;
     socialMediaDownloadVideo: string;
+    socialMediaOpenVideo: string;
     socialMediaMediaUrlWarning: string;
     competitorStar: string;
     sourceLabel: string;
