@@ -455,7 +455,7 @@ export const pl: Translations = {
       instructionsLabel: "Dodatkowe wskazówki",
       instructionsPlaceholder: "Skup się na...",
       sourcesLabel: "Źródła (odznacz te, których nie chcesz; możesz też dodać własne)",
-      copyTitle: "Kopiuj tytuł",
+      copyTitle: "Kopiuj do schowka",
       addUrl: "Dodaj URL",
       addUrlPlaceholder: "https://…",
       removeUrl: "Usuń URL",

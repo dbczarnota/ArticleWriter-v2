@@ -347,13 +347,14 @@ export function WriteFromTopicDialog({ topicId, onCancel, onSubmitted }: Props) 
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        padding: 6,
-                        background: copiedUrl === it.title ? "var(--success)" : "var(--white)",
-                        color: copiedUrl === it.title ? "#fff" : "var(--accent)",
-                        border: `1px solid ${copiedUrl === it.title ? "var(--success)" : "var(--accent)"}`,
+                        padding: "3px 4px",
+                        background: "transparent",
+                        color: copiedUrl === it.title ? "var(--success)" : "var(--muted)",
+                        border: "none",
                         borderRadius: "var(--radius)",
                         cursor: submitting ? "default" : "pointer",
-                        transition: "background 0.15s, color 0.15s, border-color 0.15s",
+                        lineHeight: 1,
+                        transition: "color 0.15s",
                       }}
                     >
                       {copiedUrl === it.title ? (
