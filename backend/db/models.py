@@ -27,7 +27,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, String, UniqueConstraint, text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, String, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlmodel import Field, Relationship, SQLModel
@@ -625,8 +625,8 @@ class StreamChunk(SQLModel, table=True):
             nullable=False,
         )
     )
-    chunk_start_seconds: float
-    chunk_end_seconds: float
+    chunk_start_seconds: float = Field(sa_column=Column(Float, nullable=False))
+    chunk_end_seconds: float = Field(sa_column=Column(Float, nullable=False))
     raw_transcript: str = Field(sa_column=Column(String, nullable=False))
     speakers_detected: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
     topics: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
