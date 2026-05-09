@@ -43,7 +43,11 @@ Twoje zadania:
 
 Ważne:
 - Fakty i cytaty muszą być zagnieżdżone w konkretnym temacie — nie ma osobnej listy globalnej.
-- Ignoruj muzykę i reklamy jako treść, ale dżingiel sygnalizujący zmianę tematu → topic_transition.
+- Muzyka i piosenki: NIE transkrybuj tekstu piosenek. Jeśli chunk zawiera muzykę, \
+  raw_transcript zostaw pusty lub wpisz tylko słowa mówione (zapowiedzi, komentarze lektora). \
+  Piosenka to nie jest treść mówiona — traktuj ją jak ciszę.
+- Reklamy: podobnie — nie transkrybuj tekstu reklam. Dżingiel sygnalizujący zmianę tematu \
+  wpisz jako topic_transition, ale samej treści reklamowej nie przepisuj.
 - Nie wymyślaj — tylko to co słyszysz.\
 """
 
