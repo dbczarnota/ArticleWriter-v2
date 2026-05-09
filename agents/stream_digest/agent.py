@@ -113,7 +113,10 @@ def _format_chunks(chunks: list[ChunkSummary]) -> str:
     for c in chunks:
         speakers_txt = ", ".join(f"{s['label']}: {s['description']}" for s in c.speakers) or "brak"
         facts_txt = "\n".join(f"  - {f['text']}" for f in c.facts) or "  brak"
-        quotes_txt = "\n".join(f'  "{q["text"]}"' for q in c.quotes) or "  brak"
+        quotes_txt = "\n".join(
+            f'  "{q["text"]}"' + (f" [{q['speaker_label']}]" if q.get("speaker_label") else "")
+            for q in c.quotes
+        ) or "  brak"
         transitions_txt = (
             "\n".join(
                 f"  [{c.chunk_start + t['timestamp_offset_seconds']:.0f}s] {t['description']}"
@@ -141,7 +144,10 @@ def _format_previous_digests(digests: list[StreamDigestResult]) -> str:
         for s in d.stories:
             speakers = ", ".join(sp.name_or_role for sp in s.speakers) or "nieznani"
             facts = "\n".join(f"    - {f.text}" for f in s.facts) or "    brak"
-            quotes = "\n".join(f'    "{q.text}"' for q in s.quotes) or "    brak"
+            quotes = "\n".join(
+                f'    "{q.text}"' + (f" [{q.speaker}]" if q.speaker else "")
+                for q in s.quotes
+            ) or "    brak"
             stories_txt.append(
                 f"  Temat: {s.title}\n"
                 f"  Czas: {s.start_seconds:.0f}s–{s.end_seconds:.0f}s\n"
