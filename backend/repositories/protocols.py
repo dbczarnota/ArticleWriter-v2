@@ -71,6 +71,7 @@ class ArticleRepository(Protocol):
         html: str,
         alternative_titles: list[str],
         followup_topics: list[str],
+        facebook_teasers: list[str],
         sources: list[str],
         facts: list[Fact],
         quotes: list[Quote],
@@ -228,9 +229,7 @@ class DiscoveryRepository(Protocol):
         disable_threshold: int = 10,
     ) -> None: ...
     async def reset_feed_errors(self, feed_id: UUID) -> None: ...
-    async def count_items_for_feed_since(
-        self, *, feed_id: UUID, since: datetime
-    ) -> int:
+    async def count_items_for_feed_since(self, *, feed_id: UUID, since: datetime) -> int:
         """Count items linked to this feed via discovery_item_feed where the
         item's fetched_at >= since. Used by the feed-health endpoint."""
         ...
@@ -298,6 +297,7 @@ class DiscoveryRepository(Protocol):
         are more likely matcher candidates and the cap prevents the
         matcher prompt from ballooning beyond its token budget."""
         ...
+
     async def create_topic(
         self,
         *,
@@ -331,6 +331,7 @@ class DiscoveryRepository(Protocol):
         so a forged topic_id from another org cannot mutate this one's
         topics."""
         ...
+
     async def check_resurface(
         self,
         *,

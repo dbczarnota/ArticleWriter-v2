@@ -79,6 +79,7 @@ class PostgresArticleRepository:
         html: str,
         alternative_titles: list[str],
         followup_topics: list[str],
+        facebook_teasers: list[str],
         sources: list[str],
         facts: list[Fact],
         quotes: list[Quote],
@@ -97,6 +98,7 @@ class PostgresArticleRepository:
             article.html = html
             article.alternative_titles = alternative_titles
             article.followup_topics = followup_topics
+            article.facebook_teasers = facebook_teasers
             article.sources = sources
             article.pipeline_timing = pipeline_timing
             article.errors = errors
@@ -235,7 +237,6 @@ class PostgresArticleRepository:
                 marked_done=marked_done,
                 marked_done_by_name=marked_done_by_name,
             )
-
 
     async def count_running_for_org(self, org_code: str) -> int:
         from sqlalchemy import func

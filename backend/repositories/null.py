@@ -77,6 +77,7 @@ class NullArticleRepository:
         html: str,
         alternative_titles: list[str],
         followup_topics: list[str],
+        facebook_teasers: list[str],
         sources: list[str],
         facts: list[Fact],
         quotes: list[Quote],
@@ -315,15 +316,9 @@ class NullDiscoveryRepository:
         f.last_error = None
         f.disabled = False
 
-    async def count_items_for_feed_since(
-        self, *, feed_id: UUID, since: datetime
-    ) -> int:
+    async def count_items_for_feed_since(self, *, feed_id: UUID, since: datetime) -> int:
         item_ids = {item_id for (item_id, fid) in self._item_feeds if fid == feed_id}
-        return sum(
-            1
-            for it in self._items.values()
-            if it.id in item_ids and it.fetched_at >= since
-        )
+        return sum(1 for it in self._items.values() if it.id in item_ids and it.fetched_at >= since)
 
     async def get_min_published_at_for_feed(self, *, feed_id: UUID) -> datetime | None:
         item_ids = {item_id for (item_id, fid) in self._item_feeds if fid == feed_id}

@@ -482,7 +482,11 @@ async def _run_pipeline_inner(
                 signal_count=_initial_signals,
                 target=_target,
             )
-        if settings.pipeline.adaptive_search and not skip_web_research and _initial_signals < _target:
+        if (
+            settings.pipeline.adaptive_search
+            and not skip_web_research
+            and _initial_signals < _target
+        ):
             _stage_t0 = time.perf_counter()
             await _article_repo.set_pipeline_stage(_article_id, "adaptive_search")
             with logfire.span(
@@ -743,6 +747,7 @@ async def _run_pipeline_inner(
                         article_html=article.html,
                         alternative_titles=list(result.alternative_titles),
                         followup_topics=list(result.followup_topics),
+                        facebook_teasers=list(result.facebook_teasers),
                         used_facts_texts=list(used_facts),
                         used_quotes_texts=list(used_quotes),
                         extraction=extraction,
@@ -812,6 +817,7 @@ async def _run_pipeline_inner(
             article_html=article.html,
             alternative_titles=[],
             followup_topics=[],
+            facebook_teasers=[],
             used_facts_texts=[],
             used_quotes_texts=[],
             extraction=extraction,
