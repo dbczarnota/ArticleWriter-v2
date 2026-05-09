@@ -175,16 +175,24 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
         }));
       }
 
-      const results = await Promise.all(fetchTasks);
-      const allFacts = results.flatMap((r) =>
-        r.facts.map((f) => ({ text: f.text, context: f.context, source: f.source || "editor-provided" }))
-      );
-      const allQuotes = results.flatMap((r) =>
-        r.quotes.map((q) => ({ text: q.text, speaker: q.speaker, context: q.context, source: q.source || "editor-provided" }))
-      );
-      const allKeywords = [...new Set(results.flatMap((r) => r.keywords ?? []))];
+      const settled = await Promise.allSettled(fetchTasks);
+      const allFacts: EditorExtraction["facts"] = [];
+      const allQuotes: EditorExtraction["quotes"] = [];
+      const allKeywordsRaw: string[] = [];
+      let instagramFailed = false;
+      for (const result of settled) {
+        if (result.status === "fulfilled") {
+          allFacts.push(...result.value.facts.map((f) => ({ text: f.text, context: f.context, source: f.source || "editor-provided" })));
+          allQuotes.push(...result.value.quotes.map((q) => ({ text: q.text, speaker: q.speaker, context: q.context, source: q.source || "editor-provided" })));
+          allKeywordsRaw.push(...(result.value.keywords ?? []));
+        } else if (instagramUrl.trim()) {
+          instagramFailed = true;
+        }
+      }
+      const allKeywords = [...new Set(allKeywordsRaw)];
 
       setExtraction({ facts: allFacts, quotes: allQuotes, keywords: allKeywords });
+      if (instagramFailed) setError("Instagram: nie udało się pobrać posta (Instagram blokuje serwery). Wyciągnięto fakty z pozostałych źródeł.");
       setStep("step2");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
