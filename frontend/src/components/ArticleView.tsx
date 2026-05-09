@@ -6,7 +6,7 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { Button } from "./ui/Button";
-import { CopyIcon, DownloadIcon } from "./ui/icons";
+import { CodeIcon, CopyIcon, DownloadIcon } from "./ui/icons";
 import { safeHref } from "../lib/safeHref";
 import { useApi } from "../lib/useApi";
 
@@ -578,9 +578,17 @@ function TeaserCard({ text }: { text: string }) {
   );
 }
 
+function buildEmbedCode(url: string, source: string): string {
+  if (source === "instagram") {
+    return `<blockquote class="instagram-media" data-instgrm-permalink="${url}" data-instgrm-version="14"><a href="${url}"></a></blockquote>\n<script async src="//www.instagram.com/embed.js"></script>`;
+  }
+  return `<blockquote class="twitter-tweet"><a href="${url}"></a></blockquote>\n<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>`;
+}
+
 function EmbedCandidateRow({ e, t }: { e: EmbedCandidate; t: ReturnType<typeof useT>["articleView"] }) {
   const { downloadFile } = useApi();
   const [downloading, setDownloading] = useState(false);
+  const [embedCopied, setEmbedCopied] = useState(false);
   const isApify = e.source === "instagram" || e.source === "twitter";
 
   const handleDownload = useCallback(async () => {
@@ -591,6 +599,13 @@ function EmbedCandidateRow({ e, t }: { e: EmbedCandidate; t: ReturnType<typeof u
       setDownloading(false);
     }
   }, [e.url, e.source, downloadFile]);
+
+  const handleCopyEmbed = useCallback(() => {
+    navigator.clipboard.writeText(buildEmbedCode(e.url, e.source)).then(() => {
+      setEmbedCopied(true);
+      setTimeout(() => setEmbedCopied(false), 2000);
+    });
+  }, [e.url, e.source]);
 
   return (
     <div style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "#fffbeb" : "var(--white)", border: `1px solid ${e.competitor_source_url ? "var(--warning)" : "var(--border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
@@ -616,18 +631,33 @@ function EmbedCandidateRow({ e, t }: { e: EmbedCandidate; t: ReturnType<typeof u
         )}
       </div>
       {isApify && (
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          title="Pobierz media z posta"
-          style={{ padding: "3px 4px", background: "transparent", color: "var(--muted)", border: "none", cursor: downloading ? "default" : "pointer", lineHeight: 1, borderRadius: "var(--radius)", flexShrink: 0, opacity: downloading ? 1 : 0.55 }}
-        >
-          {downloading ? (
-            <span style={{ display: "inline-block", width: 13, height: 13, border: "2px solid var(--muted)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-          ) : (
-            <DownloadIcon />
-          )}
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
+          <button
+            onClick={handleCopyEmbed}
+            title="Kopiuj kod embed"
+            style={{ padding: "3px 4px", background: "transparent", color: embedCopied ? "var(--success)" : "var(--muted)", border: "none", cursor: "pointer", lineHeight: 1, borderRadius: "var(--radius)", opacity: embedCopied ? 1 : 0.55 }}
+          >
+            {embedCopied ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <CodeIcon />
+            )}
+          </button>
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            title="Pobierz media z posta"
+            style={{ padding: "3px 4px", background: "transparent", color: "var(--muted)", border: "none", cursor: downloading ? "default" : "pointer", lineHeight: 1, borderRadius: "var(--radius)", opacity: downloading ? 1 : 0.55 }}
+          >
+            {downloading ? (
+              <span style={{ display: "inline-block", width: 13, height: 13, border: "2px solid var(--muted)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            ) : (
+              <DownloadIcon />
+            )}
+          </button>
+        </div>
       )}
     </div>
   );

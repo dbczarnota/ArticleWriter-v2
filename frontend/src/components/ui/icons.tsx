@@ -98,6 +98,14 @@ export function CopyIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+export function CodeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...baseProps} {...props}>
+      <polyline points="16 18 22 12 16 6" />
+      <polyline points="8 6 2 12 8 18" />
+    </svg>
+  );
+}
 export function DownloadIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...baseProps} {...props}>
