@@ -2,3 +2,36 @@
 **/*.pyc
 **/__pycache__
 state.json
+scratch/
+
+# Test artifacts
+.coverage
+output.html
+
+# IDE / editor
+.vscode/
+.idea/
+
+# AI assistant artifacts
+.claude/
+.superpowers/
+.playwright-mcp/
+
+# Dev tooling artifacts
+node_modules/
+
+# Dev notes & planning docs
+docs/superpowers/
+docs/research/
+docs/dev-workflow.md
+
+# Dev scripts (not production code)
+scripts/dev-prod-db.ps1
+scripts/check_discovery.py
+scripts/instagram_prototype/
+
+# Misc local files
+mockups/
+logo-options.png
+styl_fm_config.sql
+.claude/scheduled_tasks.lock
