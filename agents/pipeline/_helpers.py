@@ -256,7 +256,9 @@ async def extract_facts_from_text(
                 for f in result.output.facts
             ],
             quotes=[
-                Quote(text=q.text, speaker=q.speaker, context=q.context, source_urls=[source_marker])
+                Quote(
+                    text=q.text, speaker=q.speaker, context=q.context, source_urls=[source_marker]
+                )
                 for q in result.output.quotes
             ],
             keywords=result.output.keywords,

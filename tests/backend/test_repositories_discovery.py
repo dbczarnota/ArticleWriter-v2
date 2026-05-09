@@ -476,9 +476,7 @@ async def test_count_items_for_feed_since(session_maker, org):
     await repo.add_item_to_feed_link(item_id=fresh.id, feed_id=feed.id)
     await repo.add_item_to_feed_link(item_id=stale.id, feed_id=feed.id)
 
-    count = await repo.count_items_for_feed_since(
-        feed_id=feed.id, since=now - timedelta(hours=24)
-    )
+    count = await repo.count_items_for_feed_since(feed_id=feed.id, since=now - timedelta(hours=24))
     assert count == 1
 
 

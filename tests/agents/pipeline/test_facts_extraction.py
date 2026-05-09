@@ -13,8 +13,12 @@ from agents.pipeline._helpers import extract_facts_from_text
 async def test_extract_facts_returns_extraction_result():
     """extract_facts_from_text returns an ExtractionResult with editor-provided source_urls."""
     mock_output = MagicMock()
-    mock_output.facts = [MagicMock(text="Anna zdobyła nagrodę", context="ceremonial", source_urls=[])]
-    mock_output.quotes = [MagicMock(text="Jestem szczęśliwa", speaker="Anna", context="wywiad", source_urls=[])]
+    mock_output.facts = [
+        MagicMock(text="Anna zdobyła nagrodę", context="ceremonial", source_urls=[])
+    ]
+    mock_output.quotes = [
+        MagicMock(text="Jestem szczęśliwa", speaker="Anna", context="wywiad", source_urls=[])
+    ]
     mock_output.keywords = ["nagroda"]
 
     mock_result = MagicMock()

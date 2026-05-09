@@ -223,9 +223,7 @@ async def test_topic_matcher_receives_at_most_100_candidates(monkeypatch):
     monkeypatch.setattr("backend.services.discovery.pipeline.run_topic_writer_agent", writer)
 
     raw = RawFeedItem(title="X", url="https://x/a/1", guid="g", summary=None, published_at=None)
-    await process_item(
-        raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo
-    )
+    await process_item(raw=raw, org_code="org_t", domain=_domain(), feed_id=feed.id, repo=repo)
 
     assert "count" in captured
     assert captured["count"] <= 100, (

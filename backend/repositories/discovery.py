@@ -98,9 +98,7 @@ class PostgresDiscoveryRepository:
             )
             await session.commit()
 
-    async def count_items_for_feed_since(
-        self, *, feed_id: UUID, since: datetime
-    ) -> int:
+    async def count_items_for_feed_since(self, *, feed_id: UUID, since: datetime) -> int:
         async with self._session_maker() as session:
             result = await session.execute(
                 select(func.count())

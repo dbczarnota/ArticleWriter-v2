@@ -291,7 +291,9 @@ async def test_write_article_does_not_mark_consumed_until_task_runs(
 @pytest.mark.asyncio
 async def test_list_feeds_returns_runtime_state(client, discovery_repo, org_config_repo, org):
     await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://x/rss")
-    org_config_repo.discovery_feeds = [{"url": "https://x/rss", "name": "X", "poll_interval_min": 15}]
+    org_config_repo.discovery_feeds = [
+        {"url": "https://x/rss", "name": "X", "poll_interval_min": 15}
+    ]
     response = client.get("/v2/discovery/feeds")
     assert response.status_code == 200
     rows = response.json()
@@ -307,7 +309,9 @@ async def test_list_feeds_includes_items_24h_count(client, discovery_repo, org_c
         DiscoveryItem(org_code=org.code, canonical_url="https://x/1", title="A")
     )
     await discovery_repo.add_item_to_feed_link(item_id=item.id, feed_id=feed.id)
-    org_config_repo.discovery_feeds = [{"url": "https://x/rss", "name": "X", "poll_interval_min": 15}]
+    org_config_repo.discovery_feeds = [
+        {"url": "https://x/rss", "name": "X", "poll_interval_min": 15}
+    ]
 
     response = client.get("/v2/discovery/feeds")
     assert response.status_code == 200
@@ -515,9 +519,7 @@ async def test_write_article_from_topic_respects_explicit_empty_urls(
         org_code=org.code, title="T", blurb="b", categories=[]
     )
     item = await discovery_repo.upsert_item(
-        DiscoveryItem(
-            org_code=org.code, canonical_url="https://x/1", title="X", topic_id=topic.id
-        )
+        DiscoveryItem(org_code=org.code, canonical_url="https://x/1", title="X", topic_id=topic.id)
     )
     feed = await discovery_repo.upsert_feed(org_code=org.code, feed_url="https://x/rss")
     await discovery_repo.add_item_to_feed_link(item_id=item.id, feed_id=feed.id)
@@ -531,10 +533,18 @@ async def test_write_article_from_topic_respects_explicit_empty_urls(
         async def create_running(self, *, input_urls=None, **kw):
             captured["urls"] = list(input_urls or [])
             return uuid4()
-        async def get(self, *a, **kw): return None
-        async def mark_failed(self, *a, **kw): pass
-        async def complete(self, *a, **kw): pass
-        async def count_running_for_org(self, org_code: str) -> int: return 0
+
+        async def get(self, *a, **kw):
+            return None
+
+        async def mark_failed(self, *a, **kw):
+            pass
+
+        async def complete(self, *a, **kw):
+            pass
+
+        async def count_running_for_org(self, org_code: str) -> int:
+            return 0
 
     app.dependency_overrides[get_article_repo] = lambda: _StubArticle()
 

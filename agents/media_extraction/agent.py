@@ -98,8 +98,7 @@ async def run_media_extraction_agent(
     )
     output = result.output
     facts = [
-        Fact(text=f.text, context=f.context, source_urls=[source_marker])
-        for f in output.facts
+        Fact(text=f.text, context=f.context, source_urls=[source_marker]) for f in output.facts
     ]
     quotes: list[Quote] = []
     if is_video and isinstance(output, _VideoExtractionOutput):

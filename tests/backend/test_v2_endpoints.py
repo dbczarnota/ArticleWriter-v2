@@ -119,9 +119,7 @@ class _StubArticleRepo:
 
     async def count_running_for_org(self, org_code: str) -> int:
         return sum(
-            1
-            for a in self.articles.values()
-            if a.org_code == org_code and a.status == "running"
+            1 for a in self.articles.values() if a.org_code == org_code and a.status == "running"
         )
 
 
@@ -416,9 +414,7 @@ def test_domain_config_validates_feed_url():
     with pytest.raises(ValueError):
         DomainConfigUpdate(
             domain_name="t",
-            discovery_feeds=[
-                FeedConfigPayload(url="not a url", name="", poll_interval_min=15)
-            ],
+            discovery_feeds=[FeedConfigPayload(url="not a url", name="", poll_interval_min=15)],
         )
 
 
@@ -442,9 +438,7 @@ def test_domain_config_accepts_valid_discovery_block():
         discovery_feeds=[
             FeedConfigPayload(url="https://example.com/rss", name="Test", poll_interval_min=10)
         ],
-        discovery_categories=[
-            CategoryConfigPayload(name="Sport", description="About sports")
-        ],
+        discovery_categories=[CategoryConfigPayload(name="Sport", description="About sports")],
         discovery_topic_matching_window_days=3,
         discovery_followup_threshold=5,
     )

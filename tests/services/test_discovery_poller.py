@@ -146,7 +146,9 @@ async def test_second_poll_no_floor_when_no_published_dates(monkeypatch):
     the second poll processes all items (we can't tell which are stale)."""
     repo = NullDiscoveryRepository()
     items = [
-        RawFeedItem(title=f"item-{i}", url=f"https://x/{i}", guid=f"g{i}", summary="s", published_at=None)
+        RawFeedItem(
+            title=f"item-{i}", url=f"https://x/{i}", guid=f"g{i}", summary="s", published_at=None
+        )
         for i in range(8)
     ]
     fetcher = AsyncMock(
@@ -259,6 +261,7 @@ async def test_orphan_retry_uses_original_feed_id(monkeypatch):
         return_value=FetchResult(items=[], etag=None, last_modified=None, not_modified=False)
     )
     captured_feed_ids: list = []
+
     async def _capture(*, raw, org_code, domain, feed_id, repo):
         captured_feed_ids.append(feed_id)
 
