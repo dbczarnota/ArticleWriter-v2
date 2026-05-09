@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from sqlmodel import select
 
 from backend.auth.deps import get_current_org
-from backend.database import get_session_maker
+from backend.database import get_db_backend, get_session_maker
 from backend.db.models import Org, StreamChunk, StreamSubscription
 from backend.services.stream_manager import get_stream_manager
 
@@ -61,8 +61,7 @@ async def create_subscription(
     org: Org = Depends(get_current_org),
 ) -> SubscriptionResponse:
     now = datetime.now(UTC)
-    sm = get_session_maker()
-    if sm is None:
+    if get_db_backend() != "postgres":
         # NullRepo mode — in-memory stub (no DB persistence)
         sub = StreamSubscription(
             id=uuid4(),
@@ -75,6 +74,7 @@ async def create_subscription(
             started_at=now,
         )
     else:
+        sm = get_session_maker()
         sub = StreamSubscription(
             org_code=org.code,
             name=body.name,
@@ -83,7 +83,7 @@ async def create_subscription(
             chunk_duration_seconds=body.chunk_duration_seconds,
             started_at=now,
         )
-        async with sm() as session:
+        async with sm() as session:  # type: ignore[union-attr]
             session.add(sub)
             await session.commit()
             await session.refresh(sub)
@@ -96,10 +96,10 @@ async def create_subscription(
 
 @router.get("/subscriptions", response_model=list[SubscriptionResponse])
 async def list_subscriptions(org: Org = Depends(get_current_org)) -> list[SubscriptionResponse]:
-    sm = get_session_maker()
-    if sm is None:
+    if get_db_backend() != "postgres":
         return []
-    async with sm() as session:
+    sm = get_session_maker()
+    async with sm() as session:  # type: ignore[union-attr]
         result = await session.execute(
             select(StreamSubscription).where(StreamSubscription.org_code == org.code)  # type: ignore[arg-type]
         )
@@ -111,9 +111,9 @@ async def delete_subscription(
     subscription_id: UUID,
     org: Org = Depends(get_current_org),
 ) -> Response:
-    sm = get_session_maker()
-    if sm is not None:
-        async with sm() as session:
+    if get_db_backend() == "postgres":
+        sm = get_session_maker()
+        async with sm() as session:  # type: ignore[union-attr]
             sub = await session.get(StreamSubscription, subscription_id)
             if sub is None or sub.org_code != org.code:
                 raise HTTPException(status_code=404, detail="Subscription not found")
@@ -135,10 +135,10 @@ async def get_results(
     since_chunk_id: UUID | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
 ) -> list[dict]:
-    sm = get_session_maker()
-    if sm is None:
+    if get_db_backend() != "postgres":
         return []
-    async with sm() as session:
+    sm = get_session_maker()
+    async with sm() as session:  # type: ignore[union-attr]
         sub = await session.get(StreamSubscription, subscription_id)
         if sub is None or sub.org_code != org.code:
             raise HTTPException(status_code=404, detail="Subscription not found")

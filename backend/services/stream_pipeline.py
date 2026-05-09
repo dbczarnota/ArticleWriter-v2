@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.stream_analysis.agent import StreamChunkResult, run_stream_analysis_agent
 from agents.stream_analysis.config import StreamAnalysisAgentConfig
-from backend.database import get_session_maker
+from backend.database import get_db_backend, get_session_maker
 
 _log = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ async def run_subscription_pipeline(
     from backend.services.stream_manager import get_stream_manager
 
     config = StreamAnalysisAgentConfig()
-    sm = get_session_maker()
+    _db = get_db_backend() == "postgres"
     manager = get_stream_manager()
 
     chunk_start = 0.0
@@ -143,8 +143,9 @@ async def run_subscription_pipeline(
                     )
 
                     chunk_id: UUID | None = None
-                    if sm is not None:
-                        async with sm() as session:
+                    if _db:
+                        sm = get_session_maker()
+                        async with sm() as session:  # type: ignore[union-attr]
                             chunk_id = await _save_chunk(
                                 session, subscription_id, chunk_start, chunk_end, result
                             )
@@ -175,22 +176,23 @@ async def run_subscription_pipeline(
                     attempt=attempt,
                 )
                 if attempt >= len(_RECONNECT_DELAYS):
-                    await _mark_paused(subscription_id, sm)
+                    await _mark_paused(subscription_id)
                     return
                 delay = _RECONNECT_DELAYS[attempt]
                 attempt += 1
                 await asyncio.sleep(delay)
 
 
-async def _mark_paused(subscription_id: UUID, sm: object) -> None:
-    if sm is None:
+async def _mark_paused(subscription_id: UUID) -> None:
+    logfire.warn("stream.marked_paused", subscription_id=str(subscription_id))
+    if get_db_backend() != "postgres":
         return
     from backend.db.models import StreamSubscription
 
-    async with sm() as session:  # type: ignore[attr-defined]
+    sm = get_session_maker()
+    async with sm() as session:  # type: ignore[union-attr]
         sub = await session.get(StreamSubscription, subscription_id)
         if sub:
             sub.status = "paused"
             session.add(sub)
             await session.commit()
-    logfire.warn("stream.marked_paused", subscription_id=str(subscription_id))
