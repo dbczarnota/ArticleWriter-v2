@@ -29,7 +29,7 @@ _RECONNECT_DELAYS = [1.0, 2.0, 4.0, 8.0, 16.0]
 async def collect_chunk(reader: asyncio.StreamReader, duration_s: float) -> bytes:
     """Read from reader for duration_s seconds, return accumulated bytes."""
     buf = io.BytesIO()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     deadline = loop.time() + duration_s
     while True:
         remaining = deadline - loop.time()
