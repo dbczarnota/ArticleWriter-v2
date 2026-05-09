@@ -93,6 +93,7 @@ async def _save_chunk(
         topics=[t.model_dump() for t in result.topics],
         facts=[f.model_dump() for f in result.facts],
         quotes=[q.model_dump() for q in result.quotes],
+        topic_transitions=[t.model_dump() for t in result.topic_transitions],
     )
     session.add(chunk)
     await session.commit()
@@ -257,6 +258,7 @@ async def run_subscription_pipeline(
                         "topics": [t.model_dump() for t in result.topics],
                         "facts": [f.model_dump() for f in result.facts],
                         "quotes": [q.model_dump() for q in result.quotes],
+                        "topic_transitions": [t.model_dump() for t in result.topic_transitions],
                         "raw_transcript": result.raw_transcript,
                     }
                     await manager.broadcast(subscription_id, chunk_event)
@@ -270,6 +272,7 @@ async def run_subscription_pipeline(
                             topics=[t.model_dump() for t in result.topics],
                             facts=[f.model_dump() for f in result.facts],
                             quotes=[q.model_dump() for q in result.quotes],
+                            topic_transitions=[t.model_dump() for t in result.topic_transitions],
                         )
                     )
                     chunk_count += 1

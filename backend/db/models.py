@@ -642,6 +642,7 @@ class StreamChunk(SQLModel, table=True):
     topics: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
     facts: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
     quotes: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
+    topic_transitions: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
     processed_at: datetime = Field(
         default_factory=_utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),

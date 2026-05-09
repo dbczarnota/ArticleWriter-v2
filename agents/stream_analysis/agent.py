@@ -12,19 +12,35 @@ from agents.stream_analysis.config import StreamAnalysisAgentConfig
 
 _SYSTEM_PROMPT = """\
 Jesteś analizatorem treści radiowych i telewizyjnych. Otrzymujesz fragment audio \
-ze streamu informacyjnego (ok. 30 sekund).
+ze streamu informacyjnego (ok. 2 minuty).
 
 Twoje zadania:
 1. Zidentyfikuj wszystkich mówców — opisz każdego krótko na podstawie głosu i kontekstu \
 (np. "kobieta, prezenterka", "mężczyzna, gość studia, polityk").
-2. Wyciągnij tematy informacyjne poruszone w tym fragmencie.
-3. Wyciągnij fakty — konkretne twierdzenia o rzeczywistości (daty, liczby, zdarzenia).
-4. Wyciągnij cytaty — dosłowne wypowiedzi warte przytoczenia.
-5. Każdy fakt i cytat przypisz do mówcy (speaker_label) i podaj timestamp_offset_seconds \
-licząc od początku tego chunka.
 
-Ignoruj muzykę, dżingle i reklamy — jeśli fragment nie zawiera treści informacyjnej, \
-zwróć puste listy. Nie wymyślaj niczego — operuj wyłącznie na tym, co słyszysz.\
+2. Wyciągnij tematy informacyjne (topics) z timestampami:
+   - start_offset_seconds: kiedy ten temat się zaczyna w tym chunku (liczone od 0).
+   - end_offset_seconds: kiedy się kończy (lub null jeśli trwa do końca chunka).
+   - Każdy odrębny wątek/rozmowa to osobny temat.
+
+3. Wykryj zmiany tematu/rozmowy (topic_transitions):
+   - Zaznacz każde miejsce, gdzie temat wyraźnie się zmienia lub pojawia nowy gość.
+   - timestamp_offset_seconds: czas zmiany od początku tego chunka.
+   - Opisz krótko co się skończyło i co zaczęło \
+(np. "koniec rozmowy o budżecie, nowy gość: ekspert ds. klimatu").
+   - Sygnały zmiany: przywitanie nowego gościa, dżingiel przejściowy, \
+nagła zmiana prowadzącego lub tematu.
+
+4. Wyciągnij fakty — konkretne twierdzenia o rzeczywistości (daty, liczby, zdarzenia):
+   - Przypisz każdy fakt do mówcy (speaker_label).
+   - Podaj timestamp_offset_seconds od początku chunka.
+   - Przypisz do tematu (topic_title) — użyj dokładnie tego samego tytułu co w topics.
+
+5. Wyciągnij cytaty — dosłowne wypowiedzi warte przytoczenia:
+   - Przypisz do mówcy (speaker_label) i tematu (topic_title).
+
+Ignoruj muzykę, dżingle i reklamy jako treść — ale jeśli dżingiel SYGNALIZUJE zmianę \
+tematu, zaznacz go jako topic_transition. Nie wymyślaj — operuj wyłącznie na tym co słyszysz.\
 """
 
 
@@ -37,17 +53,26 @@ class StreamFact(BaseModel):
     text: str
     speaker_label: str | None = None
     timestamp_offset_seconds: float = 0.0
+    topic_title: str | None = None
 
 
 class StreamQuote(BaseModel):
     text: str
     speaker_label: str | None = None
     context: str | None = None
+    topic_title: str | None = None
 
 
 class StreamTopic(BaseModel):
     title: str
     confidence: float = 1.0
+    start_offset_seconds: float = 0.0
+    end_offset_seconds: float | None = None
+
+
+class TopicTransition(BaseModel):
+    timestamp_offset_seconds: float
+    description: str
 
 
 class StreamChunkResult(BaseModel):
@@ -55,6 +80,7 @@ class StreamChunkResult(BaseModel):
     topics: list[StreamTopic] = []
     facts: list[StreamFact] = []
     quotes: list[StreamQuote] = []
+    topic_transitions: list[TopicTransition] = []
     raw_transcript: str = ""
 
 

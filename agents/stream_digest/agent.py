@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from pydantic import BaseModel
@@ -105,6 +105,7 @@ class ChunkSummary:
     topics: list[dict]
     facts: list[dict]
     quotes: list[dict]
+    topic_transitions: list[dict] = field(default_factory=list)
 
 
 def _format_chunks(chunks: list[ChunkSummary]) -> str:
@@ -113,10 +114,18 @@ def _format_chunks(chunks: list[ChunkSummary]) -> str:
         speakers_txt = ", ".join(f"{s['label']}: {s['description']}" for s in c.speakers) or "brak"
         facts_txt = "\n".join(f"  - {f['text']}" for f in c.facts) or "  brak"
         quotes_txt = "\n".join(f'  "{q["text"]}"' for q in c.quotes) or "  brak"
+        transitions_txt = (
+            "\n".join(
+                f"  [{c.chunk_start + t['timestamp_offset_seconds']:.0f}s] {t['description']}"
+                for t in c.topic_transitions
+            )
+            or "  brak"
+        )
         parts.append(
             f"--- Chunk {c.chunk_start:.0f}s–{c.chunk_end:.0f}s ---\n"
             f"Transkrypcja: {c.raw_transcript or '(brak)'}\n"
             f"Mówcy: {speakers_txt}\n"
+            f"Zmiany tematu:\n{transitions_txt}\n"
             f"Fakty:\n{facts_txt}\n"
             f"Cytaty:\n{quotes_txt}"
         )

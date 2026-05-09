@@ -43,8 +43,9 @@ def unsubscribe(sid):
 
 
 def print_chunk(data: dict):
+    chunk_start = data["chunk_start"]
     print(f"\n{'─' * 60}")
-    print(f"⏱  Chunk {data['chunk_start']:.0f}s – {data['chunk_end']:.0f}s")
+    print(f"⏱  Chunk {chunk_start:.0f}s – {data['chunk_end']:.0f}s")
 
     if data.get("raw_transcript"):
         print(f"\n📝 Transkrypcja:\n   {data['raw_transcript'][:300]}")
@@ -54,27 +55,46 @@ def print_chunk(data: dict):
         for s in data["speakers"]:
             print(f"   [{s['label']}] {s['description']}")
 
+    if data.get("topic_transitions"):
+        print("\n🔀 Zmiany tematu:")
+        for tr in data["topic_transitions"]:
+            abs_ts = chunk_start + tr["timestamp_offset_seconds"]
+            print(f"   [{abs_ts:.0f}s] {tr['description']}")
+
     if data.get("topics"):
         print("\n📌 Tematy:")
+        # index facts and quotes by topic for hierarchical display
+        facts_by_topic: dict[str, list] = {}
+        for f in data.get("facts", []):
+            key = f.get("topic_title") or "__none__"
+            facts_by_topic.setdefault(key, []).append(f)
+        quotes_by_topic: dict[str, list] = {}
+        for q in data.get("quotes", []):
+            key = q.get("topic_title") or "__none__"
+            quotes_by_topic.setdefault(key, []).append(q)
+
         for t in data["topics"]:
+            t_start = chunk_start + t.get("start_offset_seconds", 0)
+            t_end = chunk_start + t["end_offset_seconds"] if t.get("end_offset_seconds") is not None else data["chunk_end"]
             conf = f" ({t['confidence']:.0%})" if t.get("confidence") else ""
-            print(f"   • {t['title']}{conf}")
+            print(f"\n   📌 {t['title']}{conf}  [{t_start:.0f}s–{t_end:.0f}s]")
+            for f in facts_by_topic.get(t["title"], []):
+                who = f" [{f['speaker_label']}]" if f.get("speaker_label") else ""
+                ts = f" @{chunk_start + f['timestamp_offset_seconds']:.0f}s" if f.get("timestamp_offset_seconds") else ""
+                print(f"      💡 {f['text']}{who}{ts}")
+            for q in quotes_by_topic.get(t["title"], []):
+                who = f" — {q['speaker_label']}" if q.get("speaker_label") else ""
+                print(f'      💬 "{q["text"]}"{who}')
 
-    if data.get("facts"):
-        print("\n💡 Fakty:")
-        for f in data["facts"]:
+        # facts/quotes not assigned to any topic
+        for f in facts_by_topic.get("__none__", []):
             who = f" [{f['speaker_label']}]" if f.get("speaker_label") else ""
-            print(f"   • {f['text']}{who}")
-
-    if data.get("quotes"):
-        print("\n💬 Cytaty:")
-        for q in data["quotes"]:
+            print(f"   💡 {f['text']}{who}")
+        for q in quotes_by_topic.get("__none__", []):
             who = f" — {q['speaker_label']}" if q.get("speaker_label") else ""
-            print(f'   "{q["text"]}"{who}')
+            print(f'   💬 "{q["text"]}"{who}')
 
-    if not any(
-        [data.get("raw_transcript"), data.get("topics"), data.get("facts"), data.get("quotes")]
-    ):
+    elif not data.get("raw_transcript"):
         print("   (pusty chunk — muzyka/dżingiel lub brak klucza API)")
 
 
