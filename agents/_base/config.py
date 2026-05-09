@@ -83,3 +83,8 @@ class FollowUpAgentConfig(AgentConfig):
     model: str = "google-gla:gemini-pro-latest"
     num_titles: int = 10
     num_topics: int = 5
+
+
+@dataclass(frozen=True)
+class MediaSearchAgentConfig(AgentConfig):
+    model: str = "google-gla:gemini-flash-lite-latest"

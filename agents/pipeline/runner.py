@@ -559,6 +559,7 @@ async def _run_pipeline_inner(
                         domain=domain,
                         serper_api_key=serper_api_key,
                         freshness=settings.search.search_freshness,
+                        query_model=settings.media_search.model,
                         context_articles=ranked_articles[:2],
                         log=log,
                     )

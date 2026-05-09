@@ -8,6 +8,7 @@ from agents._base.config import (
     ExtractionAgentConfig,
     FollowUpAgentConfig,
     InstructionsAgentConfig,
+    MediaSearchAgentConfig,
     ParsingAgentConfig,
     ReflectionAgentConfig,
     ScrapingConfig,
@@ -38,6 +39,8 @@ _AGENT_FIELD_MAP: dict[str, str] = {
     "writer": "writer",
     "reflection": "reflection",
     "followup": "followup",
+    "media_extraction": "media_extraction",
+    "media_search": "media_search",
 }
 
 # ScrapingConfig uses filter_model / filter_fallback_models instead of model / fallback_models
@@ -91,6 +94,12 @@ class AppSettings:
     )
     followup: FollowUpAgentConfig = field(
         default_factory=lambda: FollowUpAgentConfig(fallback_models=_FALLBACK)
+    )
+    media_extraction: ExtractionAgentConfig = field(
+        default_factory=lambda: ExtractionAgentConfig(fallback_models=_FALLBACK)
+    )
+    media_search: MediaSearchAgentConfig = field(
+        default_factory=lambda: MediaSearchAgentConfig(fallback_models=_FALLBACK)
     )
     pipeline: PipelineFlags = field(default_factory=PipelineFlags)
 

@@ -23,7 +23,7 @@ export const AVAILABLE_MODELS = [
   { id: "groq:openai/gpt-oss-120b", label: "Groq OSS 120B (fast/cheap)" },
 ];
 
-type AgentKey = "search" | "scraping" | "parsing" | "extraction" | "adaptive_search" | "instructions" | "writer" | "reflection" | "followup";
+type AgentKey = "search" | "scraping" | "parsing" | "extraction" | "adaptive_search" | "instructions" | "writer" | "reflection" | "followup" | "media_search" | "media_extraction";
 
 const FIXED_FRESHNESS = new Set(["qdr:d", "qdr:w", "qdr:m", "qdr:y"]);
 
@@ -88,6 +88,8 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
     { key: "writer", label: t.agents.writer, tip: t.agentTips.writer },
     { key: "reflection", label: t.agents.reflection, tip: t.agentTips.reflection },
     { key: "followup", label: t.agents.followup, tip: t.agentTips.followup },
+    { key: "media_search", label: t.agents.media_search, tip: t.agentTips.media_search },
+    { key: "media_extraction", label: t.agents.media_extraction, tip: t.agentTips.media_extraction },
   ];
 
   useEffect(() => {

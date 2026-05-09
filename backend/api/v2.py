@@ -337,7 +337,6 @@ async def extract_editor_facts_endpoint(
 
     import logfire
 
-    from agents._base.config import ExtractionAgentConfig
     from agents.pipeline._helpers import extract_facts_from_media, extract_facts_from_text
 
     text = (raw_facts_text or "").strip()
@@ -359,10 +358,13 @@ async def extract_editor_facts_endpoint(
     if video_bytes and len(video_bytes) > 100 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="video must be at most 100 MiB")
 
+    domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
     if not language:
-        cfg = await org_config_repo.get(org.code)
-        language = (cfg.language if cfg else None) or "pl"
-    config = ExtractionAgentConfig()
+        language = (domain.language if domain else None) or "pl"
+    base_settings = AppSettings(domain=org.domain_name)
+    if domain:
+        base_settings = apply_org_models(base_settings, domain)
+    config = base_settings.media_extraction
 
     with logfire.span(
         "api.extract_editor_facts",
@@ -444,7 +446,6 @@ async def fetch_instagram_facts_endpoint(
 
     import logfire
 
-    from agents._base.config import ExtractionAgentConfig
     from agents.pipeline._helpers import extract_facts_from_media, extract_facts_from_text
     from toolsets.instagram.fetcher import (
         ApifyInstagramFetcher,
@@ -457,19 +458,19 @@ async def fetch_instagram_facts_endpoint(
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
-    cfg = get_secrets()
-    fetcher = ApifyInstagramFetcher(cfg.apify_api_token) if cfg.apify_api_token else HttpxInstagramFetcher()
+    secrets = get_secrets()
+    fetcher = ApifyInstagramFetcher(secrets.apify_api_token) if secrets.apify_api_token else HttpxInstagramFetcher()
     try:
         post = await fetcher.fetch(shortcode)
     except RuntimeError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
-    language = body.language
-    if not language:
-        cfg = await org_config_repo.get(org.code)
-        language = (cfg.language if cfg else None) or "pl"
-
-    config = ExtractionAgentConfig()
+    domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
+    language = body.language or (domain.language if domain else None) or "pl"
+    base_settings = AppSettings(domain=org.domain_name)
+    if domain:
+        base_settings = apply_org_models(base_settings, domain)
+    config = base_settings.media_extraction
     source = "editor-provided-instagram"
 
     parts: list[str] = []

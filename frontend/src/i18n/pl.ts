@@ -362,6 +362,8 @@ export const pl: Translations = {
     writer: "Pisarz",
     reflection: "Recenzent",
     followup: "Follow-up",
+    media_search: "Media search",
+    media_extraction: "Media extraction",
   },
   freshness: {
     day: "Ostatni dzień",
@@ -388,6 +390,8 @@ export const pl: Translations = {
     writer: "Generuje gotowy artykuł HTML na podstawie briefa i źródeł. Najważniejszy agent — używaj najlepszego modelu.",
     reflection: "Sprawdza artykuł i zleca ewentualne poprawki pisarzowi. Może zrobić kilka rund.",
     followup: "Generuje alternatywne tytuły, tematy powiązane i śledzi które fakty/cytaty trafiły do artykułu. Pro bo wymaga kreatywności stylistycznej.",
+    media_search: "Formułuje zapytania słów kluczowych do wyszukiwania YouTube, mediów społecznościowych i Reddita. Lekki krok — Flash Lite wystarczy.",
+    media_extraction: "Agent wizji wyciągający fakty i cytaty ze zdjęć i wideo przesłanych przez redaktora. Wymaga modelu z dobrą obsługą multimodalną.",
   },
   discovery: {
     views: { topics: "Tematy", items: "Itemy", feeds: "Feedy" },

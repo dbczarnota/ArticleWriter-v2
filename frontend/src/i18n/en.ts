@@ -362,6 +362,8 @@ export const en: Translations = {
     writer: "Writer",
     reflection: "Reviewer",
     followup: "Follow-up",
+    media_search: "Media search",
+    media_extraction: "Media extraction",
   },
   freshness: {
     day: "Past day",
@@ -388,6 +390,8 @@ export const en: Translations = {
     writer: "Generates the final HTML article from the brief and sources. The most important agent — use the best model.",
     reflection: "Reviews the article and asks the writer for revisions. Can iterate over several rounds.",
     followup: "Generates alternative titles, related topics, and tracks which facts/quotes ended up in the article. Pro because it needs stylistic creativity.",
+    media_search: "Formulates keyword queries to find YouTube, social media, and Reddit embed candidates. Lightweight step — Flash Lite is fine.",
+    media_extraction: "Vision agent that extracts facts and quotes from editor-uploaded images and video. Needs a model with strong multimodal support.",
   },
   discovery: {
     views: { topics: "Topics", items: "Items", feeds: "Feeds" },
