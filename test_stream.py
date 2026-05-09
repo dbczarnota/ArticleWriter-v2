@@ -82,10 +82,15 @@ def print_digest(data: dict):
     stories = data.get("stories", [])
     w_start = data.get("window_start", 0)
     w_end = data.get("window_end", 0)
+    digest_num = data.get("digest_number", "?")
+    report = data.get("report_path", "")
     print(f"\n{'=' * 60}")
     print(
-        f"DIGEST {w_start:.0f}s – {w_end:.0f}s  ({len(stories)} {'temat' if len(stories) == 1 else 'tematy/tematow'})"
+        f"DIGEST #{digest_num}  {w_start:.0f}s – {w_end:.0f}s  "
+        f"({len(stories)} {'temat' if len(stories) == 1 else 'tematy/tematow'})"
     )
+    if report:
+        print(f"Raport: {report}")
     print(f"{'=' * 60}")
     for i, story in enumerate(stories, 1):
         print(f"\n[{i}] {story.get('title', '(bez tytulu)')}")
@@ -113,7 +118,7 @@ def listen(sid):
         f"{BASE}/v2/streams/subscriptions/{sid}/results/stream",
         headers={"X-Org-Code": "__local_dev__"},
     )
-    print("\nNasłuchuję... (pierwsze wyniki za ~2 minuty, Ctrl+C zatrzymuje)\n")
+    print("\nNasłuchuję... (pierwsze chunki za ~2 min, pierwszy digest za ~10 min, Ctrl+C zatrzymuje)\n")
     event_type = None
     with urllib.request.urlopen(req) as r:
         for raw in r:

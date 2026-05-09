@@ -12,6 +12,8 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+from datetime import UTC, datetime
+from pathlib import Path
 from uuid import UUID
 
 import logfire
@@ -119,6 +121,72 @@ async def _save_digest(
     return record.id
 
 
+def _write_report(subscription_id: UUID, digest: StreamDigestResult, digest_number: int) -> Path:
+    """Write/overwrite a markdown report with the latest cumulative digest state."""
+    path = Path(f"stream_report_{str(subscription_id)[:8]}.md")
+    ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
+
+    lines: list[str] = [
+        "# Raport nasłuchu strumienia",
+        "",
+        f"**Subskrypcja:** `{subscription_id}`  ",
+        f"**Wygenerowano:** {ts}  ",
+        f"**Digest nr:** {digest_number}  ",
+        f"**Pokryty czas:** {digest.window_start_seconds:.0f}s – {digest.window_end_seconds:.0f}s "
+        f"({(digest.window_end_seconds - digest.window_start_seconds) / 60:.1f} min)",
+        "",
+    ]
+
+    # Collect all unique speakers across stories
+    all_speakers: dict[str, str | None] = {}
+    for story in digest.stories:
+        for sp in story.speakers:
+            if sp.name_or_role not in all_speakers:
+                all_speakers[sp.name_or_role] = sp.description
+
+    if all_speakers:
+        lines += ["## Zidentyfikowani rozmówcy", ""]
+        for name, desc in all_speakers.items():
+            lines.append(f"- **{name}**" + (f" — {desc}" if desc else ""))
+        lines.append("")
+
+    lines += [f"## Tematy ({len(digest.stories)})", ""]
+
+    for i, story in enumerate(digest.stories, 1):
+        lines.append(f"### {i}. {story.title}")
+        lines.append(f"*Czas: {story.start_seconds:.0f}s – {story.end_seconds:.0f}s*")
+        lines.append("")
+
+        if story.speakers:
+            speakers_str = ", ".join(
+                sp.name_or_role + (f" ({sp.description})" if sp.description else "")
+                for sp in story.speakers
+            )
+            lines.append(f"**Uczestnicy:** {speakers_str}")
+            lines.append("")
+
+        if story.summary:
+            lines.append(story.summary)
+            lines.append("")
+
+        if story.facts:
+            lines.append("**Fakty:**")
+            for f in story.facts:
+                who = f" *[{f.speaker}]*" if f.speaker else ""
+                lines.append(f"- {f.text}{who}")
+            lines.append("")
+
+        if story.quotes:
+            lines.append("**Cytaty:**")
+            for q in story.quotes:
+                who = f" — *{q.speaker}*" if q.speaker else ""
+                lines.append(f'> "{q.text}"{who}')
+            lines.append("")
+
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
+
+
 async def run_subscription_pipeline(
     subscription_id: UUID,
     stream_url: str,
@@ -128,7 +196,8 @@ async def run_subscription_pipeline(
     """Long-running pipeline task for one subscription.
 
     Loops: connect FFmpeg → collect chunks → analyze → save → broadcast.
-    Every digest_config.chunks_per_digest chunks, runs StreamDigestAgent.
+    Every digest_config.chunks_per_digest chunks, runs StreamDigestAgent with
+    rolling context from last previous_digests_count runs.
     On FFmpeg failure: exponential backoff, up to 5 retries, then marks paused.
     Cancelled externally by StreamSessionManager.stop().
     """
@@ -141,7 +210,9 @@ async def run_subscription_pipeline(
 
     chunk_start = 0.0
     chunk_count = 0
+    digest_count = 0
     digest_buffer: list[ChunkSummary] = []
+    digest_history: list[StreamDigestResult] = []
     attempt = 0
     proc: asyncio.subprocess.Process | None = None
 
@@ -207,12 +278,22 @@ async def run_subscription_pipeline(
                     if chunk_count % digest_config.chunks_per_digest == 0:
                         window = list(digest_buffer)
                         digest_buffer.clear()
-                        digest = await run_stream_digest_agent(window, config=digest_config)
+                        previous = digest_history[-digest_config.previous_digests_count :]
+
+                        digest = await run_stream_digest_agent(
+                            window,
+                            config=digest_config,
+                            previous_digests=previous if previous else None,
+                        )
+                        digest_count += 1
                         logfire.info(
                             "stream.digest",
                             subscription_id=str(subscription_id),
+                            digest_number=digest_count,
                             stories=len(digest.stories),
                         )
+
+                        digest_history.append(digest)
 
                         digest_id: UUID | None = None
                         if _db:
@@ -225,12 +306,17 @@ async def run_subscription_pipeline(
                                     len(window),
                                 )
 
+                        report_path = _write_report(subscription_id, digest, digest_count)
+                        _log.info("stream.report written to %s", report_path)
+
                         digest_event = {
                             "type": "digest",
                             "digest_id": str(digest_id) if digest_id else None,
+                            "digest_number": digest_count,
                             "window_start": digest.window_start_seconds,
                             "window_end": digest.window_end_seconds,
                             "stories": [s.model_dump() for s in digest.stories],
+                            "report_path": str(report_path),
                         }
                         await manager.broadcast(subscription_id, digest_event)
 

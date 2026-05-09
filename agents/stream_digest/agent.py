@@ -13,23 +13,34 @@ from agents.stream_digest.config import StreamDigestAgentConfig
 
 _SYSTEM_PROMPT = """\
 Jesteś redaktorem analizującym transkrypcje polskiego radia informacyjnego.
-Otrzymujesz zestaw fragmentów audio (chunków) z ~10 minut jednej audycji, \
-każdy z częściową analizą (mówcy, tematy, fakty, cytaty z poprzedniego etapu).
+
+Otrzymujesz dwa rodzaje danych:
+1. POPRZEDNIE DIGESRY — wyniki poprzednich przebiegów tego agenta (do zaktualizowania).
+2. NOWE CHUNKI — świeże fragmenty audio (~10 minut) z częściową analizą.
 
 Twoje zadanie:
-1. Zidentyfikuj odrębne tematy/wiadomości omawiane w tym oknie czasowym \
-   (zwykle 2-4 tematy na 10 minut).
-2. Dla każdego tematu:
-   - Nadaj mu zwięzły, dziennikarski tytuł (jak nagłówek artykułu).
-   - Zidentyfikuj rozmówców — użyj prawdziwych imion i nazwisk jeśli padły \
-     (np. "dr Marcin Borchardt, reżyser"), inaczej opisz rolę \
-     (np. "prezenterka", "ekspert ds. cyfryzacji").
-   - Zbierz fakty z różnych chunków dotyczące tego tematu.
-   - Wybierz najlepsze cytaty (dosłowne, warte przytoczenia).
-   - Napisz 2-3 zdaniowe streszczenie tego co powiedziano.
-3. Ignoruj reklamy, dżingle, jingle stacji — nie włączaj ich do tematów.
-4. Nie wymyślaj — operuj wyłącznie na dostarczonych transkrypcjach.
-5. Jeśli cały materiał to muzyka/reklamy, zwróć pustą listę stories.\
+1. Przejrzyj poprzednie digesry i nowe chunki razem jako całość.
+2. Zwróć KOMPLETNĄ, zaktualizowaną listę tematów — zarówno starych (zmodyfikowanych/uzupełnionych) \
+   jak i nowych. Możesz:
+   - Zaktualizować lub rozbudować istniejący temat o nowe fakty/cytaty.
+   - Połączyć dwa poprzednie tematy jeśli okazały się tym samym wątkiem.
+   - Dodać nowy temat z nowych chunków.
+   - Usunąć temat, który okazał się reklamą/dżinglem.
+3. Identyfikacja rozmówców — to priorytet:
+   - Jeśli w jakimkolwiek miejscu (stary digest lub nowy chunk) pojawia się imię i nazwisko osoby, \
+     użyj go wszędzie gdzie ta osoba się pojawia.
+   - Przykład: jeśli wcześniej była "prezenterka", a teraz usłyszałeś "Karolina Lewicka" — \
+     zaktualizuj jej opis we wszystkich poprzednich tematach.
+   - Jeśli możliwe, dodaj tytuł/rolę (np. "Karolina Lewicka, prezenterka TOK FM").
+4. Dla każdego tematu:
+   - Zwięzły, dziennikarski tytuł.
+   - Lista zidentyfikowanych rozmówców z pełnymi danymi jeśli znane.
+   - Fakty zebrane ze wszystkich chunków i digestów dotyczące tego tematu.
+   - Najlepsze cytaty (dosłowne).
+   - 2-3 zdaniowe streszczenie.
+5. Ignoruj reklamy, dżingle i muzykę — nie włączaj ich do tematów.
+6. Nie wymyślaj — operuj wyłącznie na dostarczonych danych.
+7. Jeśli cały materiał to muzyka/reklamy, zwróć pustą listę stories.\
 """
 
 
@@ -92,21 +103,55 @@ def _format_chunks(chunks: list[ChunkSummary]) -> str:
     return "\n\n".join(parts)
 
 
+def _format_previous_digests(digests: list[StreamDigestResult]) -> str:
+    if not digests:
+        return "(brak poprzednich digestów)"
+    parts: list[str] = []
+    for i, d in enumerate(digests, 1):
+        stories_txt: list[str] = []
+        for s in d.stories:
+            speakers = ", ".join(sp.name_or_role for sp in s.speakers) or "nieznani"
+            facts = "\n".join(f"    - {f.text}" for f in s.facts) or "    brak"
+            quotes = "\n".join(f'    "{q.text}"' for q in s.quotes) or "    brak"
+            stories_txt.append(
+                f"  Temat: {s.title}\n"
+                f"  Czas: {s.start_seconds:.0f}s–{s.end_seconds:.0f}s\n"
+                f"  Rozmówcy: {speakers}\n"
+                f"  Streszczenie: {s.summary or '(brak)'}\n"
+                f"  Fakty:\n{facts}\n"
+                f"  Cytaty:\n{quotes}"
+            )
+        digest_block = "\n\n".join(stories_txt) or "  (brak tematów — muzyka/reklamy)"
+        parts.append(
+            f"[Digest {i}: {d.window_start_seconds:.0f}s–{d.window_end_seconds:.0f}s]\n"
+            + digest_block
+        )
+    return "\n\n".join(parts)
+
+
 async def run_stream_digest_agent(
     chunks: list[ChunkSummary],
     *,
     config: StreamDigestAgentConfig,
+    previous_digests: list[StreamDigestResult] | None = None,
 ) -> StreamDigestResult:
-    """Aggregate N chunks into a digest of stories. Soft-fails to empty result."""
-    if not chunks:
+    """Aggregate N chunks into a digest of stories, optionally updating previous digests."""
+    if not chunks and not previous_digests:
         return StreamDigestResult()
 
-    window_start = chunks[0].chunk_start
-    window_end = chunks[-1].chunk_end
-    formatted = _format_chunks(chunks)
+    prev = previous_digests or []
+    window_start = prev[0].window_start_seconds if prev else (chunks[0].chunk_start if chunks else 0.0)
+    window_end = chunks[-1].chunk_end if chunks else (prev[-1].window_end_seconds if prev else 0.0)
+
+    prev_section = _format_previous_digests(prev)
+    chunks_section = _format_chunks(chunks) if chunks else "(brak nowych chunków)"
+
     user_prompt = (
-        f"Oto {len(chunks)} chunków z przedziału "
-        f"{window_start:.0f}s–{window_end:.0f}s. Przeanalizuj:\n\n{formatted}"
+        f"=== POPRZEDNIE DIGESRY (do zaktualizowania) ===\n\n"
+        f"{prev_section}\n\n"
+        f"=== NOWE CHUNKI DO PRZEANALIZOWANIA ({len(chunks)} chunków, "
+        f"{window_start:.0f}s–{window_end:.0f}s) ===\n\n"
+        f"{chunks_section}"
     )
 
     def _factory(model: str) -> tuple[Agent[Any, Any], str]:

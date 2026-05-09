@@ -13,6 +13,7 @@ def test_config_defaults():
     assert cfg.model == "google-gla:gemini-flash-latest"
     assert len(cfg.fallback_models) >= 1
     assert cfg.chunks_per_digest == 5
+    assert cfg.previous_digests_count == 2
 
 
 def test_config_is_frozen():
