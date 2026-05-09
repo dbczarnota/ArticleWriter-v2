@@ -60,19 +60,20 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
   const [extracting, setExtracting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function pickImage(file: File | null) {
-    if (!file) {
-      setImageFile(null);
-      setImagePreview(null);
-      return;
-    }
+    if (!file) { setImageFile(null); setImagePreview(null); return; }
     setImageFile(file);
     const reader = new FileReader();
     reader.onload = (e) => setImagePreview(typeof e.target?.result === "string" ? e.target.result : null);
     reader.readAsDataURL(file);
+  }
+
+  function pickVideo(file: File | null) {
+    setVideoFile(file);
   }
 
   // Fetch org templates so the editor can pick one. 404 (org not configured) is silently ignored.
@@ -142,7 +143,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
   // the editable list. Skipped when raw facts are empty (pipeline submit goes
   // straight from step 1).
   async function goToStep2() {
-    if (!rawFacts.trim() && !imageFile) return;
+    if (!rawFacts.trim() && !imageFile && !videoFile) return;
     setExtracting(true);
     setError(null);
     try {
@@ -150,8 +151,9 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
       fd.append("topic", topic.trim());
       if (rawFacts.trim()) fd.append("raw_facts_text", rawFacts.trim());
       if (imageFile) fd.append("image", imageFile);
+      if (videoFile) fd.append("video", videoFile);
       const selectedTemplate = orgTemplates.find((tmpl) => tmpl.id === selectedTemplateId);
-      if (imageFile && selectedTemplate?.image_instructions) {
+      if ((imageFile || videoFile) && selectedTemplate?.image_instructions) {
         fd.append("image_instructions", selectedTemplate.image_instructions);
       }
       const result = await request<EditorExtraction>("/v2/extract_editor_facts", {
@@ -256,7 +258,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
     // Step 1 → Step 2 transition fires when ANY editor input is present:
     // raw facts text, an uploaded image, or both. Step 2 always submits to
     // the pipeline.
-    if (step === "step1" && (rawFacts.trim() || imageFile)) {
+    if (step === "step1" && (rawFacts.trim() || imageFile || videoFile)) {
       await goToStep2();
     } else {
       await submitToPipeline();
@@ -376,57 +378,48 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
           rows={4}
           style={{ ...inputStyle, resize: "vertical" }}
         />
-      </div>
-      <div style={{ marginTop: 14 }}>
-        <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{na.imageLabel}</label>
-        {imagePreview ? (
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: 8, border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
-            <img src={imagePreview} alt="preview" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: "var(--radius)", flexShrink: 0 }} />
+        {/* Image preview */}
+        {imagePreview && (
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: 8, marginTop: 8, border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+            <img src={imagePreview} alt="preview" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: "var(--radius)", flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {imageFile?.name}
-              </div>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6 }}>
-                {imageFile ? `${Math.round(imageFile.size / 1024)} KB` : ""}
-              </div>
-              <button
-                type="button"
-                onClick={() => pickImage(null)}
-                disabled={loading || extracting}
-                style={{ background: "none", border: "none", fontSize: 12, color: "var(--error)", cursor: "pointer", padding: 0 }}
-              >
+              <div style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{imageFile?.name}</div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>{imageFile ? `${Math.round(imageFile.size / 1024)} KB` : ""}</div>
+              <button type="button" onClick={() => pickImage(null)} disabled={loading || extracting}
+                style={{ background: "none", border: "none", fontSize: 12, color: "var(--error)", cursor: "pointer", padding: 0 }}>
                 {na.removeImage}
               </button>
             </div>
           </div>
-        ) : (
-          <>
-            <label
-              htmlFor="newArticleImage"
-              style={{
-                display: "inline-block",
-                padding: "6px 14px",
-                background: "none",
-                border: "1px dashed var(--border)",
-                borderRadius: "var(--radius)",
-                fontSize: 13,
-                color: "var(--muted)",
-                cursor: (loading || extracting) ? "default" : "pointer",
-              }}
-            >
+        )}
+        {/* Video preview */}
+        {videoFile && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 8, marginTop: 8, border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+            <span style={{ fontSize: 24, flexShrink: 0 }}>🎬</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{videoFile.name}</div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>{`${Math.round(videoFile.size / 1024)} KB`}</div>
+              <button type="button" onClick={() => pickVideo(null)} disabled={loading || extracting}
+                style={{ background: "none", border: "none", fontSize: 12, color: "var(--error)", cursor: "pointer", padding: 0 }}>
+                {na.removeVideo}
+              </button>
+            </div>
+          </div>
+        )}
+        {/* Add image / add video buttons */}
+        {!imagePreview && !videoFile && (
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <label htmlFor="newArticleImage" style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
               {na.addImage}
             </label>
-            <input
-              id="newArticleImage"
-              type="file"
-              accept="image/*"
-              disabled={loading || extracting}
-              style={{ display: "none" }}
-              onChange={(e) => pickImage(e.target.files?.[0] ?? null)}
-            />
-          </>
+            <input id="newArticleImage" type="file" accept="image/*" disabled={loading || extracting} style={{ display: "none" }} onChange={(e) => pickImage(e.target.files?.[0] ?? null)} />
+            <label htmlFor="newArticleVideo" style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
+              {na.addVideo}
+            </label>
+            <input id="newArticleVideo" type="file" accept="video/*" disabled={loading || extracting} style={{ display: "none" }} onChange={(e) => pickVideo(e.target.files?.[0] ?? null)} />
+          </div>
         )}
-        <p style={{ fontSize: 11, color: "var(--muted)", margin: "6px 0 0" }}>{na.imageHint}</p>
+        <p style={{ fontSize: 11, color: "var(--muted)", margin: "6px 0 0" }}>{na.mediaHint}</p>
       </div>
         </>
       )}
@@ -688,11 +681,13 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
               )}
               {extraction?.facts.map((f, i) => {
                 const fromPhoto = f.source === "editor-provided-photo";
+                const fromVideo = f.source === "editor-provided-video";
                 return (
-                <div key={`f-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: fromPhoto ? "var(--accent-lt)" : undefined }}>
+                <div key={`f-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo) ? "var(--accent-lt)" : undefined }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontSize: 11, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
                       {fromPhoto && <span title="ze zdjęcia">📷</span>}
+                      {fromVideo && <span title="z wideo">🎬</span>}
                       {na.step2FactText} {i + 1}
                     </span>
                     <button
@@ -745,11 +740,13 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
               )}
               {extraction?.quotes.map((q, i) => {
                 const fromPhoto = q.source === "editor-provided-photo";
+                const fromVideo = q.source === "editor-provided-video";
                 return (
-                <div key={`q-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: fromPhoto ? "var(--accent-lt)" : undefined }}>
+                <div key={`q-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo) ? "var(--accent-lt)" : undefined }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontSize: 11, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
                       {fromPhoto && <span title="ze zdjęcia">📷</span>}
+                      {fromVideo && <span title="z wideo">🎬</span>}
                       {na.step2QuoteText} {i + 1}
                     </span>
                     <button
@@ -974,7 +971,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
                 >
                   {loading ? na.generating : na.generateArticle}
                 </Button>
-              ) : (rawFacts.trim() || imageFile) ? (
+              ) : (rawFacts.trim() || imageFile || videoFile) ? (
                 <Button
                   type="submit"
                   variant="primary"

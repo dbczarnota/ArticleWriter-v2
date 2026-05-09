@@ -324,36 +324,40 @@ async def extract_editor_facts_endpoint(
     raw_facts_text: str | None = Form(None),
     language: str | None = Form(None),
     image: UploadFile | None = File(None),
+    video: UploadFile | None = File(None),
     image_instructions: str | None = Form(None),
     org: Org = Depends(get_current_org),
     org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
 ) -> dict:
     """Modal step 1 → step 2 transition. Accepts multipart with topic + optional
-    raw_facts_text + optional image upload. Runs text and image extractions in
-    parallel, tags each item's `source` so the modal can show "📷" badges and
-    the writer can distinguish text- vs photo-derived material. Language
-    defaults to the org's domain config when not provided."""
+    raw_facts_text, image, and/or video. Runs all extractions in parallel, tags
+    each item's `source` so the modal can show 📷/🎬 badges. Language defaults
+    to the org's domain config when not provided."""
     import asyncio
 
     import logfire
 
     from agents._base.config import ExtractionAgentConfig
-    from agents.pipeline._helpers import extract_facts_from_image, extract_facts_from_text
+    from agents.pipeline._helpers import extract_facts_from_media, extract_facts_from_text
 
     text = (raw_facts_text or "").strip()
     image_bytes = await image.read() if image is not None else b""
     image_media_type = (image.content_type if image is not None else None) or "image/jpeg"
+    video_bytes = await video.read() if video is not None else b""
+    video_media_type = (video.content_type if video is not None else None) or "video/mp4"
 
-    if not text and not image_bytes:
+    if not text and not image_bytes and not video_bytes:
         raise HTTPException(
             status_code=400,
-            detail="At least one of raw_facts_text or image must be provided",
+            detail="At least one of raw_facts_text, image, or video must be provided",
         )
     if text and len(text) > 10_000:
         raise HTTPException(status_code=400, detail="raw_facts_text must be at most 10 000 characters")
-    # 10 MiB cap — avoids unbounded memory/LLM cost from accidental huge uploads.
     if image_bytes and len(image_bytes) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="image must be at most 10 MiB")
+    # Videos can be large — 100 MiB cap.
+    if video_bytes and len(video_bytes) > 100 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="video must be at most 100 MiB")
 
     if not language:
         cfg = await org_config_repo.get(org.code)
@@ -365,54 +369,51 @@ async def extract_editor_facts_endpoint(
         topic=topic,
         text_len=len(text),
         has_image=bool(image_bytes),
-        image_bytes=len(image_bytes),
+        has_video=bool(video_bytes),
     ):
-        # Run both extractions concurrently when both inputs are present so the
-        # editor doesn't wait sequentially. Each helper soft-fails to an empty
-        # ExtractionResult on LLM error, so the gather call is exception-safe.
         tasks = []
         text_idx: int | None = None
         image_idx: int | None = None
+        video_idx: int | None = None
         if text:
             text_idx = len(tasks)
             tasks.append(extract_facts_from_text(text, topic, language, config))
         if image_bytes:
             image_idx = len(tasks)
             tasks.append(
-                extract_facts_from_image(
+                extract_facts_from_media(
                     image_bytes, image_media_type, topic, language, config,
+                    source_marker="editor-provided-photo",
+                    image_instructions=image_instructions or None,
+                )
+            )
+        if video_bytes:
+            video_idx = len(tasks)
+            tasks.append(
+                extract_facts_from_media(
+                    video_bytes, video_media_type, topic, language, config,
+                    source_marker="editor-provided-video",
                     image_instructions=image_instructions or None,
                 )
             )
         results = await asyncio.gather(*tasks)
         text_result = results[text_idx] if text_idx is not None else None
         image_result = results[image_idx] if image_idx is not None else None
+        video_result = results[video_idx] if video_idx is not None else None
 
     facts: list[dict] = []
     quotes: list[dict] = []
     keywords: list[str] = []
-    if text_result is not None:
-        facts.extend(
-            {"text": f.text, "context": f.context, "source": "editor-provided"}
-            for f in text_result.facts
-        )
-        quotes.extend(
-            {"text": q.text, "speaker": q.speaker, "context": q.context, "source": "editor-provided"}
-            for q in text_result.quotes
-        )
-        keywords.extend(text_result.keywords)
-    if image_result is not None:
-        facts.extend(
-            {"text": f.text, "context": f.context, "source": "editor-provided-photo"}
-            for f in image_result.facts
-        )
-        quotes.extend(
-            {"text": q.text, "speaker": q.speaker, "context": q.context, "source": "editor-provided-photo"}
-            for q in image_result.quotes
-        )
-        keywords.extend(image_result.keywords)
-    # Dedupe keywords preserving order; facts/quotes left as-is so the editor
-    # can review and remove duplicates manually if both sources produced them.
+    for result, source in [
+        (text_result, "editor-provided"),
+        (image_result, "editor-provided-photo"),
+        (video_result, "editor-provided-video"),
+    ]:
+        if result is None:
+            continue
+        facts.extend({"text": f.text, "context": f.context, "source": source} for f in result.facts)
+        quotes.extend({"text": q.text, "speaker": q.speaker, "context": q.context, "source": source} for q in result.quotes)
+        keywords.extend(result.keywords)
     keywords = list(dict.fromkeys(keywords))
 
     return {"facts": facts, "quotes": quotes, "keywords": keywords}

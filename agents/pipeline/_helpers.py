@@ -307,20 +307,21 @@ _IMAGE_EXTRACTION_USER = (
 )
 
 
-async def extract_facts_from_image(
-    image_bytes: bytes,
+async def extract_facts_from_media(
+    media_bytes: bytes,
     media_type: str,
     topic: str,
     language: str,
     config: ExtractionAgentConfig,
     *,
+    source_marker: str = "editor-provided-photo",
     image_instructions: str | None = None,
 ) -> ExtractionResult:
-    """Single-step image → facts pipeline using the standard agent pattern.
+    """Single-step image/video → facts pipeline using the standard agent pattern.
 
     Uses ExtractionAgentConfig (model + fallback_models) and run_with_fallback
-    exactly like other pipeline agents. No quotes — images have no quotable text.
-    All returned facts carry source_urls=["editor-provided-photo"].
+    exactly like other pipeline agents. No quotes — media files have no quotable text.
+    All returned facts carry source_urls=[source_marker].
     Soft-fails to an empty result on LLM error.
     """
     sys_prompt = _IMAGE_EXTRACTION_SYSTEM_BASE
@@ -328,15 +329,16 @@ async def extract_facts_from_image(
         sys_prompt += f"\n\n## Dodatkowe instrukcje redakcji\n{image_instructions}"
 
     user_msg = _IMAGE_EXTRACTION_USER.format(topic=topic, language=language)
-    user_prompt_parts: list[Any] = [user_msg, BinaryContent(data=image_bytes, media_type=media_type)]
+    user_prompt_parts: list[Any] = [user_msg, BinaryContent(data=media_bytes, media_type=media_type)]
 
     def _factory(m: str) -> tuple[Agent[Any, Any], str]:
         return Agent(m, output_type=_ImageExtractionOutput), sys_prompt
 
     with logfire.span(
-        "pipeline.image_extraction",
+        "pipeline.media_extraction",
         media_type=media_type,
-        image_bytes=len(image_bytes),
+        media_bytes=len(media_bytes),
+        source_marker=source_marker,
         topic=topic,
     ):
         try:
@@ -345,11 +347,11 @@ async def extract_facts_from_image(
                 (config.model, *config.fallback_models),
                 agent_factory=_factory,
                 user_prompt=user_prompt_parts,
-                agent_name="image_extraction",
+                agent_name="media_extraction",
             )
             u = result.usage()
             record_agent_call(
-                "image_extraction",
+                "media_extraction",
                 model_used,
                 u.input_tokens or 0,
                 u.output_tokens or 0,
@@ -357,20 +359,21 @@ async def extract_facts_from_image(
             )
             output = result.output
             facts = [
-                Fact(text=f.text, context=f.context, source_urls=["editor-provided-photo"])
+                Fact(text=f.text, context=f.context, source_urls=[source_marker])
                 for f in output.facts
             ]
             logfire.info(
-                "pipeline.image_extraction.completed",
+                "pipeline.media_extraction.completed",
                 facts=len(facts),
                 keywords=len(output.keywords),
                 model=model_used,
+                source_marker=source_marker,
             )
             return ExtractionResult(facts=facts, quotes=[], keywords=output.keywords)
         except Exception as e:
             logfire.warn(
-                "pipeline.image_extraction.failed",
-                image_bytes=len(image_bytes),
+                "pipeline.media_extraction.failed",
+                media_bytes=len(media_bytes),
                 media_type=media_type,
                 error_type=type(e).__name__,
                 error=str(e),
