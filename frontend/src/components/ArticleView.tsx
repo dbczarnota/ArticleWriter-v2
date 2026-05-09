@@ -671,6 +671,14 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
   const platformIcon = isInstagram ? "📸" : "𝕏";
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [embedCopied, setEmbedCopied] = useState(false);
+
+  const handleCopyEmbed = useCallback(() => {
+    navigator.clipboard.writeText(buildEmbedCode(attachment.post_url, attachment.platform)).then(() => {
+      setEmbedCopied(true);
+      setTimeout(() => setEmbedCopied(false), 2000);
+    });
+  }, [attachment.post_url, attachment.platform]);
 
   const handleDownload = useCallback(async () => {
     setDownloading(true);
@@ -754,6 +762,31 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
                 ▶ {t.socialMediaOpenVideo}
               </a>
             )}
+            <button
+              onClick={handleCopyEmbed}
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: embedCopied ? "var(--success)" : "var(--muted)",
+                background: "var(--white)",
+                border: `1px solid ${embedCopied ? "var(--success)" : "var(--border)"}`,
+                borderRadius: "var(--radius)",
+                padding: "3px 10px",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              {embedCopied ? (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <CodeIcon width={11} height={11} />
+              )}
+              {embedCopied ? "Skopiowano" : "Embeduj"}
+            </button>
             <span
               title={t.socialMediaMediaUrlWarning}
               style={{
