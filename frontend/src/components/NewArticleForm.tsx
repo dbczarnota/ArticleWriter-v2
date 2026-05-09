@@ -61,6 +61,8 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [instagramUrl, setInstagramUrl] = useState("");
+  const [showInstagramInput, setShowInstagramInput] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -143,37 +145,46 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
   // the editable list. Skipped when raw facts are empty (pipeline submit goes
   // straight from step 1).
   async function goToStep2() {
-    if (!rawFacts.trim() && !imageFile && !videoFile) return;
+    if (!rawFacts.trim() && !imageFile && !videoFile && !instagramUrl.trim()) return;
     setExtracting(true);
     setError(null);
     try {
-      const fd = new FormData();
-      fd.append("topic", topic.trim());
-      if (rawFacts.trim()) fd.append("raw_facts_text", rawFacts.trim());
-      if (imageFile) fd.append("image", imageFile);
-      if (videoFile) fd.append("video", videoFile);
       const selectedTemplate = orgTemplates.find((tmpl) => tmpl.id === selectedTemplateId);
-      if ((imageFile || videoFile) && selectedTemplate?.image_instructions) {
-        fd.append("image_instructions", selectedTemplate.image_instructions);
+      const fetchTasks: Promise<EditorExtraction>[] = [];
+
+      if (rawFacts.trim() || imageFile || videoFile) {
+        const fd = new FormData();
+        fd.append("topic", topic.trim());
+        if (rawFacts.trim()) fd.append("raw_facts_text", rawFacts.trim());
+        if (imageFile) fd.append("image", imageFile);
+        if (videoFile) fd.append("video", videoFile);
+        if ((imageFile || videoFile) && selectedTemplate?.image_instructions) {
+          fd.append("image_instructions", selectedTemplate.image_instructions);
+        }
+        fetchTasks.push(request<EditorExtraction>("/v2/extract_editor_facts", { method: "POST", body: fd }));
       }
-      const result = await request<EditorExtraction>("/v2/extract_editor_facts", {
-        method: "POST",
-        body: fd,
-      });
-      setExtraction({
-        facts: result.facts.map((f) => ({
-          text: f.text,
-          context: f.context,
-          source: f.source || "editor-provided",
-        })),
-        quotes: result.quotes.map((q) => ({
-          text: q.text,
-          speaker: q.speaker,
-          context: q.context,
-          source: q.source || "editor-provided",
-        })),
-        keywords: result.keywords ?? [],
-      });
+
+      if (instagramUrl.trim()) {
+        fetchTasks.push(request<EditorExtraction>("/v2/fetch_instagram_facts", {
+          method: "POST",
+          body: JSON.stringify({
+            url: instagramUrl.trim(),
+            topic: topic.trim(),
+            image_instructions: selectedTemplate?.image_instructions || null,
+          }),
+        }));
+      }
+
+      const results = await Promise.all(fetchTasks);
+      const allFacts = results.flatMap((r) =>
+        r.facts.map((f) => ({ text: f.text, context: f.context, source: f.source || "editor-provided" }))
+      );
+      const allQuotes = results.flatMap((r) =>
+        r.quotes.map((q) => ({ text: q.text, speaker: q.speaker, context: q.context, source: q.source || "editor-provided" }))
+      );
+      const allKeywords = [...new Set(results.flatMap((r) => r.keywords ?? []))];
+
+      setExtraction({ facts: allFacts, quotes: allQuotes, keywords: allKeywords });
       setStep("step2");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -258,7 +269,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
     // Step 1 → Step 2 transition fires when ANY editor input is present:
     // raw facts text, an uploaded image, or both. Step 2 always submits to
     // the pipeline.
-    if (step === "step1" && (rawFacts.trim() || imageFile || videoFile)) {
+    if (step === "step1" && (rawFacts.trim() || imageFile || videoFile || instagramUrl.trim())) {
       await goToStep2();
     } else {
       await submitToPipeline();
@@ -406,19 +417,45 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
             </div>
           </div>
         )}
-        {/* Add image / add video buttons */}
-        {!imagePreview && !videoFile && (
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <label htmlFor="newArticleImage" style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
-              {na.addImage}
-            </label>
-            <input id="newArticleImage" type="file" accept="image/*" disabled={loading || extracting} style={{ display: "none" }} onChange={(e) => pickImage(e.target.files?.[0] ?? null)} />
-            <label htmlFor="newArticleVideo" style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
-              {na.addVideo}
-            </label>
-            <input id="newArticleVideo" type="file" accept="video/*" disabled={loading || extracting} style={{ display: "none" }} onChange={(e) => pickVideo(e.target.files?.[0] ?? null)} />
+        {/* Instagram URL input */}
+        {showInstagramInput && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "6px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>📸</span>
+            <input
+              autoFocus
+              value={instagramUrl}
+              onChange={(e) => setInstagramUrl(e.target.value)}
+              placeholder={na.instagramUrlPlaceholder}
+              disabled={loading || extracting}
+              style={{ ...inputStyle, flex: 1, fontSize: 12, fontFamily: "monospace" }}
+            />
+            <button type="button" onClick={() => { setInstagramUrl(""); setShowInstagramInput(false); }} disabled={loading || extracting}
+              style={{ background: "none", border: "none", fontSize: 12, color: "var(--error)", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+              {na.removeInstagram}
+            </button>
           </div>
         )}
+        {/* Add image / add video / add instagram buttons */}
+        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+          {!imagePreview && !videoFile && (
+            <>
+              <label htmlFor="newArticleImage" style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
+                {na.addImage}
+              </label>
+              <input id="newArticleImage" type="file" accept="image/*" disabled={loading || extracting} style={{ display: "none" }} onChange={(e) => pickImage(e.target.files?.[0] ?? null)} />
+              <label htmlFor="newArticleVideo" style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
+                {na.addVideo}
+              </label>
+              <input id="newArticleVideo" type="file" accept="video/*" disabled={loading || extracting} style={{ display: "none" }} onChange={(e) => pickVideo(e.target.files?.[0] ?? null)} />
+            </>
+          )}
+          {!showInstagramInput && (
+            <button type="button" onClick={() => setShowInstagramInput(true)} disabled={loading || extracting}
+              style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
+              {na.addInstagram}
+            </button>
+          )}
+        </div>
         <p style={{ fontSize: 11, color: "var(--muted)", margin: "6px 0 0" }}>{na.mediaHint}</p>
       </div>
         </>
@@ -682,12 +719,14 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
               {extraction?.facts.map((f, i) => {
                 const fromPhoto = f.source === "editor-provided-photo";
                 const fromVideo = f.source === "editor-provided-video";
+                const fromInstagram = f.source === "editor-provided-instagram";
                 return (
-                <div key={`f-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo) ? "var(--accent-lt)" : undefined }}>
+                <div key={`f-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo || fromInstagram) ? "var(--accent-lt)" : undefined }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontSize: 11, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
                       {fromPhoto && <span title="ze zdjęcia">📷</span>}
                       {fromVideo && <span title="z wideo">🎬</span>}
+                      {fromInstagram && <span title="z Instagrama">📸</span>}
                       {na.step2FactText} {i + 1}
                     </span>
                     <button
@@ -741,12 +780,14 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
               {extraction?.quotes.map((q, i) => {
                 const fromPhoto = q.source === "editor-provided-photo";
                 const fromVideo = q.source === "editor-provided-video";
+                const fromInstagram = q.source === "editor-provided-instagram";
                 return (
-                <div key={`q-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo) ? "var(--accent-lt)" : undefined }}>
+                <div key={`q-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo || fromInstagram) ? "var(--accent-lt)" : undefined }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontSize: 11, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
                       {fromPhoto && <span title="ze zdjęcia">📷</span>}
                       {fromVideo && <span title="z wideo">🎬</span>}
+                      {fromInstagram && <span title="z Instagrama">📸</span>}
                       {na.step2QuoteText} {i + 1}
                     </span>
                     <button
@@ -971,7 +1012,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
                 >
                   {loading ? na.generating : na.generateArticle}
                 </Button>
-              ) : (rawFacts.trim() || imageFile || videoFile) ? (
+              ) : (rawFacts.trim() || imageFile || videoFile || instagramUrl.trim()) ? (
                 <Button
                   type="submit"
                   variant="primary"

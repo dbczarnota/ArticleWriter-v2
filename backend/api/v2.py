@@ -419,6 +419,93 @@ async def extract_editor_facts_endpoint(
     return {"facts": facts, "quotes": quotes, "keywords": keywords}
 
 
+class InstagramFetchRequest(BaseModel):
+    url: str
+    topic: str
+    language: str | None = None
+    image_instructions: str | None = None
+
+
+@router.post(
+    "/fetch_instagram_facts",
+    summary="Fetch an Instagram post and extract facts and quotes",
+    tags=["articles"],
+)
+async def fetch_instagram_facts_endpoint(
+    body: InstagramFetchRequest,
+    org: Org = Depends(get_current_org),
+    org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
+) -> dict:
+    """Downloads an Instagram post by URL, then runs parallel extraction:
+    vision agent on the media, text agent on description + comments.
+    All items are tagged 'editor-provided-instagram'.
+    """
+    import asyncio
+
+    import logfire
+
+    from agents._base.config import ExtractionAgentConfig
+    from agents.pipeline._helpers import extract_facts_from_media, extract_facts_from_text
+    from toolsets.instagram.fetcher import HttpxInstagramFetcher, parse_shortcode
+
+    try:
+        shortcode = parse_shortcode(body.url)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    try:
+        post = await HttpxInstagramFetcher().fetch(shortcode)
+    except RuntimeError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    language = body.language
+    if not language:
+        cfg = await org_config_repo.get(org.code)
+        language = (cfg.language if cfg else None) or "pl"
+
+    config = ExtractionAgentConfig()
+    source = "editor-provided-instagram"
+
+    parts: list[str] = []
+    if post.description:
+        parts.append(f"## Opis posta\n{post.description}")
+    if post.comments:
+        parts.append("## Komentarze\n" + "\n".join(f"- {c}" for c in post.comments))
+    text = "\n\n".join(parts)
+
+    with logfire.span("api.fetch_instagram_facts", topic=body.topic, has_media=bool(post.media_bytes)):
+        tasks = []
+        text_idx: int | None = None
+        media_idx: int | None = None
+        if text:
+            text_idx = len(tasks)
+            tasks.append(extract_facts_from_text(text, body.topic, language, config))
+        if post.media_bytes:
+            media_idx = len(tasks)
+            tasks.append(
+                extract_facts_from_media(
+                    post.media_bytes, post.media_type, body.topic, language, config,
+                    source_marker=source,
+                    image_instructions=body.image_instructions or None,
+                )
+            )
+        results = await asyncio.gather(*tasks)
+        text_result = results[text_idx] if text_idx is not None else None
+        media_result = results[media_idx] if media_idx is not None else None
+
+    facts: list[dict] = []
+    quotes: list[dict] = []
+    keywords: list[str] = []
+    for result, src in [(text_result, source), (media_result, source)]:
+        if result is None:
+            continue
+        facts.extend({"text": f.text, "context": f.context, "source": src} for f in result.facts)
+        quotes.extend({"text": q.text, "speaker": q.speaker, "context": q.context, "source": src} for q in result.quotes)
+        keywords.extend(result.keywords)
+    keywords = list(dict.fromkeys(keywords))
+    return {"facts": facts, "quotes": quotes, "keywords": keywords}
+
+
 @router.get(
     "/me",
     summary="Return the calling user's identity",
