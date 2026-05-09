@@ -121,6 +121,9 @@ async def run_subscription_pipeline(
     with logfire.span("stream.pipeline", subscription_id=str(subscription_id), org_code=org_code):
         while True:
             try:
+                if proc is not None and proc.returncode is None:
+                    proc.kill()
+                    await proc.wait()
                 proc = await _run_ffmpeg(stream_url)
                 assert proc.stdout is not None
                 attempt = 0  # reset on successful connect

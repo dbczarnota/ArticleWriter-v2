@@ -67,8 +67,7 @@ class StreamSessionManager:
         task = self._tasks.get(subscription_id)
         if task and not task.done():
             task.cancel()
-            with contextlib.suppress(asyncio.CancelledError, TimeoutError):
-                await asyncio.wait_for(asyncio.shield(task), timeout=5.0)
+            await asyncio.wait({task}, timeout=5.0)
         self._tasks.pop(subscription_id, None)
         logfire.info("stream.manager.stopped", subscription_id=str(subscription_id))
 
