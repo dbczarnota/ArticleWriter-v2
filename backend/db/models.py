@@ -580,3 +580,61 @@ class DiscoveryItemFeed(SQLModel, table=True):
         default_factory=_utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
     )
+
+
+class StreamSubscription(SQLModel, table=True):
+    __tablename__ = "stream_subscriptions"  # type: ignore[assignment]
+    __table_args__ = (Index("ix_stream_subs_org", "org_code"),)
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        sa_column=Column(PG_UUID(as_uuid=True), primary_key=True),
+    )
+    org_code: str = Field(sa_column=Column(String(128), ForeignKey("orgs.code"), nullable=False))
+    name: str = Field(max_length=256)
+    stream_url: str = Field(max_length=2048)
+    status: str = Field(default="active", max_length=16)
+    """One of: active, paused, stopped."""
+    chunk_duration_seconds: int = Field(default=30)
+    created_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
+    )
+    started_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    stopped_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+
+    chunks: list["StreamChunk"] = Relationship(back_populates="subscription", cascade_delete=True)
+
+
+class StreamChunk(SQLModel, table=True):
+    __tablename__ = "stream_chunks"  # type: ignore[assignment]
+    __table_args__ = (Index("ix_stream_chunks_sub", "subscription_id"),)
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        sa_column=Column(PG_UUID(as_uuid=True), primary_key=True),
+    )
+    subscription_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID(as_uuid=True),
+            ForeignKey("stream_subscriptions.id", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
+    chunk_start_seconds: float
+    chunk_end_seconds: float
+    raw_transcript: str = Field(sa_column=Column(String, nullable=False))
+    speakers_detected: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
+    topics: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
+    facts: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
+    quotes: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
+    processed_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
+    )
+
+    subscription: StreamSubscription = Relationship(back_populates="chunks")
