@@ -53,14 +53,22 @@ async def _run_ffmpeg(stream_url: str) -> asyncio.subprocess.Process:
     """Start FFmpeg subprocess pulling stream_url as mono 16kHz MP3 on stdout."""
     return await asyncio.create_subprocess_exec(
         "ffmpeg",
-        "-reconnect", "1",
-        "-reconnect_streamed", "1",
-        "-reconnect_delay_max", "5",
-        "-i", stream_url,
-        "-f", "mp3",
-        "-ar", "16000",
-        "-ac", "1",
-        "-loglevel", "error",
+        "-reconnect",
+        "1",
+        "-reconnect_streamed",
+        "1",
+        "-reconnect_delay_max",
+        "5",
+        "-i",
+        stream_url,
+        "-f",
+        "mp3",
+        "-ar",
+        "16000",
+        "-ac",
+        "1",
+        "-loglevel",
+        "error",
         "pipe:1",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.DEVNULL,
@@ -78,7 +86,9 @@ async def _save_chunk(
 
     # Flatten facts/quotes from nested topics for backward-compat columns
     all_facts = [f.model_dump() | {"topic_title": t.title} for t in result.topics for f in t.facts]
-    all_quotes = [q.model_dump() | {"topic_title": t.title} for t in result.topics for q in t.quotes]
+    all_quotes = [
+        q.model_dump() | {"topic_title": t.title} for t in result.topics for q in t.quotes
+    ]
 
     chunk = StreamChunk(
         subscription_id=subscription_id,
@@ -118,13 +128,17 @@ async def _save_digest(
     return record.id
 
 
-def _format_chunk_result_verbose(chunk_start: float, chunk_end: float, result: StreamChunkResult) -> str:
+def _format_chunk_result_verbose(
+    chunk_start: float, chunk_end: float, result: StreamChunkResult
+) -> str:
     """Human-readable representation of a chunk result for console and report."""
     lines = [f"### Chunk {chunk_start:.0f}s–{chunk_end:.0f}s"]
     if result.raw_transcript:
         lines.append(f"**Transkrypcja:** {result.raw_transcript[:400]}")
     if result.speakers:
-        lines.append("**Mówcy:** " + ", ".join(f"[{s.label}] {s.description}" for s in result.speakers))
+        lines.append(
+            "**Mówcy:** " + ", ".join(f"[{s.label}] {s.description}" for s in result.speakers)
+        )
     if result.topic_transitions:
         lines.append("**Zmiany tematu:**")
         for tr in result.topic_transitions:
@@ -133,8 +147,14 @@ def _format_chunk_result_verbose(chunk_start: float, chunk_end: float, result: S
     if result.topics:
         for t in result.topics:
             abs_start = chunk_start + t.start_offset_seconds
-            abs_end = chunk_start + t.end_offset_seconds if t.end_offset_seconds is not None else chunk_end
-            lines.append(f"**Temat [{abs_start:.0f}s–{abs_end:.0f}s]:** {t.title} ({t.confidence:.0%})")
+            abs_end = (
+                chunk_start + t.end_offset_seconds
+                if t.end_offset_seconds is not None
+                else chunk_end
+            )
+            lines.append(
+                f"**Temat [{abs_start:.0f}s–{abs_end:.0f}s]:** {t.title} ({t.confidence:.0%})"
+            )
             for f in t.facts:
                 who = f" [{f.speaker_label}]" if f.speaker_label else ""
                 ts = f" @{chunk_start + f.timestamp_offset_seconds:.0f}s"
@@ -191,9 +211,11 @@ def _write_report(
             lines.append(f"- **{name}**" + (f" — {desc}" if desc else ""))
         lines.append("")
 
-    lines += [f"### Tematy ({len(digest.stories)})", ""]
+    news_count = sum(1 for s in digest.stories if s.is_news)
+    lines += [f"### Tematy ({len(digest.stories)}, w tym newsów: {news_count})", ""]
     for i, story in enumerate(digest.stories, 1):
-        lines.append(f"#### {i}. {story.title}")
+        news_badge = "📰 NEWS" if story.is_news else "💬 nie-news"
+        lines.append(f"#### {i}. {story.title} `[{news_badge}]`")
         lines.append(f"*Czas: {story.start_seconds:.0f}s – {story.end_seconds:.0f}s*")
         lines.append("")
         if story.speakers:
@@ -242,7 +264,7 @@ async def run_subscription_pipeline(
     digest_count = 0
     digest_buffer: list[ChunkSummary] = []
     digest_history: list[StreamDigestResult] = []
-    chunk_log: list[str] = []   # accumulates for report
+    chunk_log: list[str] = []  # accumulates for report
     digest_log: list[str] = []  # accumulates for report
     attempt = 0
     proc: asyncio.subprocess.Process | None = None
@@ -273,7 +295,7 @@ async def run_subscription_pipeline(
 
                     # Verbose console output
                     verbose_chunk = _format_chunk_result_verbose(chunk_start, chunk_end, result)
-                    print(f"\n{'─'*60}")
+                    print(f"\n{'─' * 60}")
                     print(verbose_chunk)
                     chunk_log.append(verbose_chunk)
                     chunk_log.append("")
@@ -314,18 +336,19 @@ async def run_subscription_pipeline(
                     if chunk_count % digest_config.chunks_per_digest == 0:
                         window = list(digest_buffer)
                         digest_buffer.clear()
-                        previous = digest_history[-digest_config.previous_digests_count:]
+                        previous = digest_history[-digest_config.previous_digests_count :]
 
                         from agents.stream_digest.agent import (
                             _format_chunks,
                             _format_previous_digests,
                         )
+
                         digest_input_text = (
                             f"=== POPRZEDNIE DIGESRY ===\n\n{_format_previous_digests(previous)}\n\n"
                             f"=== NOWE CHUNKI ===\n\n{_format_chunks(window)}"
                         )
 
-                        print(f"\n{'='*60}")
+                        print(f"\n{'=' * 60}")
                         print(f"DIGEST #{digest_count + 1} — wejście do agenta:")
                         print(digest_input_text[:2000])
                         print("...")
@@ -339,7 +362,10 @@ async def run_subscription_pipeline(
 
                         print(f"\nDIGEST #{digest_count} — wynik agenta:")
                         for s in digest.stories:
-                            print(f"  [{s.start_seconds:.0f}s–{s.end_seconds:.0f}s] {s.title}")
+                            badge = "📰 NEWS" if s.is_news else "💬 nie-news"
+                            print(
+                                f"  [{s.start_seconds:.0f}s–{s.end_seconds:.0f}s] [{badge}] {s.title}"
+                            )
                             for sp in s.speakers:
                                 print(f"    Rozmówca: {sp.name_or_role}")
                             print(f"    Streszczenie: {s.summary}")
@@ -362,7 +388,9 @@ async def run_subscription_pipeline(
                             "",
                             "```",
                             digest_input_text[:3000],
-                            "```" if len(digest_input_text) <= 3000 else f"... [skrócono z {len(digest_input_text)} znaków]\n```",
+                            "```"
+                            if len(digest_input_text) <= 3000
+                            else f"... [skrócono z {len(digest_input_text)} znaków]\n```",
                             "",
                             "**Wyjście (tematy):**",
                             "",
@@ -385,8 +413,11 @@ async def run_subscription_pipeline(
                                 )
 
                         report_path = _write_report(
-                            subscription_id, digest, digest_count,
-                            list(chunk_log), list(digest_log),
+                            subscription_id,
+                            digest,
+                            digest_count,
+                            list(chunk_log),
+                            list(digest_log),
                         )
                         print(f"\n📄 Raport zapisany: {report_path}")
 

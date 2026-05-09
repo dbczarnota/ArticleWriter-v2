@@ -18,6 +18,26 @@ Otrzymujesz dwa rodzaje danych:
 1. POPRZEDNIE DIGESRY — wyniki poprzednich przebiegów tego agenta (do zaktualizowania).
 2. NOWE CHUNKI — świeże fragmenty audio (~10 minut) z częściową analizą.
 
+## Kluczowa zasada: selekcja tematów newsowych
+
+Twoim głównym zadaniem jest wyciąganie **tematów newsowych** — wiadomości, które mogłyby \
+trafić na portal informacyjny. Każdy temat oznacz polem `is_news`.
+
+`is_news: true` — temat newsowy:
+- Konkretne wydarzenie polityczne, gospodarcze, społeczne, zagraniczne, kryminalne.
+- Informacja o decyzji, wypadku, zmianie prawa, wyniku wyborów, proteście, katastrofie itp.
+- Wywiad z ekspertem na temat aktualnego wydarzenia lub problemu społecznego.
+
+`is_news: false` — temat NIE jest newsowy:
+- Rozmowa filozoficzna, moralizatorska, ogólna refleksja bez zakorzenienia w bieżących \
+  wydarzeniach (np. ogólne rozważania o etyce, wartościach, stylu życia).
+- Poradnikowe treści lifestyle, zdrowie, kultura osobista.
+- Promocja książki/produktu bez newsa w tle.
+- Muzyka, dżingle, reklamy — tych w ogóle nie dodawaj.
+
+Zwróć wszystkie tematy (zarówno `is_news: true` jak i `false`) — redaktor zdecyduje co \
+opublikować. Ale skup się na newsach — jeśli treść jest niejednoznaczna, oznacz `is_news: false`.
+
 ## Kluczowa zasada: granulacja tematów
 
 ŁĄCZ tematy gdy:
@@ -54,6 +74,7 @@ Heurystyki pomocnicze:
    - Dodaj tytuł/rolę jeśli znana (np. "Karolina Lewicka, prezenterka TOK FM").
 4. Dla każdego tematu:
    - Zwięzły, dziennikarski tytuł.
+   - `is_news: true/false` zgodnie z definicją powyżej.
    - Lista zidentyfikowanych rozmówców z pełnymi danymi.
    - Fakty zebrane ze wszystkich chunków i digestów dotyczące tego tematu.
    - Najlepsze cytaty (dosłowne).
@@ -82,6 +103,7 @@ class DigestQuote(BaseModel):
 
 class DigestStory(BaseModel):
     title: str
+    is_news: bool = True
     start_seconds: float
     end_seconds: float
     speakers: list[DigestSpeaker] = []
@@ -154,10 +176,12 @@ def _format_previous_digests(digests: list[StreamDigestResult]) -> str:
         for s in d.stories:
             speakers = ", ".join(sp.name_or_role for sp in s.speakers) or "nieznani"
             facts = "\n".join(f"    - {f.text}" for f in s.facts) or "    brak"
-            quotes = "\n".join(
-                f'    "{q.text}"' + (f" [{q.speaker}]" if q.speaker else "")
-                for q in s.quotes
-            ) or "    brak"
+            quotes = (
+                "\n".join(
+                    f'    "{q.text}"' + (f" [{q.speaker}]" if q.speaker else "") for q in s.quotes
+                )
+                or "    brak"
+            )
             stories_txt.append(
                 f"  Temat: {s.title}\n"
                 f"  Czas: {s.start_seconds:.0f}s–{s.end_seconds:.0f}s\n"
@@ -185,7 +209,9 @@ async def run_stream_digest_agent(
         return StreamDigestResult()
 
     prev = previous_digests or []
-    window_start = prev[0].window_start_seconds if prev else (chunks[0].chunk_start if chunks else 0.0)
+    window_start = (
+        prev[0].window_start_seconds if prev else (chunks[0].chunk_start if chunks else 0.0)
+    )
     window_end = chunks[-1].chunk_end if chunks else (prev[-1].window_end_seconds if prev else 0.0)
 
     prev_section = _format_previous_digests(prev)
