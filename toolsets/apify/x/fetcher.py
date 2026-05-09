@@ -101,23 +101,39 @@ class ApifyXFetcher:
                 else:
                     comments.append(reply_text)
 
-        # Best-effort media extraction — apidojo actor returns media in several shapes
+        # Best-effort media extraction.
+        # extendedEntities is authoritative: .type tells us video vs photo,
+        # and video_info.variants[] has the actual .mp4 URLs with bitrates.
+        # mediaUrls (flat list) is a fallback — may contain thumbnail JPGs for videos.
         media_url = ""
         media_type = ""
-        media_list = (
-            tweet.get("mediaUrls")
-            or [m.get("url") or m.get("media_url_https") or "" for m in (
-                (tweet.get("extendedEntities") or {}).get("media")
-                or (tweet.get("entities") or {}).get("media")
-                or []
-            )]
-        )
-        if media_list and isinstance(media_list, list):
-            first = media_list[0]
-            if isinstance(first, str) and first:
-                media_url = first
-                is_video = any(k in media_url for k in (".mp4", "video"))
-                media_type = "video/mp4" if is_video else "image/jpeg"
+        ext_media = (tweet.get("extendedEntities") or {}).get("media") or []
+        if ext_media:
+            m0 = ext_media[0]
+            m_type = m0.get("type", "photo")
+            if m_type in ("video", "animated_gif"):
+                variants = (m0.get("video_info") or {}).get("variants") or []
+                mp4 = [v for v in variants if v.get("content_type") == "video/mp4"]
+                if mp4:
+                    best = max(mp4, key=lambda v: v.get("bitrate") or 0)
+                    media_url = best["url"]
+                    media_type = "video/mp4"
+                elif variants:
+                    media_url = variants[0].get("url", "")
+                    media_type = variants[0].get("content_type", "video/mp4")
+            else:
+                media_url = m0.get("media_url_https") or m0.get("url") or ""
+                media_type = "image/jpeg"
+
+        if not media_url:
+            # fallback: mediaUrls flat list
+            raw = tweet.get("mediaUrls") or []
+            if raw and isinstance(raw, list):
+                first = raw[0]
+                if isinstance(first, str) and first:
+                    media_url = first
+                    is_video = "video.twimg.com" in media_url or ".mp4" in media_url
+                    media_type = "video/mp4" if is_video else "image/jpeg"
 
         return XPost(
             text=text, author=author, comments=comments, media_url=media_url, media_type=media_type
