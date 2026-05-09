@@ -23,7 +23,7 @@ export function useApi() {
     orgsRef.current = getUserOrganizations;
   }, [getToken, getOrganization, getUserOrganizations]);
 
-  const request = useCallback(async function <T>(path: string, options: RequestInit = {}): Promise<T> {
+  async function buildAuthHeaders(extraHeaders?: Record<string, string>): Promise<Record<string, string>> {
     let orgCode = "__local_dev__";
     if (!NULL_AUTH) {
       const orgRaw = await orgRef.current();
@@ -34,26 +34,45 @@ export function useApi() {
         : ((orgsRaw as KindeOrgsPayload | null)?.orgCodes ?? []);
       orgCode = orgStr ?? orgsArr[0] ?? "";
     }
-    // FormData bodies must NOT have Content-Type set — the browser auto-sets
-    // it with the right multipart boundary. Setting application/json here
-    // would break multipart uploads (image, file inputs, etc.).
-    const isFormData = options.body instanceof FormData;
-    const headers: Record<string, string> = {
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-      "X-Org-Code": orgCode,
-      ...(options.headers as Record<string, string> | undefined),
-    };
+    const headers: Record<string, string> = { "X-Org-Code": orgCode, ...extraHeaders };
     if (!NULL_AUTH) {
       const token = await tokenRef.current();
       if (token) headers["Authorization"] = `Bearer ${token}`;
     }
+    return headers;
+  }
+
+  const request = useCallback(async function <T>(path: string, options: RequestInit = {}): Promise<T> {
+    const isFormData = options.body instanceof FormData;
+    const headers = await buildAuthHeaders({
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
+      ...(options.headers as Record<string, string> | undefined),
+    });
     const res = await fetch(path, { ...options, headers });
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`${res.status}: ${text}`);
     }
     return res.json() as Promise<T>;
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { request, orgCode: "", authReady };
+  const downloadFile = useCallback(async function (path: string, filename: string): Promise<void> {
+    const headers = await buildAuthHeaders();
+    const res = await fetch(path, { headers });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`${res.status}: ${text}`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { request, downloadFile, orgCode: "", authReady };
 }

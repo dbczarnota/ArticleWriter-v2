@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import DOMPurify from "dompurify";
 import type { Article, Fact, Quote, SocialMediaAttachment } from "../types";
 import { useArticles } from "../lib/useArticles";
@@ -8,6 +8,7 @@ import { CollapsibleSection } from "./CollapsibleSection";
 import { Button } from "./ui/Button";
 import { CopyIcon } from "./ui/icons";
 import { safeHref } from "../lib/safeHref";
+import { useApi } from "../lib/useApi";
 
 interface ArticleViewProps {
   articleId: string;
@@ -585,10 +586,28 @@ function TeaserCard({ text }: { text: string }) {
 }
 
 function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaAttachment; t: ReturnType<typeof useT>["articleView"] }) {
+  const { downloadFile } = useApi();
   const isInstagram = attachment.platform === "instagram";
   const isVideo = attachment.media_type === "video/mp4";
   const platformLabel = isInstagram ? "Instagram" : "X.com";
   const platformIcon = isInstagram ? "📸" : "𝕏";
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const handleDownload = useCallback(async () => {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const proxyUrl = `/v2/download_media?url=${encodeURIComponent(attachment.media_url)}`;
+      const ext = isVideo ? "mp4" : "jpg";
+      const filename = `${attachment.platform}_media.${ext}`;
+      await downloadFile(proxyUrl, filename);
+    } catch (e: unknown) {
+      setDownloadError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDownloading(false);
+    }
+  }, [attachment.media_url, attachment.platform, downloadFile, isVideo]);
 
   return (
     <div style={{
@@ -616,25 +635,25 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
         </a>
         {attachment.media_url && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
-            <a
-              href={`/v2/download_media?url=${encodeURIComponent(attachment.media_url)}`}
-              download
+            <button
+              onClick={handleDownload}
+              disabled={downloading}
               style={{
                 fontSize: 12,
                 fontWeight: 600,
-                color: "var(--accent)",
+                color: downloading ? "var(--muted)" : "var(--accent)",
                 background: "var(--white)",
-                border: "1px solid var(--accent)",
+                border: `1px solid ${downloading ? "var(--border)" : "var(--accent)"}`,
                 borderRadius: "var(--radius)",
                 padding: "3px 10px",
-                textDecoration: "none",
+                cursor: downloading ? "default" : "pointer",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 4,
               }}
             >
-              ⬇ {isVideo ? t.socialMediaDownloadVideo : t.socialMediaDownloadPhoto}
-            </a>
+              {downloading ? "⏳" : "⬇"} {isVideo ? t.socialMediaDownloadVideo : t.socialMediaDownloadPhoto}
+            </button>
             {isVideo && (
               <a
                 href={safeHref(attachment.media_url)}
@@ -677,6 +696,11 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
             >
               ?
             </span>
+            {downloadError && (
+              <span style={{ fontSize: 11, color: "var(--error)", marginLeft: 4 }}>
+                {downloadError.includes("502") ? "Link wygasł" : downloadError}
+              </span>
+            )}
           </div>
         )}
       </div>
