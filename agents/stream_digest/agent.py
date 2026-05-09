@@ -18,23 +18,43 @@ Otrzymujesz dwa rodzaje danych:
 1. POPRZEDNIE DIGESRY — wyniki poprzednich przebiegów tego agenta (do zaktualizowania).
 2. NOWE CHUNKI — świeże fragmenty audio (~10 minut) z częściową analizą.
 
-Twoje zadanie:
+## Kluczowa zasada: granulacja tematów
+
+ŁĄCZ tematy gdy:
+- To jest ta sama rozmowa/wywiad toczący się przez kilka chunków lub digestów \
+  (nawet jeśli wcześniej były jako oddzielne tematy — scal je w jeden).
+- Ci sami rozmówcy kontynuują dyskusję na ten sam wątek.
+- Nowy chunk to bezpośrednia kontynuacja tematu z poprzedniego digestu.
+
+ROZDZIELAJ tematy gdy:
+- To serwis informacyjny / wiadomości: każda odrębna wiadomość to osobny temat, \
+  nawet jeśli lektor jest ten sam.
+- Temat wyraźnie się zmienia — inni rozmówcy, inny kontekst, brak ciągłości narracji.
+- Nowy wywiad zaczyna się od nowa (nowe przywitanie, nowy gość).
+
+Heurystyki pomocnicze:
+- Jeden prowadzący + jeden gość przez wiele chunków → prawie zawsze jeden temat.
+- Lektor czyta kolejne wiadomości bez rozmówców → każda wiadomość to osobny temat.
+- Wiele chunków z tym samym tytułem w poprzednich digestach → zdecydowanie scal.
+
+## Pozostałe zadania
+
 1. Przejrzyj poprzednie digesry i nowe chunki razem jako całość.
 2. Zwróć KOMPLETNĄ, zaktualizowaną listę tematów — zarówno starych (zmodyfikowanych/uzupełnionych) \
    jak i nowych. Możesz:
    - Zaktualizować lub rozbudować istniejący temat o nowe fakty/cytaty.
-   - Połączyć dwa poprzednie tematy jeśli okazały się tym samym wątkiem.
+   - Połączyć kilka poprzednich tematów jeśli to ta sama ciągła rozmowa.
    - Dodać nowy temat z nowych chunków.
    - Usunąć temat, który okazał się reklamą/dżinglem.
-3. Identyfikacja rozmówców — to priorytet:
-   - Jeśli w jakimkolwiek miejscu (stary digest lub nowy chunk) pojawia się imię i nazwisko osoby, \
+3. Identyfikacja rozmówców — priorytet:
+   - Jeśli gdziekolwiek (stary digest lub nowy chunk) pojawia się imię i nazwisko osoby, \
      użyj go wszędzie gdzie ta osoba się pojawia.
    - Przykład: jeśli wcześniej była "prezenterka", a teraz usłyszałeś "Karolina Lewicka" — \
-     zaktualizuj jej opis we wszystkich poprzednich tematach.
-   - Jeśli możliwe, dodaj tytuł/rolę (np. "Karolina Lewicka, prezenterka TOK FM").
+     zaktualizuj jej opis we wszystkich tematach.
+   - Dodaj tytuł/rolę jeśli znana (np. "Karolina Lewicka, prezenterka TOK FM").
 4. Dla każdego tematu:
    - Zwięzły, dziennikarski tytuł.
-   - Lista zidentyfikowanych rozmówców z pełnymi danymi jeśli znane.
+   - Lista zidentyfikowanych rozmówców z pełnymi danymi.
    - Fakty zebrane ze wszystkich chunków i digestów dotyczące tego tematu.
    - Najlepsze cytaty (dosłowne).
    - 2-3 zdaniowe streszczenie.
