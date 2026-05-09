@@ -65,6 +65,9 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
   const [showInstagramInput, setShowInstagramInput] = useState(false);
   const [xUrl, setXUrl] = useState("");
   const [showXInput, setShowXInput] = useState(false);
+  const [socialMediaAttachments, setSocialMediaAttachments] = useState<
+    { platform: string; post_url: string; media_url: string; media_type: string }[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -166,8 +169,10 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
         fetchTasks.push(request<EditorExtraction>("/v2/extract_editor_facts", { method: "POST", body: fd }));
       }
 
+      // Track which task index corresponds to which social media source
+      const instagramTaskIdx = instagramUrl.trim() ? fetchTasks.length : -1;
       if (instagramUrl.trim()) {
-        fetchTasks.push(request<EditorExtraction>("/v2/fetch_instagram_facts", {
+        fetchTasks.push(request<EditorExtraction & { media_url?: string; media_type?: string }>("/v2/fetch_instagram_facts", {
           method: "POST",
           body: JSON.stringify({
             url: instagramUrl.trim(),
@@ -177,8 +182,9 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
         }));
       }
 
+      const xTaskIdx = xUrl.trim() ? fetchTasks.length : -1;
       if (xUrl.trim()) {
-        fetchTasks.push(request<EditorExtraction>("/v2/fetch_x_facts", {
+        fetchTasks.push(request<EditorExtraction & { media_url?: string; media_type?: string }>("/v2/fetch_x_facts", {
           method: "POST",
           body: JSON.stringify({ url: xUrl.trim(), topic: topic.trim() }),
         }));
@@ -189,17 +195,25 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
       const allQuotes: EditorExtraction["quotes"] = [];
       const allKeywordsRaw: string[] = [];
       const failedSources: string[] = [];
+      const newAttachments: { platform: string; post_url: string; media_url: string; media_type: string }[] = [];
       for (let i = 0; i < settled.length; i++) {
         const result = settled[i];
         if (result.status === "fulfilled") {
           allFacts.push(...result.value.facts.map((f) => ({ text: f.text, context: f.context, source: f.source || "editor-provided" })));
           allQuotes.push(...result.value.quotes.map((q) => ({ text: q.text, speaker: q.speaker, context: q.context, source: q.source || "editor-provided" })));
           allKeywordsRaw.push(...(result.value.keywords ?? []));
+          if (i === instagramTaskIdx && result.value.media_url) {
+            newAttachments.push({ platform: "instagram", post_url: instagramUrl.trim(), media_url: result.value.media_url, media_type: result.value.media_type || "image/jpeg" });
+          }
+          if (i === xTaskIdx && result.value.media_url) {
+            newAttachments.push({ platform: "x", post_url: xUrl.trim(), media_url: result.value.media_url, media_type: result.value.media_type || "" });
+          }
         } else {
-          if (instagramUrl.trim() && fetchTasks.length > i) failedSources.push("Instagram");
-          if (xUrl.trim() && fetchTasks.length > i) failedSources.push("X.com");
+          if (i === instagramTaskIdx) failedSources.push("Instagram");
+          if (i === xTaskIdx) failedSources.push("X.com");
         }
       }
+      setSocialMediaAttachments(newAttachments);
       const allKeywords = [...new Set(allKeywordsRaw)];
 
       setExtraction({ facts: allFacts, quotes: allQuotes, keywords: allKeywords });
@@ -273,6 +287,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
             }
           : undefined,
         skip_web_research: useStep2 ? skipWebResearch : undefined,
+        social_media_attachments: socialMediaAttachments.length > 0 ? socialMediaAttachments : undefined,
       });
       setLoading(false);
       onCreated(result.id);

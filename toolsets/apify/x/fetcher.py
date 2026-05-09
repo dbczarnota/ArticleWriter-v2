@@ -18,6 +18,8 @@ class XPost:
     text: str
     author: str  # @username of the post author
     comments: list[str] = field(default_factory=list)  # "@username: reply text"
+    media_url: str = ""  # first media URL if tweet contains image/video (temporary CDN link)
+    media_type: str = ""  # "image/jpeg" or "video/mp4"
 
 
 class XFetcher(Protocol):
@@ -99,4 +101,24 @@ class ApifyXFetcher:
                 else:
                     comments.append(reply_text)
 
-        return XPost(text=text, author=author, comments=comments)
+        # Best-effort media extraction — apidojo actor returns media in several shapes
+        media_url = ""
+        media_type = ""
+        media_list = (
+            tweet.get("mediaUrls")
+            or [m.get("url") or m.get("media_url_https") or "" for m in (
+                (tweet.get("extendedEntities") or {}).get("media")
+                or (tweet.get("entities") or {}).get("media")
+                or []
+            )]
+        )
+        if media_list and isinstance(media_list, list):
+            first = media_list[0]
+            if isinstance(first, str) and first:
+                media_url = first
+                is_video = any(k in media_url for k in (".mp4", "video"))
+                media_type = "video/mp4" if is_video else "image/jpeg"
+
+        return XPost(
+            text=text, author=author, comments=comments, media_url=media_url, media_type=media_type
+        )

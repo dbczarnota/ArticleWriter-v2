@@ -60,6 +60,13 @@ export interface FallbackEvent {
   occurred_at: string | null;
 }
 
+export interface SocialMediaAttachment {
+  platform: "instagram" | "x";
+  post_url: string;
+  media_url: string;
+  media_type: string;  // "image/jpeg" | "video/mp4" | ""
+}
+
 export interface Article extends ArticleListItem {
   org_code: string;
   marked_done_by_name: string | null;
@@ -69,6 +76,7 @@ export interface Article extends ArticleListItem {
   alternative_titles: string[];
   followup_topics: string[];
   facebook_teasers: string[];
+  social_media_attachments: SocialMediaAttachment[];
   sources: string[];
   pipeline_timing: Record<string, number>;
   errors: Array<Record<string, string>>;

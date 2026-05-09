@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import DOMPurify from "dompurify";
-import type { Article, Fact, Quote } from "../types";
+import type { Article, Fact, Quote, SocialMediaAttachment } from "../types";
 import { useArticles } from "../lib/useArticles";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { useLang, useT } from "../i18n";
@@ -351,9 +351,12 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       )}
 
       {/* Social media embeds */}
-      {!isFailed && article.embed_candidates.length > 0 && (
-        <CollapsibleSection prominent title={av.socialMedia} count={article.embed_candidates.length}>
+      {!isFailed && (article.social_media_attachments.length > 0 || article.embed_candidates.length > 0) && (
+        <CollapsibleSection prominent title={av.socialMedia} count={article.social_media_attachments.length + article.embed_candidates.length}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {article.social_media_attachments.map((att, i) => (
+              <SocialMediaAttachmentCard key={i} attachment={att} t={av} />
+            ))}
             {[...article.embed_candidates].sort((a, b) => (b.competitor_source_url ? 1 : 0) - (a.competitor_source_url ? 1 : 0)).map((e) => (
               <div key={e.id} style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "#fffbeb" : "var(--white)", border: `1px solid ${e.competitor_source_url ? "var(--warning)" : "var(--border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
                 {e.thumbnail_url && <img src={e.thumbnail_url} alt="" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 4, flexShrink: 0 }} />}
@@ -577,6 +580,86 @@ function TeaserCard({ text }: { text: string }) {
       >
         {copied ? "✓" : <CopyIcon />}
       </button>
+    </div>
+  );
+}
+
+function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaAttachment; t: ReturnType<typeof useT>["articleView"] }) {
+  const isInstagram = attachment.platform === "instagram";
+  const isVideo = attachment.media_type === "video/mp4";
+  const platformLabel = isInstagram ? "Instagram" : "X.com";
+  const platformIcon = isInstagram ? "📸" : "𝕏";
+
+  return (
+    <div style={{
+      display: "flex",
+      gap: 10,
+      padding: "10px 12px",
+      background: "var(--accent-lt)",
+      border: "2px solid var(--accent)",
+      borderRadius: "var(--radius)",
+      fontSize: 13,
+      alignItems: "flex-start",
+    }}>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 16, lineHeight: 1 }}>{platformIcon}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--accent)", letterSpacing: "0.04em" }}>
+            {platformLabel}
+          </span>
+          <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--white)", background: "var(--accent)", padding: "1px 6px", borderRadius: 10, letterSpacing: "0.04em" }}>
+            {t.socialMediaSourceBadge}
+          </span>
+        </div>
+        <a href={safeHref(attachment.post_url)} target="_blank" rel="noreferrer" style={{ fontWeight: 500, color: "var(--accent)", wordBreak: "break-all", fontSize: 12 }}>
+          {attachment.post_url}
+        </a>
+        {attachment.media_url && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
+            <a
+              href={safeHref(attachment.media_url)}
+              target="_blank"
+              rel="noreferrer"
+              download
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--accent)",
+                background: "var(--white)",
+                border: "1px solid var(--accent)",
+                borderRadius: "var(--radius)",
+                padding: "3px 10px",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              ⬇ {isVideo ? t.socialMediaDownloadVideo : t.socialMediaDownloadPhoto}
+            </a>
+            <span
+              title={t.socialMediaMediaUrlWarning}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                background: "#fbbf24",
+                color: "var(--white)",
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "help",
+                flexShrink: 0,
+                userSelect: "none",
+              }}
+            >
+              ?
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

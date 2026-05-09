@@ -33,6 +33,7 @@ class EditorExtractionPayload(BaseModel):
     """Pre-extracted editor facts/quotes/keywords sent from the modal step 2.
     When present, run_pipeline uses this directly and skips the in-pipeline
     text_extraction stage."""
+
     facts: list[EditorFactItem] = []
     quotes: list[EditorQuoteItem] = []
     keywords: list[str] = []
@@ -41,6 +42,7 @@ class EditorExtractionPayload(BaseModel):
 class ExtractEditorFactsRequest(BaseModel):
     """POST /v2/extract_editor_facts body — used by the modal's step 2 to
     preview what the LLM extracted from the editor's raw text."""
+
     topic: str
     raw_facts_text: str
     language: str | None = None
@@ -92,6 +94,10 @@ class ArticleRequest(BaseModel):
     skip_web_research: bool = False
     """When true, pipeline skips search/scraping/parsing/extraction stages — article
     is written ONLY from editor-provided facts. Set from the modal step 2 checkbox."""
+    social_media_attachments: list[dict] = []
+    """Social media posts fetched by the editor before writing. Each entry:
+    {"platform": "instagram"|"x", "post_url": str, "media_url": str, "media_type": str}
+    Stored verbatim so ArticleView can show the temporary CDN download link."""
 
     @field_validator("topic", mode="before")
     @classmethod

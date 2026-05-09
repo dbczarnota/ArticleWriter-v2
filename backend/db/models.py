@@ -127,6 +127,7 @@ class Article(SQLModel, table=True):
     alternative_titles: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
     followup_topics: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
     facebook_teasers: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
+    social_media_attachments: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
     sources: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
 
     # Operational metadata:

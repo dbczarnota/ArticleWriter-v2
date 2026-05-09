@@ -134,6 +134,7 @@ async def write_article(
         topic=req.topic,
         additional_instructions=req.additional_instructions,
         input_urls=list(req.urls or []),
+        social_media_attachments=list(req.social_media_attachments or []),
     )
 
     # Note: no logfire.set_baggage(...) here. FastAPI BackgroundTasks runs
@@ -545,7 +546,13 @@ async def fetch_instagram_facts_endpoint(
         )
         keywords.extend(result.keywords)
     keywords = list(dict.fromkeys(keywords))
-    return {"facts": facts, "quotes": quotes, "keywords": keywords}
+    return {
+        "facts": facts,
+        "quotes": quotes,
+        "keywords": keywords,
+        "media_url": post.media_url,
+        "media_type": post.media_type if post.media_url else "",
+    }
 
 
 class XFetchRequest(BaseModel):
@@ -598,7 +605,7 @@ async def fetch_x_facts_endpoint(
     text = "\n\n".join(parts)
 
     if not text:
-        return {"facts": [], "quotes": [], "keywords": []}
+        return {"facts": [], "quotes": [], "keywords": [], "media_url": post.media_url, "media_type": post.media_type}  # noqa: E501
 
     logfire.info(
         "api.fetch_x_facts extraction_input",
@@ -615,7 +622,13 @@ async def fetch_x_facts_endpoint(
         for q in result.quotes
     ]
     keywords = list(dict.fromkeys(result.keywords))
-    return {"facts": facts, "quotes": quotes, "keywords": keywords}
+    return {
+        "facts": facts,
+        "quotes": quotes,
+        "keywords": keywords,
+        "media_url": post.media_url,
+        "media_type": post.media_type,
+    }
 
 
 @router.get(
@@ -738,6 +751,7 @@ async def get_article(
         "alternative_titles": article.alternative_titles,
         "followup_topics": article.followup_topics,
         "facebook_teasers": article.facebook_teasers,
+        "social_media_attachments": article.social_media_attachments,
         "sources": article.sources,
         "pipeline_timing": article.pipeline_timing,
         "errors": article.errors,

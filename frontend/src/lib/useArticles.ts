@@ -143,6 +143,7 @@ export function useArticles() {
       keywords: string[];
     };
     skip_web_research?: boolean;
+    social_media_attachments?: { platform: string; post_url: string; media_url: string; media_type: string }[];
   }): Promise<Article> {
     return request<Article>("/v2/write_article", {
       method: "POST",

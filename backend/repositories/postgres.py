@@ -44,6 +44,7 @@ class PostgresArticleRepository:
         topic: str,
         additional_instructions: str | None = None,
         input_urls: list[str] | None = None,
+        social_media_attachments: list[dict] | None = None,
     ) -> UUID:
         urls_list = list(input_urls or [])
         article = Article(
@@ -55,6 +56,7 @@ class PostgresArticleRepository:
             topic=topic,
             additional_instructions=additional_instructions,
             input_urls=urls_list,
+            social_media_attachments=list(social_media_attachments or []),
             status="running",
         )
         async with self._session_maker() as session:

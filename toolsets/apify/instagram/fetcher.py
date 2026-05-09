@@ -29,6 +29,7 @@ class InstagramPost:
     media_type: str  # "image/jpeg" or "video/mp4"
     description: str
     comments: list[str] = field(default_factory=list)
+    media_url: str = ""  # CDN URL — temporary, expires when Instagram removes it
 
 
 class InstagramFetcher(Protocol):
@@ -153,6 +154,7 @@ class HttpxInstagramFetcher:
             media_type=media_type,
             description=description,
             comments=comments,
+            media_url=media_url,
         )
 
     async def _parse_v1_item(self, client: httpx.AsyncClient, item: dict) -> InstagramPost:
@@ -182,6 +184,7 @@ class HttpxInstagramFetcher:
             media_type=media_type,
             description=description,
             comments=comments,
+            media_url=media_url,
         )
 
     async def _fetch_webpage(
@@ -244,6 +247,7 @@ class HttpxInstagramFetcher:
                     media_type=media_type,
                     description=description,
                     comments=[],
+                    media_url=media_url,
                 )
         except Exception:
             pass
@@ -311,4 +315,5 @@ class ApifyInstagramFetcher:
             media_type=media_type,
             description=description,
             comments=comments,
+            media_url=media_url,
         )

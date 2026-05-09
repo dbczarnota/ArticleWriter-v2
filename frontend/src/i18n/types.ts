@@ -367,6 +367,10 @@ export interface Translations {
     followupTopics: string;
     facebookTeasers: string;
     socialMedia: string;
+    socialMediaSourceBadge: string;
+    socialMediaDownloadPhoto: string;
+    socialMediaDownloadVideo: string;
+    socialMediaMediaUrlWarning: string;
     competitorStar: string;
     sourceLabel: string;
     factsUsed: string;

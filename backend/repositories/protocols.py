@@ -54,6 +54,7 @@ class ArticleRepository(Protocol):
         topic: str,
         additional_instructions: str | None = None,
         input_urls: list[str] | None = None,
+        social_media_attachments: list[dict] | None = None,
     ) -> UUID:
         """Insert a new article in `running` state. Returns its UUID.
 
