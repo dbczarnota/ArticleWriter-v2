@@ -64,6 +64,7 @@ class ArticleOutput:
     html: str
     alternative_titles: list[str] = field(default_factory=list)
     followup_topics: list[str] = field(default_factory=list)
+    facebook_teasers: list[str] = field(default_factory=list)
     used_facts: list[str] = field(default_factory=list)
     used_quotes: list[str] = field(default_factory=list)
     sources: list[str] = field(default_factory=list)

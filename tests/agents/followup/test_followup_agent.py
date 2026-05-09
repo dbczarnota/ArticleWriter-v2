@@ -42,6 +42,7 @@ def _make_followup_agent(
     followup_topics: list[str] | None = None,
     used_fact_ids: list[int] | None = None,
     used_quote_ids: list[int] | None = None,
+    facebook_teasers: list[str] | None = None,
 ):
     from agents.followup.agent import FollowUpOutput
 
@@ -61,6 +62,7 @@ def _make_followup_agent(
                 ],
                 "used_fact_ids": used_fact_ids if used_fact_ids is not None else [1],
                 "used_quote_ids": used_quote_ids if used_quote_ids is not None else [1],
+                "facebook_teasers": facebook_teasers or ["Nikt nie spodziewał się takiego obrotu sprawy! 🔥"],
             }
         ),
         output_type=FollowUpOutput,
@@ -149,3 +151,17 @@ async def test_followup_drops_out_of_range_and_duplicate_ids():
     )
     assert result.used_facts == ["Zarobił 2 mln zł", "Sprzedał 50 tys. biletów"]
     assert result.used_quotes == ["To był najpiękniejszy rok"]
+
+
+@pytest.mark.asyncio
+async def test_followup_agent_facebook_teasers_in_output():
+    agent = _make_followup_agent(facebook_teasers=["Nikt nie spodziewał się takiego obrotu sprawy! 🔥"])
+    result = await run_followup_agent(
+        _ARTICLE,
+        topic="Dawid Podsiadło zarobił miliony",
+        extraction_result=_EXTRACTION,
+        config=_CONFIG,
+        domain=_DOMAIN,
+        _agent=agent,
+    )
+    assert result.facebook_teasers == ["Nikt nie spodziewał się takiego obrotu sprawy! 🔥"]

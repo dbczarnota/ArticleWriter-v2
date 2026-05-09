@@ -32,6 +32,12 @@ class FollowUpOutput(BaseModel):
     # drift (LLM dropping a comma, prepending "- ", paraphrasing whitespace).
     used_fact_ids: list[int] = []
     used_quote_ids: list[int] = []
+    facebook_teasers: list[str] = []
+
+    @field_validator("facebook_teasers", mode="before")
+    @classmethod
+    def _clean_teasers(cls, v: list) -> list:
+        return [" ".join(s.split()) for item in v if isinstance(item, str) and (s := item.strip())]
 
     @field_validator("alternative_titles", "followup_topics", mode="before")
     @classmethod
@@ -88,6 +94,7 @@ async def run_followup_agent(
                 _PROMPTS_DIR / "followup.j2",
                 num_titles=config.num_titles,
                 num_topics=config.num_topics,
+                num_teasers=config.num_teasers,
                 format_style=model_format_style(m),
                 guidelines=domain.guidelines,
                 example_titles=list(domain.example_titles),
@@ -129,6 +136,7 @@ async def run_followup_agent(
         html=article.html,
         alternative_titles=output.alternative_titles,
         followup_topics=output.followup_topics,
+        facebook_teasers=output.facebook_teasers,
         used_facts=used_facts,
         used_quotes=used_quotes,
         sources=sources,
