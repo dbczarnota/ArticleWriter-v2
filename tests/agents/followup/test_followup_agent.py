@@ -33,6 +33,10 @@ _CONFIG = FollowUpAgentConfig()
 _DOMAIN = DomainConfig(name="test", description="test")
 
 
+def test_followup_config_num_teasers_default():
+    assert FollowUpAgentConfig().num_teasers == 5
+
+
 def _make_followup_agent(
     alternative_titles: list[str] | None = None,
     followup_topics: list[str] | None = None,
