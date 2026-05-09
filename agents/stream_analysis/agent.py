@@ -18,30 +18,45 @@ Twoje zadania:
 1. Zidentyfikuj wszystkich mówców — opisz każdego krótko na podstawie głosu i kontekstu \
 (np. "kobieta, prezenterka", "mężczyzna, gość studia, polityk").
 
-2. Wyciągnij tematy informacyjne (topics) z timestampami:
-   - start_offset_seconds: kiedy ten temat się zaczyna w tym chunku (liczone od 0).
-   - end_offset_seconds: kiedy się kończy (lub null jeśli trwa do końca chunka).
-   - Każdy odrębny wątek/rozmowa to osobny temat.
+2. Wyciągnij tematy informacyjne. Każdy temat to jeden spójny wątek/rozmowa i zawiera:
+   - title: zwięzły tytuł
+   - confidence: pewność (0.0–1.0)
+   - start_offset_seconds: od kiedy temat zaczyna się w tym chunku (od 0)
+   - end_offset_seconds: do kiedy (null = do końca chunka)
+   - facts: lista faktów TYLKO dotyczących tego tematu
+   - quotes: lista cytatów TYLKO dotyczących tego tematu
+
+   Każdy fakt zawiera:
+   - text: treść faktu
+   - speaker_label: kto powiedział (label z listy mówców)
+   - timestamp_offset_seconds: kiedy padło (od początku chunka)
+
+   Każdy cytat zawiera:
+   - text: dosłowna wypowiedź
+   - speaker_label: kto powiedział
 
 3. Wykryj zmiany tematu/rozmowy (topic_transitions):
-   - Zaznacz każde miejsce, gdzie temat wyraźnie się zmienia lub pojawia nowy gość.
-   - timestamp_offset_seconds: czas zmiany od początku tego chunka.
-   - Opisz krótko co się skończyło i co zaczęło \
-(np. "koniec rozmowy o budżecie, nowy gość: ekspert ds. klimatu").
-   - Sygnały zmiany: przywitanie nowego gościa, dżingiel przejściowy, \
-nagła zmiana prowadzącego lub tematu.
+   - timestamp_offset_seconds: kiedy nastąpiła zmiana (od początku chunka)
+   - description: co się skończyło i co zaczęło \
+(np. "koniec wywiadu z ekspertem ds. klimatu, nowy serwis informacyjny")
+   - Sygnały: przywitanie nowego gościa, dżingiel przejściowy, zmiana prowadzącego.
 
-4. Wyciągnij fakty — konkretne twierdzenia o rzeczywistości (daty, liczby, zdarzenia):
-   - Przypisz każdy fakt do mówcy (speaker_label).
-   - Podaj timestamp_offset_seconds od początku chunka.
-   - Przypisz do tematu (topic_title) — użyj dokładnie tego samego tytułu co w topics.
-
-5. Wyciągnij cytaty — dosłowne wypowiedzi warte przytoczenia:
-   - Przypisz do mówcy (speaker_label) i tematu (topic_title).
-
-Ignoruj muzykę, dżingle i reklamy jako treść — ale jeśli dżingiel SYGNALIZUJE zmianę \
-tematu, zaznacz go jako topic_transition. Nie wymyślaj — operuj wyłącznie na tym co słyszysz.\
+Ważne:
+- Fakty i cytaty muszą być zagnieżdżone w konkretnym temacie — nie ma osobnej listy globalnej.
+- Ignoruj muzykę i reklamy jako treść, ale dżingiel sygnalizujący zmianę tematu → topic_transition.
+- Nie wymyślaj — tylko to co słyszysz.\
 """
+
+
+class TopicFact(BaseModel):
+    text: str
+    speaker_label: str | None = None
+    timestamp_offset_seconds: float = 0.0
+
+
+class TopicQuote(BaseModel):
+    text: str
+    speaker_label: str | None = None
 
 
 class DetectedSpeaker(BaseModel):
@@ -49,25 +64,13 @@ class DetectedSpeaker(BaseModel):
     description: str
 
 
-class StreamFact(BaseModel):
-    text: str
-    speaker_label: str | None = None
-    timestamp_offset_seconds: float = 0.0
-    topic_title: str | None = None
-
-
-class StreamQuote(BaseModel):
-    text: str
-    speaker_label: str | None = None
-    context: str | None = None
-    topic_title: str | None = None
-
-
 class StreamTopic(BaseModel):
     title: str
     confidence: float = 1.0
     start_offset_seconds: float = 0.0
     end_offset_seconds: float | None = None
+    facts: list[TopicFact] = []
+    quotes: list[TopicQuote] = []
 
 
 class TopicTransition(BaseModel):
@@ -78,8 +81,6 @@ class TopicTransition(BaseModel):
 class StreamChunkResult(BaseModel):
     speakers: list[DetectedSpeaker] = []
     topics: list[StreamTopic] = []
-    facts: list[StreamFact] = []
-    quotes: list[StreamQuote] = []
     topic_transitions: list[TopicTransition] = []
     raw_transcript: str = ""
 
@@ -90,9 +91,7 @@ async def run_stream_analysis_agent(
     *,
     config: StreamAnalysisAgentConfig,
 ) -> StreamChunkResult:
-    """Analyze a single audio chunk. Returns StreamChunkResult.
-    Soft-fails to empty result on LLM error.
-    """
+    """Analyze a single audio chunk. Returns StreamChunkResult. Soft-fails to empty result."""
     user_prompt: list[Any] = [
         f"Fragment audio od sekundy {chunk_start_seconds:.0f}. Przeanalizuj:",
         BinaryContent(data=audio_bytes, media_type="audio/mp3"),

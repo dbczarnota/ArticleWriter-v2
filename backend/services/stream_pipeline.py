@@ -53,22 +53,14 @@ async def _run_ffmpeg(stream_url: str) -> asyncio.subprocess.Process:
     """Start FFmpeg subprocess pulling stream_url as mono 16kHz MP3 on stdout."""
     return await asyncio.create_subprocess_exec(
         "ffmpeg",
-        "-reconnect",
-        "1",
-        "-reconnect_streamed",
-        "1",
-        "-reconnect_delay_max",
-        "5",
-        "-i",
-        stream_url,
-        "-f",
-        "mp3",
-        "-ar",
-        "16000",
-        "-ac",
-        "1",
-        "-loglevel",
-        "error",
+        "-reconnect", "1",
+        "-reconnect_streamed", "1",
+        "-reconnect_delay_max", "5",
+        "-i", stream_url,
+        "-f", "mp3",
+        "-ar", "16000",
+        "-ac", "1",
+        "-loglevel", "error",
         "pipe:1",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.DEVNULL,
@@ -84,15 +76,19 @@ async def _save_chunk(
 ) -> UUID:
     from backend.db.models import StreamChunk
 
+    # Flatten facts/quotes from nested topics for backward-compat columns
+    all_facts = [f.model_dump() | {"topic_title": t.title} for t in result.topics for f in t.facts]
+    all_quotes = [q.model_dump() | {"topic_title": t.title} for t in result.topics for q in t.quotes]
+
     chunk = StreamChunk(
         subscription_id=subscription_id,
         chunk_start_seconds=chunk_start,
         chunk_end_seconds=chunk_end,
         raw_transcript=result.raw_transcript,
         speakers_detected=[s.model_dump() for s in result.speakers],
-        topics=[t.model_dump() for t in result.topics],
-        facts=[f.model_dump() for f in result.facts],
-        quotes=[q.model_dump() for q in result.quotes],
+        topics=[t.model_dump() for t in result.topics],  # nested with facts/quotes
+        facts=all_facts,
+        quotes=all_quotes,
         topic_transitions=[t.model_dump() for t in result.topic_transitions],
     )
     session.add(chunk)
@@ -122,8 +118,43 @@ async def _save_digest(
     return record.id
 
 
-def _write_report(subscription_id: UUID, digest: StreamDigestResult, digest_number: int) -> Path:
-    """Write/overwrite a markdown report with the latest cumulative digest state."""
+def _format_chunk_result_verbose(chunk_start: float, chunk_end: float, result: StreamChunkResult) -> str:
+    """Human-readable representation of a chunk result for console and report."""
+    lines = [f"### Chunk {chunk_start:.0f}s–{chunk_end:.0f}s"]
+    if result.raw_transcript:
+        lines.append(f"**Transkrypcja:** {result.raw_transcript[:400]}")
+    if result.speakers:
+        lines.append("**Mówcy:** " + ", ".join(f"[{s.label}] {s.description}" for s in result.speakers))
+    if result.topic_transitions:
+        lines.append("**Zmiany tematu:**")
+        for tr in result.topic_transitions:
+            abs_ts = chunk_start + tr.timestamp_offset_seconds
+            lines.append(f"  - [{abs_ts:.0f}s] {tr.description}")
+    if result.topics:
+        for t in result.topics:
+            abs_start = chunk_start + t.start_offset_seconds
+            abs_end = chunk_start + t.end_offset_seconds if t.end_offset_seconds is not None else chunk_end
+            lines.append(f"**Temat [{abs_start:.0f}s–{abs_end:.0f}s]:** {t.title} ({t.confidence:.0%})")
+            for f in t.facts:
+                who = f" [{f.speaker_label}]" if f.speaker_label else ""
+                ts = f" @{chunk_start + f.timestamp_offset_seconds:.0f}s"
+                lines.append(f"  💡 {f.text}{who}{ts}")
+            for q in t.quotes:
+                who = f" [{q.speaker_label}]" if q.speaker_label else ""
+                lines.append(f'  💬 "{q.text}"{who}')
+    if not result.topics and not result.raw_transcript:
+        lines.append("_(pusty chunk — muzyka/reklamy)_")
+    return "\n".join(lines)
+
+
+def _write_report(
+    subscription_id: UUID,
+    digest: StreamDigestResult,
+    digest_number: int,
+    chunk_log: list[str],
+    digest_log: list[str],
+) -> Path:
+    """Write/overwrite a full flow markdown report."""
     path = Path(f"stream_report_{str(subscription_id)[:8]}.md")
     ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
@@ -136,9 +167,18 @@ def _write_report(subscription_id: UUID, digest: StreamDigestResult, digest_numb
         f"**Pokryty czas:** {digest.window_start_seconds:.0f}s – {digest.window_end_seconds:.0f}s "
         f"({(digest.window_end_seconds - digest.window_start_seconds) / 60:.1f} min)",
         "",
+        "---",
+        "",
+        "## Flow: Wyniki Chunk Agenta",
+        "",
     ]
+    lines.extend(chunk_log)
 
-    # Collect all unique speakers across stories
+    lines += ["", "---", "", "## Flow: Przebiegi Digest Agenta", ""]
+    lines.extend(digest_log)
+
+    lines += ["", "---", "", "## Aktualny Stan Tematów", ""]
+
     all_speakers: dict[str, str | None] = {}
     for story in digest.stories:
         for sp in story.speakers:
@@ -146,18 +186,16 @@ def _write_report(subscription_id: UUID, digest: StreamDigestResult, digest_numb
                 all_speakers[sp.name_or_role] = sp.description
 
     if all_speakers:
-        lines += ["## Zidentyfikowani rozmówcy", ""]
+        lines += ["### Zidentyfikowani rozmówcy", ""]
         for name, desc in all_speakers.items():
             lines.append(f"- **{name}**" + (f" — {desc}" if desc else ""))
         lines.append("")
 
-    lines += [f"## Tematy ({len(digest.stories)})", ""]
-
+    lines += [f"### Tematy ({len(digest.stories)})", ""]
     for i, story in enumerate(digest.stories, 1):
-        lines.append(f"### {i}. {story.title}")
+        lines.append(f"#### {i}. {story.title}")
         lines.append(f"*Czas: {story.start_seconds:.0f}s – {story.end_seconds:.0f}s*")
         lines.append("")
-
         if story.speakers:
             speakers_str = ", ".join(
                 sp.name_or_role + (f" ({sp.description})" if sp.description else "")
@@ -165,18 +203,15 @@ def _write_report(subscription_id: UUID, digest: StreamDigestResult, digest_numb
             )
             lines.append(f"**Uczestnicy:** {speakers_str}")
             lines.append("")
-
         if story.summary:
             lines.append(story.summary)
             lines.append("")
-
         if story.facts:
             lines.append("**Fakty:**")
             for f in story.facts:
                 who = f" *[{f.speaker}]*" if f.speaker else ""
                 lines.append(f"- {f.text}{who}")
             lines.append("")
-
         if story.quotes:
             lines.append("**Cytaty:**")
             for q in story.quotes:
@@ -194,14 +229,7 @@ async def run_subscription_pipeline(
     chunk_duration_seconds: int,
     org_code: str,
 ) -> None:
-    """Long-running pipeline task for one subscription.
-
-    Loops: connect FFmpeg → collect chunks → analyze → save → broadcast.
-    Every digest_config.chunks_per_digest chunks, runs StreamDigestAgent with
-    rolling context from last previous_digests_count runs.
-    On FFmpeg failure: exponential backoff, up to 5 retries, then marks paused.
-    Cancelled externally by StreamSessionManager.stop().
-    """
+    """Long-running pipeline task for one subscription."""
     from backend.services.stream_manager import get_stream_manager
 
     analysis_config = StreamAnalysisAgentConfig()
@@ -214,6 +242,8 @@ async def run_subscription_pipeline(
     digest_count = 0
     digest_buffer: list[ChunkSummary] = []
     digest_history: list[StreamDigestResult] = []
+    chunk_log: list[str] = []   # accumulates for report
+    digest_log: list[str] = []  # accumulates for report
     attempt = 0
     proc: asyncio.subprocess.Process | None = None
 
@@ -225,7 +255,7 @@ async def run_subscription_pipeline(
                     await proc.wait()
                 proc = await _run_ffmpeg(stream_url)
                 assert proc.stdout is not None
-                attempt = 0  # reset on successful connect
+                attempt = 0
                 logfire.info("stream.connected", subscription_id=str(subscription_id))
 
                 while True:
@@ -240,6 +270,13 @@ async def run_subscription_pipeline(
                         chunk_start_seconds=chunk_start,
                         config=analysis_config,
                     )
+
+                    # Verbose console output
+                    verbose_chunk = _format_chunk_result_verbose(chunk_start, chunk_end, result)
+                    print(f"\n{'─'*60}")
+                    print(verbose_chunk)
+                    chunk_log.append(verbose_chunk)
+                    chunk_log.append("")
 
                     chunk_id: UUID | None = None
                     if _db:
@@ -256,8 +293,6 @@ async def run_subscription_pipeline(
                         "chunk_end": chunk_end,
                         "speakers": [s.model_dump() for s in result.speakers],
                         "topics": [t.model_dump() for t in result.topics],
-                        "facts": [f.model_dump() for f in result.facts],
-                        "quotes": [q.model_dump() for q in result.quotes],
                         "topic_transitions": [t.model_dump() for t in result.topic_transitions],
                         "raw_transcript": result.raw_transcript,
                     }
@@ -270,8 +305,6 @@ async def run_subscription_pipeline(
                             raw_transcript=result.raw_transcript or "",
                             speakers=[s.model_dump() for s in result.speakers],
                             topics=[t.model_dump() for t in result.topics],
-                            facts=[f.model_dump() for f in result.facts],
-                            quotes=[q.model_dump() for q in result.quotes],
                             topic_transitions=[t.model_dump() for t in result.topic_transitions],
                         )
                     )
@@ -281,7 +314,21 @@ async def run_subscription_pipeline(
                     if chunk_count % digest_config.chunks_per_digest == 0:
                         window = list(digest_buffer)
                         digest_buffer.clear()
-                        previous = digest_history[-digest_config.previous_digests_count :]
+                        previous = digest_history[-digest_config.previous_digests_count:]
+
+                        from agents.stream_digest.agent import (
+                            _format_chunks,
+                            _format_previous_digests,
+                        )
+                        digest_input_text = (
+                            f"=== POPRZEDNIE DIGESRY ===\n\n{_format_previous_digests(previous)}\n\n"
+                            f"=== NOWE CHUNKI ===\n\n{_format_chunks(window)}"
+                        )
+
+                        print(f"\n{'='*60}")
+                        print(f"DIGEST #{digest_count + 1} — wejście do agenta:")
+                        print(digest_input_text[:2000])
+                        print("...")
 
                         digest = await run_stream_digest_agent(
                             window,
@@ -289,6 +336,14 @@ async def run_subscription_pipeline(
                             previous_digests=previous if previous else None,
                         )
                         digest_count += 1
+
+                        print(f"\nDIGEST #{digest_count} — wynik agenta:")
+                        for s in digest.stories:
+                            print(f"  [{s.start_seconds:.0f}s–{s.end_seconds:.0f}s] {s.title}")
+                            for sp in s.speakers:
+                                print(f"    Rozmówca: {sp.name_or_role}")
+                            print(f"    Streszczenie: {s.summary}")
+
                         logfire.info(
                             "stream.digest",
                             subscription_id=str(subscription_id),
@@ -298,19 +353,42 @@ async def run_subscription_pipeline(
 
                         digest_history.append(digest)
 
+                        # Accumulate digest log for report
+                        digest_log_entry = [
+                            f"### Digest #{digest_count} "
+                            f"({digest.window_start_seconds:.0f}s–{digest.window_end_seconds:.0f}s)",
+                            "",
+                            "**Wejście (chunki):**",
+                            "",
+                            "```",
+                            digest_input_text[:3000],
+                            "```" if len(digest_input_text) <= 3000 else f"... [skrócono z {len(digest_input_text)} znaków]\n```",
+                            "",
+                            "**Wyjście (tematy):**",
+                            "",
+                        ]
+                        for s in digest.stories:
+                            digest_log_entry.append(
+                                f"- **{s.title}** [{s.start_seconds:.0f}s–{s.end_seconds:.0f}s] — {s.summary}"
+                            )
+                        if not digest.stories:
+                            digest_log_entry.append("_(brak tematów — muzyka/reklamy)_")
+                        digest_log_entry.append("")
+                        digest_log.extend(digest_log_entry)
+
                         digest_id: UUID | None = None
                         if _db:
                             sm = get_session_maker()
                             async with sm() as session:  # type: ignore[union-attr]
                                 digest_id = await _save_digest(
-                                    session,
-                                    subscription_id,
-                                    digest,
-                                    len(window),
+                                    session, subscription_id, digest, len(window)
                                 )
 
-                        report_path = _write_report(subscription_id, digest, digest_count)
-                        _log.info("stream.report written to %s", report_path)
+                        report_path = _write_report(
+                            subscription_id, digest, digest_count,
+                            list(chunk_log), list(digest_log),
+                        )
+                        print(f"\n📄 Raport zapisany: {report_path}")
 
                         digest_event = {
                             "type": "digest",

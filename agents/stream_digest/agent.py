@@ -102,21 +102,31 @@ class ChunkSummary:
     chunk_end: float
     raw_transcript: str
     speakers: list[dict]
+    # topics now contain nested facts and quotes
     topics: list[dict]
-    facts: list[dict]
-    quotes: list[dict]
     topic_transitions: list[dict] = field(default_factory=list)
+
+
+def _format_topic(topic: dict, chunk_start: float) -> str:
+    abs_start = chunk_start + topic.get("start_offset_seconds", 0)
+    abs_end_raw = topic.get("end_offset_seconds")
+    abs_end = chunk_start + abs_end_raw if abs_end_raw is not None else None
+    time_range = f"{abs_start:.0f}s–{abs_end:.0f}s" if abs_end is not None else f"{abs_start:.0f}s–"
+    lines = [f"  Temat: {topic['title']} [{time_range}]"]
+    for f in topic.get("facts", []):
+        who = f" [{f['speaker_label']}]" if f.get("speaker_label") else ""
+        ts = f" @{chunk_start + f.get('timestamp_offset_seconds', 0):.0f}s"
+        lines.append(f"    Fakt: {f['text']}{who}{ts}")
+    for q in topic.get("quotes", []):
+        who = f" [{q['speaker_label']}]" if q.get("speaker_label") else ""
+        lines.append(f'    Cytat: "{q["text"]}"{who}')
+    return "\n".join(lines)
 
 
 def _format_chunks(chunks: list[ChunkSummary]) -> str:
     parts: list[str] = []
     for c in chunks:
         speakers_txt = ", ".join(f"{s['label']}: {s['description']}" for s in c.speakers) or "brak"
-        facts_txt = "\n".join(f"  - {f['text']}" for f in c.facts) or "  brak"
-        quotes_txt = "\n".join(
-            f'  "{q["text"]}"' + (f" [{q['speaker_label']}]" if q.get("speaker_label") else "")
-            for q in c.quotes
-        ) or "  brak"
         transitions_txt = (
             "\n".join(
                 f"  [{c.chunk_start + t['timestamp_offset_seconds']:.0f}s] {t['description']}"
@@ -124,13 +134,13 @@ def _format_chunks(chunks: list[ChunkSummary]) -> str:
             )
             or "  brak"
         )
+        topics_txt = "\n".join(_format_topic(t, c.chunk_start) for t in c.topics) or "  (brak)"
         parts.append(
             f"--- Chunk {c.chunk_start:.0f}s–{c.chunk_end:.0f}s ---\n"
             f"Transkrypcja: {c.raw_transcript or '(brak)'}\n"
             f"Mówcy: {speakers_txt}\n"
             f"Zmiany tematu:\n{transitions_txt}\n"
-            f"Fakty:\n{facts_txt}\n"
-            f"Cytaty:\n{quotes_txt}"
+            f"Tematy (z faktami i cytatami):\n{topics_txt}"
         )
     return "\n\n".join(parts)
 

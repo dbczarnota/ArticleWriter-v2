@@ -28,9 +28,14 @@ def _make_chunk(start: float = 0.0, end: float = 120.0) -> ChunkSummary:
         chunk_end=end,
         raw_transcript="Presenter mówi o gospodarce.",
         speakers=[{"label": "A", "description": "prezenter"}],
-        topics=[{"title": "Gospodarka", "confidence": 0.9}],
-        facts=[{"text": "PKB wzrósł o 3%", "speaker_label": "A"}],
-        quotes=[{"text": "Wzrost jest imponujący.", "speaker_label": "A"}],
+        topics=[{
+            "title": "Gospodarka",
+            "confidence": 0.9,
+            "start_offset_seconds": 0.0,
+            "end_offset_seconds": None,
+            "facts": [{"text": "PKB wzrósł o 3%", "speaker_label": "A", "timestamp_offset_seconds": 10.0}],
+            "quotes": [{"text": "Wzrost jest imponujący.", "speaker_label": "A"}],
+        }],
     )
 
 
