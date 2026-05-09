@@ -351,7 +351,9 @@ async def extract_editor_facts_endpoint(
             detail="At least one of raw_facts_text, image, or video must be provided",
         )
     if text and len(text) > 10_000:
-        raise HTTPException(status_code=400, detail="raw_facts_text must be at most 10 000 characters")
+        raise HTTPException(
+            status_code=400, detail="raw_facts_text must be at most 10 000 characters"
+        )
     if image_bytes and len(image_bytes) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="image must be at most 10 MiB")
     # Videos can be large — 100 MiB cap.
@@ -384,7 +386,11 @@ async def extract_editor_facts_endpoint(
             image_idx = len(tasks)
             tasks.append(
                 extract_facts_from_media(
-                    image_bytes, image_media_type, topic, language, config,
+                    image_bytes,
+                    image_media_type,
+                    topic,
+                    language,
+                    config,
                     source_marker="editor-provided-photo",
                     image_instructions=image_instructions or None,
                 )
@@ -393,7 +399,11 @@ async def extract_editor_facts_endpoint(
             video_idx = len(tasks)
             tasks.append(
                 extract_facts_from_media(
-                    video_bytes, video_media_type, topic, language, config,
+                    video_bytes,
+                    video_media_type,
+                    topic,
+                    language,
+                    config,
                     source_marker="editor-provided-video",
                     image_instructions=image_instructions or None,
                 )
@@ -414,7 +424,10 @@ async def extract_editor_facts_endpoint(
         if result is None:
             continue
         facts.extend({"text": f.text, "context": f.context, "source": source} for f in result.facts)
-        quotes.extend({"text": q.text, "speaker": q.speaker, "context": q.context, "source": source} for q in result.quotes)
+        quotes.extend(
+            {"text": q.text, "speaker": q.speaker, "context": q.context, "source": source}
+            for q in result.quotes
+        )
         keywords.extend(result.keywords)
     keywords = list(dict.fromkeys(keywords))
 
@@ -447,7 +460,7 @@ async def fetch_instagram_facts_endpoint(
     import logfire
 
     from agents.pipeline._helpers import extract_facts_from_media, extract_facts_from_text
-    from toolsets.instagram.fetcher import (
+    from toolsets.apify.instagram.fetcher import (
         ApifyInstagramFetcher,
         HttpxInstagramFetcher,
         parse_shortcode,
@@ -459,7 +472,11 @@ async def fetch_instagram_facts_endpoint(
         raise HTTPException(status_code=422, detail=str(e)) from e
 
     secrets = get_secrets()
-    fetcher = ApifyInstagramFetcher(secrets.apify_api_token) if secrets.apify_api_token else HttpxInstagramFetcher()
+    fetcher = (
+        ApifyInstagramFetcher(secrets.apify_api_token)
+        if secrets.apify_api_token
+        else HttpxInstagramFetcher()
+    )
     try:
         post = await fetcher.fetch(shortcode)
     except RuntimeError as e:
@@ -480,7 +497,9 @@ async def fetch_instagram_facts_endpoint(
         parts.append("## Komentarze\n" + "\n".join(f"- {c}" for c in post.comments))
     text = "\n\n".join(parts)
 
-    with logfire.span("api.fetch_instagram_facts", topic=body.topic, has_media=bool(post.media_bytes)):
+    with logfire.span(
+        "api.fetch_instagram_facts", topic=body.topic, has_media=bool(post.media_bytes)
+    ):
         tasks = []
         text_idx: int | None = None
         media_idx: int | None = None
@@ -491,7 +510,11 @@ async def fetch_instagram_facts_endpoint(
             media_idx = len(tasks)
             tasks.append(
                 extract_facts_from_media(
-                    post.media_bytes, post.media_type, body.topic, language, config,
+                    post.media_bytes,
+                    post.media_type,
+                    body.topic,
+                    language,
+                    config,
                     source_marker=source,
                     image_instructions=body.image_instructions or None,
                 )
@@ -507,7 +530,10 @@ async def fetch_instagram_facts_endpoint(
         if result is None:
             continue
         facts.extend({"text": f.text, "context": f.context, "source": src} for f in result.facts)
-        quotes.extend({"text": q.text, "speaker": q.speaker, "context": q.context, "source": src} for q in result.quotes)
+        quotes.extend(
+            {"text": q.text, "speaker": q.speaker, "context": q.context, "source": src}
+            for q in result.quotes
+        )
         keywords.extend(result.keywords)
     keywords = list(dict.fromkeys(keywords))
     return {"facts": facts, "quotes": quotes, "keywords": keywords}
@@ -536,20 +562,15 @@ async def fetch_x_facts_endpoint(
     import logfire
 
     from agents.pipeline._helpers import extract_facts_from_text
-    from toolsets.x.fetcher import ApifyXFetcher, parse_tweet_url
+    from toolsets.apify.x.fetcher import ApifyXFetcher
 
     secrets = get_secrets()
     if not secrets.apify_api_token:
         raise HTTPException(status_code=422, detail="APIFY_API_TOKEN not configured")
 
     try:
-        tweet_url = parse_tweet_url(body.url)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e)) from e
-
-    try:
-        post = await ApifyXFetcher(secrets.apify_api_token).fetch(tweet_url)
-    except RuntimeError as e:
+        post = await ApifyXFetcher(secrets.apify_api_token).fetch(body.url)
+    except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
     domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
@@ -574,7 +595,10 @@ async def fetch_x_facts_endpoint(
         result = await extract_facts_from_text(text, body.topic, language, config)
 
     facts = [{"text": f.text, "context": f.context, "source": source} for f in result.facts]
-    quotes = [{"text": q.text, "speaker": q.speaker, "context": q.context, "source": source} for q in result.quotes]
+    quotes = [
+        {"text": q.text, "speaker": q.speaker, "context": q.context, "source": source}
+        for q in result.quotes
+    ]
     keywords = list(dict.fromkeys(result.keywords))
     return {"facts": facts, "quotes": quotes, "keywords": keywords}
 
@@ -1279,9 +1303,7 @@ async def list_discovery_feeds(
     since = datetime.now(UTC) - timedelta(hours=24)
     out: list[dict] = []
     for f in feeds:
-        items_24h = await discovery_repo.count_items_for_feed_since(
-            feed_id=f.id, since=since
-        )
+        items_24h = await discovery_repo.count_items_for_feed_since(feed_id=f.id, since=since)
         out.append(
             {
                 "id": str(f.id),
