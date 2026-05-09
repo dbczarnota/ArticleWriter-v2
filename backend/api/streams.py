@@ -143,12 +143,18 @@ async def get_results(
         if sub is None or sub.org_code != org.code:
             raise HTTPException(status_code=404, detail="Subscription not found")
 
-        stmt = (
-            select(StreamChunk)
-            .where(StreamChunk.subscription_id == subscription_id)  # type: ignore[arg-type]
-            .order_by(StreamChunk.chunk_start_seconds)
-            .limit(limit)
+        since_start: float | None = None
+        if since_chunk_id is not None:
+            anchor = await session.get(StreamChunk, since_chunk_id)
+            if anchor is not None:
+                since_start = anchor.chunk_start_seconds
+
+        stmt = select(StreamChunk).where(
+            StreamChunk.subscription_id == subscription_id  # type: ignore[arg-type]
         )
+        if since_start is not None:
+            stmt = stmt.where(StreamChunk.chunk_start_seconds > since_start)  # type: ignore[arg-type]
+        stmt = stmt.order_by(StreamChunk.chunk_start_seconds).limit(limit)
         result = await session.execute(stmt)
         chunks = result.scalars().all()
         return [
