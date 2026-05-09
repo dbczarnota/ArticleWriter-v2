@@ -605,7 +605,13 @@ async def fetch_x_facts_endpoint(
     text = "\n\n".join(parts)
 
     if not text:
-        return {"facts": [], "quotes": [], "keywords": [], "media_url": post.media_url, "media_type": post.media_type}  # noqa: E501
+        return {
+            "facts": [],
+            "quotes": [],
+            "keywords": [],
+            "media_url": post.media_url,
+            "media_type": post.media_type,
+        }
 
     logfire.info(
         "api.fetch_x_facts extraction_input",
@@ -668,7 +674,9 @@ async def download_media(
             detail=f"URL host {host!r} is not an allowed CDN domain",
         )
 
-    referer = "https://www.instagram.com/" if "instagram" in host or "fbcdn" in host else "https://x.com/"
+    referer = (
+        "https://www.instagram.com/" if "instagram" in host or "fbcdn" in host else "https://x.com/"
+    )
     cdn_headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -705,6 +713,95 @@ async def download_media(
         media_type=content_type,
         headers={"Content-Disposition": f'attachment; filename="{path_part}"'},
     )
+
+
+@router.get(
+    "/download_social_post",
+    summary="Download media from an Instagram or X.com post via Apify",
+    tags=["articles"],
+)
+async def download_social_post(
+    url: str = Query(..., description="Instagram or X.com post URL"),
+    org: Org = Depends(get_current_org),
+) -> None:
+    """Fetches media from a social post through Apify and returns it as a browser download."""
+    from urllib.parse import urlparse
+
+    import httpx
+    from fastapi.responses import Response as FastAPIResponse
+
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    secrets = get_secrets()
+
+    if "instagram.com" in host:
+        from toolsets.apify.instagram.fetcher import (
+            ApifyInstagramFetcher,
+            HttpxInstagramFetcher,
+            parse_shortcode,
+        )
+
+        try:
+            shortcode = parse_shortcode(url)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
+
+        fetcher = (
+            ApifyInstagramFetcher(secrets.apify_api_token)
+            if secrets.apify_api_token
+            else HttpxInstagramFetcher()
+        )
+        try:
+            post = await fetcher.fetch(shortcode)
+        except RuntimeError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
+
+        ext = "mp4" if post.media_type == "video/mp4" else "jpg"
+        return FastAPIResponse(
+            content=post.media_bytes,
+            media_type=post.media_type,
+            headers={"Content-Disposition": f'attachment; filename="instagram_media.{ext}"'},
+        )
+
+    elif "twitter.com" in host or "x.com" in host:
+        from toolsets.apify.x.fetcher import ApifyXFetcher
+
+        if not secrets.apify_api_token:
+            raise HTTPException(status_code=422, detail="APIFY_API_TOKEN not configured")
+
+        try:
+            post = await ApifyXFetcher(secrets.apify_api_token).fetch(url)
+        except (ValueError, RuntimeError) as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
+
+        if not post.media_url:
+            raise HTTPException(status_code=404, detail="No media found in this post")
+
+        cdn_headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            "Referer": "https://x.com/",
+            "Accept": "*/*",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+                r = await client.get(post.media_url, headers=cdn_headers)
+                r.raise_for_status()
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+        ext = "mp4" if post.media_type == "video/mp4" else "jpg"
+        return FastAPIResponse(
+            content=r.content,
+            media_type=post.media_type or r.headers.get("content-type", "application/octet-stream"),
+            headers={"Content-Disposition": f'attachment; filename="x_media.{ext}"'},
+        )
+
+    else:
+        raise HTTPException(status_code=422, detail=f"Unsupported platform: {host!r}")
 
 
 @router.get(

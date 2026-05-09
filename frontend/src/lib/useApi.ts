@@ -56,12 +56,18 @@ export function useApi() {
     return res.json() as Promise<T>;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const downloadFile = useCallback(async function (path: string, filename: string): Promise<void> {
+  const downloadFile = useCallback(async function (path: string, fallbackFilename: string): Promise<void> {
     const headers = await buildAuthHeaders();
     const res = await fetch(path, { headers });
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`${res.status}: ${text}`);
+    }
+    let filename = fallbackFilename;
+    const cd = res.headers.get("content-disposition");
+    if (cd) {
+      const match = cd.match(/filename="?([^";]+)"?/);
+      if (match) filename = match[1];
     }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);

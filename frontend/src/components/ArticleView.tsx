@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import DOMPurify from "dompurify";
-import type { Article, Fact, Quote, SocialMediaAttachment } from "../types";
+import type { Article, EmbedCandidate, Fact, Quote, SocialMediaAttachment } from "../types";
 import { useArticles } from "../lib/useArticles";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { Button } from "./ui/Button";
-import { CopyIcon } from "./ui/icons";
+import { CopyIcon, DownloadIcon } from "./ui/icons";
 import { safeHref } from "../lib/safeHref";
 import { useApi } from "../lib/useApi";
 
@@ -319,8 +319,9 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         <CollapsibleSection prominent title={av.altTitles} count={article.alternative_titles.length} defaultOpen>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {article.alternative_titles.map((title, i) => (
-              <div key={i} style={{ padding: "8px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13 }}>
-                {title}
+              <div key={i} style={{ padding: "8px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span>{title}</span>
+                <CopyButton text={title} />
               </div>
             ))}
           </div>
@@ -359,29 +360,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
               <SocialMediaAttachmentCard key={i} attachment={att} t={av} />
             ))}
             {[...article.embed_candidates].sort((a, b) => (b.competitor_source_url ? 1 : 0) - (a.competitor_source_url ? 1 : 0)).map((e) => (
-              <div key={e.id} style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "#fffbeb" : "var(--white)", border: `1px solid ${e.competitor_source_url ? "var(--warning)" : "var(--border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
-                {e.thumbnail_url && <img src={e.thumbnail_url} alt="" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 4, flexShrink: 0 }} />}
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--muted)" }}>{e.source}</span>
-                    {e.channel && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {e.channel}</span>}
-                    {e.competitor_source_url && (
-                      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#b45309", background: "var(--warning-lt)", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.04em" }}>
-                        {av.competitorStar}
-                      </span>
-                    )}
-                  </div>
-                  <a href={safeHref(e.url)} target="_blank" rel="noreferrer" style={{ fontWeight: 500, color: "var(--accent)", wordBreak: "break-word" }}>
-                    {e.title ?? e.url}
-                  </a>
-                  {e.description && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.description}</p>}
-                  {e.competitor_source_url && (
-                    <p style={{ fontSize: 11, color: "var(--warning-fg)", marginTop: 4 }}>
-                      {av.sourceLabel} <a href={safeHref(e.competitor_source_url)} target="_blank" rel="noreferrer" style={{ color: "var(--warning-fg)", textDecoration: "underline", wordBreak: "break-all" }}>{e.competitor_source_url}</a>
-                    </p>
-                  )}
-                </div>
-              </div>
+              <EmbedCandidateRow key={e.id} e={e} t={av} />
             ))}
           </div>
         </CollapsibleSection>
@@ -564,23 +543,88 @@ function QuoteCard({ quote, muted }: { quote: Quote; muted?: boolean }) {
   );
 }
 
-function TeaserCard({ text }: { text: string }) {
+function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-  async function handleCopy() {
+  async function handleClick() {
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
   return (
+    <button
+      onClick={handleClick}
+      title="Kopiuj do schowka"
+      style={{ padding: "3px 4px", background: "transparent", color: copied ? "var(--success)" : "var(--muted)", border: "none", cursor: "pointer", lineHeight: 1, borderRadius: "var(--radius)", flexShrink: 0 }}
+    >
+      {copied ? (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ) : (
+        <CopyIcon />
+      )}
+    </button>
+  );
+}
+
+function TeaserCard({ text }: { text: string }) {
+  return (
     <div style={{ position: "relative", padding: "10px 44px 10px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13, minHeight: 48, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
       {text}
-      <button
-        onClick={handleCopy}
-        title="Kopiuj"
-        style={{ position: "absolute", top: 8, right: 8, padding: "3px 8px", fontSize: 11, background: copied ? "var(--success)" : "var(--accent-lt)", color: copied ? "var(--white)" : "var(--accent)", border: `1px solid ${copied ? "var(--success)" : "var(--accent)"}`, borderRadius: "var(--radius)", cursor: "pointer", fontWeight: 600 }}
-      >
-        {copied ? "✓" : <CopyIcon />}
-      </button>
+      <div style={{ position: "absolute", top: 6, right: 6 }}>
+        <CopyButton text={text} />
+      </div>
+    </div>
+  );
+}
+
+function EmbedCandidateRow({ e, t }: { e: EmbedCandidate; t: ReturnType<typeof useT>["articleView"] }) {
+  const { downloadFile } = useApi();
+  const [downloading, setDownloading] = useState(false);
+  const isApify = e.source === "instagram" || e.source === "twitter";
+
+  const handleDownload = useCallback(async () => {
+    setDownloading(true);
+    try {
+      await downloadFile(`/v2/download_social_post?url=${encodeURIComponent(e.url)}`, `${e.source}_media`);
+    } finally {
+      setDownloading(false);
+    }
+  }, [e.url, e.source, downloadFile]);
+
+  return (
+    <div style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "#fffbeb" : "var(--white)", border: `1px solid ${e.competitor_source_url ? "var(--warning)" : "var(--border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
+      {e.thumbnail_url && <img src={e.thumbnail_url} alt="" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 4, flexShrink: 0 }} />}
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--muted)" }}>{e.source}</span>
+          {e.channel && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {e.channel}</span>}
+          {e.competitor_source_url && (
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#b45309", background: "var(--warning-lt)", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.04em" }}>
+              {t.competitorStar}
+            </span>
+          )}
+        </div>
+        <a href={safeHref(e.url)} target="_blank" rel="noreferrer" style={{ fontWeight: 500, color: "var(--accent)", wordBreak: "break-word" }}>
+          {e.title ?? e.url}
+        </a>
+        {e.description && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.description}</p>}
+        {e.competitor_source_url && (
+          <p style={{ fontSize: 11, color: "var(--warning-fg)", marginTop: 4 }}>
+            {t.sourceLabel} <a href={safeHref(e.competitor_source_url)} target="_blank" rel="noreferrer" style={{ color: "var(--warning-fg)", textDecoration: "underline", wordBreak: "break-all" }}>{e.competitor_source_url}</a>
+          </p>
+        )}
+      </div>
+      {isApify && (
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          title="Pobierz media z posta"
+          style={{ padding: "3px 4px", background: "transparent", color: downloading ? "var(--border)" : "var(--muted)", border: "none", cursor: downloading ? "default" : "pointer", lineHeight: 1, borderRadius: "var(--radius)", flexShrink: 0 }}
+        >
+          <DownloadIcon />
+        </button>
+      )}
     </div>
   );
 }
