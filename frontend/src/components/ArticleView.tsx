@@ -620,9 +620,13 @@ function EmbedCandidateRow({ e, t }: { e: EmbedCandidate; t: ReturnType<typeof u
           onClick={handleDownload}
           disabled={downloading}
           title="Pobierz media z posta"
-          style={{ padding: "3px 4px", background: "transparent", color: downloading ? "var(--border)" : "var(--muted)", border: "none", cursor: downloading ? "default" : "pointer", lineHeight: 1, borderRadius: "var(--radius)", flexShrink: 0 }}
+          style={{ padding: "3px 4px", background: "transparent", color: "var(--muted)", border: "none", cursor: downloading ? "default" : "pointer", lineHeight: 1, borderRadius: "var(--radius)", flexShrink: 0, opacity: downloading ? 1 : 0.55 }}
         >
-          <DownloadIcon />
+          {downloading ? (
+            <span style={{ display: "inline-block", width: 13, height: 13, border: "2px solid var(--muted)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+          ) : (
+            <DownloadIcon />
+          )}
         </button>
       )}
     </div>
