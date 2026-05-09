@@ -737,6 +737,7 @@ async def get_article(
         "html": article.html,
         "alternative_titles": article.alternative_titles,
         "followup_topics": article.followup_topics,
+        "facebook_teasers": article.facebook_teasers,
         "sources": article.sources,
         "pipeline_timing": article.pipeline_timing,
         "errors": article.errors,
