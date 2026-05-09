@@ -668,9 +668,21 @@ async def download_media(
             detail=f"URL host {host!r} is not an allowed CDN domain",
         )
 
+    referer = "https://www.instagram.com/" if "instagram" in host or "fbcdn" in host else "https://x.com/"
+    cdn_headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Referer": referer,
+        "Accept": "*/*",
+        "Accept-Language": "pl,en;q=0.9",
+    }
+
     try:
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-            r = await client.get(url)
+            r = await client.get(url, headers=cdn_headers)
             r.raise_for_status()
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
@@ -679,9 +691,15 @@ async def download_media(
     except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    # Derive a sensible filename from the URL path
-    path_part = (parsed.path or "").split("/")[-1].split("?")[0] or "media"
     content_type = r.headers.get("content-type", "application/octet-stream")
+    # Reject if CDN returned JSON/HTML instead of media — URL likely expired
+    if content_type.startswith(("application/json", "text/html", "text/plain")):
+        raise HTTPException(
+            status_code=502,
+            detail=f"CDN returned {content_type!r} — link may have expired",
+        )
+
+    path_part = (parsed.path or "").split("/")[-1].split("?")[0] or "media"
     return FastAPIResponse(
         content=r.content,
         media_type=content_type,
