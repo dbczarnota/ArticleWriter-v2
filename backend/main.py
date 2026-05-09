@@ -21,6 +21,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import update
 
+from backend.api.streams import router as streams_router
 from backend.api.v2 import router as v2_router
 from backend.database import close_db, get_db_backend, get_session_maker, init_db
 from backend.db.models import Article
@@ -108,13 +109,21 @@ async def _fail_running_articles_on_shutdown() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     from backend.services.discovery.scheduler import start_scheduler, stop_scheduler
+    from backend.services.stream_manager import init_stream_manager
 
     # Verify DB connectivity at startup when DB_BACKEND=postgres; no-op otherwise.
     await init_db()
     await start_scheduler()
+    stream_manager = init_stream_manager()
+    if get_db_backend() == "postgres":
+        sm = get_session_maker()
+        if sm is not None:
+            async with sm() as session:
+                await stream_manager.resume_active(session)
     try:
         yield
     finally:
+        await stream_manager.stop_all()
         await stop_scheduler()
         await _fail_running_articles_on_shutdown()
         await close_db()
@@ -174,6 +183,7 @@ app.add_middleware(
 )
 
 app.include_router(v2_router)
+app.include_router(streams_router)
 
 
 @app.get("/health")
