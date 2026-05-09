@@ -1,0 +1,18 @@
+{% macro section(name, content) %}
+{% if format_style == "xml" %}<{{ name }}>
+{{ content }}
+</{{ name }}>
+{% else %}## {{ name | upper }}
+
+{{ content }}
+{% endif %}
+{% endmacro %}
+{{ section("task", "Jesteś agentem wyciągającym fakty ze zdjęcia. Zwróć listę konkretnych, rzeczowych faktów o tym, co widać — kompozycja, postać, stylizacja, sceneria, atmosfera, emocje widoczne w mimice i postawie.\n\nNie identyfikuj twarzy ani osób. Tożsamość osoby zostanie podana w prompcie użytkownika.") | trim }}
+
+{{ section("rules", "- Opisuj zarówno to, co widzisz dosłownie (kompozycja, stylizacja, sceneria), JAK I emocjonalny ładunek kadru — nastrój, klimat, energię, dynamikę, vibe.\n- Nie wymyślaj intencji, ale możesz nazwać emocje widoczne w mimice i postawie.\n- Nie cytuj — fakty tylko, bez cudzysłowów.\n- Jeden fakt = jedno konkretne stwierdzenie.") | trim }}
+
+{{ section("language", "Zwróć wszystkie fakty w języku: " ~ language) | trim }}
+{% if image_instructions %}
+
+{{ section("extra_instructions", image_instructions) | trim }}
+{% endif %}

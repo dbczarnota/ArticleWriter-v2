@@ -12,18 +12,36 @@ from agents._base.config import ExtractionAgentConfig
 from agents._base.prompt_renderer import model_format_style, render_prompt
 from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
-from agents.extraction.agent import ExtractionResult, Fact
+from agents._base.types import Fact, Quote
+from agents.extraction.agent import ExtractionResult
 
 _PROMPTS_DIR = pathlib.Path(__file__).parent / "prompts"
 
 
-class _MediaFactData(BaseModel):
+class _ImageFactData(BaseModel):
     text: str
     context: str
 
 
-class _MediaExtractionOutput(BaseModel):
-    facts: list[_MediaFactData]
+class _ImageExtractionOutput(BaseModel):
+    facts: list[_ImageFactData]
+    keywords: list[str]
+
+
+class _VideoFactData(BaseModel):
+    text: str
+    context: str
+
+
+class _VideoQuoteData(BaseModel):
+    text: str
+    speaker: str
+    context: str
+
+
+class _VideoExtractionOutput(BaseModel):
+    facts: list[_VideoFactData]
+    quotes: list[_VideoQuoteData]
     keywords: list[str]
 
 
@@ -37,13 +55,16 @@ async def run_media_extraction_agent(
     source_marker: str = "editor-provided-photo",
     image_instructions: str | None = None,
 ) -> ExtractionResult:
-    """Extract facts from an image or video using a single vision LLM call.
+    """Extract facts (and quotes for video) from an image or video.
 
-    No quotes — media files have no quotable text. All returned facts carry
-    source_urls=[source_marker] so downstream agents and the modal step-2 UI
-    can distinguish media-derived facts from text-derived ones.
-    Soft-fails to an empty result on LLM error.
+    Selects image_extraction.j2 or video_extraction.j2 based on media_type.
+    Video extraction additionally returns quotes (spoken words, sung lyrics).
+    All items carry source_urls=[source_marker].
+    Soft-fails to empty ExtractionResult on LLM error.
     """
+    is_video = media_type.startswith("video/")
+    template = "video_extraction.j2" if is_video else "image_extraction.j2"
+
     user_prompt_parts: list[Any] = [
         f"Osoba/temat materiału: {topic}.",
         BinaryContent(data=media_bytes, media_type=media_type),
@@ -51,13 +72,14 @@ async def run_media_extraction_agent(
 
     def _factory(m: str) -> tuple[Agent[Any, Any], str]:
         sys_prompt = render_prompt(
-            _PROMPTS_DIR / "media_extraction.j2",
+            _PROMPTS_DIR / template,
             topic=topic,
             language=language,
             format_style=model_format_style(m),
             image_instructions=image_instructions or "",
         )
-        return Agent(m, output_type=_MediaExtractionOutput), sys_prompt
+        output_type = _VideoExtractionOutput if is_video else _ImageExtractionOutput
+        return Agent(m, output_type=output_type), sys_prompt
 
     t0 = time.perf_counter()
     result, model_used = await run_with_fallback(
@@ -75,11 +97,14 @@ async def run_media_extraction_agent(
         (time.perf_counter() - t0) * 1000,
     )
     output = result.output
-    return ExtractionResult(
-        facts=[
-            Fact(text=f.text, context=f.context, source_urls=[source_marker])
-            for f in output.facts
-        ],
-        quotes=[],
-        keywords=output.keywords,
-    )
+    facts = [
+        Fact(text=f.text, context=f.context, source_urls=[source_marker])
+        for f in output.facts
+    ]
+    quotes: list[Quote] = []
+    if is_video and isinstance(output, _VideoExtractionOutput):
+        quotes = [
+            Quote(text=q.text, speaker=q.speaker, context=q.context, source_urls=[source_marker])
+            for q in output.quotes
+        ]
+    return ExtractionResult(facts=facts, quotes=quotes, keywords=output.keywords)
