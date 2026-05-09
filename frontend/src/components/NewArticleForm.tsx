@@ -155,7 +155,8 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
     setError(null);
     try {
       const selectedTemplate = orgTemplates.find((tmpl) => tmpl.id === selectedTemplateId);
-      const fetchTasks: Promise<EditorExtraction>[] = [];
+      type FetchResult = EditorExtraction & { media_url?: string; media_type?: string };
+      const fetchTasks: Promise<FetchResult>[] = [];
 
       if (rawFacts.trim() || imageFile || videoFile) {
         const fd = new FormData();
@@ -166,7 +167,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
         if ((imageFile || videoFile) && selectedTemplate?.image_instructions) {
           fd.append("image_instructions", selectedTemplate.image_instructions);
         }
-        fetchTasks.push(request<EditorExtraction>("/v2/extract_editor_facts", { method: "POST", body: fd }));
+        fetchTasks.push(request<FetchResult>("/v2/extract_editor_facts", { method: "POST", body: fd }));
       }
 
       // Track which task index corresponds to which social media source
