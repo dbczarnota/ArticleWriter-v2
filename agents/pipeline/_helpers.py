@@ -14,14 +14,14 @@ import time
 from typing import Any, Literal
 
 import logfire
-from pydantic import BaseModel
-from pydantic_ai import Agent, BinaryContent
+from pydantic_ai import Agent
 
 from agents._base.config import ExtractionAgentConfig
 from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
 from agents._base.types import EmbedCandidate, Fact, ParsedArticle, Quote
 from agents.extraction.agent import ExtractionOutput, ExtractionResult
+from agents.media_extraction.agent import run_media_extraction_agent
 
 
 def filter_by_date(
@@ -272,41 +272,6 @@ async def extract_facts_from_text(
         return ExtractionResult(facts=[], quotes=[], keywords=[])
 
 
-class _ImageFactData(BaseModel):
-    text: str
-    context: str
-
-
-class _ImageExtractionOutput(BaseModel):
-    facts: list[_ImageFactData]
-    keywords: list[str]
-
-
-_IMAGE_EXTRACTION_SYSTEM_BASE = (
-    "Jesteś agentem wyciągającym fakty ze zdjęcia dla redakcji serwisu lifestyle. "
-    "Na podstawie obrazu zwróć listę konkretnych, rzeczowych faktów — co widać, "
-    "jak wygląda, co ma na sobie, jaka atmosfera, oświetlenie, lokalizacja, nastrój. "
-    "\n\n"
-    "Nie identyfikuj twarzy ani osób. Tożsamość osoby zostanie podana w prompcie. "
-    "\n\n"
-    "Opisuj zarówno to, co widzisz dosłownie (kompozycja, postać, stylizacja, "
-    "sceneria), JAK I emocjonalny ładunek kadru — nastrój, klimat, energię, "
-    "wyraz mimiki, postawę, dynamikę, vibe. Czytelnicy artykułu mają poczuć, "
-    "co czuje osoba na zdjęciu i jaką temperaturę ma kadr. Nie wymyślaj "
-    "intencji ('chciała pokazać'), ale możesz nazwać emocje widoczne w mimice "
-    "i postawie ('uśmiecha się szeroko, swobodnie', 'wpatruje się prowokująco "
-    "w obiektyw', 'pewna siebie poza')."
-)
-
-_IMAGE_EXTRACTION_USER = (
-    "Osoba/temat materiału: {topic}.\n\n"
-    "Wyciągnij fakty ze zdjęcia. Każdy fakt to jedno konkretne, rzeczowe "
-    "stwierdzenie o tym, co widać: kompozycja, oświetlenie, strój, stylizacja, "
-    "kolory, emocje widoczne w mimice i postawie, sceneria, atmosfera kadru. "
-    "Nie cytuj — fakty tylko, bez cudzysłowów. Język: {language}."
-)
-
-
 async def extract_facts_from_media(
     media_bytes: bytes,
     media_type: str,
@@ -317,23 +282,6 @@ async def extract_facts_from_media(
     source_marker: str = "editor-provided-photo",
     image_instructions: str | None = None,
 ) -> ExtractionResult:
-    """Single-step image/video → facts pipeline using the standard agent pattern.
-
-    Uses ExtractionAgentConfig (model + fallback_models) and run_with_fallback
-    exactly like other pipeline agents. No quotes — media files have no quotable text.
-    All returned facts carry source_urls=[source_marker].
-    Soft-fails to an empty result on LLM error.
-    """
-    sys_prompt = _IMAGE_EXTRACTION_SYSTEM_BASE
-    if image_instructions:
-        sys_prompt += f"\n\n## Dodatkowe instrukcje redakcji\n{image_instructions}"
-
-    user_msg = _IMAGE_EXTRACTION_USER.format(topic=topic, language=language)
-    user_prompt_parts: list[Any] = [user_msg, BinaryContent(data=media_bytes, media_type=media_type)]
-
-    def _factory(m: str) -> tuple[Agent[Any, Any], str]:
-        return Agent(m, output_type=_ImageExtractionOutput), sys_prompt
-
     with logfire.span(
         "pipeline.media_extraction",
         media_type=media_type,
@@ -342,34 +290,22 @@ async def extract_facts_from_media(
         topic=topic,
     ):
         try:
-            t0 = time.perf_counter()
-            result, model_used = await run_with_fallback(
-                (config.model, *config.fallback_models),
-                agent_factory=_factory,
-                user_prompt=user_prompt_parts,
-                agent_name="media_extraction",
+            result = await run_media_extraction_agent(
+                media_bytes,
+                media_type,
+                topic=topic,
+                language=language,
+                config=config,
+                source_marker=source_marker,
+                image_instructions=image_instructions,
             )
-            u = result.usage()
-            record_agent_call(
-                "media_extraction",
-                model_used,
-                u.input_tokens or 0,
-                u.output_tokens or 0,
-                (time.perf_counter() - t0) * 1000,
-            )
-            output = result.output
-            facts = [
-                Fact(text=f.text, context=f.context, source_urls=[source_marker])
-                for f in output.facts
-            ]
             logfire.info(
                 "pipeline.media_extraction.completed",
-                facts=len(facts),
-                keywords=len(output.keywords),
-                model=model_used,
+                facts=len(result.facts),
+                keywords=len(result.keywords),
                 source_marker=source_marker,
             )
-            return ExtractionResult(facts=facts, quotes=[], keywords=output.keywords)
+            return result
         except Exception as e:
             logfire.warn(
                 "pipeline.media_extraction.failed",
