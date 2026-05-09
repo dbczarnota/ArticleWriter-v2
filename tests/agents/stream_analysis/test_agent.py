@@ -16,7 +16,7 @@ def test_config_defaults():
 
 def test_config_is_frozen():
     cfg = StreamAnalysisAgentConfig()
-    with pytest.raises(Exception):  # FrozenInstanceError
+    with pytest.raises(AttributeError):  # dataclasses.FrozenInstanceError subclasses AttributeError
         cfg.model = "other"  # type: ignore[misc]
 
 
