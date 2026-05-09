@@ -328,6 +328,7 @@ export const pl: Translations = {
     otherEditor: "Inny redaktor",
     altTitles: "Alternatywne tytuły",
     followupTopics: "Tematy na follow-up",
+    facebookTeasers: "Zajawki Facebook",
     socialMedia: "Social media",
     competitorStar: "★ u konkurencji",
     sourceLabel: "źródło:",

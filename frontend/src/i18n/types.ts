@@ -365,6 +365,7 @@ export interface Translations {
     // sections
     altTitles: string;
     followupTopics: string;
+    facebookTeasers: string;
     socialMedia: string;
     competitorStar: string;
     sourceLabel: string;

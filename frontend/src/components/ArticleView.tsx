@@ -339,6 +339,17 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         </CollapsibleSection>
       )}
 
+      {/* Facebook teasers */}
+      {!isFailed && article.facebook_teasers.length > 0 && (
+        <CollapsibleSection prominent title={av.facebookTeasers} count={article.facebook_teasers.length} defaultOpen>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {article.facebook_teasers.map((teaser, i) => (
+              <TeaserCard key={i} text={teaser} />
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
+
       {/* Social media embeds */}
       {!isFailed && article.embed_candidates.length > 0 && (
         <CollapsibleSection prominent title={av.socialMedia} count={article.embed_candidates.length}>
@@ -545,6 +556,27 @@ function QuoteCard({ quote, muted }: { quote: Quote; muted?: boolean }) {
       {quote.speaker && <p style={{ fontSize: 12, fontWeight: 500, marginTop: 4 }}>— {quote.speaker}</p>}
       {quote.context && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{quote.context}</p>}
       <SourceList urls={quote.source_urls ?? []} />
+    </div>
+  );
+}
+
+function TeaserCard({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  async function handleCopy() {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+  return (
+    <div style={{ position: "relative", padding: "10px 44px 10px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13, minHeight: 48, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+      {text}
+      <button
+        onClick={handleCopy}
+        title="Kopiuj"
+        style={{ position: "absolute", top: 8, right: 8, padding: "3px 8px", fontSize: 11, background: copied ? "var(--success)" : "var(--accent-lt)", color: copied ? "var(--white)" : "var(--accent)", border: `1px solid ${copied ? "var(--success)" : "var(--accent)"}`, borderRadius: "var(--radius)", cursor: "pointer", fontWeight: 600 }}
+      >
+        {copied ? "✓" : <CopyIcon />}
+      </button>
     </div>
   );
 }

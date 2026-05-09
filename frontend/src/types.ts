@@ -68,6 +68,7 @@ export interface Article extends ArticleListItem {
   html: string | null;
   alternative_titles: string[];
   followup_topics: string[];
+  facebook_teasers: string[];
   sources: string[];
   pipeline_timing: Record<string, number>;
   errors: Array<Record<string, string>>;
