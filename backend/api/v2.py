@@ -631,6 +631,64 @@ async def fetch_x_facts_endpoint(
     }
 
 
+_ALLOWED_CDN_HOSTS = {
+    # Instagram / Facebook CDN
+    "cdninstagram.com",
+    "fbcdn.net",
+    "instagram.com",
+    # Twitter / X CDN
+    "twimg.com",
+}
+
+
+@router.get(
+    "/download_media",
+    summary="Proxy-download a social media CDN file (bypasses cross-origin restriction)",
+    tags=["articles"],
+)
+async def download_media(
+    url: str = Query(..., description="CDN URL to download"),
+    org: Org = Depends(get_current_org),
+) -> None:
+    """Fetches a CDN media URL server-side and returns it as a browser download.
+
+    Only CDN hostnames from known Instagram/Twitter domains are allowed to prevent
+    this endpoint from being used as an open proxy.
+    """
+    from urllib.parse import urlparse
+
+    import httpx
+    from fastapi.responses import Response as FastAPIResponse
+
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if not any(host == h or host.endswith(f".{h}") for h in _ALLOWED_CDN_HOSTS):
+        raise HTTPException(
+            status_code=422,
+            detail=f"URL host {host!r} is not an allowed CDN domain",
+        )
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=502, detail=f"CDN returned {exc.response.status_code}"
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    # Derive a sensible filename from the URL path
+    path_part = (parsed.path or "").split("/")[-1].split("?")[0] or "media"
+    content_type = r.headers.get("content-type", "application/octet-stream")
+    return FastAPIResponse(
+        content=r.content,
+        media_type=content_type,
+        headers={"Content-Disposition": f'attachment; filename="{path_part}"'},
+    )
+
+
 @router.get(
     "/me",
     summary="Return the calling user's identity",

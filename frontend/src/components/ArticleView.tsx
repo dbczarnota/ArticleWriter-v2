@@ -617,9 +617,7 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
         {attachment.media_url && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
             <a
-              href={safeHref(attachment.media_url)}
-              target="_blank"
-              rel="noreferrer"
+              href={`/v2/download_media?url=${encodeURIComponent(attachment.media_url)}`}
               download
               style={{
                 fontSize: 12,
