@@ -31,51 +31,59 @@ def parse_tweet_url(url: str) -> str:
 
 
 class ApifyXFetcher:
-    """Fetches X.com posts + replies via Apify's twitter-reply-scraper actor.
+    """Fetches X.com posts + replies via apidojo/twitter-scraper-lite.
 
-    Actor: louisdeconinck/twitter-reply-scraper
-    Returns tweet text, author handle, and up to 20 replies with usernames.
+    Two-step approach (single actor, two runs):
+    1. Fetch tweet by URL → extract tweet text, author, and numeric id
+    2. Search conversation_id:{id} → fetch up to 20 replies
+
+    Cost: ~$0.07 per tweet+replies pair.
     Requires an Apify API token.
     """
 
-    _ACTOR = "louisdeconinck~twitter-reply-scraper"
+    _ACTOR = "apidojo~twitter-scraper-lite"
     _RUN_URL = f"https://api.apify.com/v2/acts/{_ACTOR}/run-sync-get-dataset-items"
 
     def __init__(self, api_token: str) -> None:
         self._token = api_token
 
     async def fetch(self, tweet_url: str) -> XPost:
+        # Step 1: fetch the tweet itself
+        tweet_items = await self._run({"startUrls": [tweet_url], "maxItems": 1})
+        if not tweet_items:
+            raise RuntimeError(f"Apify returned no tweet for {tweet_url!r}")
+
+        tweet = tweet_items[0]
+        text = tweet.get("text") or tweet.get("full_text") or ""
+        author_obj = tweet.get("author") or {}
+        author = author_obj.get("userName") or author_obj.get("screen_name") or "unknown"
+        tweet_id = tweet.get("id") or tweet.get("id_str") or ""
+
+        # Step 2: fetch replies via conversation_id search
+        comments: list[str] = []
+        if tweet_id:
+            reply_items = await self._run(
+                {"searchTerms": [f"conversation_id:{tweet_id}"], "sort": "Latest", "maxItems": _MAX_REPLIES},
+            )
+            for item in reply_items:
+                reply_text = item.get("text") or item.get("full_text") or ""
+                if not reply_text or item.get("id") == tweet_id:
+                    continue
+                reply_author_obj = item.get("author") or {}
+                reply_author = reply_author_obj.get("userName") or reply_author_obj.get("screen_name") or ""
+                if reply_author:
+                    comments.append(f"@{reply_author}: {reply_text}")
+                else:
+                    comments.append(reply_text)
+
+        return XPost(text=text, author=author, comments=comments)
+
+    async def _run(self, input_data: dict) -> list[dict]:
         async with httpx.AsyncClient(timeout=180.0) as client:
             r = await client.post(
                 self._RUN_URL,
                 params={"token": self._token},
-                json={
-                    "startUrls": [{"url": tweet_url}],
-                    "maxReplies": _MAX_REPLIES,
-                },
+                json=input_data,
             )
             r.raise_for_status()
-            items: list[dict] = r.json()
-
-        if not items:
-            raise RuntimeError(f"Apify returned no items for {tweet_url!r}")
-        return self._parse_item(items[0])
-
-    def _parse_item(self, item: dict) -> XPost:
-        # louisdeconinck/twitter-reply-scraper output fields
-        text = item.get("tweetContent") or item.get("text") or item.get("full_text") or ""
-        author = item.get("handle") or item.get("authorUsername") or "unknown"
-
-        raw_replies: list[dict] = item.get("repliesData") or item.get("replies") or []
-        comments: list[str] = []
-        for reply in raw_replies[:_MAX_REPLIES]:
-            reply_text = reply.get("tweetContent") or reply.get("text") or ""
-            if not reply_text:
-                continue
-            reply_author = reply.get("handle") or reply.get("authorUsername") or ""
-            if reply_author:
-                comments.append(f"@{reply_author}: {reply_text}")
-            else:
-                comments.append(reply_text)
-
-        return XPost(text=text, author=author, comments=comments)
+            return r.json()
