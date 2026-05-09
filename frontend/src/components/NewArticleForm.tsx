@@ -63,6 +63,8 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [instagramUrl, setInstagramUrl] = useState("");
   const [showInstagramInput, setShowInstagramInput] = useState(false);
+  const [xUrl, setXUrl] = useState("");
+  const [showXInput, setShowXInput] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -145,7 +147,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
   // the editable list. Skipped when raw facts are empty (pipeline submit goes
   // straight from step 1).
   async function goToStep2() {
-    if (!rawFacts.trim() && !imageFile && !videoFile && !instagramUrl.trim()) return;
+    if (!rawFacts.trim() && !imageFile && !videoFile && !instagramUrl.trim() && !xUrl.trim()) return;
     setExtracting(true);
     setError(null);
     try {
@@ -175,24 +177,33 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
         }));
       }
 
+      if (xUrl.trim()) {
+        fetchTasks.push(request<EditorExtraction>("/v2/fetch_x_facts", {
+          method: "POST",
+          body: JSON.stringify({ url: xUrl.trim(), topic: topic.trim() }),
+        }));
+      }
+
       const settled = await Promise.allSettled(fetchTasks);
       const allFacts: EditorExtraction["facts"] = [];
       const allQuotes: EditorExtraction["quotes"] = [];
       const allKeywordsRaw: string[] = [];
-      let instagramFailed = false;
-      for (const result of settled) {
+      const failedSources: string[] = [];
+      for (let i = 0; i < settled.length; i++) {
+        const result = settled[i];
         if (result.status === "fulfilled") {
           allFacts.push(...result.value.facts.map((f) => ({ text: f.text, context: f.context, source: f.source || "editor-provided" })));
           allQuotes.push(...result.value.quotes.map((q) => ({ text: q.text, speaker: q.speaker, context: q.context, source: q.source || "editor-provided" })));
           allKeywordsRaw.push(...(result.value.keywords ?? []));
-        } else if (instagramUrl.trim()) {
-          instagramFailed = true;
+        } else {
+          if (instagramUrl.trim() && fetchTasks.length > i) failedSources.push("Instagram");
+          if (xUrl.trim() && fetchTasks.length > i) failedSources.push("X.com");
         }
       }
       const allKeywords = [...new Set(allKeywordsRaw)];
 
       setExtraction({ facts: allFacts, quotes: allQuotes, keywords: allKeywords });
-      if (instagramFailed) setError("Instagram: nie udało się pobrać posta (Instagram blokuje serwery). Wyciągnięto fakty z pozostałych źródeł.");
+      if (failedSources.length > 0) setError(`${failedSources.join(", ")}: nie udało się pobrać posta. Wyciągnięto fakty z pozostałych źródeł.`);
       setStep("step2");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -277,7 +288,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
     // Step 1 → Step 2 transition fires when ANY editor input is present:
     // raw facts text, an uploaded image, or both. Step 2 always submits to
     // the pipeline.
-    if (step === "step1" && (rawFacts.trim() || imageFile || videoFile || instagramUrl.trim())) {
+    if (step === "step1" && (rawFacts.trim() || imageFile || videoFile || instagramUrl.trim() || xUrl.trim())) {
       await goToStep2();
     } else {
       await submitToPipeline();
@@ -425,6 +436,24 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
             </div>
           </div>
         )}
+        {/* X.com URL input */}
+        {showXInput && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "6px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+            <span style={{ fontSize: 14, flexShrink: 0, fontWeight: 700 }}>𝕏</span>
+            <input
+              autoFocus
+              value={xUrl}
+              onChange={(e) => setXUrl(e.target.value)}
+              placeholder={na.xUrlPlaceholder}
+              disabled={loading || extracting}
+              style={{ ...inputStyle, flex: 1, fontSize: 12, fontFamily: "monospace" }}
+            />
+            <button type="button" onClick={() => { setXUrl(""); setShowXInput(false); }} disabled={loading || extracting}
+              style={{ background: "none", border: "none", fontSize: 12, color: "var(--error)", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+              {na.removeX}
+            </button>
+          </div>
+        )}
         {/* Instagram URL input */}
         {showInstagramInput && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "6px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
@@ -461,6 +490,12 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
             <button type="button" onClick={() => setShowInstagramInput(true)} disabled={loading || extracting}
               style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
               {na.addInstagram}
+            </button>
+          )}
+          {!showXInput && (
+            <button type="button" onClick={() => setShowXInput(true)} disabled={loading || extracting}
+              style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
+              {na.addX}
             </button>
           )}
         </div>
@@ -728,13 +763,15 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
                 const fromPhoto = f.source === "editor-provided-photo";
                 const fromVideo = f.source === "editor-provided-video";
                 const fromInstagram = f.source === "editor-provided-instagram";
+                const fromX = f.source === "editor-provided-x";
                 return (
-                <div key={`f-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo || fromInstagram) ? "var(--accent-lt)" : undefined }}>
+                <div key={`f-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo || fromInstagram || fromX) ? "var(--accent-lt)" : undefined }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontSize: 11, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
                       {fromPhoto && <span title="ze zdjęcia">📷</span>}
                       {fromVideo && <span title="z wideo">🎬</span>}
                       {fromInstagram && <span title="z Instagrama">📸</span>}
+                      {fromX && <span title="z X.com">𝕏</span>}
                       {na.step2FactText} {i + 1}
                     </span>
                     <button
@@ -789,13 +826,15 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
                 const fromPhoto = q.source === "editor-provided-photo";
                 const fromVideo = q.source === "editor-provided-video";
                 const fromInstagram = q.source === "editor-provided-instagram";
+                const fromX = q.source === "editor-provided-x";
                 return (
-                <div key={`q-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo || fromInstagram) ? "var(--accent-lt)" : undefined }}>
+                <div key={`q-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo || fromInstagram || fromX) ? "var(--accent-lt)" : undefined }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontSize: 11, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
                       {fromPhoto && <span title="ze zdjęcia">📷</span>}
                       {fromVideo && <span title="z wideo">🎬</span>}
                       {fromInstagram && <span title="z Instagrama">📸</span>}
+                      {fromX && <span title="z X.com">𝕏</span>}
                       {na.step2QuoteText} {i + 1}
                     </span>
                     <button
@@ -1020,7 +1059,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
                 >
                   {loading ? na.generating : na.generateArticle}
                 </Button>
-              ) : (rawFacts.trim() || imageFile || videoFile || instagramUrl.trim()) ? (
+              ) : (rawFacts.trim() || imageFile || videoFile || instagramUrl.trim() || xUrl.trim()) ? (
                 <Button
                   type="submit"
                   variant="primary"

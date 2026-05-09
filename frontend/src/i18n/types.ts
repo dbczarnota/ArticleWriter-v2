@@ -235,6 +235,9 @@ export interface Translations {
     addInstagram: string;
     removeInstagram: string;
     instagramUrlPlaceholder: string;
+    addX: string;
+    removeX: string;
+    xUrlPlaceholder: string;
     mediaHint: string;
     advancedToggleShow: string;
     advancedToggleHide: string;

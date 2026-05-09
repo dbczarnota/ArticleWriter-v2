@@ -513,6 +513,72 @@ async def fetch_instagram_facts_endpoint(
     return {"facts": facts, "quotes": quotes, "keywords": keywords}
 
 
+class XFetchRequest(BaseModel):
+    url: str
+    topic: str
+    language: str | None = None
+
+
+@router.post(
+    "/fetch_x_facts",
+    summary="Fetch an X.com post and extract facts and quotes",
+    tags=["articles"],
+)
+async def fetch_x_facts_endpoint(
+    body: XFetchRequest,
+    org: Org = Depends(get_current_org),
+    org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
+) -> dict:
+    """Fetches an X.com (Twitter) post + replies via Apify, then runs text
+    extraction. All items are tagged 'editor-provided-x'.
+    Requires APIFY_API_TOKEN — returns 422 when token is missing.
+    """
+    import logfire
+
+    from agents.pipeline._helpers import extract_facts_from_text
+    from toolsets.x.fetcher import ApifyXFetcher, parse_tweet_url
+
+    secrets = get_secrets()
+    if not secrets.apify_api_token:
+        raise HTTPException(status_code=422, detail="APIFY_API_TOKEN not configured")
+
+    try:
+        tweet_url = parse_tweet_url(body.url)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    try:
+        post = await ApifyXFetcher(secrets.apify_api_token).fetch(tweet_url)
+    except RuntimeError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    domain = await get_domain_config(org.code, org.domain_name, org_config_repo)
+    language = body.language or (domain.language if domain else None) or "pl"
+    base_settings = AppSettings(domain=org.domain_name)
+    if domain:
+        base_settings = apply_org_models(base_settings, domain)
+    config = base_settings.extraction
+    source = "editor-provided-x"
+
+    parts: list[str] = []
+    if post.text:
+        parts.append(f"## Post na X.com (@{post.author})\n{post.text}")
+    if post.comments:
+        parts.append("## Odpowiedzi (X.com)\n" + "\n".join(f"- {c}" for c in post.comments))
+    text = "\n\n".join(parts)
+
+    if not text:
+        return {"facts": [], "quotes": [], "keywords": []}
+
+    with logfire.span("api.fetch_x_facts", topic=body.topic):
+        result = await extract_facts_from_text(text, body.topic, language, config)
+
+    facts = [{"text": f.text, "context": f.context, "source": source} for f in result.facts]
+    quotes = [{"text": q.text, "speaker": q.speaker, "context": q.context, "source": source} for q in result.quotes]
+    keywords = list(dict.fromkeys(result.keywords))
+    return {"facts": facts, "quotes": quotes, "keywords": keywords}
+
+
 @router.get(
     "/me",
     summary="Return the calling user's identity",
