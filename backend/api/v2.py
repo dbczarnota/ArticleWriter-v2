@@ -497,6 +497,15 @@ async def fetch_instagram_facts_endpoint(
         parts.append("## Komentarze\n" + "\n".join(f"- {c}" for c in post.comments))
     text = "\n\n".join(parts)
 
+    logfire.info(
+        "api.fetch_instagram_facts extraction_input",
+        shortcode=shortcode,
+        description_len=len(post.description),
+        comments_count=len(post.comments),
+        has_media=bool(post.media_bytes),
+        media_type=post.media_type if post.media_bytes else None,
+        text_preview=text[:500],
+    )
     with logfire.span(
         "api.fetch_instagram_facts", topic=body.topic, has_media=bool(post.media_bytes)
     ):
@@ -591,6 +600,12 @@ async def fetch_x_facts_endpoint(
     if not text:
         return {"facts": [], "quotes": [], "keywords": []}
 
+    logfire.info(
+        "api.fetch_x_facts extraction_input",
+        author=post.author,
+        text_preview=text[:500],
+        comments_count=len(post.comments),
+    )
     with logfire.span("api.fetch_x_facts", topic=body.topic):
         result = await extract_facts_from_text(text, body.topic, language, config)
 

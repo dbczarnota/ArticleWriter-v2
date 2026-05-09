@@ -91,9 +91,22 @@ class ApifyClient:
             price_per = _PRICE_PER_ITEM.get(actor, 0.0)
             estimated_cost = price_per * max(item_count, 1)
 
+            # Log first item's text fields so Logfire traces show what the actor returned.
+            first_text = ""
+            if items:
+                first = items[0]
+                first_text = (
+                    first.get("text")
+                    or first.get("full_text")
+                    or first.get("caption")
+                    or first.get("description")
+                    or ""
+                )
+
             span.set_attribute("item_count", item_count)
             span.set_attribute("estimated_cost_usd", round(estimated_cost, 6))
             span.set_attribute("latency_ms", round(latency_ms))
+            span.set_attribute("first_item_text_preview", first_text[:300])
 
             logfire.info(
                 "apify.run_actor ok",
@@ -102,6 +115,7 @@ class ApifyClient:
                 item_count=item_count,
                 estimated_cost_usd=round(estimated_cost, 6),
                 latency_ms=round(latency_ms),
+                first_item_text_preview=first_text[:300],
             )
 
             return ApifyResult(
