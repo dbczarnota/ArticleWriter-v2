@@ -309,7 +309,7 @@ class ApifyInstagramFetcher:
 
         description = item.get("caption") or ""
         comments = [
-            c["text"]
+            f"@{c['ownerUsername']}: {c['text']}" if c.get("ownerUsername") else c["text"]
             for c in (item.get("latestComments") or [])
             if c.get("text")
         ][:_MAX_COMMENTS]
