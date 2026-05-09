@@ -14,6 +14,7 @@ load_dotenv()
 class Secrets:
     serper_api_key: str
     jina_api_key: str | None = None
+    apify_api_token: str | None = None
 
 
 @lru_cache(maxsize=1)
@@ -24,4 +25,5 @@ def get_secrets() -> Secrets:
     return Secrets(
         serper_api_key=serper_key,
         jina_api_key=os.environ.get("JINA_API_KEY") or None,
+        apify_api_token=os.environ.get("APIFY_API_TOKEN") or None,
     )

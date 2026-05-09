@@ -259,3 +259,74 @@ class HttpxInstagramFetcher:
         except Exception:
             pass
         return None
+
+
+class ApifyInstagramFetcher:
+    """Reliable fetcher using Apify's instagram-scraper actor.
+
+    Uses Apify's residential proxies + managed sessions — gets past
+    Instagram's IP blocks and returns caption + up to 20 comments.
+    Requires an Apify API token (APIFY_API_TOKEN env var).
+    Runs synchronously server-side; typical latency 30–90 s.
+    """
+
+    _ACTOR = "apify~instagram-scraper"
+    _RUN_URL = f"https://api.apify.com/v2/acts/{_ACTOR}/run-sync-get-dataset-items"
+
+    def __init__(self, api_token: str) -> None:
+        self._token = api_token
+
+    async def fetch(self, shortcode: str) -> InstagramPost:
+        post_url = f"https://www.instagram.com/p/{shortcode}/"
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            r = await client.post(
+                self._RUN_URL,
+                params={"token": self._token},
+                json={
+                    "directUrls": [post_url],
+                    "resultsType": "posts",
+                    "resultsLimit": 1,
+                    "addParentData": False,
+                    "maxCommentsCount": _MAX_COMMENTS,
+                    "commentsMode": "RANKED_UNFILTERED",
+                },
+            )
+            r.raise_for_status()
+            items: list[dict] = r.json()
+        if not items:
+            raise RuntimeError(f"Apify returned no items for shortcode {shortcode!r}")
+        return await self._parse_item(items[0])
+
+    async def _parse_item(self, item: dict) -> InstagramPost:
+        video_url = item.get("videoUrl") or ""
+        if video_url:
+            media_url = video_url
+            media_type = "video/mp4"
+        else:
+            images: list[str] = item.get("images") or []
+            media_url = images[0] if images else (item.get("displayUrl") or "")
+            media_type = "image/jpeg"
+
+        description = item.get("caption") or ""
+        comments = [
+            c["text"]
+            for c in (item.get("latestComments") or [])
+            if c.get("text")
+        ][:_MAX_COMMENTS]
+
+        media_bytes = b""
+        if media_url:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                try:
+                    resp = await client.get(media_url)
+                    if resp.status_code == 200:
+                        media_bytes = resp.content
+                except Exception:
+                    pass
+
+        return InstagramPost(
+            media_bytes=media_bytes,
+            media_type=media_type,
+            description=description,
+            comments=comments,
+        )

@@ -446,15 +446,21 @@ async def fetch_instagram_facts_endpoint(
 
     from agents._base.config import ExtractionAgentConfig
     from agents.pipeline._helpers import extract_facts_from_media, extract_facts_from_text
-    from toolsets.instagram.fetcher import HttpxInstagramFetcher, parse_shortcode
+    from toolsets.instagram.fetcher import (
+        ApifyInstagramFetcher,
+        HttpxInstagramFetcher,
+        parse_shortcode,
+    )
 
     try:
         shortcode = parse_shortcode(body.url)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
+    cfg = get_secrets()
+    fetcher = ApifyInstagramFetcher(cfg.apify_api_token) if cfg.apify_api_token else HttpxInstagramFetcher()
     try:
-        post = await HttpxInstagramFetcher().fetch(shortcode)
+        post = await fetcher.fetch(shortcode)
     except RuntimeError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
 
