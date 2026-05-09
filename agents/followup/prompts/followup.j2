@@ -13,6 +13,10 @@
 {{ section("editorial_guidelines", guidelines) | trim }}
 {% endif %}
 
+{% if example_articles %}
+{{ section("example_articles", "Study these published articles — they define the editorial style, tone, H1 format, and structure. Use them as a reference when generating alternative headlines:\n\n" ~ example_articles | join("\n\n---\n\n")) | trim }}
+{% endif %}
+
 {% if example_titles %}
 {{ section("example_headlines", "Study these approved headline examples — they define the required editorial style, tone, and format. Generate new titles that match this style:\n" ~ example_titles | join("\n")) | trim }}
 {% endif %}

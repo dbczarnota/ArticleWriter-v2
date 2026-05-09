@@ -98,6 +98,7 @@ async def run_followup_agent(
                 format_style=model_format_style(m),
                 guidelines=domain.guidelines,
                 example_titles=list(domain.example_titles),
+                example_articles=list(domain.example_articles),
             )
             return Agent(m, output_type=FollowUpOutput), sys_prompt
 
