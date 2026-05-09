@@ -35,6 +35,9 @@ Twoje zadania:
    - text: dosłowna wypowiedź
    - speaker_label: kto powiedział
 
+   Cytaty — zasada: cytuj TYLKO gości, ekspertów, polityków, rozmówców — NIE cytuj \
+prowadzących/prezenterów. Pytania prowadzącego to nie cytat — to kontekst rozmowy.
+
 3. Wykryj zmiany tematu/rozmowy (topic_transitions):
    - timestamp_offset_seconds: kiedy nastąpiła zmiana (od początku chunka)
    - description: co się skończyło i co zaczęło \
