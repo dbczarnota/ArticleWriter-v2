@@ -3,6 +3,7 @@
 swapped (e.g. for a paid API) without touching callers."""
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from typing import Protocol
@@ -40,17 +41,19 @@ _MAX_COMMENTS = 20
 
 
 class HttpxInstagramFetcher:
-    """Free, no-auth fetcher using Instagram's reverse-engineered GraphQL API.
+    """Free, no-auth fetcher.
 
-    Uses the legacy query_hash endpoint as primary and falls back to the newer
-    POST /api/graphql endpoint. Both hit the same CDN-backed data. Instagram
-    may rate-limit or block at any time — callers should treat errors as
-    soft failures.
+    Tries three approaches in order:
+    1. Legacy GET /graphql/query/ (query_hash)
+    2. POST /api/graphql (doc_id)
+    3. Page HTML → JSON-LD (most reliable from server IPs — Instagram serves
+       structured SEO data even when it blocks internal API calls)
+    Instagram may rate-limit or block at any time.
     """
 
     async def fetch(self, shortcode: str) -> InstagramPost:
         async with httpx.AsyncClient(
-            timeout=15.0,
+            timeout=20.0,
             follow_redirects=True,
             headers={
                 "User-Agent": _USER_AGENT,
@@ -64,6 +67,8 @@ class HttpxInstagramFetcher:
             data = await self._fetch_legacy(client, shortcode)
             if data is None:
                 data = await self._fetch_graphql(client, shortcode)
+            if data is None:
+                data = await self._fetch_webpage(client, shortcode)
             if data is None:
                 raise RuntimeError(
                     f"All Instagram fetch methods failed for shortcode {shortcode!r}"
@@ -183,3 +188,74 @@ class HttpxInstagramFetcher:
             description=description,
             comments=comments,
         )
+
+    async def _fetch_webpage(
+        self, client: httpx.AsyncClient, shortcode: str
+    ) -> InstagramPost | None:
+        """Third fallback: parse JSON-LD from the public page HTML.
+
+        Instagram serves structured SEO data (<script type="application/ld+json">)
+        even when its internal API endpoints are blocked for server IPs.
+        This gives caption + image/video URL, but no comments.
+        """
+        try:
+            r = await client.get(
+                f"https://www.instagram.com/p/{shortcode}/",
+                headers={
+                    "User-Agent": _USER_AGENT,
+                    "Accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": "pl,en;q=0.9",
+                },
+            )
+            if r.status_code != 200:
+                return None
+
+            for match in re.finditer(
+                r'<script type="application/ld\+json"[^>]*>(.*?)</script>',
+                r.text,
+                re.DOTALL,
+            ):
+                try:
+                    blob = json.loads(match.group(1))
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(blob, list):
+                    blob = blob[0] if blob else {}
+                if not isinstance(blob, dict):
+                    continue
+
+                description = blob.get("caption") or blob.get("headline") or ""
+
+                media_url = ""
+                media_type = "image/jpeg"
+                videos = blob.get("video") or []
+                if isinstance(videos, list) and videos:
+                    media_url = videos[0].get("contentUrl") or videos[0].get("url", "")
+                    media_type = "video/mp4"
+                if not media_url:
+                    img = blob.get("image") or blob.get("thumbnailUrl") or ""
+                    if isinstance(img, list):
+                        img = img[0] if img else ""
+                    media_url = str(img)
+
+                if not description and not media_url:
+                    continue
+
+                media_bytes = b""
+                if media_url:
+                    try:
+                        media_resp = await client.get(media_url)
+                        if media_resp.status_code == 200:
+                            media_bytes = media_resp.content
+                    except Exception:
+                        pass
+
+                return InstagramPost(
+                    media_bytes=media_bytes,
+                    media_type=media_type,
+                    description=description,
+                    comments=[],
+                )
+        except Exception:
+            pass
+        return None
