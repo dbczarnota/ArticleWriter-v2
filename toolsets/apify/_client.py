@@ -13,7 +13,7 @@ import logfire
 # Used for spend tracking in Logfire; update when Apify changes pricing.
 _PRICE_PER_ITEM: dict[str, float] = {
     "apify~instagram-scraper": 0.03,  # flat ~$0.03/run (1 post + comments)
-    "xquik~x-tweet-scraper": 0.15 / 1000,  # $0.15 per 1 000 tweets
+    "apidojo~twitter-scraper-lite": 0.05,  # ~$0.05/run estimate (subscription plan, compute-based)
 }
 
 _DEFAULT_TIMEOUT = 180.0

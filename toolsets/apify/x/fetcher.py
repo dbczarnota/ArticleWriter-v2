@@ -10,7 +10,7 @@ from typing import Protocol
 from toolsets.apify._client import ApifyClient
 
 _MAX_REPLIES = 20
-_ACTOR = "xquik~x-tweet-scraper"
+_ACTOR = "apidojo~twitter-scraper-lite"
 
 
 @dataclass
@@ -33,34 +33,70 @@ def parse_tweet_url(url: str) -> tuple[str, str]:
 
 
 class ApifyXFetcher:
-    """Fetches X.com posts via xquik~x-tweet-scraper.
+    """Fetches X.com posts + replies via apidojo/twitter-scraper-lite.
 
-    Uses tweetIds lookup — $0.15 per 1 000 tweets (~$0.00015/tweet).
-    Author is parsed from the URL (always present in the URL).
-    Replies are not currently available via this actor.
+    Two-step approach (single actor, two runs):
+    1. Fetch tweet by URL  → extract text, author, numeric id
+    2. Search conversation_id:{id} → fetch up to 20 replies
+
+    Requires an Apify API token (subscription plan — free plan returns demo data).
     """
 
     def __init__(self, api_token: str) -> None:
         self._client = ApifyClient(api_token)
 
     async def fetch(self, tweet_url: str) -> XPost:
-        username, tweet_id = parse_tweet_url(tweet_url)
+        username, _ = parse_tweet_url(tweet_url)
 
-        result = await self._client.run_actor(
+        # Step 1 — fetch the tweet itself
+        step1 = await self._client.run_actor(
             _ACTOR,
-            {"tweetIds": [tweet_id], "maxItems": 1},
-            service="x",
+            {"startUrls": [tweet_url], "maxItems": 1},
+            service="x.tweet",
         )
 
-        # Actor returns a diagnostic dict on zero results
-        text = ""
-        for item in result.items:
-            candidate = item.get("text") or item.get("full_text") or ""
-            if candidate and not item.get("status"):  # skip diagnostic objects
-                text = candidate
-                break
+        tweet = next(
+            (i for i in step1.items if (i.get("text") or i.get("full_text")) and not i.get("demo")),
+            None,
+        )
+        if tweet is None:
+            raise RuntimeError(
+                f"Apify returned no tweet for {tweet_url!r} "
+                f"(items={step1.item_count}, check APIFY_API_TOKEN plan)"
+            )
 
-        if not text:
-            raise RuntimeError(f"xquik returned no tweet for id {tweet_id!r} (url: {tweet_url!r})")
+        text = tweet.get("full_text") or tweet.get("text") or ""
+        author_obj = tweet.get("author") or {}
+        author = (
+            author_obj.get("userName")
+            or author_obj.get("screen_name")
+            or username  # fallback: parse from URL
+        )
+        tweet_id = str(tweet.get("id") or tweet.get("id_str") or "")
 
-        return XPost(text=text, author=username, comments=[])
+        # Step 2 — fetch replies via conversation_id search (best-effort)
+        comments: list[str] = []
+        if tweet_id:
+            step2 = await self._client.run_actor(
+                _ACTOR,
+                {
+                    "searchTerms": [f"conversation_id:{tweet_id}"],
+                    "sort": "Latest",
+                    "maxItems": _MAX_REPLIES,
+                },
+                service="x.replies",
+            )
+            for item in step2.items:
+                reply_text = item.get("full_text") or item.get("text") or ""
+                if not reply_text or item.get("demo") or str(item.get("id")) == tweet_id:
+                    continue
+                reply_author_obj = item.get("author") or {}
+                reply_author = (
+                    reply_author_obj.get("userName") or reply_author_obj.get("screen_name") or ""
+                )
+                if reply_author:
+                    comments.append(f"@{reply_author}: {reply_text}")
+                else:
+                    comments.append(reply_text)
+
+        return XPost(text=text, author=author, comments=comments)
