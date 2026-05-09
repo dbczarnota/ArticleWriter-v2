@@ -19,6 +19,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.stream_analysis.agent import StreamChunkResult, run_stream_analysis_agent
 from agents.stream_analysis.config import StreamAnalysisAgentConfig
+from agents.stream_digest.agent import ChunkSummary, StreamDigestResult, run_stream_digest_agent
+from agents.stream_digest.config import StreamDigestAgentConfig
 from backend.database import get_db_backend, get_session_maker
 
 _log = logging.getLogger(__name__)
@@ -96,6 +98,27 @@ async def _save_chunk(
     return chunk.id
 
 
+async def _save_digest(
+    session: AsyncSession,
+    subscription_id: UUID,
+    digest: StreamDigestResult,
+    chunk_count: int,
+) -> UUID:
+    from backend.db.models import StreamDigest
+
+    record = StreamDigest(
+        subscription_id=subscription_id,
+        window_start_seconds=digest.window_start_seconds,
+        window_end_seconds=digest.window_end_seconds,
+        stories=[s.model_dump() for s in digest.stories],
+        chunk_count=chunk_count,
+    )
+    session.add(record)
+    await session.commit()
+    await session.refresh(record)
+    return record.id
+
+
 async def run_subscription_pipeline(
     subscription_id: UUID,
     stream_url: str,
@@ -105,16 +128,20 @@ async def run_subscription_pipeline(
     """Long-running pipeline task for one subscription.
 
     Loops: connect FFmpeg → collect chunks → analyze → save → broadcast.
+    Every digest_config.chunks_per_digest chunks, runs StreamDigestAgent.
     On FFmpeg failure: exponential backoff, up to 5 retries, then marks paused.
     Cancelled externally by StreamSessionManager.stop().
     """
     from backend.services.stream_manager import get_stream_manager
 
-    config = StreamAnalysisAgentConfig()
+    analysis_config = StreamAnalysisAgentConfig()
+    digest_config = StreamDigestAgentConfig()
     _db = get_db_backend() == "postgres"
     manager = get_stream_manager()
 
     chunk_start = 0.0
+    chunk_count = 0
+    digest_buffer: list[ChunkSummary] = []
     attempt = 0
     proc: asyncio.subprocess.Process | None = None
 
@@ -139,7 +166,7 @@ async def run_subscription_pipeline(
                     result = await run_stream_analysis_agent(
                         audio_bytes=audio,
                         chunk_start_seconds=chunk_start,
-                        config=config,
+                        config=analysis_config,
                     )
 
                     chunk_id: UUID | None = None
@@ -150,7 +177,8 @@ async def run_subscription_pipeline(
                                 session, subscription_id, chunk_start, chunk_end, result
                             )
 
-                    event = {
+                    chunk_event = {
+                        "type": "chunk",
                         "chunk_id": str(chunk_id) if chunk_id else None,
                         "chunk_start": chunk_start,
                         "chunk_end": chunk_end,
@@ -160,8 +188,51 @@ async def run_subscription_pipeline(
                         "quotes": [q.model_dump() for q in result.quotes],
                         "raw_transcript": result.raw_transcript,
                     }
-                    await manager.broadcast(subscription_id, event)
+                    await manager.broadcast(subscription_id, chunk_event)
+
+                    digest_buffer.append(
+                        ChunkSummary(
+                            chunk_start=chunk_start,
+                            chunk_end=chunk_end,
+                            raw_transcript=result.raw_transcript or "",
+                            speakers=[s.model_dump() for s in result.speakers],
+                            topics=[t.model_dump() for t in result.topics],
+                            facts=[f.model_dump() for f in result.facts],
+                            quotes=[q.model_dump() for q in result.quotes],
+                        )
+                    )
+                    chunk_count += 1
                     chunk_start = chunk_end
+
+                    if chunk_count % digest_config.chunks_per_digest == 0:
+                        window = list(digest_buffer)
+                        digest_buffer.clear()
+                        digest = await run_stream_digest_agent(window, config=digest_config)
+                        logfire.info(
+                            "stream.digest",
+                            subscription_id=str(subscription_id),
+                            stories=len(digest.stories),
+                        )
+
+                        digest_id: UUID | None = None
+                        if _db:
+                            sm = get_session_maker()
+                            async with sm() as session:  # type: ignore[union-attr]
+                                digest_id = await _save_digest(
+                                    session,
+                                    subscription_id,
+                                    digest,
+                                    len(window),
+                                )
+
+                        digest_event = {
+                            "type": "digest",
+                            "digest_id": str(digest_id) if digest_id else None,
+                            "window_start": digest.window_start_seconds,
+                            "window_end": digest.window_end_seconds,
+                            "stories": [s.model_dump() for s in digest.stories],
+                        }
+                        await manager.broadcast(subscription_id, digest_event)
 
             except asyncio.CancelledError:
                 if proc is not None and proc.returncode is None:

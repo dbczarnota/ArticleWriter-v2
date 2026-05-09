@@ -6,7 +6,7 @@ from agents._base.config import AgentConfig
 
 
 @dataclass(frozen=True)
-class StreamAnalysisAgentConfig(AgentConfig):
+class StreamDigestAgentConfig(AgentConfig):
     model: str = "google-gla:gemini-flash-latest"
     fallback_models: tuple[str, ...] = ("google-gla:gemini-2.0-flash",)
-    chunk_duration_seconds: int = 120
+    chunks_per_digest: int = 5

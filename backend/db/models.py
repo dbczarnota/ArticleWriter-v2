@@ -27,7 +27,17 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, String, UniqueConstraint, text
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlmodel import Field, Relationship, SQLModel
@@ -638,3 +648,28 @@ class StreamChunk(SQLModel, table=True):
     )
 
     subscription: StreamSubscription = Relationship(back_populates="chunks")
+
+
+class StreamDigest(SQLModel, table=True):
+    __tablename__ = "stream_digests"  # type: ignore[assignment]
+    __table_args__ = (Index("ix_stream_digests_sub", "subscription_id"),)
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        sa_column=Column(PG_UUID(as_uuid=True), primary_key=True),
+    )
+    subscription_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID(as_uuid=True),
+            ForeignKey("stream_subscriptions.id", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
+    window_start_seconds: float = Field(sa_column=Column(Float, nullable=False))
+    window_end_seconds: float = Field(sa_column=Column(Float, nullable=False))
+    stories: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
+    chunk_count: int = Field(sa_column=Column(Integer, nullable=False))
+    processed_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
+    )

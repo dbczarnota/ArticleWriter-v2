@@ -16,7 +16,7 @@ from sqlmodel import select
 
 from backend.auth.deps import get_current_org
 from backend.database import get_db_backend, get_session_maker
-from backend.db.models import Org, StreamChunk, StreamSubscription
+from backend.db.models import Org, StreamChunk, StreamDigest, StreamSubscription
 from backend.services.stream_manager import get_stream_manager
 
 router = APIRouter(prefix="/v2/streams", tags=["streams"])
@@ -154,7 +154,7 @@ async def get_results(
         )
         if since_start is not None:
             stmt = stmt.where(StreamChunk.chunk_start_seconds > since_start)  # type: ignore[arg-type]
-        stmt = stmt.order_by(StreamChunk.chunk_start_seconds).limit(limit)
+        stmt = stmt.order_by(StreamChunk.chunk_start_seconds).limit(limit)  # type: ignore[arg-type]
         result = await session.execute(stmt)
         chunks = result.scalars().all()
         return [
@@ -187,9 +187,10 @@ async def stream_results(
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=15.0)
+                    event_type = event.get("type", "chunk")
                     data = json.dumps(event)
-                    chunk_id = event.get("chunk_id", "")
-                    yield f"event: chunk\nid: {chunk_id}\ndata: {data}\n\n"
+                    event_id = event.get("chunk_id") or event.get("digest_id") or ""
+                    yield f"event: {event_type}\nid: {event_id}\ndata: {data}\n\n"
                 except TimeoutError:
                     yield "event: keepalive\ndata: {}\n\n"
         except asyncio.CancelledError:
@@ -202,3 +203,38 @@ async def stream_results(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/subscriptions/{subscription_id}/digests")
+async def get_digests(
+    subscription_id: UUID,
+    org: Org = Depends(get_current_org),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list[dict]:
+    if get_db_backend() != "postgres":
+        return []
+    sm = get_session_maker()
+    async with sm() as session:  # type: ignore[union-attr]
+        sub = await session.get(StreamSubscription, subscription_id)
+        if sub is None or sub.org_code != org.code:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+
+        stmt = (
+            select(StreamDigest)
+            .where(StreamDigest.subscription_id == subscription_id)  # type: ignore[arg-type]
+            .order_by(StreamDigest.window_start_seconds)  # type: ignore[arg-type]
+            .limit(limit)
+        )
+        result = await session.execute(stmt)
+        digests = result.scalars().all()
+        return [
+            {
+                "digest_id": str(d.id),
+                "window_start": d.window_start_seconds,
+                "window_end": d.window_end_seconds,
+                "chunk_count": d.chunk_count,
+                "stories": d.stories,
+                "processed_at": d.processed_at.isoformat(),
+            }
+            for d in digests
+        ]
