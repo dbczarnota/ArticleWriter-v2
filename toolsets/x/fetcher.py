@@ -31,14 +31,14 @@ def parse_tweet_url(url: str) -> str:
 
 
 class ApifyXFetcher:
-    """Fetches X.com posts + replies via Apify's twitter-scraper actor.
+    """Fetches X.com posts + replies via Apify's twitter-reply-scraper actor.
 
-    Uses Apify's residential proxies + managed auth — bypasses X's API
-    restrictions. Returns tweet text, author, and up to 20 replies.
+    Actor: louisdeconinck/twitter-reply-scraper
+    Returns tweet text, author handle, and up to 20 replies with usernames.
     Requires an Apify API token.
     """
 
-    _ACTOR = "apify~twitter-scraper"
+    _ACTOR = "louisdeconinck~twitter-reply-scraper"
     _RUN_URL = f"https://api.apify.com/v2/acts/{_ACTOR}/run-sync-get-dataset-items"
 
     def __init__(self, api_token: str) -> None:
@@ -51,10 +51,7 @@ class ApifyXFetcher:
                 params={"token": self._token},
                 json={
                     "startUrls": [{"url": tweet_url}],
-                    "maxTweets": 1,
-                    "replies": True,
                     "maxReplies": _MAX_REPLIES,
-                    "addUserInfo": True,
                 },
             )
             r.raise_for_status()
@@ -65,36 +62,17 @@ class ApifyXFetcher:
         return self._parse_item(items[0])
 
     def _parse_item(self, item: dict) -> XPost:
-        # Tweet text — try common field names across actor versions
-        text = (
-            item.get("text")
-            or item.get("full_text")
-            or item.get("content")
-            or ""
-        )
+        # louisdeconinck/twitter-reply-scraper output fields
+        text = item.get("tweetContent") or item.get("text") or item.get("full_text") or ""
+        author = item.get("handle") or item.get("authorUsername") or "unknown"
 
-        # Author username
-        author_obj = item.get("author") or item.get("user") or {}
-        author = (
-            author_obj.get("userName")
-            or author_obj.get("screen_name")
-            or item.get("authorUsername")
-            or "unknown"
-        )
-
-        # Replies
-        raw_replies: list[dict] = item.get("replies") or item.get("tweetReplies") or []
+        raw_replies: list[dict] = item.get("repliesData") or item.get("replies") or []
         comments: list[str] = []
         for reply in raw_replies[:_MAX_REPLIES]:
-            reply_text = reply.get("text") or reply.get("full_text") or ""
+            reply_text = reply.get("tweetContent") or reply.get("text") or ""
             if not reply_text:
                 continue
-            reply_author_obj = reply.get("author") or reply.get("user") or {}
-            reply_author = (
-                reply_author_obj.get("userName")
-                or reply_author_obj.get("screen_name")
-                or ""
-            )
+            reply_author = reply.get("handle") or reply.get("authorUsername") or ""
             if reply_author:
                 comments.append(f"@{reply_author}: {reply_text}")
             else:
