@@ -12,16 +12,22 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
 
 import logfire
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.stream_analysis.agent import StreamChunkResult, run_stream_analysis_agent
 from agents.stream_analysis.config import StreamAnalysisAgentConfig
-from agents.stream_digest.agent import ChunkSummary, StreamDigestResult, run_stream_digest_agent
+from agents.stream_digest.agent import (
+    ChunkSummary,
+    StreamDigestResult,
+    TopicContext,
+    run_stream_digest_agent,
+)
 from agents.stream_digest.config import StreamDigestAgentConfig
 from backend.database import get_db_backend, get_session_maker
 
@@ -245,6 +251,89 @@ def _write_report(
     return path
 
 
+async def _get_historical_topics(
+    session: AsyncSession,
+    subscription_id: UUID,
+    window_hours: int,
+    now_utc: datetime,
+) -> list[TopicContext]:
+    from backend.db.models import StreamTopic
+
+    cutoff = now_utc - timedelta(hours=window_hours)
+    result = await session.execute(
+        sa.select(StreamTopic)
+        .where(
+            StreamTopic.subscription_id == subscription_id,  # type: ignore[arg-type]
+            StreamTopic.last_seen_at >= cutoff,  # type: ignore[operator]
+        )
+        .order_by(sa.asc(StreamTopic.last_seen_at))  # type: ignore[arg-type]
+    )
+    rows = result.scalars().all()
+    return [
+        TopicContext(
+            topic_id=str(row.id),
+            title=row.title,
+            is_news=row.is_news,
+            first_seen_at=row.first_seen_at.strftime("%Y-%m-%d %H:%M UTC"),
+            last_seen_at=row.last_seen_at.strftime("%Y-%m-%d %H:%M UTC"),
+            summary=row.summary,
+            speakers=row.speakers,
+            facts=row.facts,
+            quotes=row.quotes,
+            window_start_seconds=row.window_start_seconds,
+            window_end_seconds=row.window_end_seconds,
+        )
+        for row in rows
+    ]
+
+
+async def _upsert_stream_topics(
+    session: AsyncSession,
+    subscription_id: UUID,
+    digest: StreamDigestResult,
+    now: datetime,
+) -> None:
+    from backend.db.models import StreamTopic
+
+    for story in digest.stories:
+        normalized_title = story.title.strip().lower()
+
+        result = await session.execute(
+            sa.select(StreamTopic).where(
+                StreamTopic.subscription_id == subscription_id,  # type: ignore[arg-type]
+                sa.func.lower(sa.func.trim(StreamTopic.title)) == normalized_title,  # type: ignore[arg-type]
+            )
+        )
+        existing = result.scalar_one_or_none()
+
+        if existing is not None:
+            existing.is_news = story.is_news
+            existing.summary = story.summary
+            existing.speakers = [sp.model_dump() for sp in story.speakers]
+            existing.facts = [f.model_dump() for f in story.facts]
+            existing.quotes = [q.model_dump() for q in story.quotes]
+            existing.window_end_seconds = story.end_seconds
+            existing.last_seen_at = now
+            session.add(existing)
+        else:
+            topic = StreamTopic(
+                subscription_id=subscription_id,
+                title=story.title,
+                is_news=story.is_news,
+                summary=story.summary,
+                speakers=[sp.model_dump() for sp in story.speakers],
+                facts=[f.model_dump() for f in story.facts],
+                quotes=[q.model_dump() for q in story.quotes],
+                window_start_seconds=story.start_seconds,
+                window_end_seconds=story.end_seconds,
+                first_seen_at=now,
+                last_seen_at=now,
+            )
+            session.add(topic)
+
+    await session.commit()
+
+
 async def run_subscription_pipeline(
     subscription_id: UUID,
     stream_url: str,
@@ -266,6 +355,7 @@ async def run_subscription_pipeline(
     digest_history: list[StreamDigestResult] = []
     chunk_log: list[str] = []  # accumulates for report
     digest_log: list[str] = []  # accumulates for report
+    stream_started_at = datetime.now(UTC)
     attempt = 0
     proc: asyncio.subprocess.Process | None = None
 
@@ -287,9 +377,11 @@ async def run_subscription_pipeline(
                         break
 
                     chunk_end = chunk_start + chunk_duration_seconds
+                    chunk_start_at = stream_started_at + timedelta(seconds=chunk_start)
                     result = await run_stream_analysis_agent(
                         audio_bytes=audio,
                         chunk_start_seconds=chunk_start,
+                        chunk_start_at=chunk_start_at,
                         config=analysis_config,
                     )
 
@@ -353,10 +445,23 @@ async def run_subscription_pipeline(
                         print(digest_input_text[:2000])
                         print("...")
 
+                        now_utc = datetime.now(UTC)
+                        historical_topics: list[TopicContext] = []
+                        if _db:
+                            sm = get_session_maker()
+                            async with sm() as session:  # type: ignore[union-attr]
+                                historical_topics = await _get_historical_topics(
+                                    session,
+                                    subscription_id,
+                                    digest_config.topic_window_hours,
+                                    now_utc,
+                                )
+
                         digest = await run_stream_digest_agent(
                             window,
                             config=digest_config,
                             previous_digests=previous if previous else None,
+                            historical_topics=historical_topics,
                         )
                         digest_count += 1
 
@@ -410,6 +515,10 @@ async def run_subscription_pipeline(
                             async with sm() as session:  # type: ignore[union-attr]
                                 digest_id = await _save_digest(
                                     session, subscription_id, digest, len(window)
+                                )
+                            async with sm() as session:  # type: ignore[union-attr]
+                                await _upsert_stream_topics(
+                                    session, subscription_id, digest, now_utc
                                 )
 
                         report_path = _write_report(
