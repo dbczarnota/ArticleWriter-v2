@@ -153,7 +153,6 @@ export const en: Translations = {
     tipExampleTitles: "Reference H1s from your publication. The follow-up agent generates alternative titles by mimicking this style — length, emotion, capitalization, sentence shape.",
     tipExampleArticles: "Full articles as 'few-shot examples'. The instruction agent analyzes them when building the writer brief. Better examples = closer match to your house style.",
     sectionDiscovery: "Discovery (RSS topic discovery)",
-    streams: "Streams (live audio monitoring)",
     discoveryHint: "Every N minutes we check configured RSS feeds, categorise new items using your tags, and group them into topics. Clicking 'write' on a topic sends it to the standard article pipeline.",
     discoveryEnabled: "Discovery enabled",
     tipDiscoveryEnabled: "Master switch. Disabled = scheduler polls nothing for this org.",
