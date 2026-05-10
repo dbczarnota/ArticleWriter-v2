@@ -214,3 +214,34 @@ export interface DiscoveryItem {
 export interface DiscoveryTopicDetail extends DiscoveryTopicSummary {
   items: DiscoveryItem[];
 }
+
+export interface StreamSubscription {
+  id: string;
+  org_code: string;
+  name: string;
+  stream_url: string;
+  stream_type: string;
+  url_refresh_url: string | null;
+  url_refresh_field: string;
+  status: "active" | "stopped" | "paused";
+  chunk_duration_seconds: number;
+  created_at: string;
+  started_at: string | null;
+  stopped_at: string | null;
+}
+
+export interface StreamTopic {
+  topic_id: string;
+  subscription_id: string;
+  subscription_name: string;
+  title: string;
+  is_news: boolean;
+  summary: string;
+  speakers: Array<{ name_or_role: string; description?: string }>;
+  facts: Array<{ text: string; speaker?: string }>;
+  quotes: Array<{ text: string; speaker?: string }>;
+  window_start_seconds: number;
+  window_end_seconds: number;
+  first_seen_at: string;
+  last_seen_at: string;
+}
