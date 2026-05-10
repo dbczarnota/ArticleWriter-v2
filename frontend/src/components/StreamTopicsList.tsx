@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { StreamTopic } from "../types";
 import { StatusMessage } from "./ui/StatusMessage";
 import { useT } from "../i18n";
@@ -18,56 +19,218 @@ function relTime(iso: string, t: Translations): string {
   return `${Math.round(h / 24)}${t.discovery.feed.dAgo}`;
 }
 
+function formatSeconds(s: number): string {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
 export function StreamTopicsList({ topics, loading }: Props) {
   const t = useT();
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  function toggle(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   if (loading) return <StatusMessage kind="loading">{t.streams.topic.loading}</StatusMessage>;
   if (topics.length === 0)
     return <StatusMessage kind="empty">{t.streams.topic.noTopics}</StatusMessage>;
 
   return (
-    <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 12 }}>
-      {topics.map((topic) => (
-        <div
-          key={topic.topic_id}
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            padding: 16,
-            background: "var(--white)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 6 }}>
-            <span
+    <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8 }}>
+      {topics.map((topic) => {
+        const isOpen = expanded.has(topic.topic_id);
+        return (
+          <div
+            key={topic.topic_id}
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius)",
+              background: "var(--white)",
+              overflow: "hidden",
+            }}
+          >
+            {/* Header — always visible, click to expand */}
+            <button
+              type="button"
+              onClick={() => toggle(topic.topic_id)}
               style={{
-                fontSize: 11,
-                padding: "2px 7px",
-                borderRadius: 999,
-                flexShrink: 0,
-                background: topic.is_news ? "var(--accent-lt)" : "var(--bg)",
-                color: topic.is_news ? "var(--accent)" : "var(--muted)",
-                border: `1px solid ${topic.is_news ? "var(--accent)" : "var(--border)"}`,
+                width: "100%",
+                textAlign: "left",
+                background: "none",
+                border: "none",
+                padding: "12px 16px",
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
               }}
             >
-              {topic.is_news ? t.streams.topic.newsBadge : t.streams.topic.notNewsBadge}
-            </span>
-            <span style={{ fontWeight: 600, color: "var(--text)", flex: 1 }}>{topic.title}</span>
-            <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>
-              {t.streams.topic.lastSeen}: {relTime(topic.last_seen_at, t)}
-            </span>
+              {/* Row 1: badge + title + time */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span
+                  style={{
+                    fontSize: 10,
+                    padding: "2px 7px",
+                    borderRadius: 999,
+                    flexShrink: 0,
+                    background: topic.is_news ? "var(--accent-lt)" : "var(--bg)",
+                    color: topic.is_news ? "var(--accent)" : "var(--muted)",
+                    border: `1px solid ${topic.is_news ? "var(--accent)" : "var(--border)"}`,
+                  }}
+                >
+                  {topic.is_news ? t.streams.topic.newsBadge : t.streams.topic.notNewsBadge}
+                </span>
+                <span style={{ fontWeight: 600, color: "var(--text)", flex: 1, fontSize: 14 }}>
+                  {topic.title}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>
+                  {relTime(topic.last_seen_at, t)}
+                </span>
+                <span style={{ fontSize: 13, color: "var(--muted)", flexShrink: 0 }}>
+                  {isOpen ? "▲" : "▼"}
+                </span>
+              </div>
+
+              {/* Row 2: source + time window */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--accent)",
+                    background: "var(--accent-lt)",
+                    borderRadius: 4,
+                    padding: "1px 7px",
+                  }}
+                >
+                  {topic.subscription_name}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                  {formatSeconds(topic.window_start_seconds)}–{formatSeconds(topic.window_end_seconds)}
+                </span>
+              </div>
+
+              {/* Row 3: summary preview (collapsed only) */}
+              {!isOpen && topic.summary && (
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: "var(--text)",
+                    lineHeight: 1.5,
+                    overflow: "hidden",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                  }}
+                >
+                  {topic.summary}
+                </p>
+              )}
+            </button>
+
+            {/* Expanded detail */}
+            {isOpen && (
+              <div
+                style={{
+                  borderTop: "1px solid var(--border)",
+                  padding: "14px 16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 14,
+                  background: "var(--bg)",
+                }}
+              >
+                {/* Summary */}
+                {topic.summary && (
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--text)", lineHeight: 1.6 }}>
+                    {topic.summary}
+                  </p>
+                )}
+
+                {/* Speakers */}
+                {topic.speakers.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+                      Rozmówcy
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                      {topic.speakers.map((s, i) => (
+                        <div key={i} style={{ fontSize: 13, color: "var(--text)" }}>
+                          <strong>{s.name_or_role}</strong>
+                          {s.description && (
+                            <span style={{ color: "var(--muted)" }}> — {s.description}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Facts */}
+                {topic.facts.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+                      Fakty
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
+                      {topic.facts.map((f, i) => (
+                        <li key={i} style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}>
+                          {f.text}
+                          {f.speaker && (
+                            <span style={{ color: "var(--muted)", fontSize: 11 }}> [{f.speaker}]</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Quotes */}
+                {topic.quotes.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6 }}>
+                      Cytaty
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {topic.quotes.map((q, i) => (
+                        <blockquote
+                          key={i}
+                          style={{
+                            margin: 0,
+                            paddingLeft: 12,
+                            borderLeft: "3px solid var(--accent)",
+                            fontSize: 13,
+                            color: "var(--text)",
+                            lineHeight: 1.5,
+                            fontStyle: "italic",
+                          }}
+                        >
+                          „{q.text}"
+                          {q.speaker && (
+                            <span style={{ display: "block", fontSize: 11, color: "var(--muted)", fontStyle: "normal", marginTop: 2 }}>
+                              — {q.speaker}
+                            </span>
+                          )}
+                        </blockquote>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          {topic.summary && (
-            <p style={{ margin: 0, fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}>
-              {topic.summary}
-            </p>
-          )}
-          {topic.speakers.length > 0 && (
-            <p style={{ margin: "6px 0 0", fontSize: 11, color: "var(--muted)" }}>
-              {topic.speakers.map((s) => s.name_or_role).join(", ")}
-            </p>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

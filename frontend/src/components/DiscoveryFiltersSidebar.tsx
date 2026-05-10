@@ -1,23 +1,28 @@
-import type { DiscoveryFeed } from "../types";
+import type { DiscoveryFeed, StreamSubscription } from "../types";
 import { useT } from "../i18n";
 
 export interface DiscoveryFiltersValue {
   feedId: string | null;
+  subscriptionId: string | null;
   categories: string[];
   statuses: string[];
 }
 
 interface Props {
   feeds: DiscoveryFeed[];
+  subscriptions: StreamSubscription[];
   availableCategories: { name: string; count?: number }[];
   value: DiscoveryFiltersValue;
   onChange: (next: DiscoveryFiltersValue) => void;
 }
 
-export function DiscoveryFiltersSidebar({ feeds, availableCategories, value, onChange }: Props) {
+export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategories, value, onChange }: Props) {
   const t = useT();
   function setFeed(id: string | null) {
     onChange({ ...value, feedId: id });
+  }
+  function setSubscription(id: string | null) {
+    onChange({ ...value, subscriptionId: id });
   }
   function toggleCategory(name: string) {
     const has = value.categories.includes(name);
@@ -105,6 +110,47 @@ export function DiscoveryFiltersSidebar({ feeds, availableCategories, value, onC
           ))}
         </div>
       </details>
+
+      {subscriptions.length > 0 && (
+        <details open style={{ marginBottom: 16 }}>
+          <summary style={labelStyle}>{t.discovery.filters.streams}</summary>
+          <div style={{ marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => setSubscription(null)}
+              style={{
+                ...buttonRow,
+                background: value.subscriptionId === null ? "var(--accent-lt)" : "transparent",
+              }}
+            >
+              <span>{t.discovery.filters.all}</span>
+            </button>
+            {subscriptions.map((s) => (
+              <button
+                type="button"
+                key={s.id}
+                onClick={() => setSubscription(s.id)}
+                style={{
+                  ...buttonRow,
+                  background: value.subscriptionId === s.id ? "var(--accent-lt)" : "transparent",
+                }}
+              >
+                <span>{s.name}</span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: s.status === "active" ? "rgb(22,163,74)" : "var(--muted)",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {s.status === "active" ? "●" : "○"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
 
       <details open style={{ marginBottom: 16 }}>
         <summary style={labelStyle}>{t.discovery.filters.categories}</summary>

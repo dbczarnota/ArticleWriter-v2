@@ -324,6 +324,7 @@ async def get_digests(
 @router.get("/topics")
 async def list_stream_topics(
     org: Org = Depends(get_current_org),
+    subscription_id: UUID | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
 ) -> list[dict]:
     """List all topics discovered from streams for this org, newest first."""
@@ -337,9 +338,14 @@ async def list_stream_topics(
         subs = {s.id: s.name for s in subs_result.scalars().all()}
         if not subs:
             return []
+        sub_ids = (
+            [subscription_id]
+            if subscription_id is not None and subscription_id in subs
+            else list(subs.keys())
+        )
         stmt = (
             select(StreamTopic)
-            .where(StreamTopic.subscription_id.in_(list(subs.keys())))  # type: ignore[arg-type]
+            .where(StreamTopic.subscription_id.in_(sub_ids))  # type: ignore[arg-type]
             .order_by(StreamTopic.last_seen_at.desc())  # type: ignore[arg-type]
             .limit(limit)
         )

@@ -405,7 +405,7 @@ export const pl: Translations = {
   },
   discovery: {
     views: { topics: "Tematy", items: "Itemy", feeds: "Feedy", streams: "Streamy" },
-    filters: { feeds: "Feedy (filtr)", categories: "Kategorie", status: "Status", all: "Wszystkie", emptyCategories: "(brak kategorii)" },
+    filters: { feeds: "Feedy (filtr)", streams: "Streamy (filtr)", categories: "Kategorie", status: "Status", all: "Wszystkie", emptyCategories: "(brak kategorii)" },
     status: { open: "Świeże", resurfaced: "Resurfaced", consumed: "Już napisane", dismissed: "Odrzucone" },
     topic: {
       sources: "Źródła",

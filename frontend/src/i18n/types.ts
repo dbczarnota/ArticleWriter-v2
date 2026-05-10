@@ -420,7 +420,7 @@ export interface Translations {
   };
   discovery: {
     views: { topics: string; items: string; feeds: string; streams: string };
-    filters: { feeds: string; categories: string; status: string; all: string; emptyCategories: string };
+    filters: { feeds: string; streams: string; categories: string; status: string; all: string; emptyCategories: string };
     status: { open: string; resurfaced: string; consumed: string; dismissed: string };
     topic: {
       sources: string;

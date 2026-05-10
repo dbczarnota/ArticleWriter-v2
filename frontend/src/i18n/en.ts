@@ -406,7 +406,7 @@ export const en: Translations = {
   },
   discovery: {
     views: { topics: "Topics", items: "Items", feeds: "Feeds", streams: "Streams" },
-    filters: { feeds: "Feeds (filter)", categories: "Categories", status: "Status", all: "All", emptyCategories: "(no categories)" },
+    filters: { feeds: "Feeds (filter)", streams: "Streams (filter)", categories: "Categories", status: "Status", all: "All", emptyCategories: "(no categories)" },
     status: { open: "Fresh", resurfaced: "Resurfaced", consumed: "Written", dismissed: "Dismissed" },
     topic: {
       sources: "Sources",

@@ -28,6 +28,7 @@ export function DiscoveryHub() {
   const [writeFromTopicId, setWriteFromTopicId] = useState<string | null>(null);
   const [filters, setFilters] = useState<DiscoveryFiltersValue>({
     feedId: null,
+    subscriptionId: null,
     categories: [],
     statuses: ["open", "resurfaced"],
   });
@@ -47,7 +48,7 @@ export function DiscoveryHub() {
     categories: filters.categories,
   });
   const { subscriptions, loading: subsLoading, remove: removeSub } = useStreamSubscriptions();
-  const { topics: streamTopics, loading: streamTopicsLoading } = useStreamTopics();
+  const { topics: streamTopics, loading: streamTopicsLoading } = useStreamTopics(filters.subscriptionId);
   // Build the category list from whatever the user has visible right now.
   // Backend has no "list categories with counts" endpoint, and the existing
   // /discovery/categories endpoint returns just names — driving the sidebar
@@ -115,6 +116,7 @@ export function DiscoveryHub() {
     <div style={{ display: "flex", height: "100%", background: "var(--bg)" }}>
       <DiscoveryFiltersSidebar
         feeds={feeds}
+        subscriptions={subscriptions}
         availableCategories={availableCategories}
         value={filters}
         onChange={setFilters}
