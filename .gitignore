@@ -3,6 +3,7 @@
 **/__pycache__
 state.json
 scratch/
+stream_report_*.md
 
 # Test artifacts
 .coverage
