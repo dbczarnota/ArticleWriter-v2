@@ -16,7 +16,7 @@ from sqlmodel import select
 
 from backend.auth.deps import get_current_org
 from backend.database import get_db_backend, get_session_maker
-from backend.db.models import Org, StreamChunk, StreamDigest, StreamSubscription
+from backend.db.models import Org, StreamChunk, StreamDigest, StreamSubscription, StreamTopic
 from backend.services.stream_manager import get_stream_manager
 
 router = APIRouter(prefix="/v2/streams", tags=["streams"])
@@ -263,4 +263,42 @@ async def get_digests(
                 "processed_at": d.processed_at.isoformat(),
             }
             for d in digests
+        ]
+
+
+@router.get("/topics")
+async def list_stream_topics(
+    org: Org = Depends(get_current_org),
+    limit: int = Query(default=100, ge=1, le=500),
+) -> list[dict]:
+    """List all topics discovered from streams for this org, newest first."""
+    if get_db_backend() != "postgres":
+        return []
+    sm = get_session_maker()
+    async with sm() as session:  # type: ignore[union-attr]
+        subs_result = await session.execute(
+            select(StreamSubscription).where(StreamSubscription.org_code == org.code)  # type: ignore[arg-type]
+        )
+        subs = {s.id: s.name for s in subs_result.scalars().all()}
+        if not subs:
+            return []
+        stmt = (
+            select(StreamTopic)
+            .where(StreamTopic.subscription_id.in_(list(subs.keys())))  # type: ignore[arg-type]
+            .order_by(StreamTopic.last_seen_at.desc())  # type: ignore[arg-type]
+            .limit(limit)
+        )
+        result = await session.execute(stmt)
+        return [
+            {
+                "topic_id": str(t.id),
+                "subscription_id": str(t.subscription_id),
+                "subscription_name": subs.get(t.subscription_id, ""),
+                "title": t.title,
+                "is_news": t.is_news,
+                "summary": t.summary,
+                "first_seen_at": t.first_seen_at.isoformat(),
+                "last_seen_at": t.last_seen_at.isoformat(),
+            }
+            for t in result.scalars().all()
         ]

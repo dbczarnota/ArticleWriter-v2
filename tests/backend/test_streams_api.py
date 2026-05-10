@@ -71,3 +71,13 @@ def test_get_results_empty(client):
     fake_id = str(uuid4())
     resp = c.get(f"/v2/streams/subscriptions/{fake_id}/results", headers={"X-Org-Code": ORG})
     assert resp.status_code in (200, 404)
+
+
+ORG_HEADERS = {"X-Org-Code": ORG}
+
+
+def test_list_stream_topics_null_backend(client):
+    c, _ = client
+    resp = c.get("/v2/streams/topics", headers=ORG_HEADERS)
+    assert resp.status_code == 200
+    assert resp.json() == []
