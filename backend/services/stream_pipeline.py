@@ -10,6 +10,7 @@ Intended to run as a long-lived asyncio.Task per StreamSubscription.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import io
 import logging
 from datetime import UTC, datetime, timedelta
@@ -95,7 +96,7 @@ async def _run_ffmpeg(stream_url: str, stream_type: str) -> asyncio.subprocess.P
         "error",
         "pipe:1",
         stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
     )
 
 
@@ -631,6 +632,17 @@ async def run_subscription_pipeline(
                 raise
 
             except Exception as exc:
+                stderr_out = b""
+                if proc is not None and proc.stderr is not None:
+                    with contextlib.suppress(Exception):
+                        stderr_out = await asyncio.wait_for(proc.stderr.read(2048), timeout=1.0)
+                _log.error(
+                    "stream.ffmpeg_error [sub=%s attempt=%d]: %s%s",
+                    subscription_id,
+                    attempt,
+                    exc,
+                    f" | ffmpeg: {stderr_out.decode(errors='replace').strip()}" if stderr_out else "",
+                )
                 logfire.warn(
                     "stream.ffmpeg_error",
                     subscription_id=str(subscription_id),
