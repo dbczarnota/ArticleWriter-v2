@@ -192,8 +192,12 @@ def _format_chunk_result_verbose(
     chunk_start_at: datetime | None = None,
 ) -> str:
     """Human-readable representation of a chunk result for console and report."""
-    time_str = f" [{chunk_start_at.strftime('%H:%M:%S')}]" if chunk_start_at else ""
-    lines = [f"### Chunk {chunk_start:.0f}s–{chunk_end:.0f}s{time_str}"]
+    if chunk_start_at:
+        chunk_end_at = chunk_start_at + timedelta(seconds=chunk_end - chunk_start)
+        header = f"### Chunk [{chunk_start_at.strftime('%H:%M:%S')} – {chunk_end_at.strftime('%H:%M:%S')}]"
+    else:
+        header = f"### Chunk {chunk_start:.0f}s–{chunk_end:.0f}s"
+    lines = [header]
     if result.raw_transcript:
         lines.append(f"**Transkrypcja:** {result.raw_transcript[:400]}")
     if result.speakers:
@@ -203,22 +207,39 @@ def _format_chunk_result_verbose(
     if result.topic_transitions:
         lines.append("**Zmiany tematu:**")
         for tr in result.topic_transitions:
-            abs_ts = chunk_start + tr.timestamp_offset_seconds
-            lines.append(f"  - [{abs_ts:.0f}s] {tr.description}")
+            if chunk_start_at:
+                tr_at = chunk_start_at + timedelta(seconds=tr.timestamp_offset_seconds)
+                lines.append(f"  - [{tr_at.strftime('%H:%M:%S')}] {tr.description}")
+            else:
+                lines.append(
+                    f"  - [{chunk_start + tr.timestamp_offset_seconds:.0f}s] {tr.description}"
+                )
     if result.topics:
         for t in result.topics:
-            abs_start = chunk_start + t.start_offset_seconds
-            abs_end = (
-                chunk_start + t.end_offset_seconds
-                if t.end_offset_seconds is not None
-                else chunk_end
-            )
-            lines.append(
-                f"**Temat [{abs_start:.0f}s–{abs_end:.0f}s]:** {t.title} ({t.confidence:.0%})"
-            )
+            if chunk_start_at:
+                t_start_at = chunk_start_at + timedelta(seconds=t.start_offset_seconds)
+                t_end_at = (
+                    chunk_start_at + timedelta(seconds=t.end_offset_seconds)
+                    if t.end_offset_seconds is not None
+                    else chunk_end_at  # type: ignore[possibly-undefined]
+                )
+                time_range = f"{t_start_at.strftime('%H:%M:%S')}–{t_end_at.strftime('%H:%M:%S')}"
+            else:
+                abs_start = chunk_start + t.start_offset_seconds
+                abs_end = (
+                    chunk_start + t.end_offset_seconds
+                    if t.end_offset_seconds is not None
+                    else chunk_end
+                )
+                time_range = f"{abs_start:.0f}s–{abs_end:.0f}s"
+            lines.append(f"**Temat [{time_range}]:** {t.title} ({t.confidence:.0%})")
             for f in t.facts:
                 who = f" [{f.speaker_label}]" if f.speaker_label else ""
-                ts = f" @{chunk_start + f.timestamp_offset_seconds:.0f}s"
+                if chunk_start_at:
+                    f_at = chunk_start_at + timedelta(seconds=f.timestamp_offset_seconds)
+                    ts = f" @{f_at.strftime('%H:%M:%S')}"
+                else:
+                    ts = f" @{chunk_start + f.timestamp_offset_seconds:.0f}s"
                 lines.append(f"  💡 {f.text}{who}{ts}")
             for q in t.quotes:
                 who = f" [{q.speaker_label}]" if q.speaker_label else ""
@@ -474,11 +495,14 @@ async def run_subscription_pipeline(
                                 session, subscription_id, chunk_start, chunk_end, result
                             )
 
+                    chunk_end_at = chunk_start_at + timedelta(seconds=chunk_duration_seconds)
                     chunk_event = {
                         "type": "chunk",
                         "chunk_id": str(chunk_id) if chunk_id else None,
                         "chunk_start": chunk_start,
                         "chunk_end": chunk_end,
+                        "chunk_start_at": chunk_start_at.isoformat(),
+                        "chunk_end_at": chunk_end_at.isoformat(),
                         "speakers": [s.model_dump() for s in result.speakers],
                         "topics": [t.model_dump() for t in result.topics],
                         "topic_transitions": [t.model_dump() for t in result.topic_transitions],

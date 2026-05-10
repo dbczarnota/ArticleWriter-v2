@@ -10,16 +10,17 @@ import json
 import signal
 import sys
 import urllib.request
+from datetime import datetime, timedelta
 
 BASE = "http://127.0.0.1:8000"
-STREAM_URL = "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO_TOKFM.mp3"
+STREAM_URL = "http://mp3.polskieradio.pl:8900"  # PR1 Jedynka — ICY metadata
 HEADERS = {"X-Org-Code": "__local_dev__", "Content-Type": "application/json"}
 
 sub_id = None
 
 
 def subscribe():
-    body = json.dumps({"name": "TOK FM test", "stream_url": STREAM_URL}).encode()
+    body = json.dumps({"name": "PR1 Jedynka test", "stream_url": STREAM_URL}).encode()
     req = urllib.request.Request(
         f"{BASE}/v2/streams/subscriptions", data=body, headers=HEADERS, method="POST"
     )
@@ -42,29 +43,64 @@ def unsubscribe(sid):
         print(f"\n⚠ Błąd przy zatrzymaniu: {e}")
 
 
+def _parse_at(iso: str | None) -> datetime | None:
+    return datetime.fromisoformat(iso) if iso else None
+
+
 def print_chunk(data: dict):
     chunk_start = data["chunk_start"]
     chunk_end = data["chunk_end"]
+    start_at = _parse_at(data.get("chunk_start_at"))
+    end_at = _parse_at(data.get("chunk_end_at"))
+
     print(f"\n{'─' * 60}")
-    print(f"⏱  Chunk {chunk_start:.0f}s – {chunk_end:.0f}s  [SSE→klient]")
+    if start_at and end_at:
+        print(
+            f"⏱  Chunk [{start_at.strftime('%H:%M:%S')} – {end_at.strftime('%H:%M:%S')}]  [SSE→klient]"
+        )
+    else:
+        print(f"⏱  Chunk {chunk_start:.0f}s – {chunk_end:.0f}s  [SSE→klient]")
 
     if data.get("speakers"):
         print("🎙  " + "  ".join(f"[{s['label']}] {s['description']}" for s in data["speakers"]))
 
     if data.get("topic_transitions"):
         for tr in data["topic_transitions"]:
-            print(f"🔀 [{chunk_start + tr['timestamp_offset_seconds']:.0f}s] {tr['description']}")
+            off = tr["timestamp_offset_seconds"]
+            ts = (
+                (start_at + timedelta(seconds=off)).strftime("%H:%M:%S")
+                if start_at
+                else f"{chunk_start + off:.0f}s"
+            )
+            print(f"🔀 [{ts}] {tr['description']}")
 
     for t in data.get("topics", []):
-        t_start = chunk_start + t.get("start_offset_seconds", 0)
-        t_end_raw = t.get("end_offset_seconds")
-        t_end = chunk_start + t_end_raw if t_end_raw is not None else chunk_end
+        t_off_start = t.get("start_offset_seconds", 0)
+        t_off_end = t.get("end_offset_seconds")
+        if start_at:
+            t_start_str = (start_at + timedelta(seconds=t_off_start)).strftime("%H:%M:%S")
+            t_end_str = (
+                (start_at + timedelta(seconds=t_off_end)).strftime("%H:%M:%S")
+                if t_off_end is not None
+                else end_at.strftime("%H:%M:%S")
+                if end_at
+                else "?"
+            )
+            time_range = f"{t_start_str}–{t_end_str}"
+        else:
+            t_start = chunk_start + t_off_start
+            t_end = chunk_start + t_off_end if t_off_end is not None else chunk_end
+            time_range = f"{t_start:.0f}s–{t_end:.0f}s"
         conf = f" ({t['confidence']:.0%})" if t.get("confidence") else ""
-        print(f"\n📌 {t['title']}{conf}  [{t_start:.0f}s–{t_end:.0f}s]")
+        print(f"\n📌 {t['title']}{conf}  [{time_range}]")
         for f in t.get("facts", []):
             who = f" [{f['speaker_label']}]" if f.get("speaker_label") else ""
-            ts = f" @{chunk_start + f.get('timestamp_offset_seconds', 0):.0f}s"
-            print(f"   💡 {f['text']}{who}{ts}")
+            f_off = f.get("timestamp_offset_seconds", 0)
+            if start_at:
+                f_ts = (start_at + timedelta(seconds=f_off)).strftime("%H:%M:%S")
+            else:
+                f_ts = f"{chunk_start + f_off:.0f}s"
+            print(f"   💡 {f['text']}{who} @{f_ts}")
         for q in t.get("quotes", []):
             who = f" — {q['speaker_label']}" if q.get("speaker_label") else ""
             print(f'   💬 "{q["text"]}"{who}')
@@ -113,7 +149,9 @@ def listen(sid):
         f"{BASE}/v2/streams/subscriptions/{sid}/results/stream",
         headers={"X-Org-Code": "__local_dev__"},
     )
-    print("\nNasłuchuję... (pierwsze chunki za ~2 min, pierwszy digest za ~10 min, Ctrl+C zatrzymuje)\n")
+    print(
+        "\nNasłuchuję... (pierwsze chunki za ~3 min, pierwszy digest za ~15 min, Ctrl+C zatrzymuje)\n"
+    )
     event_type = None
     with urllib.request.urlopen(req) as r:
         for raw in r:
