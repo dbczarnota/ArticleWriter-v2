@@ -616,6 +616,8 @@ class StreamSubscription(SQLModel, table=True):
     status: str = Field(default="active", max_length=16)
     """One of: active, paused, stopped."""
     chunk_duration_seconds: int = Field(default=180)
+    topic_merge_window_hours: int = Field(default=6)
+    """How far back (hours) the digest agent looks when merging topics. Default 6h."""
     created_at: datetime = Field(
         default_factory=_utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),

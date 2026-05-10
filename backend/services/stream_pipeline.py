@@ -365,25 +365,54 @@ async def _upsert_stream_topics(
     from backend.db.models import StreamTopic
 
     for story in digest.stories:
-        normalized_title = story.title.strip().lower()
+        survivor: StreamTopic | None = None
 
-        result = await session.execute(
-            sa.select(StreamTopic).where(
-                StreamTopic.subscription_id == subscription_id,  # type: ignore[arg-type]
-                sa.func.lower(sa.func.trim(StreamTopic.title)) == normalized_title,  # type: ignore[arg-type]
+        if story.source_topic_ids:
+            # ID-based lookup: find all historical rows this story references
+            source_uuids = []
+            for sid in story.source_topic_ids:
+                try:
+                    from uuid import UUID as _UUID
+                    source_uuids.append(_UUID(sid))
+                except ValueError:
+                    continue
+
+            if source_uuids:
+                result = await session.execute(
+                    sa.select(StreamTopic).where(
+                        StreamTopic.subscription_id == subscription_id,  # type: ignore[arg-type]
+                        StreamTopic.id.in_(source_uuids),  # type: ignore[attr-defined]
+                    )
+                )
+                matched = list(result.scalars().all())
+                if matched:
+                    # Keep the oldest row as survivor, delete the rest
+                    matched.sort(key=lambda r: r.first_seen_at)
+                    survivor = matched[0]
+                    for duplicate in matched[1:]:
+                        await session.delete(duplicate)
+
+        if survivor is None:
+            # Fall back to title-based lookup for genuinely new topics
+            normalized_title = story.title.strip().lower()
+            result = await session.execute(
+                sa.select(StreamTopic).where(
+                    StreamTopic.subscription_id == subscription_id,  # type: ignore[arg-type]
+                    sa.func.lower(sa.func.trim(StreamTopic.title)) == normalized_title,  # type: ignore[arg-type]
+                )
             )
-        )
-        existing = result.scalar_one_or_none()
+            survivor = result.scalar_one_or_none()
 
-        if existing is not None:
-            existing.is_news = story.is_news
-            existing.summary = story.summary
-            existing.speakers = [sp.model_dump() for sp in story.speakers]
-            existing.facts = [f.model_dump() for f in story.facts]
-            existing.quotes = [q.model_dump() for q in story.quotes]
-            existing.window_end_seconds = story.end_seconds
-            existing.last_seen_at = now
-            session.add(existing)
+        if survivor is not None:
+            survivor.title = story.title
+            survivor.is_news = story.is_news
+            survivor.summary = story.summary
+            survivor.speakers = [sp.model_dump() for sp in story.speakers]
+            survivor.facts = [f.model_dump() for f in story.facts]
+            survivor.quotes = [q.model_dump() for q in story.quotes]
+            survivor.window_end_seconds = story.end_seconds
+            survivor.last_seen_at = now
+            session.add(survivor)
         else:
             topic = StreamTopic(
                 subscription_id=subscription_id,
@@ -413,6 +442,7 @@ async def run_subscription_pipeline(
     url_refresh_url: str | None = None,
     url_refresh_headers: dict | None = None,
     url_refresh_field: str = "url",
+    topic_merge_window_hours: int = 6,
 ) -> None:
     """Long-running pipeline task for one subscription."""
     from backend.services.stream_manager import get_stream_manager
@@ -537,7 +567,7 @@ async def run_subscription_pipeline(
                                 historical_topics = await _get_historical_topics(
                                     session,
                                     subscription_id,
-                                    digest_config.topic_window_hours,
+                                    topic_merge_window_hours,
                                     now_utc,
                                 )
 

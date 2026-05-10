@@ -15,12 +15,32 @@ _SYSTEM_PROMPT = """\
 Jesteś redaktorem analizującym transkrypcje polskiego radia informacyjnego.
 
 Otrzymujesz trzy rodzaje danych:
-1. ZNANE TEMATY Z OSTATNICH GODZIN — pamięć długoterminowa (tematy z ostatnich 6h, z ID).
+1. ZNANE TEMATY Z OSTATNICH GODZIN — pamięć długoterminowa (tematy z ostatnich godzin, z ID).
 2. POPRZEDNIE DIGESRY — wyniki ostatnich przebiegów tego agenta (szczegółowe).
 3. NOWE CHUNKI — świeże fragmenty audio (~10 minut) z częściową analizą.
 
 Traktuj ZNANE TEMATY jako punkt wyjścia — jeśli nowy materiał dotyczy już istniejącego \
 tematu, zaktualizuj go zamiast tworzyć nowy. Jeśli nie ma historii, zacznij od zera.
+
+## KLUCZOWA ZASADA: deduplikacja przed tworzeniem nowych tematów
+
+**Zanim stworzysz nowy temat, przejrzyj ZNANE TEMATY i sprawdź, czy nowy materiał nie dotyczy \
+już istniejącego tematu.** Kryteria podobieństwa (wystarczy jedno):
+- Ten sam gość/rozmówca kontynuuje wypowiedź (nawet po przerwie reklamowej lub muzycznej).
+- To samo wydarzenie/osoba/instytucja co w historycznym temacie — nawet jeśli ujęcie jest inne \
+  (np. "Ziobro ucieka na Węgry" i "Procedura ekstradycyjna Ziobry" to TEN SAM temat).
+- Nowe fakty/cytaty są rozwinięciem lub aktualizacją historycznego tematu.
+
+**Pole `source_topic_ids`** — OBOWIĄZKOWE gdy aktualizujesz lub łączysz historyczne tematy:
+- Wpisz ID wszystkich historycznych tematów, które ten temat zastępuje lub rozszerza.
+- ID znajdziesz w sekcji ZNANE TEMATY przy każdym temacie: `[ID: <uuid>]`.
+- Jeśli łączysz dwa historyczne tematy w jeden → wpisz oba ID.
+- Jeśli to kontynuacja jednego historycznego tematu → wpisz jego ID.
+- Jeśli to zupełnie nowy temat bez historii → zostaw pustą listę.
+
+Przykład: historyczny temat `[ID: aaa-111]` "Kontrowersje wokół wyjazdu Ziobry" → \
+nowy materiał przynosi więcej szczegółów → zwróć DigestStory z `source_topic_ids: ["aaa-111"]`. \
+System usunie stary temat i zachowa ten jako aktualny.
 
 ## Kluczowa zasada: selekcja tematów newsowych
 
@@ -114,6 +134,7 @@ class DigestStory(BaseModel):
     facts: list[DigestFact] = []
     quotes: list[DigestQuote] = []
     summary: str = ""
+    source_topic_ids: list[str] = []
 
 
 class StreamDigestResult(BaseModel):

@@ -31,6 +31,7 @@ class SubscriptionCreate(BaseModel):
     url_refresh_headers: dict = {}
     url_refresh_field: str = "url"
     chunk_duration_seconds: int = 180
+    topic_merge_window_hours: int = 6
 
 
 class SubscriptionResponse(BaseModel):
@@ -43,6 +44,7 @@ class SubscriptionResponse(BaseModel):
     url_refresh_field: str
     status: str
     chunk_duration_seconds: int
+    topic_merge_window_hours: int
     created_at: datetime
     started_at: datetime | None = None
     stopped_at: datetime | None = None
@@ -59,6 +61,7 @@ def _sub_to_response(sub: StreamSubscription) -> SubscriptionResponse:
         url_refresh_field=sub.url_refresh_field,
         status=sub.status,
         chunk_duration_seconds=sub.chunk_duration_seconds,
+        topic_merge_window_hours=sub.topic_merge_window_hours,
         created_at=sub.created_at,
         started_at=sub.started_at,
         stopped_at=sub.stopped_at,
@@ -83,6 +86,7 @@ async def create_subscription(
             url_refresh_field=body.url_refresh_field,
             status="active",
             chunk_duration_seconds=body.chunk_duration_seconds,
+            topic_merge_window_hours=body.topic_merge_window_hours,
             created_at=now,
             started_at=now,
         )
@@ -98,6 +102,7 @@ async def create_subscription(
             url_refresh_field=body.url_refresh_field,
             status="active",
             chunk_duration_seconds=body.chunk_duration_seconds,
+            topic_merge_window_hours=body.topic_merge_window_hours,
             started_at=now,
         )
         async with sm() as session:  # type: ignore[union-attr]
@@ -115,6 +120,7 @@ async def create_subscription(
         url_refresh_url=sub.url_refresh_url,
         url_refresh_headers=sub.url_refresh_headers,
         url_refresh_field=sub.url_refresh_field,
+        topic_merge_window_hours=sub.topic_merge_window_hours,
     )
     logfire.info("stream.subscribed", subscription_id=str(sub.id), org_code=org.code)
     return _sub_to_response(sub)
@@ -204,6 +210,7 @@ async def start_subscription(
         url_refresh_url=sub.url_refresh_url,
         url_refresh_headers=sub.url_refresh_headers or {},
         url_refresh_field=sub.url_refresh_field,
+        topic_merge_window_hours=sub.topic_merge_window_hours,
     )
     logfire.info("stream.started", subscription_id=str(subscription_id), org_code=org.code)
     return _sub_to_response(sub)

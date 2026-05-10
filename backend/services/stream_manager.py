@@ -53,6 +53,7 @@ class StreamSessionManager:
         url_refresh_url: str | None = None,
         url_refresh_headers: dict | None = None,
         url_refresh_field: str = "url",
+        topic_merge_window_hours: int = 6,
     ) -> None:
         """Start pipeline task for subscription_id. Idempotent."""
         if subscription_id in self._tasks and not self._tasks[subscription_id].done():
@@ -67,6 +68,7 @@ class StreamSessionManager:
                 url_refresh_url=url_refresh_url,
                 url_refresh_headers=url_refresh_headers or {},
                 url_refresh_field=url_refresh_field,
+                topic_merge_window_hours=topic_merge_window_hours,
             ),
             name=f"stream-{subscription_id}",
         )
@@ -118,6 +120,7 @@ class StreamSessionManager:
                 url_refresh_url=sub.url_refresh_url,
                 url_refresh_headers=sub.url_refresh_headers,
                 url_refresh_field=sub.url_refresh_field,
+                topic_merge_window_hours=sub.topic_merge_window_hours,
             )
         if subs:
             logfire.info("stream.manager.resumed", count=len(subs))
