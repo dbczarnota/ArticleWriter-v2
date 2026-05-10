@@ -44,7 +44,7 @@ export function StreamsConfigSection() {
       await create({
         name: form.name.trim(),
         stream_url: form.stream_url.trim(),
-        stream_type: form.stream_type.trim() || "radio",
+        stream_type: form.stream_type,
         url_refresh_url: form.url_refresh_url.trim() || undefined,
         url_refresh_field: form.url_refresh_field.trim() || "url",
         chunk_duration_seconds: form.chunk_duration_seconds,
@@ -159,12 +159,14 @@ export function StreamsConfigSection() {
             </div>
             <div>
               <label style={labelStyle}>{t.streams.config.streamType}</label>
-              <input
+              <select
                 style={inputStyle}
                 value={form.stream_type}
                 onChange={(e) => setForm((f) => ({ ...f, stream_type: e.target.value }))}
-                placeholder={t.streams.config.streamTypePlaceholder}
-              />
+              >
+                <option value="radio">radio</option>
+                <option value="tv">tv</option>
+              </select>
             </div>
           </div>
           <div>
