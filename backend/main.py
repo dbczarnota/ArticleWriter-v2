@@ -1,10 +1,17 @@
 # backend/main.py
+import asyncio
 import logging
 import os
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from logging import basicConfig
+
+# asyncio.create_subprocess_exec requires ProactorEventLoop on Windows.
+# uvicorn --reload switches to SelectorEventLoop, breaking subprocess creation.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 # Suppress JWKS auto-spans before instrument_httpx() runs. Kinde's
 # scripts.kinde.com/.well-known/jwks.json is fetched a handful of times
