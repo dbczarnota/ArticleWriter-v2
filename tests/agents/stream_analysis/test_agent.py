@@ -11,7 +11,7 @@ def test_config_defaults():
     cfg = StreamAnalysisAgentConfig()
     assert cfg.model == "google-gla:gemini-flash-lite-latest"
     assert len(cfg.fallback_models) >= 1
-    assert cfg.chunk_duration_seconds == 120
+    assert cfg.chunk_duration_seconds == 180
 
 
 def test_config_is_frozen():

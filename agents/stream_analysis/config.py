@@ -9,4 +9,4 @@ from agents._base.config import AgentConfig
 class StreamAnalysisAgentConfig(AgentConfig):
     model: str = "google-gla:gemini-flash-lite-latest"
     fallback_models: tuple[str, ...] = ("google-gla:gemini-flash-latest",)
-    chunk_duration_seconds: int = 120
+    chunk_duration_seconds: int = 180
