@@ -148,13 +148,21 @@ export function DiscoveryHub() {
           </button>
           <button
             type="button"
-            onClick={() => setView("feeds")}
-            disabled={view === "feeds"}
-            style={{ ...tabBtn(view === "feeds"), display: "inline-flex", alignItems: "center", gap: 6 }}
+            onClick={() => setView("tematy-streamow")}
+            disabled={view === "tematy-streamow"}
+            style={{ ...tabBtn(view === "tematy-streamow"), display: "inline-flex", alignItems: "center", gap: 6 }}
           >
-            <FeedsIcon /> {t.discovery.views.feeds}
+            <StreamTopicsIcon /> {t.streams.views.topics}
           </button>
           <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() => setView("feeds")}
+              disabled={view === "feeds"}
+              style={{ ...tabBtn(view === "feeds"), display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <FeedsIcon /> {t.discovery.views.feeds}
+            </button>
             <button
               type="button"
               onClick={() => setView("streamy")}
@@ -162,14 +170,6 @@ export function DiscoveryHub() {
               style={{ ...tabBtn(view === "streamy"), display: "inline-flex", alignItems: "center", gap: 6 }}
             >
               <StreamsIcon /> {t.streams.views.subscriptions}
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("tematy-streamow")}
-              disabled={view === "tematy-streamow"}
-              style={{ ...tabBtn(view === "tematy-streamow"), display: "inline-flex", alignItems: "center", gap: 6 }}
-            >
-              <StreamTopicsIcon /> {t.streams.views.topics}
             </button>
           </div>
           {view === "topics" && !selectedTopicId && (
