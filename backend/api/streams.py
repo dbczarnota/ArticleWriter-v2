@@ -154,6 +154,61 @@ async def delete_subscription(
     return Response(status_code=204)
 
 
+@router.post("/subscriptions/{subscription_id}/stop", status_code=204)
+async def stop_subscription(
+    subscription_id: UUID,
+    org: Org = Depends(get_current_org),
+) -> Response:
+    if get_db_backend() == "postgres":
+        sm = get_session_maker()
+        async with sm() as session:  # type: ignore[union-attr]
+            sub = await session.get(StreamSubscription, subscription_id)
+            if sub is None or sub.org_code != org.code:
+                raise HTTPException(status_code=404, detail="Subscription not found")
+            sub.status = "stopped"
+            sub.stopped_at = datetime.now(UTC)
+            session.add(sub)
+            await session.commit()
+    manager = get_stream_manager()
+    await manager.stop(subscription_id)
+    logfire.info("stream.stopped", subscription_id=str(subscription_id), org_code=org.code)
+    return Response(status_code=204)
+
+
+@router.post("/subscriptions/{subscription_id}/start", response_model=SubscriptionResponse)
+async def start_subscription(
+    subscription_id: UUID,
+    org: Org = Depends(get_current_org),
+) -> SubscriptionResponse:
+    if get_db_backend() != "postgres":
+        raise HTTPException(status_code=400, detail="Requires postgres backend")
+    sm = get_session_maker()
+    async with sm() as session:  # type: ignore[union-attr]
+        sub = await session.get(StreamSubscription, subscription_id)
+        if sub is None or sub.org_code != org.code:
+            raise HTTPException(status_code=404, detail="Subscription not found")
+        now = datetime.now(UTC)
+        sub.status = "active"
+        sub.started_at = now
+        sub.stopped_at = None
+        session.add(sub)
+        await session.commit()
+        await session.refresh(sub)
+    manager = get_stream_manager()
+    await manager.start(
+        sub.id,
+        sub.stream_url,
+        sub.chunk_duration_seconds,
+        org.code,
+        stream_type=sub.stream_type,
+        url_refresh_url=sub.url_refresh_url,
+        url_refresh_headers=sub.url_refresh_headers or {},
+        url_refresh_field=sub.url_refresh_field,
+    )
+    logfire.info("stream.started", subscription_id=str(subscription_id), org_code=org.code)
+    return _sub_to_response(sub)
+
+
 @router.get("/subscriptions/{subscription_id}/results")
 async def get_results(
     subscription_id: UUID,

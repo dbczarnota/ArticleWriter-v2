@@ -54,5 +54,23 @@ export function useStreamSubscriptions() {
     [request, refresh],
   );
 
-  return { subscriptions, loading, refresh, create, remove };
+  const start = useCallback(
+    async (id: string) => {
+      await request<StreamSubscription>(`/v2/streams/subscriptions/${id}/start`, {
+        method: "POST",
+      });
+      await refresh();
+    },
+    [request, refresh],
+  );
+
+  const stop = useCallback(
+    async (id: string) => {
+      await request(`/v2/streams/subscriptions/${id}/stop`, { method: "POST" });
+      await refresh();
+    },
+    [request, refresh],
+  );
+
+  return { subscriptions, loading, refresh, create, remove, start, stop };
 }

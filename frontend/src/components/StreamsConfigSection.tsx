@@ -13,10 +13,11 @@ const EMPTY_FORM = {
 
 export function StreamsConfigSection() {
   const t = useT();
-  const { subscriptions, loading, create, remove } = useStreamSubscriptions();
+  const { subscriptions, loading, create, remove, start, stop } = useStreamSubscriptions();
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
+  const [toggling, setToggling] = useState<Set<string>>(new Set());
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
@@ -59,6 +60,25 @@ export function StreamsConfigSection() {
     }
   }
 
+  async function handleToggle(id: string, isActive: boolean) {
+    setToggling((prev) => new Set(prev).add(id));
+    try {
+      if (isActive) {
+        await stop(id);
+      } else {
+        await start(id);
+      }
+    } catch (err) {
+      console.error("StreamsConfigSection: toggle failed", err);
+    } finally {
+      setToggling((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
+
   return (
     <div style={{ maxWidth: 640 }}>
       <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
@@ -71,66 +91,100 @@ export function StreamsConfigSection() {
       {/* Existing subscriptions */}
       {!loading && subscriptions.length > 0 && (
         <div style={{ marginBottom: 24, display: "flex", flexDirection: "column", gap: 8 }}>
-          {subscriptions.map((sub) => (
-            <div
-              key={sub.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "8px 12px",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                background: "var(--white)",
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontWeight: 500, fontSize: 13 }}>{sub.name}</span>
-                <span
-                  style={{
-                    marginLeft: 8,
-                    fontSize: 11,
-                    color: "var(--muted)",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {sub.stream_type}
-                </span>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "var(--muted)",
-                    fontFamily: "ui-monospace, Menlo, monospace",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {sub.stream_url}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (window.confirm(t.streams.subscription.confirmDelete)) {
-                    void remove(sub.id);
-                  }
-                }}
+          {subscriptions.map((sub) => {
+            const isActive = sub.status === "active";
+            const isToggling = toggling.has(sub.id);
+            return (
+              <div
+                key={sub.id}
                 style={{
-                  fontSize: 12,
-                  color: "var(--error-fg)",
-                  background: "none",
-                  border: "1px solid var(--error-fg)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "8px 12px",
+                  border: "1px solid var(--border)",
                   borderRadius: "var(--radius)",
-                  padding: "3px 10px",
-                  cursor: "pointer",
-                  flexShrink: 0,
+                  background: "var(--white)",
                 }}
               >
-                {t.streams.config.removeStream}
-              </button>
-            </div>
-          ))}
+                {/* On/off toggle */}
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    cursor: isToggling ? "default" : "pointer",
+                    flexShrink: 0,
+                    opacity: isToggling ? 0.5 : 1,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    disabled={isToggling}
+                    onChange={() => void handleToggle(sub.id, isActive)}
+                    style={{ width: 16, height: 16, cursor: isToggling ? "default" : "pointer" }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: isActive ? "var(--success-fg)" : "var(--muted)",
+                      textTransform: "uppercase",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {isActive ? t.streams.subscription.live : t.streams.subscription.stopped}
+                  </span>
+                </label>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontWeight: 500, fontSize: 13 }}>{sub.name}</span>
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      fontSize: 11,
+                      color: "var(--muted)",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {sub.stream_type}
+                  </span>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "var(--muted)",
+                      fontFamily: "ui-monospace, Menlo, monospace",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {sub.stream_url}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(t.streams.subscription.confirmDelete)) {
+                      void remove(sub.id);
+                    }
+                  }}
+                  style={{
+                    fontSize: 12,
+                    color: "var(--error-fg)",
+                    background: "none",
+                    border: "1px solid var(--error-fg)",
+                    borderRadius: "var(--radius)",
+                    padding: "3px 10px",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  {t.streams.config.removeStream}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
