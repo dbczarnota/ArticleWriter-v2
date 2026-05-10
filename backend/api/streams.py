@@ -368,6 +368,9 @@ async def list_stream_topics(
                 "speakers": t.speakers,
                 "facts": t.facts,
                 "quotes": t.quotes,
+                "categories": t.categories,
+                "discovery_topic_id": str(t.topic_id) if t.topic_id else None,
+                "windows": t.windows,
                 "window_start_seconds": t.window_start_seconds,
                 "window_end_seconds": t.window_end_seconds,
                 "first_seen_at": t.first_seen_at.isoformat(),
@@ -375,3 +378,39 @@ async def list_stream_topics(
             }
             for t in result.scalars().all()
         ]
+
+
+@router.get("/topics/{stream_topic_id}")
+async def get_stream_topic(
+    stream_topic_id: UUID,
+    org: Org = Depends(get_current_org),
+) -> dict:
+    """Full details for one stream topic — used by the modal in TopicDetail."""
+    if get_db_backend() != "postgres":
+        raise HTTPException(status_code=404, detail="Not found")
+    sm = get_session_maker()
+    async with sm() as session:  # type: ignore[union-attr]
+        t = await session.get(StreamTopic, stream_topic_id)
+        if t is None:
+            raise HTTPException(status_code=404, detail="Stream topic not found")
+        sub = await session.get(StreamSubscription, t.subscription_id)
+        if sub is None or sub.org_code != org.code:
+            raise HTTPException(status_code=404, detail="Stream topic not found")
+    return {
+        "topic_id": str(t.id),
+        "subscription_id": str(t.subscription_id),
+        "subscription_name": sub.name,
+        "title": t.title,
+        "is_news": t.is_news,
+        "summary": t.summary,
+        "speakers": t.speakers,
+        "facts": t.facts,
+        "quotes": t.quotes,
+        "categories": t.categories,
+        "discovery_topic_id": str(t.topic_id) if t.topic_id else None,
+        "windows": t.windows,
+        "window_start_seconds": t.window_start_seconds,
+        "window_end_seconds": t.window_end_seconds,
+        "first_seen_at": t.first_seen_at.isoformat(),
+        "last_seen_at": t.last_seen_at.isoformat(),
+    }

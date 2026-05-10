@@ -46,6 +46,37 @@ _last_run_at: dict[str, float] = {}
 """org_code -> monotonic seconds of last completed poll dispatch."""
 
 
+async def _classify_streams_safely(org_code: str) -> None:
+    """Classify unclassified StreamTopics for org, link to DiscoveryTopics."""
+    with logfire.set_baggage(org_code=org_code):
+        try:
+            from backend.database import get_db_backend
+            if get_db_backend() != "postgres":
+                return
+            org_repo = get_org_repo()
+            cfg_repo = get_org_config_repo()
+            org = await org_repo.get(org_code)
+            if org is None:
+                return
+            from backend.domain import get_domain_config
+            domain = await get_domain_config(org_code, org.domain_name, cfg_repo)
+            if domain is None or not domain.discovery_enabled:
+                return
+            from backend.services.discovery.stream_pipeline import (
+                process_unclassified_stream_topics,
+            )
+            count = await process_unclassified_stream_topics(org_code=org_code, domain=domain)
+            if count:
+                logfire.info("stream.classify.tick", org_code=org_code, processed=count)
+        except Exception as e:
+            logfire.warn(
+                "stream.classify.tick_failed",
+                org_code=org_code,
+                error_type=type(e).__name__,
+                error_message=str(e)[:500],
+            )
+
+
 async def _poll_org_safely(org_code: str) -> None:
     """Wrap poll_org_feeds: load fresh config, run, never raise.
 
@@ -106,17 +137,21 @@ async def _master_tick() -> None:
             domain = await get_domain_config(org.code, org.domain_name, cfg_repo)
         except Exception:
             continue
-        if domain is None or not domain.discovery_enabled or not domain.discovery_feeds:
+        if domain is None or not domain.discovery_enabled:
             continue
-        # Eligibility check: respect per-feed minimum interval.
-        interval_s = max(60, min(f.poll_interval_min for f in domain.discovery_feeds) * 60)
-        last = _last_run_at.get(org.code)
-        if last is not None and (now - last) < interval_s:
-            continue
-        # Mark optimistically — we'd rather skip a tick than over-poll.
-        _last_run_at[org.code] = now
-        # Dispatch. The set tracks the task for shutdown drain.
-        task = asyncio.create_task(_poll_org_safely(org.code))
+
+        # RSS feed polling (respects per-feed interval)
+        if domain.discovery_feeds:
+            interval_s = max(60, min(f.poll_interval_min for f in domain.discovery_feeds) * 60)
+            last = _last_run_at.get(org.code)
+            if last is None or (now - last) >= interval_s:
+                _last_run_at[org.code] = now
+                task = asyncio.create_task(_poll_org_safely(org.code))
+                _inflight.add(task)
+                task.add_done_callback(_inflight.discard)
+
+        # Stream topic classification (every tick — cheap, batch-limited)
+        task = asyncio.create_task(_classify_streams_safely(org.code))
         _inflight.add(task)
         task.add_done_callback(_inflight.discard)
 

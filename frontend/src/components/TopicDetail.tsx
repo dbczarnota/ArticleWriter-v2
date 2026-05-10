@@ -5,6 +5,7 @@ import { useT } from "../i18n";
 import { Button } from "./ui/Button";
 import { StatusMessage } from "./ui/StatusMessage";
 import { safeHref } from "../lib/safeHref";
+import { StreamSourceModal } from "./StreamSourceModal";
 
 interface Props {
   topicId: string;
@@ -20,11 +21,21 @@ function hostnameOf(url: string): string {
   }
 }
 
+function formatWindow(w: { start_at: string; end_at: string }): string {
+  const start = new Date(w.start_at);
+  const end = new Date(w.end_at);
+  const day = start.toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
+  const t1 = start.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+  const t2 = end.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+  return `${day}, ${t1}–${t2}`;
+}
+
 export function TopicDetail({ topicId, onBack, onWrite }: Props) {
   const t = useT();
   const { request } = useApi();
   const [detail, setDetail] = useState<DiscoveryTopicDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [modalStreamTopicId, setModalStreamTopicId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -163,6 +174,39 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
           <h3 style={{ marginTop: 24, color: "var(--text)", fontSize: 15 }}>
             {t.discovery.topic.sources} ({detail.items.length})
           </h3>
+          {detail.stream_sources?.length > 0 && (
+            <>
+              <h3 style={{ marginTop: 24, color: "var(--text)", fontSize: 15 }}>
+                Źródła streamowe ({detail.stream_sources.length})
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+                {detail.stream_sources.map((src) => (
+                  <button
+                    key={src.id}
+                    type="button"
+                    onClick={() => setModalStreamTopicId(src.id)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "8px 12px",
+                      border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                      background: "var(--white)", cursor: "pointer", textAlign: "left",
+                    }}
+                  >
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "var(--accent-lt)", borderRadius: 4, padding: "1px 7px", flexShrink: 0 }}>
+                      {src.subscription_name}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", flex: 1 }}>
+                      {src.title}
+                    </span>
+                    <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>
+                      {src.windows.map(formatWindow).join(" · ")}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
           {Array.from(groups.entries()).map(([host, group]) => (
             <div
               key={host}
@@ -302,6 +346,12 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
           </div>
         </aside>
       </div>
+      {modalStreamTopicId && (
+        <StreamSourceModal
+          streamTopicId={modalStreamTopicId}
+          onClose={() => setModalStreamTopicId(null)}
+        />
+      )}
     </div>
   );
 }

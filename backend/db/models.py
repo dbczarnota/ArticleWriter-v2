@@ -709,6 +709,20 @@ class StreamTopic(SQLModel, table=True):
     speakers: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
     facts: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
     quotes: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
+    categories: list[str] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False))
+    topic_id: UUID | None = Field(
+        default=None,
+        sa_column=Column(
+            PG_UUID(as_uuid=True),
+            ForeignKey("discovery_topics.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
+    )
+    classified_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    windows: list[dict] = Field(default_factory=list, sa_column=Column(JSONB, nullable=False))
+    """List of {start_at: ISO str, end_at: ISO str} — all time windows this topic spans."""
     window_start_seconds: float = Field(sa_column=Column(Float, nullable=False))
     window_end_seconds: float = Field(sa_column=Column(Float, nullable=False))
     first_seen_at: datetime = Field(

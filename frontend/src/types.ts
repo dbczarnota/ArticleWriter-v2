@@ -195,6 +195,7 @@ export interface DiscoveryTopicSummary {
   first_seen_at: string | null;
   new_items_since_consume: number;
   item_count: number;
+  stream_source_count: number;
   feed_hosts: string[];
   topic_image_url: string | null;
 }
@@ -213,6 +214,8 @@ export interface DiscoveryItem {
 
 export interface DiscoveryTopicDetail extends DiscoveryTopicSummary {
   items: DiscoveryItem[];
+  stream_sources: StreamSource[];
+  stream_source_count: number;
 }
 
 export interface StreamSubscription {
@@ -230,6 +233,11 @@ export interface StreamSubscription {
   stopped_at: string | null;
 }
 
+export interface StreamTopicWindow {
+  start_at: string;
+  end_at: string;
+}
+
 export interface StreamTopic {
   topic_id: string;
   subscription_id: string;
@@ -240,8 +248,19 @@ export interface StreamTopic {
   speakers: Array<{ name_or_role: string; description?: string }>;
   facts: Array<{ text: string; speaker?: string }>;
   quotes: Array<{ text: string; speaker?: string }>;
+  categories: string[];
+  discovery_topic_id: string | null;
+  windows: StreamTopicWindow[];
   window_start_seconds: number;
   window_end_seconds: number;
   first_seen_at: string;
   last_seen_at: string;
+}
+
+export interface StreamSource {
+  id: string;
+  subscription_id: string;
+  subscription_name: string;
+  title: string;
+  windows: StreamTopicWindow[];
 }

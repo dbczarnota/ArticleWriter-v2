@@ -1172,6 +1172,27 @@ async def list_discovery_topics(
         limit=200,
         offset=0,
     )
+    # Batch-count stream sources per topic to avoid N+1
+    from backend.database import get_db_backend, get_session_maker
+
+    stream_counts: dict[str, int] = {}
+    if get_db_backend() == "postgres" and rows:
+        import sqlalchemy as _sa
+
+        from backend.db.models import StreamTopic
+
+        topic_ids = [t.id for t in rows]
+        _sm = get_session_maker()
+        _st = StreamTopic.__table__  # type: ignore[attr-defined]
+        async with _sm() as _session:  # type: ignore[union-attr]
+            _res = await _session.execute(
+                _sa.select(_st.c.topic_id, _sa.func.count().label("cnt"))
+                .where(_st.c.topic_id.in_(topic_ids))
+                .group_by(_st.c.topic_id)
+            )
+            for row in _res.all():
+                stream_counts[str(row.topic_id)] = row.cnt
+
     out: list[dict] = []
     for t in rows:
         items = await discovery_repo.list_items_for_topic(topic_id=t.id, org_code=org.code)
@@ -1180,15 +1201,15 @@ async def list_discovery_topics(
             if t.consumed_at is not None
             else 0
         )
-        out.append(
-            _topic_to_json(
-                t,
-                new_items_since_consume=new_count,
-                item_count=len(items),
-                feed_hosts=_hosts_from_items(items),
-                topic_image_url=_topic_image_from_items(items),
-            )
+        entry = _topic_to_json(
+            t,
+            new_items_since_consume=new_count,
+            item_count=len(items),
+            feed_hosts=_hosts_from_items(items),
+            topic_image_url=_topic_image_from_items(items),
         )
+        entry["stream_source_count"] = stream_counts.get(str(t.id), 0)
+        out.append(entry)
 
     if sort == "first_seen":
         # Ascending: the user picks "First seen" because they want to see
@@ -1228,6 +1249,34 @@ async def get_discovery_topic(
     new_count = sum(
         1 for it in items if topic.consumed_at is not None and it.fetched_at > topic.consumed_at
     )
+
+    # Stream sources linked to this discovery topic
+    from sqlmodel import select as sm_select
+
+    from backend.database import get_db_backend, get_session_maker
+
+    stream_sources: list[dict] = []
+    if get_db_backend() == "postgres":
+        from backend.db.models import StreamSubscription, StreamTopic
+
+        _sm = get_session_maker()
+        async with _sm() as _session:  # type: ignore[union-attr]
+            _subs_res = await _session.execute(
+                sm_select(StreamSubscription).where(StreamSubscription.org_code == org.code)  # type: ignore[arg-type]
+            )
+            _subs = {s.id: s.name for s in _subs_res.scalars().all()}
+            _st_res = await _session.execute(
+                sm_select(StreamTopic).where(StreamTopic.topic_id == topic_id)  # type: ignore[arg-type]
+            )
+            for st in _st_res.scalars().all():
+                stream_sources.append({
+                    "id": str(st.id),
+                    "subscription_id": str(st.subscription_id),
+                    "subscription_name": _subs.get(st.subscription_id, ""),
+                    "title": st.title,
+                    "windows": st.windows,
+                })
+
     return {
         **_topic_to_json(
             topic,
@@ -1236,6 +1285,7 @@ async def get_discovery_topic(
             feed_hosts=_hosts_from_items(items),
             topic_image_url=_topic_image_from_items(items),
         ),
+        "stream_sources": stream_sources,
         "items": [
             {
                 "id": str(it.id),

@@ -232,6 +232,11 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
               <SourcesIcon />
               {topic.item_count} {t.discovery.hub.sourcesCount}
             </span>
+            {topic.stream_source_count > 0 && (
+              <span style={{ ...metaItem, color: "var(--accent)", fontWeight: 500 }}>
+                📡 {topic.stream_source_count}
+              </span>
+            )}
             {topic.first_seen_at && (
               <span style={metaItem} title={t.discovery.topic.firstSeen}>
                 <CalendarIcon />

@@ -356,6 +356,14 @@ async def _get_historical_topics(
     ]
 
 
+def _story_window(story_start_s: float, story_end_s: float, now: datetime) -> dict:
+    """Compute absolute {start_at, end_at} for a DigestStory using now ≈ digest time."""
+    stream_start = now - timedelta(seconds=story_end_s)
+    start_at = stream_start + timedelta(seconds=story_start_s)
+    end_at = stream_start + timedelta(seconds=story_end_s)
+    return {"start_at": start_at.isoformat(), "end_at": end_at.isoformat()}
+
+
 async def _upsert_stream_topics(
     session: AsyncSession,
     subscription_id: UUID,
@@ -366,9 +374,9 @@ async def _upsert_stream_topics(
 
     for story in digest.stories:
         survivor: StreamTopic | None = None
+        merged = False
 
         if story.source_topic_ids:
-            # ID-based lookup: find all historical rows this story references
             source_uuids = []
             for sid in story.source_topic_ids:
                 try:
@@ -386,14 +394,23 @@ async def _upsert_stream_topics(
                 )
                 matched = list(result.scalars().all())
                 if matched:
-                    # Keep the oldest row as survivor, delete the rest
                     matched.sort(key=lambda r: r.first_seen_at)
                     survivor = matched[0]
+                    # Collect windows from all sources before deleting duplicates
+                    all_windows = list(survivor.windows or [])
                     for duplicate in matched[1:]:
+                        all_windows.extend(duplicate.windows or [])
+                        # Preserve any existing discovery link
+                        if survivor.topic_id is None and duplicate.topic_id is not None:
+                            survivor.topic_id = duplicate.topic_id
                         await session.delete(duplicate)
+                    # Add the new window and sort
+                    all_windows.append(_story_window(story.start_seconds, story.end_seconds, now))
+                    all_windows.sort(key=lambda w: w["start_at"])
+                    survivor.windows = all_windows
+                    merged = True
 
         if survivor is None:
-            # Fall back to title-based lookup for genuinely new topics
             normalized_title = story.title.strip().lower()
             result = await session.execute(
                 sa.select(StreamTopic).where(
@@ -410,8 +427,15 @@ async def _upsert_stream_topics(
             survivor.speakers = [sp.model_dump() for sp in story.speakers]
             survivor.facts = [f.model_dump() for f in story.facts]
             survivor.quotes = [q.model_dump() for q in story.quotes]
+            survivor.window_start_seconds = story.start_seconds
             survivor.window_end_seconds = story.end_seconds
             survivor.last_seen_at = now
+            if not merged:
+                # Simple update: extend last window or replace with current
+                survivor.windows = [_story_window(story.start_seconds, story.end_seconds, now)]
+            if merged:
+                # Re-classify after merge — content changed significantly
+                survivor.classified_at = None
             session.add(survivor)
         else:
             topic = StreamTopic(
@@ -422,6 +446,9 @@ async def _upsert_stream_topics(
                 speakers=[sp.model_dump() for sp in story.speakers],
                 facts=[f.model_dump() for f in story.facts],
                 quotes=[q.model_dump() for q in story.quotes],
+                categories=[],
+                classified_at=None,
+                windows=[_story_window(story.start_seconds, story.end_seconds, now)],
                 window_start_seconds=story.start_seconds,
                 window_end_seconds=story.end_seconds,
                 first_seen_at=now,
