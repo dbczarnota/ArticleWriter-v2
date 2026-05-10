@@ -13,7 +13,7 @@ from agents.stream_analysis.config import StreamAnalysisAgentConfig
 
 _SYSTEM_PROMPT = """\
 Jesteś analizatorem treści radiowych i telewizyjnych. Otrzymujesz fragment audio \
-ze streamu informacyjnego (ok. 2 minuty).
+ze streamu informacyjnego (ok. 3 minuty).
 
 Twoje zadania:
 1. Zidentyfikuj wszystkich mówców — opisz każdego krótko na podstawie głosu i kontekstu \

@@ -43,7 +43,7 @@ async def _fetch_icy_title(stream_url: str) -> str | None:
     """Read current program title from ICY stream metadata. Returns None on any error."""
     try:
         async with (
-            httpx.AsyncClient(timeout=8.0) as client,
+            httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client,
             client.stream("GET", stream_url, headers={"Icy-MetaData": "1"}) as resp,
         ):
             metaint_hdr = resp.headers.get("icy-metaint")
@@ -186,10 +186,14 @@ async def _save_digest(
 
 
 def _format_chunk_result_verbose(
-    chunk_start: float, chunk_end: float, result: StreamChunkResult
+    chunk_start: float,
+    chunk_end: float,
+    result: StreamChunkResult,
+    chunk_start_at: datetime | None = None,
 ) -> str:
     """Human-readable representation of a chunk result for console and report."""
-    lines = [f"### Chunk {chunk_start:.0f}s–{chunk_end:.0f}s"]
+    time_str = f" [{chunk_start_at.strftime('%H:%M:%S')}]" if chunk_start_at else ""
+    lines = [f"### Chunk {chunk_start:.0f}s–{chunk_end:.0f}s{time_str}"]
     if result.raw_transcript:
         lines.append(f"**Transkrypcja:** {result.raw_transcript[:400]}")
     if result.speakers:
@@ -410,6 +414,18 @@ async def run_subscription_pipeline(
     attempt = 0
     proc: asyncio.subprocess.Process | None = None
     current_program: list[str | None] = [None]
+
+    # Probe ICY metadata once at startup so first chunk already has program title.
+    try:
+        initial_title = await asyncio.wait_for(_fetch_icy_title(stream_url), timeout=10.0)
+        if initial_title:
+            current_program[0] = initial_title
+            print(f"📻 ICY metadata OK — program: {initial_title}")
+        else:
+            print("⚠️  ICY metadata not available (stream may not support it)")
+    except Exception:
+        print("⚠️  ICY metadata probe failed")
+
     icy_task = asyncio.create_task(_icy_poller(stream_url, current_program))
 
     with logfire.span("stream.pipeline", subscription_id=str(subscription_id), org_code=org_code):
@@ -440,7 +456,9 @@ async def run_subscription_pipeline(
                     )
 
                     # Verbose console output
-                    verbose_chunk = _format_chunk_result_verbose(chunk_start, chunk_end, result)
+                    verbose_chunk = _format_chunk_result_verbose(
+                        chunk_start, chunk_end, result, chunk_start_at
+                    )
                     print(f"\n{'─' * 60}")
                     if current_program[0]:
                         print(f"📻 {current_program[0]}")
