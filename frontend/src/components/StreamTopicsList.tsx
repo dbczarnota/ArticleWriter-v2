@@ -4,6 +4,34 @@ import { StatusMessage } from "./ui/StatusMessage";
 import { useT } from "../i18n";
 import type { Translations } from "../i18n";
 
+function buildClipboardText(topic: StreamTopic, timeRange: string): string {
+  const lines: string[] = [];
+  lines.push(`TEMAT: ${topic.title}`);
+  lines.push(`ŹRÓDŁO: ${topic.subscription_name} | ${timeRange}`);
+  if (topic.summary) {
+    lines.push("", "STRESZCZENIE:", topic.summary);
+  }
+  if (topic.speakers.length > 0) {
+    lines.push("", "ROZMÓWCY:");
+    for (const s of topic.speakers) {
+      lines.push(`- ${s.name_or_role}${s.description ? ` — ${s.description}` : ""}`);
+    }
+  }
+  if (topic.facts.length > 0) {
+    lines.push("", "FAKTY:");
+    for (const f of topic.facts) {
+      lines.push(`- ${f.text}${f.speaker ? ` [${f.speaker}]` : ""}`);
+    }
+  }
+  if (topic.quotes.length > 0) {
+    lines.push("", "CYTATY:");
+    for (const q of topic.quotes) {
+      lines.push(`„${q.text}"${q.speaker ? ` — ${q.speaker}` : ""}`);
+    }
+  }
+  return lines.join("\n");
+}
+
 interface Props {
   topics: StreamTopic[];
   loading: boolean;
@@ -48,6 +76,7 @@ function windowToClockRange(firstSeenAt: string, windowStartS: number, windowEnd
 export function StreamTopicsList({ topics, loading }: Props) {
   const t = useT();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [copied, setCopied] = useState<string | null>(null);
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -55,6 +84,14 @@ export function StreamTopicsList({ topics, loading }: Props) {
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
+    });
+  }
+
+  function copyToClipboard(topic: StreamTopic, timeRange: string) {
+    const text = buildClipboardText(topic, timeRange);
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopied(topic.topic_id);
+      setTimeout(() => setCopied(null), 2000);
     });
   }
 
@@ -66,6 +103,12 @@ export function StreamTopicsList({ topics, loading }: Props) {
     <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8 }}>
       {topics.map((topic) => {
         const isOpen = expanded.has(topic.topic_id);
+        const isCopied = copied === topic.topic_id;
+        const timeRange = windowToClockRange(
+          topic.first_seen_at,
+          topic.window_start_seconds,
+          topic.window_end_seconds,
+        );
         return (
           <div
             key={topic.topic_id}
@@ -92,7 +135,7 @@ export function StreamTopicsList({ topics, loading }: Props) {
                 gap: 6,
               }}
             >
-              {/* Row 1: badge + title + time */}
+              {/* Row 1: badge + title + copy + time + chevron */}
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span
                   style={{
@@ -110,6 +153,23 @@ export function StreamTopicsList({ topics, loading }: Props) {
                 <span style={{ fontWeight: 600, color: "var(--text)", flex: 1, fontSize: 14 }}>
                   {topic.title}
                 </span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); copyToClipboard(topic, timeRange); }}
+                  style={{
+                    flexShrink: 0,
+                    fontSize: 11,
+                    padding: "2px 8px",
+                    border: "1px solid var(--border)",
+                    borderRadius: "var(--radius)",
+                    background: isCopied ? "var(--success-fg)" : "var(--bg)",
+                    color: isCopied ? "white" : "var(--muted)",
+                    cursor: "pointer",
+                    transition: "background 0.15s",
+                  }}
+                >
+                  {isCopied ? "✓ Skopiowano" : "Kopiuj"}
+                </button>
                 <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>
                   {relTime(topic.last_seen_at, t)}
                 </span>
@@ -133,7 +193,7 @@ export function StreamTopicsList({ topics, loading }: Props) {
                   {topic.subscription_name}
                 </span>
                 <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                  {windowToClockRange(topic.first_seen_at, topic.window_start_seconds, topic.window_end_seconds)}
+                  {timeRange}
                 </span>
               </div>
 
