@@ -12,10 +12,12 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
 
+import httpx
 import logfire
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +36,55 @@ from backend.database import get_db_backend, get_session_maker
 _log = logging.getLogger(__name__)
 
 _RECONNECT_DELAYS = [1.0, 2.0, 4.0, 8.0, 16.0]
+_ICY_TITLE_RE = re.compile(r"StreamTitle='([^']*)'")
+
+
+async def _fetch_icy_title(stream_url: str) -> str | None:
+    """Read current program title from ICY stream metadata. Returns None on any error."""
+    try:
+        async with (
+            httpx.AsyncClient(timeout=8.0) as client,
+            client.stream("GET", stream_url, headers={"Icy-MetaData": "1"}) as resp,
+        ):
+            metaint_hdr = resp.headers.get("icy-metaint")
+            if not metaint_hdr:
+                return None
+            metaint = int(metaint_hdr)
+            buf = bytearray()
+            async for chunk in resp.aiter_bytes(chunk_size=4096):
+                buf.extend(chunk)
+                if len(buf) < metaint + 1:
+                    continue
+                meta_len = buf[metaint] * 16
+                if meta_len == 0:
+                    return None
+                meta_end = metaint + 1 + meta_len
+                if len(buf) >= meta_end:
+                    meta_bytes = buf[metaint + 1 : meta_end]
+                    meta_str = meta_bytes.rstrip(b"\x00").decode("utf-8", errors="replace")
+                    match = _ICY_TITLE_RE.search(meta_str)
+                    return match.group(1) if match else None
+        return None
+    except Exception:
+        return None
+
+
+async def _icy_poller(
+    stream_url: str,
+    holder: list[str | None],
+    interval: float = 30.0,
+) -> None:
+    """Background task: polls ICY metadata every interval seconds. Never raises."""
+    while True:
+        try:
+            title = await asyncio.wait_for(_fetch_icy_title(stream_url), timeout=10.0)
+            if title is not None:
+                if title != holder[0]:
+                    _log.info("icy.program_changed: %s", title)
+                holder[0] = title
+        except Exception:
+            pass
+        await asyncio.sleep(interval)
 
 
 async def collect_chunk(reader: asyncio.StreamReader, duration_s: float) -> bytes:
@@ -358,6 +409,8 @@ async def run_subscription_pipeline(
     stream_started_at = datetime.now(UTC)
     attempt = 0
     proc: asyncio.subprocess.Process | None = None
+    current_program: list[str | None] = [None]
+    icy_task = asyncio.create_task(_icy_poller(stream_url, current_program))
 
     with logfire.span("stream.pipeline", subscription_id=str(subscription_id), org_code=org_code):
         while True:
@@ -382,12 +435,15 @@ async def run_subscription_pipeline(
                         audio_bytes=audio,
                         chunk_start_seconds=chunk_start,
                         chunk_start_at=chunk_start_at,
+                        program_name=current_program[0],
                         config=analysis_config,
                     )
 
                     # Verbose console output
                     verbose_chunk = _format_chunk_result_verbose(chunk_start, chunk_end, result)
                     print(f"\n{'─' * 60}")
+                    if current_program[0]:
+                        print(f"📻 {current_program[0]}")
                     print(verbose_chunk)
                     chunk_log.append(verbose_chunk)
                     chunk_log.append("")
@@ -518,7 +574,7 @@ async def run_subscription_pipeline(
                                 )
                             async with sm() as session:  # type: ignore[union-attr]
                                 await _upsert_stream_topics(
-                                    session, subscription_id, digest, now_utc
+                                    session, subscription_id, digest, datetime.now(UTC)
                                 )
 
                         report_path = _write_report(
@@ -542,6 +598,7 @@ async def run_subscription_pipeline(
                         await manager.broadcast(subscription_id, digest_event)
 
             except asyncio.CancelledError:
+                icy_task.cancel()
                 if proc is not None and proc.returncode is None:
                     proc.kill()
                 raise
