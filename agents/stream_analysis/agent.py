@@ -11,9 +11,18 @@ from agents._base.resilient import run_with_fallback
 from agents._base.run_context import record_agent_call
 from agents.stream_analysis.config import StreamAnalysisAgentConfig
 
-_SYSTEM_PROMPT = """\
-Jesteś analizatorem treści radiowych i telewizyjnych. Otrzymujesz fragment audio \
-ze streamu informacyjnego (ok. 3 minuty).
+_SYSTEM_PROMPT_RADIO = """\
+Jesteś analizatorem treści radiowych. Otrzymujesz fragment audio \
+ze streamu informacyjnego (ok. 3 minuty)."""
+
+_SYSTEM_PROMPT_TV = """\
+Jesteś analizatorem treści telewizyjnych. Otrzymujesz ścieżkę audio \
+ze streamu informacyjnego (ok. 3 minuty). \
+Pamiętaj że to telewizja — mówcy są często przedstawiani z imienia i nazwiska \
+przez prowadzącego lub pasek na dole ekranu (którego nie widzisz, \
+ale możesz to wywnioskować z kontekstu wypowiedzi)."""
+
+_SYSTEM_PROMPT_COMMON = """
 
 Twoje zadania:
 1. Zidentyfikuj wszystkich mówców — opisz każdego krótko na podstawie głosu i kontekstu \
@@ -52,8 +61,12 @@ Ważne:
   Piosenka to nie jest treść mówiona — traktuj ją jak ciszę.
 - Reklamy: podobnie — nie transkrybuj tekstu reklam. Dżingiel sygnalizujący zmianę tematu \
   wpisz jako topic_transition, ale samej treści reklamowej nie przepisuj.
-- Nie wymyślaj — tylko to co słyszysz.\
-"""
+- Nie wymyślaj — tylko to co słyszysz."""
+
+
+def _build_system_prompt(stream_type: str) -> str:
+    intro = _SYSTEM_PROMPT_TV if stream_type == "tv" else _SYSTEM_PROMPT_RADIO
+    return intro + _SYSTEM_PROMPT_COMMON
 
 
 class TopicFact(BaseModel):
@@ -98,6 +111,7 @@ async def run_stream_analysis_agent(
     chunk_start_seconds: float,
     *,
     chunk_start_at: datetime,
+    stream_type: str = "radio",
     config: StreamAnalysisAgentConfig,
 ) -> StreamChunkResult:
     """Analyze a single audio chunk. Returns StreamChunkResult. Soft-fails to empty result."""
@@ -106,9 +120,10 @@ async def run_stream_analysis_agent(
         f"Fragment audio: {clock_str} (sekunda {chunk_start_seconds:.0f} od początku nasłuchu). Przeanalizuj:",
         BinaryContent(data=audio_bytes, media_type="audio/mp3"),
     ]
+    system_prompt = _build_system_prompt(stream_type)
 
     def _factory(model: str) -> tuple[Agent[Any, Any], str]:
-        return Agent(model, output_type=StreamChunkResult), _SYSTEM_PROMPT
+        return Agent(model, output_type=StreamChunkResult), system_prompt
 
     t0 = time.perf_counter()
     try:

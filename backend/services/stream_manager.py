@@ -48,13 +48,25 @@ class StreamSessionManager:
         stream_url: str,
         chunk_duration_seconds: int,
         org_code: str,
+        *,
+        stream_type: str = "radio",
+        url_refresh_url: str | None = None,
+        url_refresh_headers: dict | None = None,
+        url_refresh_field: str = "url",
     ) -> None:
         """Start pipeline task for subscription_id. Idempotent."""
         if subscription_id in self._tasks and not self._tasks[subscription_id].done():
             return
         task = asyncio.create_task(
             run_subscription_pipeline(
-                subscription_id, stream_url, chunk_duration_seconds, org_code
+                subscription_id,
+                stream_url,
+                chunk_duration_seconds,
+                org_code,
+                stream_type=stream_type,
+                url_refresh_url=url_refresh_url,
+                url_refresh_headers=url_refresh_headers or {},
+                url_refresh_field=url_refresh_field,
             ),
             name=f"stream-{subscription_id}",
         )
@@ -97,7 +109,16 @@ class StreamSessionManager:
         )
         subs = result.scalars().all()
         for sub in subs:
-            await self.start(sub.id, sub.stream_url, sub.chunk_duration_seconds, sub.org_code)
+            await self.start(
+                sub.id,
+                sub.stream_url,
+                sub.chunk_duration_seconds,
+                sub.org_code,
+                stream_type=sub.stream_type,
+                url_refresh_url=sub.url_refresh_url,
+                url_refresh_headers=sub.url_refresh_headers,
+                url_refresh_field=sub.url_refresh_field,
+            )
         if subs:
             logfire.info("stream.manager.resumed", count=len(subs))
 

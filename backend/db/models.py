@@ -603,6 +603,16 @@ class StreamSubscription(SQLModel, table=True):
     org_code: str = Field(sa_column=Column(String(128), ForeignKey("orgs.code"), nullable=False))
     name: str = Field(max_length=256)
     stream_url: str = Field(max_length=2048)
+    stream_type: str = Field(default="radio", max_length=16)
+    """One of: radio, tv."""
+    url_refresh_url: str | None = Field(default=None, max_length=2048)
+    """If set, pipeline GETs this URL on each connect to obtain a fresh stream_url."""
+    url_refresh_headers: dict = Field(
+        default_factory=dict,
+        sa_column=Column(JSONB, nullable=False, server_default="{}"),
+    )
+    url_refresh_field: str = Field(default="url", max_length=256)
+    """JSON field path (dot-notation) inside the refresh response that holds the stream URL."""
     status: str = Field(default="active", max_length=16)
     """One of: active, paused, stopped."""
     chunk_duration_seconds: int = Field(default=180)

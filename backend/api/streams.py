@@ -26,6 +26,10 @@ _log = logging.getLogger(__name__)
 class SubscriptionCreate(BaseModel):
     name: str
     stream_url: str
+    stream_type: str = "radio"
+    url_refresh_url: str | None = None
+    url_refresh_headers: dict = {}
+    url_refresh_field: str = "url"
     chunk_duration_seconds: int = 180
 
 
@@ -34,6 +38,9 @@ class SubscriptionResponse(BaseModel):
     org_code: str
     name: str
     stream_url: str
+    stream_type: str
+    url_refresh_url: str | None
+    url_refresh_field: str
     status: str
     chunk_duration_seconds: int
     created_at: datetime
@@ -47,6 +54,9 @@ def _sub_to_response(sub: StreamSubscription) -> SubscriptionResponse:
         org_code=sub.org_code,
         name=sub.name,
         stream_url=sub.stream_url,
+        stream_type=sub.stream_type,
+        url_refresh_url=sub.url_refresh_url,
+        url_refresh_field=sub.url_refresh_field,
         status=sub.status,
         chunk_duration_seconds=sub.chunk_duration_seconds,
         created_at=sub.created_at,
@@ -62,12 +72,15 @@ async def create_subscription(
 ) -> SubscriptionResponse:
     now = datetime.now(UTC)
     if get_db_backend() != "postgres":
-        # NullRepo mode — in-memory stub (no DB persistence)
         sub = StreamSubscription(
             id=uuid4(),
             org_code=org.code,
             name=body.name,
             stream_url=body.stream_url,
+            stream_type=body.stream_type,
+            url_refresh_url=body.url_refresh_url,
+            url_refresh_headers=body.url_refresh_headers,
+            url_refresh_field=body.url_refresh_field,
             status="active",
             chunk_duration_seconds=body.chunk_duration_seconds,
             created_at=now,
@@ -79,6 +92,10 @@ async def create_subscription(
             org_code=org.code,
             name=body.name,
             stream_url=body.stream_url,
+            stream_type=body.stream_type,
+            url_refresh_url=body.url_refresh_url,
+            url_refresh_headers=body.url_refresh_headers,
+            url_refresh_field=body.url_refresh_field,
             status="active",
             chunk_duration_seconds=body.chunk_duration_seconds,
             started_at=now,
@@ -89,7 +106,16 @@ async def create_subscription(
             await session.refresh(sub)
 
     manager = get_stream_manager()
-    await manager.start(sub.id, sub.stream_url, sub.chunk_duration_seconds, org.code)
+    await manager.start(
+        sub.id,
+        sub.stream_url,
+        sub.chunk_duration_seconds,
+        org.code,
+        stream_type=sub.stream_type,
+        url_refresh_url=sub.url_refresh_url,
+        url_refresh_headers=sub.url_refresh_headers,
+        url_refresh_field=sub.url_refresh_field,
+    )
     logfire.info("stream.subscribed", subscription_id=str(sub.id), org_code=org.code)
     return _sub_to_response(sub)
 

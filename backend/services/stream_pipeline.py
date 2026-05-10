@@ -14,6 +14,7 @@ import io
 import logging
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
 import logfire
@@ -36,6 +37,66 @@ _log = logging.getLogger(__name__)
 _RECONNECT_DELAYS = [1.0, 2.0, 4.0, 8.0, 16.0]
 
 
+def _extract_field(data: Any, field_path: str) -> str:
+    """Extract a value from a nested dict using dot-notation path (e.g. 'data.url')."""
+    for key in field_path.split("."):
+        if not isinstance(data, dict):
+            raise ValueError(f"Expected dict at '{key}', got {type(data).__name__}")
+        data = data[key]
+    if not isinstance(data, str):
+        raise ValueError(f"Expected str at '{field_path}', got {type(data).__name__}")
+    return data
+
+
+async def _resolve_stream_url(
+    stream_url: str,
+    url_refresh_url: str | None,
+    url_refresh_headers: dict,
+    url_refresh_field: str,
+) -> str:
+    """Return a fresh stream URL. If url_refresh_url is set, fetches it; otherwise returns stream_url as-is."""
+    if not url_refresh_url:
+        return stream_url
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            resp = await client.get(url_refresh_url, headers=url_refresh_headers)
+            resp.raise_for_status()
+            return _extract_field(resp.json(), url_refresh_field)
+    except Exception as exc:
+        _log.warning("stream.url_refresh_failed: %s — falling back to stored URL", exc)
+        return stream_url
+
+
+async def _run_ffmpeg(stream_url: str, stream_type: str) -> asyncio.subprocess.Process:
+    """Start FFmpeg subprocess. TV streams get -vn (skip video decoding)."""
+    extra: list[str] = ["-vn"] if stream_type == "tv" else []
+    return await asyncio.create_subprocess_exec(
+        "ffmpeg",
+        "-reconnect",
+        "1",
+        "-reconnect_streamed",
+        "1",
+        "-reconnect_delay_max",
+        "5",
+        "-i",
+        stream_url,
+        *extra,
+        "-f",
+        "mp3",
+        "-ar",
+        "16000",
+        "-ac",
+        "1",
+        "-loglevel",
+        "error",
+        "pipe:1",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+
+
 async def collect_chunk(reader: asyncio.StreamReader, duration_s: float) -> bytes:
     """Read from reader for duration_s seconds, return accumulated bytes."""
     buf = io.BytesIO()
@@ -53,32 +114,6 @@ async def collect_chunk(reader: asyncio.StreamReader, duration_s: float) -> byte
         except TimeoutError:
             break
     return buf.getvalue()
-
-
-async def _run_ffmpeg(stream_url: str) -> asyncio.subprocess.Process:
-    """Start FFmpeg subprocess pulling stream_url as mono 16kHz MP3 on stdout."""
-    return await asyncio.create_subprocess_exec(
-        "ffmpeg",
-        "-reconnect",
-        "1",
-        "-reconnect_streamed",
-        "1",
-        "-reconnect_delay_max",
-        "5",
-        "-i",
-        stream_url,
-        "-f",
-        "mp3",
-        "-ar",
-        "16000",
-        "-ac",
-        "1",
-        "-loglevel",
-        "error",
-        "pipe:1",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
 
 
 async def _save_chunk(
@@ -364,6 +399,11 @@ async def run_subscription_pipeline(
     stream_url: str,
     chunk_duration_seconds: int,
     org_code: str,
+    *,
+    stream_type: str = "radio",
+    url_refresh_url: str | None = None,
+    url_refresh_headers: dict | None = None,
+    url_refresh_field: str = "url",
 ) -> None:
     """Long-running pipeline task for one subscription."""
     from backend.services.stream_manager import get_stream_manager
@@ -372,14 +412,15 @@ async def run_subscription_pipeline(
     digest_config = StreamDigestAgentConfig()
     _db = get_db_backend() == "postgres"
     manager = get_stream_manager()
+    _refresh_headers = url_refresh_headers or {}
 
     chunk_start = 0.0
     chunk_count = 0
     digest_count = 0
     digest_buffer: list[ChunkSummary] = []
     digest_history: list[StreamDigestResult] = []
-    chunk_log: list[str] = []  # accumulates for report
-    digest_log: list[str] = []  # accumulates for report
+    chunk_log: list[str] = []
+    digest_log: list[str] = []
     stream_started_at = datetime.now(UTC)
     attempt = 0
     proc: asyncio.subprocess.Process | None = None
@@ -390,7 +431,10 @@ async def run_subscription_pipeline(
                 if proc is not None and proc.returncode is None:
                     proc.kill()
                     await proc.wait()
-                proc = await _run_ffmpeg(stream_url)
+                active_url = await _resolve_stream_url(
+                    stream_url, url_refresh_url, _refresh_headers, url_refresh_field
+                )
+                proc = await _run_ffmpeg(active_url, stream_type)
                 assert proc.stdout is not None
                 attempt = 0
                 logfire.info("stream.connected", subscription_id=str(subscription_id))
@@ -407,6 +451,7 @@ async def run_subscription_pipeline(
                         audio_bytes=audio,
                         chunk_start_seconds=chunk_start,
                         chunk_start_at=chunk_start_at,
+                        stream_type=stream_type,
                         config=analysis_config,
                     )
 
