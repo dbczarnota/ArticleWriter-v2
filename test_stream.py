@@ -13,14 +13,18 @@ import urllib.request
 from datetime import datetime, timedelta
 
 BASE = "http://127.0.0.1:8000"
-STREAM_URL = "http://mp3.polskieradio.pl:8900"  # PR1 Jedynka — ICY metadata
+STREAM_URL = "https://dash4.antik.sk/live/test_tvp_info/playlist.m3u8"  # TVP Info HLS
 HEADERS = {"X-Org-Code": "__local_dev__", "Content-Type": "application/json"}
 
 sub_id = None
 
 
 def subscribe():
-    body = json.dumps({"name": "PR1 Jedynka test", "stream_url": STREAM_URL}).encode()
+    body = json.dumps({
+        "name": "TVP Info test",
+        "stream_url": STREAM_URL,
+        "stream_type": "tv",
+    }).encode()
     req = urllib.request.Request(
         f"{BASE}/v2/streams/subscriptions", data=body, headers=HEADERS, method="POST"
     )
