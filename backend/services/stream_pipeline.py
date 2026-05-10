@@ -239,18 +239,24 @@ def _write_report(
     digest_number: int,
     chunk_log: list[str],
     digest_log: list[str],
+    stream_started_at: datetime,
 ) -> Path:
     """Write/overwrite a full flow markdown report."""
     path = Path(f"stream_report_{str(subscription_id)[:8]}.md")
     ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
+    def _to_clock(offset_s: float) -> str:
+        return (stream_started_at + timedelta(seconds=offset_s)).strftime("%H:%M:%S")
+
+    w_start = _to_clock(digest.window_start_seconds)
+    w_end = _to_clock(digest.window_end_seconds)
     lines: list[str] = [
         "# Raport nasłuchu strumienia",
         "",
         f"**Subskrypcja:** `{subscription_id}`  ",
         f"**Wygenerowano:** {ts}  ",
         f"**Digest nr:** {digest_number}  ",
-        f"**Pokryty czas:** {digest.window_start_seconds:.0f}s – {digest.window_end_seconds:.0f}s "
+        f"**Pokryty czas:** {w_start} – {w_end} "
         f"({(digest.window_end_seconds - digest.window_start_seconds) / 60:.1f} min)",
         "",
         "---",
@@ -282,7 +288,7 @@ def _write_report(
     for i, story in enumerate(digest.stories, 1):
         news_badge = "📰 NEWS" if story.is_news else "💬 nie-news"
         lines.append(f"#### {i}. {story.title} `[{news_badge}]`")
-        lines.append(f"*Czas: {story.start_seconds:.0f}s – {story.end_seconds:.0f}s*")
+        lines.append(f"*Czas: {_to_clock(story.start_seconds)} – {_to_clock(story.end_seconds)}*")
         lines.append("")
         if story.speakers:
             speakers_str = ", ".join(
@@ -602,6 +608,7 @@ async def run_subscription_pipeline(
                             digest_count,
                             list(chunk_log),
                             list(digest_log),
+                            stream_started_at,
                         )
                         print(f"\n📄 Raport zapisany: {report_path}")
 
