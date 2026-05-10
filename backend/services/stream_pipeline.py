@@ -14,7 +14,6 @@ import contextlib
 import io
 import logging
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -172,152 +171,6 @@ async def _save_digest(
     return record.id
 
 
-def _format_chunk_result_verbose(
-    chunk_start: float,
-    chunk_end: float,
-    result: StreamChunkResult,
-    chunk_start_at: datetime | None = None,
-) -> str:
-    """Human-readable representation of a chunk result for console and report."""
-    if chunk_start_at:
-        chunk_end_at = chunk_start_at + timedelta(seconds=chunk_end - chunk_start)
-        header = f"### Chunk [{chunk_start_at.strftime('%H:%M:%S')} – {chunk_end_at.strftime('%H:%M:%S')}]"
-    else:
-        header = f"### Chunk {chunk_start:.0f}s–{chunk_end:.0f}s"
-    lines = [header]
-    if result.raw_transcript:
-        lines.append(f"**Transkrypcja:** {result.raw_transcript[:400]}")
-    if result.speakers:
-        lines.append(
-            "**Mówcy:** " + ", ".join(f"[{s.label}] {s.description}" for s in result.speakers)
-        )
-    if result.topic_transitions:
-        lines.append("**Zmiany tematu:**")
-        for tr in result.topic_transitions:
-            if chunk_start_at:
-                tr_at = chunk_start_at + timedelta(seconds=tr.timestamp_offset_seconds)
-                lines.append(f"  - [{tr_at.strftime('%H:%M:%S')}] {tr.description}")
-            else:
-                lines.append(
-                    f"  - [{chunk_start + tr.timestamp_offset_seconds:.0f}s] {tr.description}"
-                )
-    if result.topics:
-        for t in result.topics:
-            if chunk_start_at:
-                t_start_at = chunk_start_at + timedelta(seconds=t.start_offset_seconds)
-                t_end_at = (
-                    chunk_start_at + timedelta(seconds=t.end_offset_seconds)
-                    if t.end_offset_seconds is not None
-                    else chunk_end_at  # type: ignore[possibly-undefined]
-                )
-                time_range = f"{t_start_at.strftime('%H:%M:%S')}–{t_end_at.strftime('%H:%M:%S')}"
-            else:
-                abs_start = chunk_start + t.start_offset_seconds
-                abs_end = (
-                    chunk_start + t.end_offset_seconds
-                    if t.end_offset_seconds is not None
-                    else chunk_end
-                )
-                time_range = f"{abs_start:.0f}s–{abs_end:.0f}s"
-            lines.append(f"**Temat [{time_range}]:** {t.title} ({t.confidence:.0%})")
-            for f in t.facts:
-                who = f" [{f.speaker_label}]" if f.speaker_label else ""
-                if chunk_start_at:
-                    f_at = chunk_start_at + timedelta(seconds=f.timestamp_offset_seconds)
-                    ts = f" @{f_at.strftime('%H:%M:%S')}"
-                else:
-                    ts = f" @{chunk_start + f.timestamp_offset_seconds:.0f}s"
-                lines.append(f"  💡 {f.text}{who}{ts}")
-            for q in t.quotes:
-                who = f" [{q.speaker_label}]" if q.speaker_label else ""
-                lines.append(f'  💬 "{q.text}"{who}')
-    if not result.topics and not result.raw_transcript:
-        lines.append("_(pusty chunk — muzyka/reklamy)_")
-    return "\n".join(lines)
-
-
-def _write_report(
-    subscription_id: UUID,
-    digest: StreamDigestResult,
-    digest_number: int,
-    chunk_log: list[str],
-    digest_log: list[str],
-    stream_started_at: datetime,
-) -> Path:
-    """Write/overwrite a full flow markdown report."""
-    path = Path(f"stream_report_{str(subscription_id)[:8]}.md")
-    ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
-
-    def _to_clock(offset_s: float) -> str:
-        return (stream_started_at + timedelta(seconds=offset_s)).strftime("%H:%M:%S")
-
-    w_start = _to_clock(digest.window_start_seconds)
-    w_end = _to_clock(digest.window_end_seconds)
-    lines: list[str] = [
-        "# Raport nasłuchu strumienia",
-        "",
-        f"**Subskrypcja:** `{subscription_id}`  ",
-        f"**Wygenerowano:** {ts}  ",
-        f"**Digest nr:** {digest_number}  ",
-        f"**Pokryty czas:** {w_start} – {w_end} "
-        f"({(digest.window_end_seconds - digest.window_start_seconds) / 60:.1f} min)",
-        "",
-        "---",
-        "",
-        "## Flow: Wyniki Chunk Agenta",
-        "",
-    ]
-    lines.extend(chunk_log)
-
-    lines += ["", "---", "", "## Flow: Przebiegi Digest Agenta", ""]
-    lines.extend(digest_log)
-
-    lines += ["", "---", "", "## Aktualny Stan Tematów", ""]
-
-    all_speakers: dict[str, str | None] = {}
-    for story in digest.stories:
-        for sp in story.speakers:
-            if sp.name_or_role not in all_speakers:
-                all_speakers[sp.name_or_role] = sp.description
-
-    if all_speakers:
-        lines += ["### Zidentyfikowani rozmówcy", ""]
-        for name, desc in all_speakers.items():
-            lines.append(f"- **{name}**" + (f" — {desc}" if desc else ""))
-        lines.append("")
-
-    news_count = sum(1 for s in digest.stories if s.is_news)
-    lines += [f"### Tematy ({len(digest.stories)}, w tym newsów: {news_count})", ""]
-    for i, story in enumerate(digest.stories, 1):
-        news_badge = "📰 NEWS" if story.is_news else "💬 nie-news"
-        lines.append(f"#### {i}. {story.title} `[{news_badge}]`")
-        lines.append(f"*Czas: {_to_clock(story.start_seconds)} – {_to_clock(story.end_seconds)}*")
-        lines.append("")
-        if story.speakers:
-            speakers_str = ", ".join(
-                sp.name_or_role + (f" ({sp.description})" if sp.description else "")
-                for sp in story.speakers
-            )
-            lines.append(f"**Uczestnicy:** {speakers_str}")
-            lines.append("")
-        if story.summary:
-            lines.append(story.summary)
-            lines.append("")
-        if story.facts:
-            lines.append("**Fakty:**")
-            for f in story.facts:
-                who = f" *[{f.speaker}]*" if f.speaker else ""
-                lines.append(f"- {f.text}{who}")
-            lines.append("")
-        if story.quotes:
-            lines.append("**Cytaty:**")
-            for q in story.quotes:
-                who = f" — *{q.speaker}*" if q.speaker else ""
-                lines.append(f'> "{q.text}"{who}')
-            lines.append("")
-
-    path.write_text("\n".join(lines), encoding="utf-8")
-    return path
 
 
 async def _get_historical_topics(
@@ -485,8 +338,6 @@ async def run_subscription_pipeline(
     digest_count = 0
     digest_buffer: list[ChunkSummary] = []
     digest_history: list[StreamDigestResult] = []
-    chunk_log: list[str] = []
-    digest_log: list[str] = []
     stream_started_at = datetime.now().astimezone()
     attempt = 0
     proc: asyncio.subprocess.Process | None = None
@@ -520,15 +371,6 @@ async def run_subscription_pipeline(
                         stream_type=stream_type,
                         config=analysis_config,
                     )
-
-                    # Verbose console output
-                    verbose_chunk = _format_chunk_result_verbose(
-                        chunk_start, chunk_end, result, chunk_start_at
-                    )
-                    print(f"\n{'─' * 60}")
-                    print(verbose_chunk)
-                    chunk_log.append(verbose_chunk)
-                    chunk_log.append("")
 
                     chunk_id: UUID | None = None
                     if _db:
@@ -571,21 +413,6 @@ async def run_subscription_pipeline(
                         digest_buffer.clear()
                         previous = digest_history[-digest_config.previous_digests_count :]
 
-                        from agents.stream_digest.agent import (
-                            _format_chunks,
-                            _format_previous_digests,
-                        )
-
-                        digest_input_text = (
-                            f"=== POPRZEDNIE DIGESRY ===\n\n{_format_previous_digests(previous)}\n\n"
-                            f"=== NOWE CHUNKI ===\n\n{_format_chunks(window)}"
-                        )
-
-                        print(f"\n{'=' * 60}")
-                        print(f"DIGEST #{digest_count + 1} — wejście do agenta:")
-                        print(digest_input_text[:2000])
-                        print("...")
-
                         now_utc = datetime.now(UTC)
                         historical_topics: list[TopicContext] = []
                         if _db:
@@ -606,16 +433,6 @@ async def run_subscription_pipeline(
                         )
                         digest_count += 1
 
-                        print(f"\nDIGEST #{digest_count} — wynik agenta:")
-                        for s in digest.stories:
-                            badge = "📰 NEWS" if s.is_news else "💬 nie-news"
-                            print(
-                                f"  [{s.start_seconds:.0f}s–{s.end_seconds:.0f}s] [{badge}] {s.title}"
-                            )
-                            for sp in s.speakers:
-                                print(f"    Rozmówca: {sp.name_or_role}")
-                            print(f"    Streszczenie: {s.summary}")
-
                         logfire.info(
                             "stream.digest",
                             subscription_id=str(subscription_id),
@@ -624,31 +441,6 @@ async def run_subscription_pipeline(
                         )
 
                         digest_history.append(digest)
-
-                        # Accumulate digest log for report
-                        digest_log_entry = [
-                            f"### Digest #{digest_count} "
-                            f"({digest.window_start_seconds:.0f}s–{digest.window_end_seconds:.0f}s)",
-                            "",
-                            "**Wejście (chunki):**",
-                            "",
-                            "```",
-                            digest_input_text[:3000],
-                            "```"
-                            if len(digest_input_text) <= 3000
-                            else f"... [skrócono z {len(digest_input_text)} znaków]\n```",
-                            "",
-                            "**Wyjście (tematy):**",
-                            "",
-                        ]
-                        for s in digest.stories:
-                            digest_log_entry.append(
-                                f"- **{s.title}** [{s.start_seconds:.0f}s–{s.end_seconds:.0f}s] — {s.summary}"
-                            )
-                        if not digest.stories:
-                            digest_log_entry.append("_(brak tematów — muzyka/reklamy)_")
-                        digest_log_entry.append("")
-                        digest_log.extend(digest_log_entry)
 
                         digest_id: UUID | None = None
                         if _db:
@@ -662,16 +454,6 @@ async def run_subscription_pipeline(
                                     session, subscription_id, digest, datetime.now(UTC)
                                 )
 
-                        report_path = _write_report(
-                            subscription_id,
-                            digest,
-                            digest_count,
-                            list(chunk_log),
-                            list(digest_log),
-                            stream_started_at,
-                        )
-                        print(f"\n📄 Raport zapisany: {report_path}")
-
                         digest_event = {
                             "type": "digest",
                             "digest_id": str(digest_id) if digest_id else None,
@@ -679,7 +461,6 @@ async def run_subscription_pipeline(
                             "window_start": digest.window_start_seconds,
                             "window_end": digest.window_end_seconds,
                             "stories": [s.model_dump() for s in digest.stories],
-                            "report_path": str(report_path),
                         }
                         await manager.broadcast(subscription_id, digest_event)
 
