@@ -49,6 +49,8 @@ const BASE_CONFIG: DomainConfigData = {
   discovery_classifier_fallback_models: [],
   discovery_matcher_fallback_models: [],
   discovery_topic_writer_fallback_models: [],
+  discovery_retention_days: 14,
+  stream_retention_days: 7,
   updated_at: null,
 };
 
