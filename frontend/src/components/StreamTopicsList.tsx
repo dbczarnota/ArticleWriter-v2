@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { StreamTopic } from "../types";
 import { StatusMessage } from "./ui/StatusMessage";
+import { CopyIcon } from "./ui/icons";
 import { useT } from "../i18n";
 import type { Translations } from "../i18n";
 
@@ -155,20 +156,20 @@ export function StreamTopicsList({ topics, loading }: Props) {
                 </span>
                 <button
                   type="button"
+                  title="Kopiuj do schowka"
                   onClick={(e) => { e.stopPropagation(); copyToClipboard(topic, timeRange); }}
                   style={{
                     flexShrink: 0,
-                    fontSize: 11,
-                    padding: "2px 8px",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius)",
-                    background: isCopied ? "var(--success-fg)" : "var(--bg)",
-                    color: isCopied ? "white" : "var(--muted)",
+                    padding: 4,
+                    border: "none",
+                    background: "none",
+                    color: isCopied ? "var(--success-fg)" : "var(--muted)",
                     cursor: "pointer",
-                    transition: "background 0.15s",
+                    display: "flex",
+                    alignItems: "center",
                   }}
                 >
-                  {isCopied ? "✓ Skopiowano" : "Kopiuj"}
+                  <CopyIcon width={15} height={15} />
                 </button>
                 <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>
                   {relTime(topic.last_seen_at, t)}
