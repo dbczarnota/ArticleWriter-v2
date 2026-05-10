@@ -1,6 +1,6 @@
 """add stream_digests table
 
-Revision ID: f1a2b3c4d5e6
+Revision ID: fa2b3c4d5e6f
 Revises: e4f5a6b7c8d9
 Create Date: 2026-05-09 00:00:00.000000
 
@@ -14,7 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
-revision: str = "f1a2b3c4d5e6"
+revision: str = "fa2b3c4d5e6f"
 down_revision: str | Sequence[str] | None = "e4f5a6b7c8d9"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

@@ -1,7 +1,7 @@
 """add topic_transitions to stream_chunks
 
-Revision ID: a1b2c3d4e5f6
-Revises: f1a2b3c4d5e6
+Revision ID: ab2c3d4e5f6a
+Revises: fa2b3c4d5e6f
 Create Date: 2026-05-09 00:00:00.000000
 
 """
@@ -13,8 +13,8 @@ from alembic import op
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import JSONB
 
-revision: str = "a1b2c3d4e5f6"
-down_revision: str | Sequence[str] | None = "f1a2b3c4d5e6"
+revision: str = "ab2c3d4e5f6a"
+down_revision: str | Sequence[str] | None = "fa2b3c4d5e6f"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
