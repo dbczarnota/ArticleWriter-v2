@@ -477,9 +477,10 @@ async def run_subscription_pipeline(
     # Probe ICY metadata once at startup so first chunk already has program title.
     try:
         initial_title = await asyncio.wait_for(_fetch_icy_title(stream_url), timeout=10.0)
-        if initial_title:
-            current_program[0] = initial_title
-            print(f"📻 ICY metadata OK — program: {initial_title}")
+        if initial_title is not None:
+            current_program[0] = initial_title or None
+            label = initial_title if initial_title else "(brak tytułu)"
+            print(f"📻 ICY metadata OK — program: {label}")
         else:
             print("⚠️  ICY metadata not available (stream may not support it)")
     except Exception:
