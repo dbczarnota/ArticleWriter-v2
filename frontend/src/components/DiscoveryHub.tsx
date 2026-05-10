@@ -172,32 +172,42 @@ export function DiscoveryHub() {
               <StreamsIcon /> {t.streams.views.subscriptions}
             </button>
           </div>
-          {view === "topics" && !selectedTopicId && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <label htmlFor="discovery-topics-sort" style={{ fontSize: 12, color: "var(--muted)" }}>
-                {t.discovery.sort.label}
-              </label>
-              <select
-                id="discovery-topics-sort"
-                value={sort}
-                onChange={(e) => setSort(e.target.value as DiscoveryTopicSort)}
-                style={{
-                  padding: "5px 8px",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                  background: "var(--white)",
-                  color: "var(--text)",
-                  fontSize: 13,
-                  cursor: "pointer",
-                }}
-              >
-                <option value="last_activity">{t.discovery.sort.lastActivity}</option>
-                <option value="first_seen">{t.discovery.sort.firstSeen}</option>
-                <option value="item_count">{t.discovery.sort.itemCount}</option>
-              </select>
-            </div>
-          )}
         </div>
+        {view === "topics" && !selectedTopicId && (
+          <div
+            style={{
+              borderBottom: "1px solid var(--border)",
+              padding: "6px 24px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: 8,
+              background: "var(--white)",
+            }}
+          >
+            <label htmlFor="discovery-topics-sort" style={{ fontSize: 12, color: "var(--muted)" }}>
+              {t.discovery.sort.label}
+            </label>
+            <select
+              id="discovery-topics-sort"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as DiscoveryTopicSort)}
+              style={{
+                padding: "5px 8px",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                background: "var(--white)",
+                color: "var(--text)",
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              <option value="last_activity">{t.discovery.sort.lastActivity}</option>
+              <option value="first_seen">{t.discovery.sort.firstSeen}</option>
+              <option value="item_count">{t.discovery.sort.itemCount}</option>
+            </select>
+          </div>
+        )}
         <div style={{ flex: 1, overflow: "auto", background: "var(--bg)" }}>
           {selectedTopicId ? (
             <TopicDetail
