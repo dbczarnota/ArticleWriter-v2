@@ -17,7 +17,6 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
 
-import httpx
 import logfire
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,31 +39,70 @@ _ICY_TITLE_RE = re.compile(r"StreamTitle='([^']*)'")
 
 
 async def _fetch_icy_title(stream_url: str) -> str | None:
-    """Read current program title from ICY stream metadata. Returns None on any error."""
+    """Read current program title from ICY stream metadata via raw TCP (handles ICY 200 OK).
+
+    httpx rejects Shoutcast's non-standard 'ICY 200 OK' status line, so we use asyncio
+    raw sockets to send the request and parse headers manually.
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse(stream_url)
+    host = parsed.hostname or ""
+    port = parsed.port or 80
+    path = parsed.path or "/"
+    if parsed.query:
+        path = f"{path}?{parsed.query}"
+
     try:
-        async with (
-            httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client,
-            client.stream("GET", stream_url, headers={"Icy-MetaData": "1"}) as resp,
-        ):
-            metaint_hdr = resp.headers.get("icy-metaint")
-            if not metaint_hdr:
+        reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=8.0)
+        try:
+            writer.write(
+                f"GET {path} HTTP/1.0\r\nHost: {host}\r\nIcy-MetaData: 1\r\nConnection: close\r\n\r\n".encode()
+            )
+            await writer.drain()
+
+            # Skip status line (may be "ICY 200 OK" or "HTTP/1.1 200 OK")
+            await asyncio.wait_for(reader.readline(), timeout=5.0)
+
+            # Parse headers
+            icy_metaint: int | None = None
+            while True:
+                line = await asyncio.wait_for(reader.readline(), timeout=5.0)
+                if line in (b"\r\n", b"\n", b""):
+                    break
+                if b":" in line:
+                    k, v = line.split(b":", 1)
+                    if k.strip().lower() == b"icy-metaint":
+                        icy_metaint = int(v.strip())
+
+            if icy_metaint is None:
                 return None
-            metaint = int(metaint_hdr)
+
             buf = bytearray()
-            async for chunk in resp.aiter_bytes(chunk_size=4096):
+            while len(buf) < icy_metaint + 1:
+                chunk = await asyncio.wait_for(reader.read(4096), timeout=5.0)
+                if not chunk:
+                    break
                 buf.extend(chunk)
-                if len(buf) < metaint + 1:
-                    continue
-                meta_len = buf[metaint] * 16
-                if meta_len == 0:
-                    return None
-                meta_end = metaint + 1 + meta_len
-                if len(buf) >= meta_end:
-                    meta_bytes = buf[metaint + 1 : meta_end]
-                    meta_str = meta_bytes.rstrip(b"\x00").decode("utf-8", errors="replace")
-                    match = _ICY_TITLE_RE.search(meta_str)
-                    return match.group(1) if match else None
-        return None
+
+            if len(buf) < icy_metaint + 1:
+                return None
+
+            meta_len = buf[icy_metaint] * 16
+            if meta_len == 0:
+                return None
+
+            meta_end = icy_metaint + 1 + meta_len
+            if len(buf) < meta_end:
+                return None
+
+            meta_str = (
+                buf[icy_metaint + 1 : meta_end].rstrip(b"\x00").decode("utf-8", errors="replace")
+            )
+            match = _ICY_TITLE_RE.search(meta_str)
+            return match.group(1) if match else None
+        finally:
+            writer.close()
     except Exception:
         return None
 
