@@ -60,6 +60,7 @@ export interface Translations {
     exampleArticles: string;
     templates: string;
     discovery: string;
+    streams: string;
   };
   settings: {
     loading: string;
@@ -418,7 +419,7 @@ export interface Translations {
     year: string;
   };
   discovery: {
-    views: { topics: string; items: string; feeds: string };
+    views: { topics: string; items: string; feeds: string; streams: string };
     filters: { feeds: string; categories: string; status: string; all: string; emptyCategories: string };
     status: { open: string; resurfaced: string; consumed: string; dismissed: string };
     topic: {
@@ -477,6 +478,48 @@ export interface Translations {
       cancel: string;
       submit: string;
       submitting: string;
+    };
+  };
+  streams: {
+    views: {
+      subscriptions: string;
+      topics: string;
+    };
+    subscription: {
+      live: string;
+      stopped: string;
+      paused: string;
+      noStreams: string;
+      streamType: string;
+      chunkDuration: string;
+      delete: string;
+      confirmDelete: string;
+      lastStarted: string;
+    };
+    topic: {
+      loading: string;
+      noTopics: string;
+      newsBadge: string;
+      notNewsBadge: string;
+      lastSeen: string;
+    };
+    config: {
+      sectionStreams: string;
+      streamsHint: string;
+      addStream: string;
+      removeStream: string;
+      streamName: string;
+      streamNamePlaceholder: string;
+      streamUrl: string;
+      streamUrlPlaceholder: string;
+      streamType: string;
+      streamTypePlaceholder: string;
+      urlRefreshUrl: string;
+      urlRefreshUrlPlaceholder: string;
+      urlRefreshField: string;
+      chunkDuration: string;
+      saving: string;
+      saved: string;
     };
   };
 }
