@@ -13,9 +13,13 @@ import { FeedsHealth } from "./FeedsHealth";
 import { TopicDetail } from "./TopicDetail";
 import { WriteFromTopicDialog } from "./WriteFromTopicDialog";
 import { useT } from "../i18n";
-import { TopicsIcon, ItemsIcon, FeedsIcon } from "./ui/icons";
+import { TopicsIcon, ItemsIcon, FeedsIcon, StreamsIcon, StreamTopicsIcon } from "./ui/icons";
+import { useStreamSubscriptions } from "../lib/useStreamSubscriptions";
+import { useStreamTopics } from "../lib/useStreamTopics";
+import { StreamsHealth } from "./StreamsHealth";
+import { StreamTopicsList } from "./StreamTopicsList";
 
-type DiscoveryView = "topics" | "items" | "feeds";
+type DiscoveryView = "topics" | "items" | "feeds" | "streamy" | "tematy-streamow";
 
 export function DiscoveryHub() {
   const t = useT();
@@ -42,6 +46,8 @@ export function DiscoveryHub() {
     feedId: filters.feedId,
     categories: filters.categories,
   });
+  const { subscriptions, loading: subsLoading, remove: removeSub } = useStreamSubscriptions();
+  const { topics: streamTopics, loading: streamTopicsLoading } = useStreamTopics();
   // Build the category list from whatever the user has visible right now.
   // Backend has no "list categories with counts" endpoint, and the existing
   // /discovery/categories endpoint returns just names — driving the sidebar
@@ -148,6 +154,22 @@ export function DiscoveryHub() {
           >
             <FeedsIcon /> {t.discovery.views.feeds}
           </button>
+          <button
+            type="button"
+            onClick={() => setView("streamy")}
+            disabled={view === "streamy"}
+            style={{ ...tabBtn(view === "streamy"), display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <StreamsIcon /> {t.streams.views.subscriptions}
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("tematy-streamow")}
+            disabled={view === "tematy-streamow"}
+            style={{ ...tabBtn(view === "tematy-streamow"), display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <StreamTopicsIcon /> {t.streams.views.topics}
+          </button>
           {view === "topics" && !selectedTopicId && (
             <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
               <label htmlFor="discovery-topics-sort" style={{ fontSize: 12, color: "var(--muted)" }}>
@@ -196,6 +218,16 @@ export function DiscoveryHub() {
               )}
               {view === "items" && <ItemsTable items={items} loading={itemsLoading} />}
               {view === "feeds" && <FeedsHealth feeds={feeds} loading={feedsLoading} />}
+              {view === "streamy" && (
+                <StreamsHealth
+                  subscriptions={subscriptions}
+                  loading={subsLoading}
+                  onDelete={removeSub}
+                />
+              )}
+              {view === "tematy-streamow" && (
+                <StreamTopicsList topics={streamTopics} loading={streamTopicsLoading} />
+              )}
             </>
           )}
         </div>

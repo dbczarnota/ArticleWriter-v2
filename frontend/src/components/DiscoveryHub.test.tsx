@@ -14,6 +14,12 @@ vi.mock("../lib/useDiscoveryTopics", () => ({
 vi.mock("../lib/useDiscoveryItems", () => ({
   useDiscoveryItems: () => ({ items: [], loading: false }),
 }));
+vi.mock("../lib/useStreamSubscriptions", () => ({
+  useStreamSubscriptions: () => ({ subscriptions: [], loading: false, remove: vi.fn() }),
+}));
+vi.mock("../lib/useStreamTopics", () => ({
+  useStreamTopics: () => ({ topics: [], loading: false }),
+}));
 // Lock the i18n locale so test assertions don't depend on the runtime
 // language detection (CI may default to en, dev to pl).
 vi.mock("../i18n", () => ({
@@ -28,14 +34,17 @@ vi.mock("../i18n", () => ({
       hub: { resurfaced: "", written: "", sources: "", sourcesCount: "" },
       sort: { label: "", lastActivity: "", firstSeen: "", itemCount: "" },
     },
+    streams: {
+      views: { subscriptions: "StreamsLabel", topics: "StreamTopicsLabel" },
+    },
   }),
 }));
 
 describe("DiscoveryHub", () => {
   it("renders the three view tabs", () => {
     render(<DiscoveryHub />);
-    expect(screen.getByRole("button", { name: /TopicsLabel/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /ItemsLabel/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /FeedsLabel/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "TopicsLabel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ItemsLabel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "FeedsLabel" })).toBeInTheDocument();
   });
 });
