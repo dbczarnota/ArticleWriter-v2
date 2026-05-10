@@ -674,3 +674,36 @@ class StreamDigest(SQLModel, table=True):
         default_factory=_utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
     )
+
+
+class StreamTopic(SQLModel, table=True):
+    __tablename__ = "stream_topics"  # type: ignore[assignment]
+    __table_args__ = (Index("ix_stream_topics_sub_last_seen", "subscription_id", "last_seen_at"),)
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        sa_column=Column(PG_UUID(as_uuid=True), primary_key=True),
+    )
+    subscription_id: UUID = Field(
+        sa_column=Column(
+            PG_UUID(as_uuid=True),
+            ForeignKey("stream_subscriptions.id", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
+    title: str = Field(max_length=512)
+    is_news: bool = Field(default=True)
+    summary: str = Field(default="", sa_column=Column(String, nullable=False))
+    speakers: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
+    facts: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
+    quotes: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
+    window_start_seconds: float = Field(sa_column=Column(Float, nullable=False))
+    window_end_seconds: float = Field(sa_column=Column(Float, nullable=False))
+    first_seen_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
+    )
+    last_seen_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False, default=_utcnow),
+    )
