@@ -1,20 +1,21 @@
 import type { StreamTopic } from "../types";
 import { StatusMessage } from "./ui/StatusMessage";
 import { useT } from "../i18n";
+import type { Translations } from "../i18n";
 
 interface Props {
   topics: StreamTopic[];
   loading: boolean;
 }
 
-function relTime(iso: string): string {
+function relTime(iso: string, t: Translations): string {
   const ms = Date.now() - new Date(iso).getTime();
   const min = Math.round(ms / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min} min ago`;
+  if (min < 1) return t.discovery.feed.justNow;
+  if (min < 60) return `${min} ${t.discovery.feed.minAgo}`;
   const h = Math.round(min / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.round(h / 24)}d ago`;
+  if (h < 24) return `${h}${t.discovery.feed.hAgo}`;
+  return `${Math.round(h / 24)}${t.discovery.feed.dAgo}`;
 }
 
 export function StreamTopicsList({ topics, loading }: Props) {
@@ -52,7 +53,7 @@ export function StreamTopicsList({ topics, loading }: Props) {
             </span>
             <span style={{ fontWeight: 600, color: "var(--text)", flex: 1 }}>{topic.title}</span>
             <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>
-              {t.streams.topic.lastSeen}: {relTime(topic.last_seen_at)}
+              {t.streams.topic.lastSeen}: {relTime(topic.last_seen_at, t)}
             </span>
           </div>
           {topic.summary && (
