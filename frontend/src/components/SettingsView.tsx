@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useDomainConfig } from "../lib/useDomainConfig";
 import { SettingsNav } from "./SettingsNav";
 import { DomainConfigForm } from "./DomainConfigForm";
+import { StreamsConfigSection } from "./StreamsConfigSection";
 import { useT } from "../i18n";
 
 export function SettingsView() {
@@ -15,13 +16,17 @@ export function SettingsView() {
   return (
     <div style={{ display: "flex", gap: 32, alignItems: "flex-start" }}>
       <SettingsNav activeSection={activeSection} onSelect={setActiveSection} />
-      <DomainConfigForm
-        initialConfig={config}
-        activeSection={activeSection}
-        saving={saving}
-        error={error}
-        onSave={save}
-      />
+      {activeSection === "streamy" ? (
+        <StreamsConfigSection />
+      ) : (
+        <DomainConfigForm
+          initialConfig={config}
+          activeSection={activeSection}
+          saving={saving}
+          error={error}
+          onSave={save}
+        />
+      )}
     </div>
   );
 }
