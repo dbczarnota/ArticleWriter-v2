@@ -114,7 +114,7 @@ async def collect_chunk(reader: asyncio.StreamReader, duration_s: float) -> byte
                 break
             buf.write(data)
         except TimeoutError:
-            break
+            continue
     return buf.getvalue()
 
 
