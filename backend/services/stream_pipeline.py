@@ -637,9 +637,10 @@ async def run_subscription_pipeline(
                     with contextlib.suppress(Exception):
                         stderr_out = await asyncio.wait_for(proc.stderr.read(2048), timeout=1.0)
                 _log.error(
-                    "stream.ffmpeg_error [sub=%s attempt=%d]: %s%s",
+                    "stream.ffmpeg_error [sub=%s attempt=%d]: %s: %r%s",
                     subscription_id,
                     attempt,
+                    type(exc).__name__,
                     exc,
                     f" | ffmpeg: {stderr_out.decode(errors='replace').strip()}" if stderr_out else "",
                 )
