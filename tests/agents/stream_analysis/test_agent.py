@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -22,7 +23,11 @@ def test_config_is_frozen():
 
 @pytest.mark.asyncio
 async def test_run_stream_analysis_agent_returns_result():
-    from agents.stream_analysis.agent import StreamChunkResult, StreamTopic, run_stream_analysis_agent
+    from agents.stream_analysis.agent import (
+        StreamChunkResult,
+        StreamTopic,
+        run_stream_analysis_agent,
+    )
     from agents.stream_analysis.config import StreamAnalysisAgentConfig
 
     mock_result = MagicMock()
@@ -40,6 +45,7 @@ async def test_run_stream_analysis_agent_returns_result():
         result = await run_stream_analysis_agent(
             audio_bytes=b"fake_audio",
             chunk_start_seconds=0.0,
+            chunk_start_at=datetime(2026, 5, 10, 12, 0, 0, tzinfo=UTC),
             config=StreamAnalysisAgentConfig(),
         )
 
