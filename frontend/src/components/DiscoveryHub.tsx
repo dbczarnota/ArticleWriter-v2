@@ -154,24 +154,26 @@ export function DiscoveryHub() {
           >
             <FeedsIcon /> {t.discovery.views.feeds}
           </button>
-          <button
-            type="button"
-            onClick={() => setView("streamy")}
-            disabled={view === "streamy"}
-            style={{ ...tabBtn(view === "streamy"), display: "inline-flex", alignItems: "center", gap: 6 }}
-          >
-            <StreamsIcon /> {t.streams.views.subscriptions}
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("tematy-streamow")}
-            disabled={view === "tematy-streamow"}
-            style={{ ...tabBtn(view === "tematy-streamow"), display: "inline-flex", alignItems: "center", gap: 6 }}
-          >
-            <StreamTopicsIcon /> {t.streams.views.topics}
-          </button>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={() => setView("streamy")}
+              disabled={view === "streamy"}
+              style={{ ...tabBtn(view === "streamy"), display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <StreamsIcon /> {t.streams.views.subscriptions}
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("tematy-streamow")}
+              disabled={view === "tematy-streamow"}
+              style={{ ...tabBtn(view === "tematy-streamow"), display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <StreamTopicsIcon /> {t.streams.views.topics}
+            </button>
+          </div>
           {view === "topics" && !selectedTopicId && (
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <label htmlFor="discovery-topics-sort" style={{ fontSize: 12, color: "var(--muted)" }}>
                 {t.discovery.sort.label}
               </label>
