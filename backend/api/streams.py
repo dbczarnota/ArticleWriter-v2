@@ -297,6 +297,11 @@ async def list_stream_topics(
                 "title": t.title,
                 "is_news": t.is_news,
                 "summary": t.summary,
+                "speakers": t.speakers,
+                "facts": t.facts,
+                "quotes": t.quotes,
+                "window_start_seconds": t.window_start_seconds,
+                "window_end_seconds": t.window_end_seconds,
                 "first_seen_at": t.first_seen_at.isoformat(),
                 "last_seen_at": t.last_seen_at.isoformat(),
             }
