@@ -240,7 +240,14 @@ export function DiscoveryHub() {
                 />
               )}
               {view === "tematy-streamow" && (
-                <StreamTopicsList topics={streamTopics} loading={streamTopicsLoading} />
+                <StreamTopicsList
+                  topics={
+                    filters.subscriptionId
+                      ? streamTopics.filter((t) => t.subscription_id === filters.subscriptionId)
+                      : streamTopics
+                  }
+                  loading={streamTopicsLoading}
+                />
               )}
             </>
           )}

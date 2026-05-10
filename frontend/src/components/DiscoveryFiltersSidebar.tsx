@@ -62,12 +62,20 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
     width: "100%",
     padding: "6px 10px",
     background: "transparent",
-    border: 0,
+    border: "2px solid transparent",
     borderRadius: "var(--radius)",
     cursor: "pointer",
     color: "var(--text)",
     fontSize: 14,
     textAlign: "left",
+  };
+
+  const buttonRowActive: React.CSSProperties = {
+    ...buttonRow,
+    background: "var(--accent-lt)",
+    border: "2px solid var(--accent)",
+    color: "var(--accent)",
+    fontWeight: 600,
   };
 
   return (
@@ -87,10 +95,7 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
           <button
             type="button"
             onClick={() => setFeed(null)}
-            style={{
-              ...buttonRow,
-              background: value.feedId === null ? "var(--accent-lt)" : "transparent",
-            }}
+            style={value.feedId === null ? buttonRowActive : buttonRow}
           >
             <span>{t.discovery.filters.all}</span>
           </button>
@@ -99,10 +104,7 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
               type="button"
               key={f.id}
               onClick={() => setFeed(f.id)}
-              style={{
-                ...buttonRow,
-                background: value.feedId === f.id ? "var(--accent-lt)" : "transparent",
-              }}
+              style={value.feedId === f.id ? buttonRowActive : buttonRow}
             >
               <span>{hostname(f.feed_url)}</span>
               <span style={{ color: "var(--muted)", fontSize: 12 }}>{f.items_24h_count}</span>
@@ -118,10 +120,7 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
             <button
               type="button"
               onClick={() => setSubscription(null)}
-              style={{
-                ...buttonRow,
-                background: value.subscriptionId === null ? "var(--accent-lt)" : "transparent",
-              }}
+              style={value.subscriptionId === null ? buttonRowActive : buttonRow}
             >
               <span>{t.discovery.filters.all}</span>
             </button>
@@ -130,10 +129,7 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
                 type="button"
                 key={s.id}
                 onClick={() => setSubscription(s.id)}
-                style={{
-                  ...buttonRow,
-                  background: value.subscriptionId === s.id ? "var(--accent-lt)" : "transparent",
-                }}
+                style={value.subscriptionId === s.id ? buttonRowActive : buttonRow}
               >
                 <span>{s.name}</span>
                 <span

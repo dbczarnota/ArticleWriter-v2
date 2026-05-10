@@ -19,12 +19,30 @@ function relTime(iso: string, t: Translations): string {
   return `${Math.round(h / 24)}${t.discovery.feed.dAgo}`;
 }
 
-function formatSeconds(s: number): string {
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = Math.floor(s % 60);
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  return `${m}:${String(sec).padStart(2, "0")}`;
+function windowToClockRange(firstSeenAt: string, windowStartS: number, windowEndS: number): string {
+  // first_seen_at ≈ when the digest ran ≈ stream_start + windowEndS
+  const digestAt = new Date(firstSeenAt).getTime();
+  const streamStartMs = digestAt - windowEndS * 1000;
+  const startMs = streamStartMs + windowStartS * 1000;
+  const endMs = streamStartMs + windowEndS * 1000;
+
+  const fmt = (ms: number) => {
+    const d = new Date(ms);
+    const day = d.toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
+    const time = d.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+    return `${day}, ${time}`;
+  };
+
+  const startDate = new Date(startMs).toDateString();
+  const endDate = new Date(endMs).toDateString();
+  if (startDate === endDate) {
+    // same day — show date once, two times
+    const day = new Date(startMs).toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
+    const t1 = new Date(startMs).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+    const t2 = new Date(endMs).toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+    return `${day}, ${t1}–${t2}`;
+  }
+  return `${fmt(startMs)} – ${fmt(endMs)}`;
 }
 
 export function StreamTopicsList({ topics, loading }: Props) {
@@ -115,7 +133,7 @@ export function StreamTopicsList({ topics, loading }: Props) {
                   {topic.subscription_name}
                 </span>
                 <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                  {formatSeconds(topic.window_start_seconds)}–{formatSeconds(topic.window_end_seconds)}
+                  {windowToClockRange(topic.first_seen_at, topic.window_start_seconds, topic.window_end_seconds)}
                 </span>
               </div>
 
