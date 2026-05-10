@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useStreamSubscriptions } from "../lib/useStreamSubscriptions";
 import { useT } from "../i18n";
+import type { DomainConfigData } from "../types";
 
 const EMPTY_FORM = {
   name: "",
@@ -11,13 +12,32 @@ const EMPTY_FORM = {
   chunk_duration_seconds: 180,
 };
 
-export function StreamsConfigSection() {
+interface Props {
+  config: DomainConfigData;
+  saving: boolean;
+  onSave: (updated: DomainConfigData) => Promise<void>;
+}
+
+export function StreamsConfigSection({ config, saving: domainSaving, onSave }: Props) {
   const t = useT();
   const { subscriptions, loading, create, remove, start, stop } = useStreamSubscriptions();
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
   const [toggling, setToggling] = useState<Set<string>>(new Set());
+  const [retentionDays, setRetentionDays] = useState(config.stream_retention_days);
+  const [retentionSavedMsg, setRetentionSavedMsg] = useState(false);
+
+  async function saveRetention() {
+    if (retentionDays === config.stream_retention_days) return;
+    try {
+      await onSave({ ...config, stream_retention_days: retentionDays });
+      setRetentionSavedMsg(true);
+      setTimeout(() => setRetentionSavedMsg(false), 2000);
+    } catch (err) {
+      console.error("StreamsConfigSection: retention save failed", err);
+    }
+  }
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
@@ -87,6 +107,47 @@ export function StreamsConfigSection() {
       <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 24 }}>
         {t.streams.config.streamsHint}
       </p>
+
+      {/* Retention */}
+      <div style={{ marginBottom: 24, padding: 12, border: "1px solid var(--border)", borderRadius: "var(--radius)", background: "var(--white)" }}>
+        <label style={labelStyle}>
+          {t.streams.config.retentionDays}
+        </label>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            type="number"
+            min={1}
+            max={365}
+            value={retentionDays}
+            onChange={(e) => setRetentionDays(+e.target.value)}
+            style={{ ...inputStyle, width: 100 }}
+            disabled={domainSaving}
+          />
+          <button
+            type="button"
+            onClick={saveRetention}
+            disabled={domainSaving || retentionDays === config.stream_retention_days}
+            style={{
+              padding: "6px 14px",
+              background: "var(--accent)",
+              color: "var(--white)",
+              border: "none",
+              borderRadius: "var(--radius)",
+              fontSize: 13,
+              cursor: (domainSaving || retentionDays === config.stream_retention_days) ? "default" : "pointer",
+              opacity: (domainSaving || retentionDays === config.stream_retention_days) ? 0.5 : 1,
+            }}
+          >
+            {domainSaving ? t.streams.config.saving : t.streams.config.save}
+          </button>
+          {retentionSavedMsg && (
+            <span style={{ fontSize: 12, color: "var(--success-fg)" }}>{t.streams.config.saved}</span>
+          )}
+        </div>
+        <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 6, marginBottom: 0 }}>
+          {t.streams.config.retentionHint}
+        </p>
+      </div>
 
       {/* Existing subscriptions */}
       {!loading && subscriptions.length > 0 && (

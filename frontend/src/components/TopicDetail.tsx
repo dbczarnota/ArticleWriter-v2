@@ -186,21 +186,38 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                     type="button"
                     onClick={() => setModalStreamTopicId(src.id)}
                     style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      padding: "8px 12px",
+                      display: "flex", flexDirection: "column", gap: 6,
+                      padding: "10px 12px",
                       border: "1px solid var(--border)", borderRadius: "var(--radius)",
                       background: "var(--white)", cursor: "pointer", textAlign: "left",
+                      width: "100%",
                     }}
                   >
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "var(--accent-lt)", borderRadius: 4, padding: "1px 7px", flexShrink: 0 }}>
-                      {src.subscription_name}
-                    </span>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", flex: 1 }}>
-                      {src.title}
-                    </span>
-                    <span style={{ fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>
-                      {src.windows.map(formatWindow).join(" · ")}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "var(--accent-lt)", borderRadius: 4, padding: "1px 7px", flexShrink: 0 }}>
+                        {src.subscription_name}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                        {src.title}
+                      </span>
+                    </div>
+                    {src.windows.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                        {src.windows.map((w, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              fontSize: 11, color: "var(--muted)",
+                              background: "var(--sidebar)",
+                              borderRadius: 4, padding: "2px 6px",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {formatWindow(w)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>

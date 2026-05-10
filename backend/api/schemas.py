@@ -204,6 +204,8 @@ class DomainConfigUpdate(BaseModel):
     discovery_categories: list[CategoryConfigPayload] = PydanticField(default_factory=list)
     discovery_topic_matching_window_days: int = PydanticField(ge=1, le=90, default=3)
     discovery_followup_threshold: int = PydanticField(ge=1, le=100, default=5)
+    discovery_retention_days: int = PydanticField(ge=1, le=365, default=14)
+    stream_retention_days: int = PydanticField(ge=1, le=365, default=7)
     discovery_classifier_model: str = "google-gla:gemini-flash-lite-latest"
     discovery_matcher_model: str = "google-gla:gemini-flash-lite-latest"
     discovery_topic_writer_model: str = "google-gla:gemini-flash-lite-latest"

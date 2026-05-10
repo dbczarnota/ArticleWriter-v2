@@ -164,6 +164,8 @@ export interface DomainConfigData {
   discovery_categories: CategoryConfig[];
   discovery_topic_matching_window_days: number;
   discovery_followup_threshold: number;
+  discovery_retention_days: number;
+  stream_retention_days: number;
   discovery_classifier_model: string;
   discovery_matcher_model: string;
   discovery_topic_writer_model: string;

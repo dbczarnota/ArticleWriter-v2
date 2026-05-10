@@ -649,6 +649,20 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
                 style={inputStyle}
               />
             </div>
+            <div>
+              <label style={labelStyle}>
+                {dc.discoveryRetentionDays}
+                <Tip text={dc.tipDiscoveryRetentionDays} />
+              </label>
+              <input
+                type="number"
+                value={form.discovery_retention_days}
+                onChange={(e) => set("discovery_retention_days", +e.target.value)}
+                min={1}
+                max={365}
+                style={inputStyle}
+              />
+            </div>
           </div>
 
           {/* Feeds */}

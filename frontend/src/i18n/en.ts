@@ -176,6 +176,8 @@ export const en: Translations = {
     tipDiscoveryTopicMatchingWindow: "How far back to look for topic candidates when matching a new item. 3 days = most news peaks within 72 h. Larger window = higher LLM cost.",
     discoveryFollowupThreshold: "Follow-up threshold (sources)",
     tipDiscoveryFollowupThreshold: "After a topic is written, if this many new sources arrive the topic resurfaces as a follow-up candidate.",
+    discoveryRetentionDays: "RSS retention (days)",
+    tipDiscoveryRetentionDays: "Items and topics older than this are deleted by a daily job. Already-published articles are kept.",
     discoveryClassifierModel: "Classifier model",
     discoveryMatcherModel: "Matcher model",
     discoveryTopicWriterModel: "Topic writer model",
@@ -505,6 +507,9 @@ export const en: Translations = {
       chunkDuration: "Chunk duration (seconds)",
       saving: "Saving…",
       saved: "Saved",
+      save: "Save",
+      retentionDays: "Stream item retention (days)",
+      retentionHint: "Stream topics older than X days are deleted by a daily cleanup job.",
     },
   },
 };

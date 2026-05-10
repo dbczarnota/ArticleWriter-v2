@@ -85,6 +85,13 @@ class DomainConfig:
     """When a `consumed` topic accumulates this many new items after
     consumed_at, status flips to `resurfaced`."""
 
+    discovery_retention_days: int = 14
+    """Daily cleanup deletes RSS items + topics with last_activity_at older
+    than this. Articles already published from those topics are not affected."""
+
+    stream_retention_days: int = 7
+    """Daily cleanup deletes stream_topics with last_seen_at older than this."""
+
     discovery_classifier_model: str = "google-gla:gemini-flash-lite-latest"
     discovery_matcher_model: str = "google-gla:gemini-flash-lite-latest"
     discovery_topic_writer_model: str = "google-gla:gemini-flash-lite-latest"
@@ -152,6 +159,8 @@ def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:
         ],
         discovery_topic_matching_window_days=config.discovery_topic_matching_window_days,
         discovery_followup_threshold=config.discovery_followup_threshold,
+        discovery_retention_days=config.discovery_retention_days,
+        stream_retention_days=config.stream_retention_days,
         discovery_classifier_model=config.discovery_classifier_model,
         discovery_matcher_model=config.discovery_matcher_model,
         discovery_topic_writer_model=config.discovery_topic_writer_model,

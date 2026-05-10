@@ -1,9 +1,19 @@
-import { useEffect, useRef, useState } from "react";
-import type { DiscoveryTopicSummary, DiscoveryItem } from "../types";
+import { useState } from "react";
+import type { DiscoveryTopicSummary, DiscoveryItem, StreamSource } from "../types";
 import { useDiscoveryTopicDetail } from "../lib/useDiscoveryTopicDetail";
 import { useT } from "../i18n";
 import { Button } from "./ui/Button";
 import { safeHref } from "../lib/safeHref";
+import { StreamSourceModal } from "./StreamSourceModal";
+
+function formatWindow(w: { start_at: string; end_at: string }): string {
+  const start = new Date(w.start_at);
+  const end = new Date(w.end_at);
+  const day = start.toLocaleDateString("pl-PL", { day: "numeric", month: "short" });
+  const t1 = start.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+  const t2 = end.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" });
+  return `${day}, ${t1}–${t2}`;
+}
 
 // Monochrome 13×13 outline icons matching the copy-button style
 // (stroke=currentColor, no fill). Kept inline so the meta row can
@@ -77,14 +87,10 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
   const t = useT();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<DiscoveryItem[] | null>(null);
+  const [streamSources, setStreamSources] = useState<StreamSource[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [modalStreamTopicId, setModalStreamTopicId] = useState<string | null>(null);
   const { load } = useDiscoveryTopicDetail();
-
-  // Guard against state updates after unmount when the user changes filters
-  // mid-fetch — `load` is async and the component can disappear before it
-  // resolves.
-  const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
 
   async function toggle(e: React.MouseEvent) {
     e.stopPropagation();
@@ -93,9 +99,10 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
     if (next && items === null && !error) {
       try {
         const detail = await load(topic.id);
-        if (mountedRef.current) setItems(detail.items);
+        setItems(detail.items);
+        setStreamSources(detail.stream_sources ?? []);
       } catch (err) {
-        if (mountedRef.current) setError(err instanceof Error ? err.message : String(err));
+        setError(err instanceof Error ? err.message : String(err));
       }
     }
   }
@@ -230,13 +237,13 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
           >
             <span style={metaItem}>
               <SourcesIcon />
-              {topic.item_count} {t.discovery.hub.sourcesCount}
+              {topic.item_count + topic.stream_source_count} {t.discovery.hub.sourcesCount}
+              {topic.stream_source_count > 0 && (
+                <span style={{ color: "var(--accent)", fontWeight: 500, marginLeft: 4 }}>
+                  · 📡 {topic.stream_source_count}
+                </span>
+              )}
             </span>
-            {topic.stream_source_count > 0 && (
-              <span style={{ ...metaItem, color: "var(--accent)", fontWeight: 500 }}>
-                📡 {topic.stream_source_count}
-              </span>
-            )}
             {topic.first_seen_at && (
               <span style={metaItem} title={t.discovery.topic.firstSeen}>
                 <CalendarIcon />
@@ -309,7 +316,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
           )}
           {!isConsumed && (
             <span style={{ fontSize: 11, color: "var(--muted)" }}>
-              {topic.item_count} {t.discovery.topic.itemsShort}
+              {topic.item_count + topic.stream_source_count} {t.discovery.topic.itemsShort}
             </span>
           )}
         </div>
@@ -331,62 +338,102 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
             <div style={{ color: "var(--error-fg)", fontSize: 13 }}>{t.discovery.topic.error}: {error}</div>
           ) : items === null ? (
             <div style={{ color: "var(--muted)", fontSize: 13 }}>{t.discovery.topic.loading}</div>
-          ) : items.length === 0 ? (
-            <div style={{ color: "var(--muted)", fontSize: 13 }}>{t.discovery.item.uncategorized}</div>
           ) : (
-            items.map((it) => (
-              <a
-                key={it.id}
-                href={safeHref(it.canonical_url)}
-                target="_blank"
-                rel="noreferrer noopener"
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "center",
-                  padding: "6px 0",
-                  textDecoration: "none",
-                  color: "var(--text)",
-                }}
-              >
-                {it.image_url && (
-                  <img
-                    src={it.image_url}
-                    alt=""
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                    style={{
-                      width: 44,
-                      height: 44,
-                      objectFit: "cover",
-                      borderRadius: 4,
-                      flexShrink: 0,
-                      background: "var(--sidebar)",
-                    }}
-                  />
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14 }}>
-                    {it.title} <span style={{ color: "var(--muted)" }}>↗</span>
+            <>
+              {streamSources.map((src) => (
+                <button
+                  key={src.id}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setModalStreamTopicId(src.id); }}
+                  style={{
+                    display: "flex", flexDirection: "column", gap: 4,
+                    width: "100%", textAlign: "left",
+                    padding: "6px 8px", marginBottom: 2,
+                    border: "1px solid var(--border)", borderRadius: "var(--radius)",
+                    background: "var(--sidebar)", cursor: "pointer",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: "var(--accent)", background: "var(--accent-lt)", borderRadius: 4, padding: "1px 6px", flexShrink: 0 }}>
+                      📡 {src.subscription_name}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{src.title}</span>
                   </div>
-                  <div
+                  {src.windows.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                      {src.windows.map((w, i) => (
+                        <span key={i} style={{ fontSize: 10, color: "var(--muted)", background: "var(--bg)", borderRadius: 3, padding: "1px 5px", whiteSpace: "nowrap" }}>
+                          {formatWindow(w)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </button>
+              ))}
+              {items.length === 0 && streamSources.length === 0 ? (
+                <div style={{ color: "var(--muted)", fontSize: 13 }}>{t.discovery.item.uncategorized}</div>
+              ) : (
+                items.map((it) => (
+                  <a
+                    key={it.id}
+                    href={safeHref(it.canonical_url)}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    onClick={(e) => e.stopPropagation()}
                     style={{
-                      fontSize: 12,
-                      color: "var(--muted)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
+                      display: "flex",
+                      gap: 10,
+                      alignItems: "center",
+                      padding: "6px 0",
+                      textDecoration: "none",
+                      color: "var(--text)",
                     }}
                   >
-                    {it.canonical_url}
-                  </div>
-                </div>
-              </a>
-            ))
+                    {it.image_url && (
+                      <img
+                        src={it.image_url}
+                        alt=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        style={{
+                          width: 44,
+                          height: 44,
+                          objectFit: "cover",
+                          borderRadius: 4,
+                          flexShrink: 0,
+                          background: "var(--sidebar)",
+                        }}
+                      />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14 }}>
+                        {it.title} <span style={{ color: "var(--muted)" }}>↗</span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "var(--muted)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {it.canonical_url}
+                      </div>
+                    </div>
+                  </a>
+                ))
+              )}
+            </>
           )}
         </div>
+      )}
+      {modalStreamTopicId && (
+        <StreamSourceModal
+          streamTopicId={modalStreamTopicId}
+          onClose={() => setModalStreamTopicId(null)}
+        />
       )}
     </div>
   );

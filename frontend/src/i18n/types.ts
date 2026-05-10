@@ -187,6 +187,8 @@ export interface Translations {
     tipDiscoveryTopicMatchingWindow: string;
     discoveryFollowupThreshold: string;
     tipDiscoveryFollowupThreshold: string;
+    discoveryRetentionDays: string;
+    tipDiscoveryRetentionDays: string;
     discoveryClassifierModel: string;
     discoveryMatcherModel: string;
     discoveryTopicWriterModel: string;
@@ -520,6 +522,9 @@ export interface Translations {
       chunkDuration: string;
       saving: string;
       saved: string;
+      save: string;
+      retentionDays: string;
+      retentionHint: string;
     };
   };
 }

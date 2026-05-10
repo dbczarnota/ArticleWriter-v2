@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 import logfire
@@ -19,7 +20,14 @@ from fastapi import (
 from pydantic import BaseModel
 
 from agents.pipeline.runner import run_pipeline
-from backend.api.schemas import ArticleRequest, ArticleUpdate, DomainConfigUpdate
+from backend.api.schemas import (
+    ArticleRequest,
+    ArticleUpdate,
+    DomainConfigUpdate,
+    EditorExtractionPayload,
+    EditorFactItem,
+    EditorQuoteItem,
+)
 from backend.auth.deps import get_current_org, get_current_user
 from backend.auth.protocols import AuthenticatedUser
 from backend.config import AppSettings, apply_org_models
@@ -1172,30 +1180,48 @@ async def list_discovery_topics(
         limit=200,
         offset=0,
     )
-    # Batch-count stream sources per topic to avoid N+1
     from backend.database import get_db_backend, get_session_maker
 
+    items_by_topic: dict = {t.id: [] for t in rows}
     stream_counts: dict[str, int] = {}
+
     if get_db_backend() == "postgres" and rows:
         import sqlalchemy as _sa
 
+        from backend.db.models import DiscoveryItem as _DI
         from backend.db.models import StreamTopic
 
         topic_ids = [t.id for t in rows]
         _sm = get_session_maker()
         _st = StreamTopic.__table__  # type: ignore[attr-defined]
         async with _sm() as _session:  # type: ignore[union-attr]
-            _res = await _session.execute(
+            # Single query for all items across all topics
+            _items_res = await _session.execute(
+                _sa.select(_DI)
+                .where(_DI.topic_id.in_(topic_ids), _DI.org_code == org.code)  # type: ignore[arg-type]
+                .order_by(_DI.fetched_at)  # type: ignore[arg-type]
+            )
+            for it in _items_res.scalars().all():
+                if it.topic_id in items_by_topic:
+                    items_by_topic[it.topic_id].append(it)
+
+            # Stream source counts in the same session
+            _st_res = await _session.execute(
                 _sa.select(_st.c.topic_id, _sa.func.count().label("cnt"))
                 .where(_st.c.topic_id.in_(topic_ids))
                 .group_by(_st.c.topic_id)
             )
-            for row in _res.all():
+            for row in _st_res.all():
                 stream_counts[str(row.topic_id)] = row.cnt
+    else:
+        for t in rows:
+            items_by_topic[t.id] = await discovery_repo.list_items_for_topic(
+                topic_id=t.id, org_code=org.code
+            )
 
     out: list[dict] = []
     for t in rows:
-        items = await discovery_repo.list_items_for_topic(topic_id=t.id, org_code=org.code)
+        items = items_by_topic[t.id]
         new_count = (
             sum(1 for it in items if it.fetched_at > t.consumed_at)
             if t.consumed_at is not None
@@ -1217,9 +1243,9 @@ async def list_discovery_topics(
         # DESC would just duplicate the default last_activity meaning.
         out.sort(key=lambda x: x["first_seen_at"] or "")
     elif sort == "item_count":
-        # Tie-break by last_activity so equal-count topics still order
-        # predictably (most recently active first).
-        out.sort(key=lambda x: (x["item_count"], x["last_activity_at"] or ""), reverse=True)
+        # Include stream sources in the count so the sort reflects total coverage.
+        # Tie-break by last_activity so equal-count topics still order predictably.
+        out.sort(key=lambda x: (x["item_count"] + x["stream_source_count"], x["last_activity_at"] or ""), reverse=True)
     else:  # last_activity (default)
         out.sort(key=lambda x: x["last_activity_at"] or "", reverse=True)
 
@@ -1355,6 +1381,87 @@ async def restore_discovery_topic(
     return {"id": str(topic_id), "status": "open"}
 
 
+async def _stream_topics_to_editor_items(
+    *,
+    stream_topic_ids: list[UUID],
+    org_code: str,
+) -> tuple[list[EditorFactItem], list[EditorQuoteItem]]:
+    """Fetch the given StreamTopic rows and project their pre-extracted
+    facts/quotes into editor-extraction shape. Each item gets:
+    - source = "stream:{subscription_name}"
+    - context = speaker (if any) joined with the stream summary
+    so the writer can anchor the item to the broadcast occasion via the
+    same event_anchoring_rules it uses for any other fact.
+
+    Stream topics belonging to subscriptions of OTHER orgs are silently
+    dropped (defense-in-depth — the frontend already filters)."""
+    from backend.database import get_db_backend, get_session_maker
+
+    if get_db_backend() != "postgres" or not stream_topic_ids:
+        return ([], [])
+
+    from sqlalchemy import select as sa_select
+
+    from backend.db.models import StreamSubscription, StreamTopic
+
+    facts: list[EditorFactItem] = []
+    quotes: list[EditorQuoteItem] = []
+
+    sm = get_session_maker()
+    async with sm() as session:  # type: ignore[union-attr]
+        st_res = await session.execute(
+            sa_select(StreamTopic).where(StreamTopic.id.in_(stream_topic_ids))  # type: ignore[arg-type]
+        )
+        stream_topics = list(st_res.scalars().all())
+        if not stream_topics:
+            return ([], [])
+        sub_ids = {st.subscription_id for st in stream_topics}
+        sub_res = await session.execute(
+            sa_select(StreamSubscription).where(
+                StreamSubscription.id.in_(list(sub_ids)),  # type: ignore[arg-type]
+                StreamSubscription.org_code == org_code,
+            )
+        )
+        sub_names = {s.id: s.name for s in sub_res.scalars().all()}
+
+        for st in stream_topics:
+            sub_name = sub_names.get(st.subscription_id)
+            if sub_name is None:
+                continue  # belongs to a different org
+            source_tag = f"stream:{sub_name}"
+            summary = (st.summary or "").strip()
+
+            for f in st.facts or []:
+                text = (f.get("text") or "").strip()
+                if not text:
+                    continue
+                speaker = (f.get("speaker") or "").strip()
+                ctx_parts = []
+                if speaker:
+                    ctx_parts.append(speaker)
+                if summary:
+                    ctx_parts.append(summary)
+                facts.append(EditorFactItem(
+                    text=text,
+                    context=" — ".join(ctx_parts),
+                    source=source_tag,
+                ))
+
+            for q in st.quotes or []:
+                text = (q.get("text") or "").strip()
+                if not text:
+                    continue
+                speaker = (q.get("speaker") or "").strip()
+                quotes.append(EditorQuoteItem(
+                    text=text,
+                    speaker=speaker,
+                    context=summary,
+                    source=source_tag,
+                ))
+
+    return (facts, quotes)
+
+
 class WriteFromTopicOverrides(BaseModel):
     """Optional overrides supplied from the pre-write dialog. When omitted,
     the article is written using the topic's title + blurb + every item's
@@ -1363,6 +1470,18 @@ class WriteFromTopicOverrides(BaseModel):
     topic_override: str | None = None
     additional_instructions: str | None = None
     urls: list[str] | None = None
+    agents: dict[str, dict] = {}
+    domain_overrides: dict[str, Any] = {}
+    raw_facts_text: str | None = None
+    editor_extraction: EditorExtractionPayload | None = None
+    article_template: str | None = None
+    skip_web_research: bool = False
+    social_media_attachments: list[dict] = []
+    stream_topic_ids: list[UUID] = []
+    """Stream topic IDs whose pre-extracted facts/quotes should be merged into
+    editor_extraction with source='stream:{subscription_name}'. Counts toward
+    the same source cap as URLs (enforced in the frontend; backend trusts the
+    list as-is)."""
 
 
 @router.post(
@@ -1441,11 +1560,34 @@ async def write_article_from_discovery_topic(
     family = getattr(user, "family_name", None) or ""
     author_name = f"{given} {family}".strip() or (user.email or None)
 
+    final_editor_extraction = overrides.editor_extraction if overrides else None
+    if overrides and overrides.stream_topic_ids:
+        stream_facts, stream_quotes = await _stream_topics_to_editor_items(
+            stream_topic_ids=overrides.stream_topic_ids,
+            org_code=org.code,
+        )
+        if stream_facts or stream_quotes:
+            existing_facts = list(final_editor_extraction.facts) if final_editor_extraction else []
+            existing_quotes = list(final_editor_extraction.quotes) if final_editor_extraction else []
+            existing_keywords = list(final_editor_extraction.keywords) if final_editor_extraction else []
+            final_editor_extraction = EditorExtractionPayload(
+                facts=existing_facts + stream_facts,
+                quotes=existing_quotes + stream_quotes,
+                keywords=existing_keywords,
+            )
+
     req = ArticleRequest(
         topic=final_topic,
         urls=urls,
         additional_instructions=final_instructions,
         author_name=author_name,
+        agents=overrides.agents if overrides else {},
+        domain_overrides=overrides.domain_overrides if overrides else {},
+        raw_facts_text=overrides.raw_facts_text if overrides else None,
+        editor_extraction=final_editor_extraction,
+        article_template=overrides.article_template if overrides else None,
+        skip_web_research=overrides.skip_web_research if overrides else False,
+        social_media_attachments=overrides.social_media_attachments if overrides else [],
     )
     app_settings = _build_app_settings(req=req, org_domain_name=org.domain_name, domain=domain)
 
@@ -1554,9 +1696,36 @@ async def list_discovery_feeds(
         feeds = [f for f in feeds if f.feed_url in configured_urls]
 
     since = datetime.now(UTC) - timedelta(hours=24)
+
+    # Batch-count items per feed in one query instead of N+1
+    from backend.database import get_db_backend, get_session_maker
+
+    counts_24h: dict[str, int] = {}
+    if get_db_backend() == "postgres" and feeds:
+        import sqlalchemy as _sa
+
+        from backend.db.models import DiscoveryItem as _DI
+        from backend.db.models import DiscoveryItemFeed as _DIF
+
+        feed_ids = [f.id for f in feeds]
+        _sm = get_session_maker()
+        async with _sm() as _session:  # type: ignore[union-attr]
+            _res = await _session.execute(
+                _sa.select(_DIF.feed_id, _sa.func.count().label("cnt"))  # type: ignore[attr-defined]
+                .join(_DI, _DIF.item_id == _DI.id)  # type: ignore[arg-type]
+                .where(_DIF.feed_id.in_(feed_ids), _DI.fetched_at >= since)  # type: ignore[union-attr]
+                .group_by(_DIF.feed_id)  # type: ignore[attr-defined]
+            )
+            for row in _res.all():
+                counts_24h[str(row.feed_id)] = row.cnt
+    else:
+        for f in feeds:
+            counts_24h[str(f.id)] = await discovery_repo.count_items_for_feed_since(
+                feed_id=f.id, since=since
+            )
+
     out: list[dict] = []
     for f in feeds:
-        items_24h = await discovery_repo.count_items_for_feed_since(feed_id=f.id, since=since)
         out.append(
             {
                 "id": str(f.id),
@@ -1565,7 +1734,7 @@ async def list_discovery_feeds(
                 "last_error": f.last_error,
                 "error_count": f.error_count,
                 "disabled": f.disabled,
-                "items_24h_count": items_24h,
+                "items_24h_count": counts_24h.get(str(f.id), 0),
             }
         )
     return out
@@ -1678,6 +1847,8 @@ def _org_config_to_dict(config: OrgConfig, *, domain_name: str | None = None) ->
         "discovery_categories": config.discovery_categories,
         "discovery_topic_matching_window_days": config.discovery_topic_matching_window_days,
         "discovery_followup_threshold": config.discovery_followup_threshold,
+        "discovery_retention_days": config.discovery_retention_days,
+        "stream_retention_days": config.stream_retention_days,
         "discovery_classifier_model": config.discovery_classifier_model,
         "discovery_matcher_model": config.discovery_matcher_model,
         "discovery_topic_writer_model": config.discovery_topic_writer_model,

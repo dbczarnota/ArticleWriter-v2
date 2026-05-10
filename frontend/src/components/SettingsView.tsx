@@ -17,7 +17,7 @@ export function SettingsView() {
     <div style={{ display: "flex", gap: 32, alignItems: "flex-start" }}>
       <SettingsNav activeSection={activeSection} onSelect={setActiveSection} />
       {activeSection === "streamy" ? (
-        <StreamsConfigSection />
+        <StreamsConfigSection config={config} saving={saving} onSave={save} />
       ) : (
         <DomainConfigForm
           initialConfig={config}

@@ -1,6 +1,7 @@
 import type { DiscoveryTopicSummary } from "../types";
 import { TopicCard } from "./TopicCard";
 import { StatusMessage } from "./ui/StatusMessage";
+import { LoadMoreButton } from "./ui/LoadMoreButton";
 import { useT } from "../i18n";
 
 interface Props {
@@ -11,9 +12,12 @@ interface Props {
   onDismiss?: (topicId: string) => void;
   onRestore?: (topicId: string) => void;
   pendingActionId?: string | null;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
-export function TopicsList({ topics, loading, onWrite, onSelect, onDismiss, onRestore, pendingActionId }: Props) {
+export function TopicsList({ topics, loading, onWrite, onSelect, onDismiss, onRestore, pendingActionId, hasMore, loadingMore, onLoadMore }: Props) {
   const t = useT();
   if (loading) return <StatusMessage kind="loading">{t.discovery.topic.loading}</StatusMessage>;
   if (topics.length === 0)
@@ -31,6 +35,9 @@ export function TopicsList({ topics, loading, onWrite, onSelect, onDismiss, onRe
           pendingActionId={pendingActionId}
         />
       ))}
+      {onLoadMore && (
+        <LoadMoreButton hasMore={hasMore ?? false} loading={loadingMore ?? false} onClick={onLoadMore} />
+      )}
     </div>
   );
 }

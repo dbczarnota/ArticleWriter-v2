@@ -1,14 +1,18 @@
 import type { DiscoveryItem } from "../types";
 import { StatusMessage } from "./ui/StatusMessage";
+import { LoadMoreButton } from "./ui/LoadMoreButton";
 import { useT } from "../i18n";
 import { safeHref } from "../lib/safeHref";
 
 interface Props {
   items: DiscoveryItem[];
   loading: boolean;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
-export function ItemsTable({ items, loading }: Props) {
+export function ItemsTable({ items, loading, hasMore, loadingMore, onLoadMore }: Props) {
   const t = useT();
   if (loading) return <StatusMessage kind="loading">{t.discovery.topic.loading}</StatusMessage>;
   if (items.length === 0)
@@ -25,6 +29,7 @@ export function ItemsTable({ items, loading }: Props) {
   };
 
   return (
+    <>
     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
       <thead>
         <tr style={{
@@ -80,5 +85,9 @@ export function ItemsTable({ items, loading }: Props) {
         ))}
       </tbody>
     </table>
+    {onLoadMore && (
+      <LoadMoreButton hasMore={hasMore ?? false} loading={loadingMore ?? false} onClick={onLoadMore} />
+    )}
+    </>
   );
 }

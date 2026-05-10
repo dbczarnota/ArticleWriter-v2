@@ -7,7 +7,8 @@ import { useT } from "../i18n";
 import { useFocusTrap } from "../lib/useFocusTrap";
 import { AVAILABLE_MODELS } from "./DomainConfigForm";
 import { Button } from "./ui/Button";
-import type { ArticleTemplate, DomainConfigData, EditorExtraction } from "../types";
+import { safeHref } from "../lib/safeHref";
+import type { ArticleTemplate, DiscoveryTopicDetail, DomainConfigData, EditorExtraction } from "../types";
 
 const MEDIA_KEYS = [
   { key: "youtube_search", label: "YouTube" },
@@ -18,6 +19,8 @@ const MEDIA_KEYS = [
   { key: "news_search", label: "News" },
   { key: "facebook_search", label: "Facebook" },
 ];
+
+const MAX_DISCOVERY_URLS = 10;
 
 const TAB_IDS = [
   "topic",
@@ -35,9 +38,10 @@ type TabId = (typeof TAB_IDS)[number];
 interface NewArticleFormProps {
   onCreated: (articleId: string) => void;
   onCancel?: () => void;
+  topicId?: string;
 }
 
-export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
+export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormProps) {
   const { submitArticle } = useArticles();
   const { request } = useApi();
   const { user } = useAuth();
@@ -71,6 +75,17 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Discovery mode (topicId provided)
+  const [discoveryDetail, setDiscoveryDetail] = useState<DiscoveryTopicDetail | null>(null);
+  const [discoveryLoading, setDiscoveryLoading] = useState(false);
+  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+  const [selectedStreamTopicIds, setSelectedStreamTopicIds] = useState<Set<string>>(new Set());
+  const [customUrls, setCustomUrls] = useState<string[]>([]);
+  const [customUrlInput, setCustomUrlInput] = useState("");
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  const totalSelected = selectedUrls.size + selectedStreamTopicIds.size;
+
   function pickImage(file: File | null) {
     if (!file) { setImageFile(null); setImagePreview(null); return; }
     setImageFile(file);
@@ -81,6 +96,92 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
 
   function pickVideo(file: File | null) {
     setVideoFile(file);
+  }
+
+  useEffect(() => {
+    if (!topicId) return;
+    let cancelled = false;
+    setDiscoveryLoading(true);
+    void request<DiscoveryTopicDetail>(`/v2/discovery/topics/${topicId}`)
+      .then((d) => {
+        if (cancelled) return;
+        setDiscoveryDetail(d);
+        setTopic(d.title);
+        setInstructions(d.blurb || "");
+        // Default: all stream sources, then fill from newest items up to MAX.
+        const streams = d.stream_sources ?? [];
+        const streamIds = streams.slice(0, MAX_DISCOVERY_URLS).map((s) => s.id);
+        const remaining = Math.max(0, MAX_DISCOVERY_URLS - streamIds.length);
+        const sorted = [...d.items].sort((a, b) => {
+          const aT = a.fetched_at || a.published_at || "";
+          const bT = b.fetched_at || b.published_at || "";
+          return bT.localeCompare(aT);
+        });
+        setSelectedStreamTopicIds(new Set(streamIds));
+        setSelectedUrls(new Set(sorted.slice(0, remaining).map((it) => it.canonical_url)));
+      })
+      .finally(() => { if (!cancelled) setDiscoveryLoading(false); });
+    return () => { cancelled = true; };
+  }, [request, topicId]);
+
+  function toggleUrl(url: string) {
+    setSelectedUrls((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) {
+        next.delete(url);
+      } else {
+        if (next.size + selectedStreamTopicIds.size >= MAX_DISCOVERY_URLS) return prev;
+        next.add(url);
+      }
+      return next;
+    });
+  }
+
+  function toggleStreamTopic(id: string) {
+    setSelectedStreamTopicIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        if (next.size + selectedUrls.size >= MAX_DISCOVERY_URLS) return prev;
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function addCustomUrl() {
+    const raw = customUrlInput.trim();
+    if (!raw) return;
+    let normalized: string;
+    try {
+      const parsed = new URL(raw);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return;
+      normalized = parsed.toString();
+    } catch { return; }
+    if (customUrls.includes(normalized) || discoveryDetail?.items.some((it) => it.canonical_url === normalized)) {
+      setCustomUrlInput("");
+      return;
+    }
+    setCustomUrls((prev) => [...prev, normalized]);
+    setSelectedUrls((prev) => {
+      if (prev.size + selectedStreamTopicIds.size >= MAX_DISCOVERY_URLS) return prev;
+      return new Set(prev).add(normalized);
+    });
+    setCustomUrlInput("");
+  }
+
+  function removeCustomUrl(url: string) {
+    setCustomUrls((prev) => prev.filter((u) => u !== url));
+    setSelectedUrls((prev) => { const next = new Set(prev); next.delete(url); return next; });
+  }
+
+  async function copyTitle(title: string) {
+    try {
+      await navigator.clipboard.writeText(title);
+      setCopiedUrl(title);
+      setTimeout(() => setCopiedUrl(null), 1500);
+    } catch { /* silent */ }
   }
 
   // Fetch org templates so the editor can pick one. 404 (org not configured) is silently ignored.
@@ -255,6 +356,45 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
     setLoading(true);
     setError(null);
     try {
+      if (topicId) {
+        const agents = buildAgentOverrides();
+        const resolvedTemplate = selectedTemplateId
+          ? (orgTemplates.find((tmpl) => tmpl.id === selectedTemplateId)?.body ?? "")
+          : adHocTemplate;
+        const useStep2 = step === "step2" && extraction !== null;
+        const body: Record<string, unknown> = {
+          topic_override: topic.trim(),
+          additional_instructions: instructions.trim() || null,
+          urls: Array.from(selectedUrls),
+        };
+        if (Object.keys(agents).length > 0) body.agents = agents;
+        if (Object.keys(ov).length > 0) body.domain_overrides = ov;
+        if (resolvedTemplate.trim()) body.article_template = resolvedTemplate.trim();
+        if (!useStep2 && rawFacts.trim()) body.raw_facts_text = rawFacts.trim();
+        if (useStep2 && extraction) {
+          body.editor_extraction = {
+            facts: extraction.facts
+              .filter((f) => f.text.trim())
+              .map((f) => ({ text: f.text, context: f.context, source: f.source })),
+            quotes: extraction.quotes
+              .filter((q) => q.text.trim())
+              .map((q) => ({ text: q.text, speaker: q.speaker, context: q.context, source: q.source })),
+            keywords: extraction.keywords,
+          };
+          body.skip_web_research = skipWebResearch;
+        }
+        if (socialMediaAttachments.length > 0) body.social_media_attachments = socialMediaAttachments;
+        if (selectedStreamTopicIds.size > 0) body.stream_topic_ids = Array.from(selectedStreamTopicIds);
+        const resp = await request<{ article_id: string }>(
+          `/v2/discovery/topics/${topicId}/write_article`,
+          { method: "POST", body: JSON.stringify(body) },
+        );
+        if (!resp?.article_id) throw new Error("Empty server response");
+        setLoading(false);
+        onCreated(resp.article_id);
+        return;
+      }
+
       const urls = urlsText.split("\n").map((u) => u.trim()).filter(Boolean);
       const agents = buildAgentOverrides();
       const author_name =
@@ -350,8 +490,72 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
         <textarea value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={3} placeholder={na.instructionsPlaceholder} style={{ ...inputStyle, resize: "vertical" }} />
       </div>
       <div style={{ marginTop: 14 }}>
-        <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{na.urlsLabel}</label>
-        <textarea value={urlsText} onChange={(e) => setUrlsText(e.target.value)} rows={3} placeholder={na.urlsPlaceholder} style={{ ...inputStyle, resize: "vertical", fontFamily: "monospace" }} />
+        <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
+          {topicId
+            ? `${t.discovery.dialog.sourcesLabel.split(" (")[0]} (${totalSelected}/${MAX_DISCOVERY_URLS}, dostępne: ${(discoveryDetail?.items.length ?? 0) + (discoveryDetail?.stream_sources?.length ?? 0) + customUrls.length})`
+            : na.urlsLabel}
+        </label>
+        {topicId ? (
+          <>
+            <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", maxHeight: 280, overflowY: "auto" }}>
+              {discoveryLoading ? (
+                <div style={{ padding: "10px 12px", color: "var(--muted)", fontSize: 13 }}>{t.discovery.topic.loading}</div>
+              ) : (
+                <>
+                  {discoveryDetail?.stream_sources?.map((src, idx) => (
+                    <div key={`stream-${src.id}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderTop: idx === 0 ? "none" : "1px solid var(--border)", background: "var(--accent-lt)" }}>
+                      <input type="checkbox" checked={selectedStreamTopicIds.has(src.id)} onChange={() => toggleStreamTopic(src.id)} disabled={loading || (!selectedStreamTopicIds.has(src.id) && totalSelected >= MAX_DISCOVERY_URLS)} style={{ flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--accent)", background: "var(--white)", borderRadius: 4, padding: "1px 6px", flexShrink: 0 }}>📡 {src.subscription_name}</span>
+                          <span style={{ fontWeight: 500, fontSize: 14, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{src.title}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {discoveryDetail?.items.map((it, idx) => (
+                    <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderTop: (idx === 0 && (discoveryDetail?.stream_sources?.length ?? 0) === 0) ? "none" : "1px solid var(--border)" }}>
+                      <input type="checkbox" checked={selectedUrls.has(it.canonical_url)} onChange={() => toggleUrl(it.canonical_url)} disabled={loading || (!selectedUrls.has(it.canonical_url) && totalSelected >= MAX_DISCOVERY_URLS)} style={{ flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 500, fontSize: 14, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.title}</div>
+                        <a href={safeHref(it.canonical_url)} target="_blank" rel="noreferrer noopener" style={{ fontSize: 11, color: "var(--muted)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "none" }}>{it.canonical_url} ↗</a>
+                      </div>
+                      <button type="button" onClick={() => copyTitle(it.title)} disabled={loading} title={t.discovery.dialog.copyTitle}
+                        style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "3px 4px", background: "transparent", color: copiedUrl === it.title ? "var(--success)" : "var(--muted)", border: "none", borderRadius: "var(--radius)", cursor: "pointer", lineHeight: 1 }}>
+                        {copiedUrl === it.title ? (
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                        ) : (
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                  {customUrls.map((url) => (
+                    <div key={url} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderTop: "1px solid var(--border)", background: "var(--accent-lt)" }}>
+                      <input type="checkbox" checked={selectedUrls.has(url)} onChange={() => toggleUrl(url)} disabled={loading || (!selectedUrls.has(url) && totalSelected >= MAX_DISCOVERY_URLS)} style={{ flexShrink: 0 }} />
+                      <a href={safeHref(url)} target="_blank" rel="noreferrer noopener" style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url} ↗</a>
+                      <button type="button" onClick={() => removeCustomUrl(url)} disabled={loading} title={t.discovery.dialog.removeUrl}
+                        style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 6, background: "var(--white)", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: "var(--radius)", cursor: "pointer" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <input type="url" inputMode="url" value={customUrlInput} onChange={(e) => setCustomUrlInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomUrl(); } }}
+                disabled={loading} placeholder={t.discovery.dialog.addUrlPlaceholder}
+                style={{ ...inputStyle, flex: 1, fontFamily: "monospace" }} />
+              <Button variant="outline" size="md" onClick={addCustomUrl} disabled={loading || !customUrlInput.trim()} type="button">
+                {t.discovery.dialog.addUrl}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <textarea value={urlsText} onChange={(e) => setUrlsText(e.target.value)} rows={3} placeholder={na.urlsPlaceholder} style={{ ...inputStyle, resize: "vertical", fontFamily: "monospace" }} />
+        )}
       </div>
       <div style={{ marginTop: 14 }}>
         <button
@@ -734,7 +938,7 @@ export function NewArticleForm({ onCreated, onCancel }: NewArticleFormProps) {
           }}
         >
           <h3 id="new-article-title" style={{ margin: 0, fontSize: 16, color: "var(--text)" }}>
-            {step === "step2" ? na.step2Heading : (isSettings ? na.headingSettings : na.heading)}
+            {step === "step2" ? na.step2Heading : topicId ? t.discovery.dialog.title : (isSettings ? na.headingSettings : na.heading)}
           </h3>
           {onCancel && (
             <button

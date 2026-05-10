@@ -29,6 +29,7 @@ import logfire
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from backend.repositories import get_discovery_repo, get_org_config_repo, get_org_repo
+from backend.services.discovery.cleanup import cleanup_tick
 from backend.services.discovery.poller import poll_org_feeds
 
 _MASTER_TICK_MINUTES = 1
@@ -167,6 +168,13 @@ async def start_scheduler() -> None:
         "interval",
         minutes=_MASTER_TICK_MINUTES,
         id="discovery_master_tick",
+        replace_existing=True,
+    )
+    _scheduler.add_job(
+        cleanup_tick,
+        "interval",
+        hours=24,
+        id="discovery_cleanup_tick",
         replace_existing=True,
     )
     _scheduler.start()

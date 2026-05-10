@@ -176,6 +176,8 @@ export const pl: Translations = {
     tipDiscoveryTopicMatchingWindow: "Z jakiego okresu wstecz brać tematy jako kandydatów do dopasowania nowego artykułu. 3 dni = większość newsów peakuje w 72h. Większe okno = większy LLM koszt.",
     discoveryFollowupThreshold: "Próg follow-up (źródła)",
     tipDiscoveryFollowupThreshold: "Po napisaniu tematu, jeśli przybędzie tyle nowych źródeł, temat wraca jako kandydat na follow-up.",
+    discoveryRetentionDays: "Retencja itemów RSS (dni)",
+    tipDiscoveryRetentionDays: "Itemy i tematy starsze niż X dni są usuwane raz dziennie. Artykuły już opublikowane zostają.",
     discoveryClassifierModel: "Model klasyfikatora",
     discoveryMatcherModel: "Model matchera",
     discoveryTopicWriterModel: "Model topic writera",
@@ -505,6 +507,9 @@ export const pl: Translations = {
       chunkDuration: "Czas chunka (sekundy)",
       saving: "Zapisywanie…",
       saved: "Zapisano",
+      save: "Zapisz",
+      retentionDays: "Retencja itemów ze streamów (dni)",
+      retentionHint: "Stream topicy starsze niż X dni są usuwane raz dziennie.",
     },
   },
 };

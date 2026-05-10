@@ -333,6 +333,7 @@ async def list_stream_topics(
     org: Org = Depends(get_current_org),
     subscription_id: UUID | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
     """List all topics discovered from streams for this org, newest first."""
     if get_db_backend() != "postgres":
@@ -354,6 +355,7 @@ async def list_stream_topics(
             select(StreamTopic)
             .where(StreamTopic.subscription_id.in_(sub_ids))  # type: ignore[arg-type]
             .order_by(StreamTopic.last_seen_at.desc())  # type: ignore[arg-type]
+            .offset(offset)
             .limit(limit)
         )
         result = await session.execute(stmt)

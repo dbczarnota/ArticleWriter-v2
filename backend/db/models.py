@@ -401,6 +401,12 @@ class OrgConfig(SQLModel, table=True):
 
     discovery_topic_matching_window_days: int = Field(default=3)
     discovery_followup_threshold: int = Field(default=5)
+    discovery_retention_days: int = Field(default=14)
+    """Cleanup cutoff for RSS items + topics. Rows with last_activity_at older
+    than this are deleted by the daily cleanup job."""
+    stream_retention_days: int = Field(default=7)
+    """Cleanup cutoff for stream_topics. Rows with last_seen_at older than this
+    are deleted by the daily cleanup job."""
     discovery_classifier_model: str = Field(
         default="google-gla:gemini-flash-lite-latest", max_length=128
     )

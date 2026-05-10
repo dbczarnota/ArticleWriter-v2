@@ -11,7 +11,7 @@ import { TopicsList } from "./TopicsList";
 import { ItemsTable } from "./ItemsTable";
 import { FeedsHealth } from "./FeedsHealth";
 import { TopicDetail } from "./TopicDetail";
-import { WriteFromTopicDialog } from "./WriteFromTopicDialog";
+import { NewArticleForm } from "./NewArticleForm";
 import { useT } from "../i18n";
 import { TopicsIcon, ItemsIcon, FeedsIcon, StreamsIcon, StreamTopicsIcon } from "./ui/icons";
 import { useStreamSubscriptions } from "../lib/useStreamSubscriptions";
@@ -36,19 +36,38 @@ export function DiscoveryHub() {
   const [pendingTopicAction, setPendingTopicAction] = useState<string | null>(null);
 
   const { feeds, loading: feedsLoading } = useDiscoveryFeeds();
-  const { topics, loading: topicsLoading, refresh: refreshTopics } = useDiscoveryTopics({
+  const {
+    topics,
+    loading: topicsLoading,
+    loadingMore: topicsLoadingMore,
+    hasMore: topicsHasMore,
+    refresh: refreshTopics,
+    loadMore: loadMoreTopics,
+  } = useDiscoveryTopics({
     feedId: filters.feedId,
     categories: filters.categories,
     statuses: filters.statuses,
     sort,
   });
   const { request } = useApi();
-  const { items, loading: itemsLoading } = useDiscoveryItems({
+  const {
+    items,
+    loading: itemsLoading,
+    loadingMore: itemsLoadingMore,
+    hasMore: itemsHasMore,
+    loadMore: loadMoreItems,
+  } = useDiscoveryItems({
     feedId: filters.feedId,
     categories: filters.categories,
   });
   const { subscriptions, loading: subsLoading, remove: removeSub } = useStreamSubscriptions();
-  const { topics: streamTopics, loading: streamTopicsLoading } = useStreamTopics(filters.subscriptionId);
+  const {
+    topics: streamTopics,
+    loading: streamTopicsLoading,
+    loadingMore: streamTopicsLoadingMore,
+    hasMore: streamTopicsHasMore,
+    loadMore: loadMoreStreamTopics,
+  } = useStreamTopics(filters.subscriptionId);
   // Build the category list from whatever the user has visible right now.
   // Backend has no "list categories with counts" endpoint, and the existing
   // /discovery/categories endpoint returns just names — driving the sidebar
@@ -228,9 +247,20 @@ export function DiscoveryHub() {
                   onDismiss={dismissTopic}
                   onRestore={restoreTopic}
                   pendingActionId={pendingTopicAction}
+                  hasMore={topicsHasMore}
+                  loadingMore={topicsLoadingMore}
+                  onLoadMore={loadMoreTopics}
                 />
               )}
-              {view === "items" && <ItemsTable items={items} loading={itemsLoading} />}
+              {view === "items" && (
+                <ItemsTable
+                  items={items}
+                  loading={itemsLoading}
+                  hasMore={itemsHasMore}
+                  loadingMore={itemsLoadingMore}
+                  onLoadMore={loadMoreItems}
+                />
+              )}
               {view === "feeds" && <FeedsHealth feeds={feeds} loading={feedsLoading} />}
               {view === "streamy" && (
                 <StreamsHealth
@@ -241,12 +271,15 @@ export function DiscoveryHub() {
               )}
               {view === "tematy-streamow" && (
                 <StreamTopicsList
-                  topics={
-                    filters.subscriptionId
-                      ? streamTopics.filter((t) => t.subscription_id === filters.subscriptionId)
-                      : streamTopics
-                  }
+                  topics={streamTopics.filter((t) => {
+                    if (filters.subscriptionId && t.subscription_id !== filters.subscriptionId) return false;
+                    if (filters.categories.length > 0 && !t.categories.some((c) => filters.categories.includes(c))) return false;
+                    return true;
+                  })}
                   loading={streamTopicsLoading}
+                  hasMore={streamTopicsHasMore}
+                  loadingMore={streamTopicsLoadingMore}
+                  onLoadMore={loadMoreStreamTopics}
                 />
               )}
             </>
@@ -254,10 +287,10 @@ export function DiscoveryHub() {
         </div>
       </div>
       {writeFromTopicId && (
-        <WriteFromTopicDialog
+        <NewArticleForm
           topicId={writeFromTopicId}
           onCancel={() => setWriteFromTopicId(null)}
-          onSubmitted={onArticleSubmitted}
+          onCreated={onArticleSubmitted}
         />
       )}
     </div>
