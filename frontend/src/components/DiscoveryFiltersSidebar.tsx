@@ -60,22 +60,22 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
     display: "flex",
     justifyContent: "space-between",
     width: "100%",
-    padding: "6px 10px",
+    padding: "5px 10px 5px 12px",
     background: "transparent",
-    border: "2px solid transparent",
-    borderRadius: "var(--radius)",
+    border: "none",
+    borderLeft: "3px solid transparent",
+    borderRadius: 0,
     cursor: "pointer",
     color: "var(--text)",
-    fontSize: 14,
+    fontSize: 13,
     textAlign: "left",
   };
 
   const buttonRowActive: React.CSSProperties = {
     ...buttonRow,
-    background: "var(--accent-lt)",
-    border: "2px solid var(--accent)",
+    borderLeft: "3px solid var(--accent)",
     color: "var(--accent)",
-    fontWeight: 600,
+    fontWeight: 500,
   };
 
   return (
