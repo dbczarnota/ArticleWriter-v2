@@ -98,14 +98,12 @@ async def run_stream_analysis_agent(
     chunk_start_seconds: float,
     *,
     chunk_start_at: datetime,
-    program_name: str | None = None,
     config: StreamAnalysisAgentConfig,
 ) -> StreamChunkResult:
     """Analyze a single audio chunk. Returns StreamChunkResult. Soft-fails to empty result."""
     clock_str = chunk_start_at.strftime("%Y-%m-%d %H:%M:%S UTC")
-    program_str = f" | Program: {program_name}" if program_name else ""
     user_prompt: list[Any] = [
-        f"Fragment audio: {clock_str}{program_str} (sekunda {chunk_start_seconds:.0f} od początku nasłuchu). Przeanalizuj:",
+        f"Fragment audio: {clock_str} (sekunda {chunk_start_seconds:.0f} od początku nasłuchu). Przeanalizuj:",
         BinaryContent(data=audio_bytes, media_type="audio/mp3"),
     ]
 

@@ -12,7 +12,6 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
-import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
@@ -35,94 +34,6 @@ from backend.database import get_db_backend, get_session_maker
 _log = logging.getLogger(__name__)
 
 _RECONNECT_DELAYS = [1.0, 2.0, 4.0, 8.0, 16.0]
-_ICY_TITLE_RE = re.compile(r"StreamTitle='([^']*)'")
-
-
-async def _fetch_icy_title(stream_url: str) -> str | None:
-    """Read current program title from ICY stream metadata via raw TCP (handles ICY 200 OK).
-
-    httpx rejects Shoutcast's non-standard 'ICY 200 OK' status line, so we use asyncio
-    raw sockets to send the request and parse headers manually.
-    """
-    from urllib.parse import urlparse
-
-    parsed = urlparse(stream_url)
-    host = parsed.hostname or ""
-    port = parsed.port or 80
-    path = parsed.path or "/"
-    if parsed.query:
-        path = f"{path}?{parsed.query}"
-
-    try:
-        reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=8.0)
-        try:
-            writer.write(
-                f"GET {path} HTTP/1.0\r\nHost: {host}\r\nIcy-MetaData: 1\r\nConnection: close\r\n\r\n".encode()
-            )
-            await writer.drain()
-
-            # Skip status line (may be "ICY 200 OK" or "HTTP/1.1 200 OK")
-            await asyncio.wait_for(reader.readline(), timeout=5.0)
-
-            # Parse headers
-            icy_metaint: int | None = None
-            while True:
-                line = await asyncio.wait_for(reader.readline(), timeout=5.0)
-                if line in (b"\r\n", b"\n", b""):
-                    break
-                if b":" in line:
-                    k, v = line.split(b":", 1)
-                    if k.strip().lower() == b"icy-metaint":
-                        icy_metaint = int(v.strip())
-
-            if icy_metaint is None:
-                return None
-
-            buf = bytearray()
-            while len(buf) < icy_metaint + 1:
-                chunk = await asyncio.wait_for(reader.read(4096), timeout=5.0)
-                if not chunk:
-                    break
-                buf.extend(chunk)
-
-            if len(buf) < icy_metaint + 1:
-                return None
-
-            meta_len = buf[icy_metaint] * 16
-            if meta_len == 0:
-                return None
-
-            meta_end = icy_metaint + 1 + meta_len
-            if len(buf) < meta_end:
-                return None
-
-            meta_str = (
-                buf[icy_metaint + 1 : meta_end].rstrip(b"\x00").decode("utf-8", errors="replace")
-            )
-            match = _ICY_TITLE_RE.search(meta_str)
-            return match.group(1) if match else None
-        finally:
-            writer.close()
-    except Exception:
-        return None
-
-
-async def _icy_poller(
-    stream_url: str,
-    holder: list[str | None],
-    interval: float = 30.0,
-) -> None:
-    """Background task: polls ICY metadata every interval seconds. Never raises."""
-    while True:
-        try:
-            title = await asyncio.wait_for(_fetch_icy_title(stream_url), timeout=10.0)
-            if title is not None:
-                if title != holder[0]:
-                    _log.info("icy.program_changed: %s", title)
-                holder[0] = title
-        except Exception:
-            pass
-        await asyncio.sleep(interval)
 
 
 async def collect_chunk(reader: asyncio.StreamReader, duration_s: float) -> bytes:
@@ -472,21 +383,6 @@ async def run_subscription_pipeline(
     stream_started_at = datetime.now(UTC)
     attempt = 0
     proc: asyncio.subprocess.Process | None = None
-    current_program: list[str | None] = [None]
-
-    # Probe ICY metadata once at startup so first chunk already has program title.
-    try:
-        initial_title = await asyncio.wait_for(_fetch_icy_title(stream_url), timeout=10.0)
-        if initial_title is not None:
-            current_program[0] = initial_title or None
-            label = initial_title if initial_title else "(brak tytułu)"
-            print(f"📻 ICY metadata OK — program: {label}")
-        else:
-            print("⚠️  ICY metadata not available (stream may not support it)")
-    except Exception:
-        print("⚠️  ICY metadata probe failed")
-
-    icy_task = asyncio.create_task(_icy_poller(stream_url, current_program))
 
     with logfire.span("stream.pipeline", subscription_id=str(subscription_id), org_code=org_code):
         while True:
@@ -511,7 +407,6 @@ async def run_subscription_pipeline(
                         audio_bytes=audio,
                         chunk_start_seconds=chunk_start,
                         chunk_start_at=chunk_start_at,
-                        program_name=current_program[0],
                         config=analysis_config,
                     )
 
@@ -520,8 +415,6 @@ async def run_subscription_pipeline(
                         chunk_start, chunk_end, result, chunk_start_at
                     )
                     print(f"\n{'─' * 60}")
-                    if current_program[0]:
-                        print(f"📻 {current_program[0]}")
                     print(verbose_chunk)
                     chunk_log.append(verbose_chunk)
                     chunk_log.append("")
@@ -679,7 +572,6 @@ async def run_subscription_pipeline(
                         await manager.broadcast(subscription_id, digest_event)
 
             except asyncio.CancelledError:
-                icy_task.cancel()
                 if proc is not None and proc.returncode is None:
                     proc.kill()
                 raise
