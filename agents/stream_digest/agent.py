@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel
@@ -15,9 +14,13 @@ from agents.stream_digest.config import StreamDigestAgentConfig
 _SYSTEM_PROMPT = """\
 Jesteś redaktorem analizującym transkrypcje polskiego radia informacyjnego.
 
-Otrzymujesz dwa rodzaje danych:
-1. POPRZEDNIE DIGESRY — wyniki poprzednich przebiegów tego agenta (do zaktualizowania).
-2. NOWE CHUNKI — świeże fragmenty audio (~10 minut) z częściową analizą.
+Otrzymujesz trzy rodzaje danych:
+1. ZNANE TEMATY Z OSTATNICH GODZIN — pamięć długoterminowa (tematy z ostatnich 6h, z ID).
+2. POPRZEDNIE DIGESRY — wyniki ostatnich przebiegów tego agenta (szczegółowe).
+3. NOWE CHUNKI — świeże fragmenty audio (~10 minut) z częściową analizą.
+
+Traktuj ZNANE TEMATY jako punkt wyjścia — jeśli nowy materiał dotyczy już istniejącego \
+tematu, zaktualizuj go zamiast tworzyć nowy. Jeśli nie ma historii, zacznij od zera.
 
 ## Kluczowa zasada: selekcja tematów newsowych
 
@@ -132,16 +135,19 @@ class ChunkSummary:
 
 @dataclass
 class TopicContext:
-    """Snapshot of a StreamTopic row — historical context for the digest agent."""
+    """Snapshot of a StreamTopic row — passed as long-term memory to the digest agent."""
 
+    topic_id: str
     title: str
     is_news: bool
+    first_seen_at: str
+    last_seen_at: str
     summary: str
-    first_seen_at: datetime
-    last_seen_at: datetime
     speakers: list[dict] = field(default_factory=list)
     facts: list[dict] = field(default_factory=list)
     quotes: list[dict] = field(default_factory=list)
+    window_start_seconds: float = 0.0
+    window_end_seconds: float = 0.0
 
 
 def _format_topic(topic: dict, chunk_start: float) -> str:
@@ -213,19 +219,32 @@ def _format_previous_digests(digests: list[StreamDigestResult]) -> str:
     return "\n\n".join(parts)
 
 
-def _format_historical_topics(topics: list[TopicContext], now_utc: datetime) -> str:
+def _format_historical_topics(topics: list[TopicContext]) -> str:
     if not topics:
-        return "(brak tematow z ostatnich godzin)"
+        return "(brak tematów z ostatnich godzin)"
     parts: list[str] = []
     for t in topics:
-        age_min = int((now_utc - t.last_seen_at).total_seconds() / 60)
-        flag = "[NEWS]" if t.is_news else "[ -- ]"
-        parts.append(
-            f"  {flag} {t.title} "
-            f"(ostatnio: {t.last_seen_at.strftime('%H:%M')} UTC, ~{age_min} min temu)\n"
-            f"    {t.summary or '(brak streszczenia)'}"
+        news_flag = "📰 NEWS" if t.is_news else "💬 nie-news"
+        speakers = ", ".join(sp.get("name_or_role", "?") for sp in t.speakers) or "nieznani"
+        facts = "\n".join(f"    - {f.get('text', '')}" for f in t.facts) or "    brak"
+        quotes = (
+            "\n".join(
+                f'    "{q.get("text", "")}"'
+                + (f" [{q.get('speaker', '')}]" if q.get("speaker") else "")
+                for q in t.quotes
+            )
+            or "    brak"
         )
-    return "\n".join(parts)
+        parts.append(
+            f"  [{news_flag}] Temat: {t.title} [ID: {t.topic_id}]\n"
+            f"  Czas w strumieniu: {t.window_start_seconds:.0f}s – {t.window_end_seconds:.0f}s\n"
+            f"  Pierwsze pojawienie: {t.first_seen_at} | Ostatnie: {t.last_seen_at}\n"
+            f"  Rozmówcy: {speakers}\n"
+            f"  Streszczenie: {t.summary or '(brak)'}\n"
+            f"  Fakty:\n{facts}\n"
+            f"  Cytaty:\n{quotes}"
+        )
+    return "\n\n".join(parts)
 
 
 async def run_stream_digest_agent(
@@ -234,10 +253,9 @@ async def run_stream_digest_agent(
     config: StreamDigestAgentConfig,
     previous_digests: list[StreamDigestResult] | None = None,
     historical_topics: list[TopicContext] | None = None,
-    now_utc: datetime | None = None,
 ) -> StreamDigestResult:
     """Aggregate N chunks into a digest of stories, optionally updating previous digests."""
-    if not chunks and not previous_digests:
+    if not chunks and not previous_digests and not historical_topics:
         return StreamDigestResult()
 
     prev = previous_digests or []
@@ -246,20 +264,14 @@ async def run_stream_digest_agent(
     )
     window_end = chunks[-1].chunk_end if chunks else (prev[-1].window_end_seconds if prev else 0.0)
 
+    hist_section = _format_historical_topics(historical_topics or [])
     prev_section = _format_previous_digests(prev)
     chunks_section = _format_chunks(chunks) if chunks else "(brak nowych chunków)"
 
-    now_str = now_utc.strftime("%Y-%m-%d %H:%M UTC") if now_utc else "nieznana"
-    hist_section = ""
-    if historical_topics is not None and now_utc is not None and historical_topics:
-        hist_section = (
-            f"=== TEMATY Z OSTATNICH {config.topic_window_hours}H (kontekst historyczny) ===\n\n"
-            f"{_format_historical_topics(historical_topics, now_utc)}\n\n"
-        )
     user_prompt = (
-        f"Data i czas analizy: {now_str}\n\n"
-        f"{hist_section}"
-        f"=== POPRZEDNIE DIGESRY (do zaktualizowania) ===\n\n"
+        f"=== ZNANE TEMATY Z OSTATNICH GODZIN (pamięć długoterminowa) ===\n\n"
+        f"{hist_section}\n\n"
+        f"=== POPRZEDNIE DIGESRY (ostatnie przebiegi) ===\n\n"
         f"{prev_section}\n\n"
         f"=== NOWE CHUNKI DO PRZEANALIZOWANIA ({len(chunks)} chunków, "
         f"{window_start:.0f}s–{window_end:.0f}s) ===\n\n"
