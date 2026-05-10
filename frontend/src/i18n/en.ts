@@ -469,7 +469,7 @@ export const en: Translations = {
   streams: {
     views: {
       subscriptions: "Streams",
-      topics: "Stream Topics",
+      topics: "Stream Items",
     },
     subscription: {
       live: "Live",
@@ -484,7 +484,7 @@ export const en: Translations = {
     },
     topic: {
       loading: "Loading topics…",
-      noTopics: "No topics discovered yet. Start a stream subscription first.",
+      noTopics: "No stream items yet. Start a stream subscription first.",
       newsBadge: "News",
       notNewsBadge: "Non-news",
       lastSeen: "Last seen",

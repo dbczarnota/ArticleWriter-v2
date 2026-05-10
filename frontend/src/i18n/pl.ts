@@ -468,7 +468,7 @@ export const pl: Translations = {
   streams: {
     views: {
       subscriptions: "Streamy",
-      topics: "Tematy ze streamów",
+      topics: "Itemy ze streamów",
     },
     subscription: {
       live: "Live",
@@ -483,7 +483,7 @@ export const pl: Translations = {
     },
     topic: {
       loading: "Ładowanie tematów…",
-      noTopics: "Brak odkrytych tematów. Najpierw uruchom subskrypcję streamu.",
+      noTopics: "Brak itemów ze streamów. Najpierw uruchom subskrypcję streamu.",
       newsBadge: "News",
       notNewsBadge: "Nie-news",
       lastSeen: "Ostatnio widziano",
