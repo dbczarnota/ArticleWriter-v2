@@ -72,6 +72,7 @@ async def _resolve_stream_url(
 async def _run_ffmpeg(stream_url: str, stream_type: str) -> asyncio.subprocess.Process:
     """Start FFmpeg subprocess. TV streams get -vn (skip video decoding)."""
     extra: list[str] = ["-vn"] if stream_type == "tv" else []
+    hls_opts = ["-live_start_index", "-1"] if stream_url.endswith(".m3u8") else []
     return await asyncio.create_subprocess_exec(
         "ffmpeg",
         "-reconnect",
@@ -80,6 +81,7 @@ async def _run_ffmpeg(stream_url: str, stream_type: str) -> asyncio.subprocess.P
         "1",
         "-reconnect_delay_max",
         "5",
+        *hls_opts,
         "-i",
         stream_url,
         *extra,
@@ -427,7 +429,7 @@ async def run_subscription_pipeline(
     digest_history: list[StreamDigestResult] = []
     chunk_log: list[str] = []
     digest_log: list[str] = []
-    stream_started_at = datetime.now(UTC)
+    stream_started_at = datetime.now().astimezone()
     attempt = 0
     proc: asyncio.subprocess.Process | None = None
 
