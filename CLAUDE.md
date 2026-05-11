@@ -109,3 +109,14 @@ LOGFIRE_TOKEN         (produkcja)
 ## Status produkcji
 
 ArticleWriter-v2 to fork z v1 (osobne repo `ArticleWriter`). v2 nie jest jeszcze na produkcji — produkcja nadal hosted z v1. Cutover na v2 = nowy Dockerfile + zmiana webhooków Make.com na endpoint `backend/main.py`.
+
+## Deploy
+
+Deploy odbywa się przez GitHub Actions (`Build & Deploy` workflow).
+
+Gdy użytkownik poprosi o deploy, uruchom:
+```
+gh workflow run "Build & Deploy" --ref master
+```
+
+**Nigdy nie uruchamiaj deploya automatycznie po pushu** — push i deploy to dwie osobne, świadome decyzje. Deploy tylko na wyraźną prośbę.
