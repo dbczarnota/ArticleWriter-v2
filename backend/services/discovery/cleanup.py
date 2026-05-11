@@ -64,12 +64,39 @@ async def cleanup_for_org(org_code: str, domain_name: str) -> dict:
                 )
             )
             stream_count = stream_res.rowcount or 0
+        # Remove DiscoveryTopics orphaned by stream topic merges: no RSS items,
+        # no stream sources pointing at them. These are created when the digest
+        # agent merges two stream topics that already had separate DiscoveryTopics.
+        orphaned_subq = (
+            sa.select(DiscoveryTopic.id)
+            .where(DiscoveryTopic.org_code == org_code)  # type: ignore[arg-type]
+            .where(
+                ~sa.exists(
+                    sa.select(DiscoveryItem.id).where(
+                        DiscoveryItem.topic_id == DiscoveryTopic.id  # type: ignore[arg-type]
+                    )
+                )
+            )
+            .where(
+                ~sa.exists(
+                    sa.select(StreamTopic.id).where(
+                        StreamTopic.topic_id == DiscoveryTopic.id  # type: ignore[arg-type]
+                    )
+                )
+            )
+        )
+        orphaned_res = await session.execute(
+            sa.delete(DiscoveryTopic).where(
+                DiscoveryTopic.id.in_(orphaned_subq)  # type: ignore[arg-type]
+            )
+        )
         await session.commit()
 
     return {
         "items": items_res.rowcount or 0,
         "topics": topics_res.rowcount or 0,
         "stream_topics": stream_count,
+        "orphaned_topics": orphaned_res.rowcount or 0,
     }
 
 

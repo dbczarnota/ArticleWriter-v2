@@ -251,12 +251,42 @@ async def _upsert_stream_topics(
                     survivor = matched[0]
                     # Collect windows from all sources before deleting duplicates
                     all_windows = list(survivor.windows or [])
+                    orphaned_topic_ids: list = []
                     for duplicate in matched[1:]:
                         all_windows.extend(duplicate.windows or [])
-                        # Preserve any existing discovery link
                         if survivor.topic_id is None and duplicate.topic_id is not None:
+                            # Survivor had no discovery link — inherit from duplicate
                             survivor.topic_id = duplicate.topic_id
+                        elif (
+                            duplicate.topic_id is not None
+                            and duplicate.topic_id != survivor.topic_id
+                        ):
+                            # Both had different discovery topics — the duplicate's
+                            # DiscoveryTopic will lose its only stream source. Queue
+                            # it for cleanup if it has no RSS items.
+                            orphaned_topic_ids.append(duplicate.topic_id)
                         await session.delete(duplicate)
+                    # Clean up any DiscoveryTopics that are now orphaned (0 RSS items,
+                    # 0 remaining stream sources after the delete above).
+                    if orphaned_topic_ids:
+                        import sqlalchemy as _sa
+
+                        from backend.db.models import DiscoveryItem, DiscoveryTopic
+                        for dtid in orphaned_topic_ids:
+                            has_items = await session.scalar(
+                                _sa.select(_sa.func.count()).select_from(DiscoveryItem).where(
+                                    DiscoveryItem.topic_id == dtid  # type: ignore[arg-type]
+                                )
+                            )
+                            has_stream = await session.scalar(
+                                _sa.select(_sa.func.count()).select_from(StreamTopic).where(
+                                    StreamTopic.topic_id == dtid  # type: ignore[arg-type]
+                                )
+                            )
+                            if not has_items and not has_stream:
+                                dt = await session.get(DiscoveryTopic, dtid)
+                                if dt is not None:
+                                    await session.delete(dt)
                     # Add the new window and sort
                     all_windows.append(_story_window(story.start_seconds, story.end_seconds, now))
                     all_windows.sort(key=lambda w: w["start_at"])
