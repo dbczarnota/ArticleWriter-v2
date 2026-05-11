@@ -4,7 +4,6 @@ import type { StreamTopic } from "../types";
 
 export type StreamTopicSort = "last_seen" | "first_seen";
 
-const POLL_MS = 30_000;
 const PAGE_SIZE = 50;
 
 export function useStreamTopics(subscriptionId?: string | null, sort: StreamTopicSort = "last_seen") {
@@ -58,8 +57,6 @@ export function useStreamTopics(subscriptionId?: string | null, sort: StreamTopi
     if (!authReady) return;
     setLoading(true);
     void refresh();
-    const id = window.setInterval(() => void refresh(), POLL_MS);
-    return () => window.clearInterval(id);
   }, [authReady, refresh]);
 
   return { topics, loading, loadingMore, hasMore, refresh, loadMore };
