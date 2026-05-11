@@ -110,6 +110,29 @@ LOGFIRE_TOKEN         (produkcja)
 
 ArticleWriter-v2 to fork z v1 (osobne repo `ArticleWriter`). v2 nie jest jeszcze na produkcji — produkcja nadal hosted z v1. Cutover na v2 = nowy Dockerfile + zmiana webhooków Make.com na endpoint `backend/main.py`.
 
+## Lokalne testowanie z produkcyjną bazą
+
+Skrypt `.\scripts\dev-prod-db.ps1` uruchamia lokalne środowisko deweloperskie podłączone do **produkcyjnej bazy PostgreSQL** przez kubectl port-forward:
+
+1. Ładuje `.env` (klucze API, Kinde)
+2. Pobiera `POSTGRES_PASSWORD` z k8s secret (`headlinesforge-secrets` w ns `headlinesforge`)
+3. Uruchamia `kubectl port-forward svc/postgres 5433:5432 -n headlinesforge`
+4. Aplikuje pending migracje (`alembic upgrade head`) na prod bazie
+5. Startuje backend na `localhost:8000`
+
+Gdy port-forward działa (krok 3), asyncpg łączy się przez:
+```
+postgresql+asyncpg://articlewriter:<password>@localhost:5433/articlewriter
+```
+
+Kubeconfig: `C:\Users\czarn\.kube\headlinesforge.yaml`
+
+**Do diagnostyki bez uruchamiania backenda** — odpal sam port-forward:
+```powershell
+$env:KUBECONFIG = "C:\Users\czarn\.kube\headlinesforge.yaml"
+kubectl port-forward svc/postgres 5433:5432 -n headlinesforge
+```
+
 ## Deploy
 
 Deploy odbywa się przez GitHub Actions (`Build & Deploy` workflow).

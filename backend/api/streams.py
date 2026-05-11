@@ -352,11 +352,14 @@ async def list_stream_topics(
             if subscription_id is not None and subscription_id in subs
             else list(subs.keys())
         )
-        order_col = StreamTopic.first_seen_at if sort == "first_seen" else StreamTopic.last_seen_at
+        if sort == "first_seen":
+            order = [StreamTopic.first_seen_at.desc(), StreamTopic.last_seen_at.desc()]  # type: ignore[attr-defined]
+        else:
+            order = [StreamTopic.last_seen_at.desc(), StreamTopic.first_seen_at.desc()]  # type: ignore[attr-defined]
         stmt = (
             select(StreamTopic)
             .where(StreamTopic.subscription_id.in_(sub_ids))  # type: ignore[arg-type]
-            .order_by(order_col.desc())  # type: ignore[arg-type]
+            .order_by(*order)
             .offset(offset)
             .limit(limit)
         )

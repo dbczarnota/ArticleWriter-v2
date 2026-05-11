@@ -222,12 +222,21 @@ async def _upsert_stream_topics(
     subscription_id: UUID,
     digest: StreamDigestResult,
     now: datetime,
+    stream_started_at: datetime | None = None,
 ) -> None:
     from backend.db.models import StreamTopic
 
     for story in digest.stories:
         survivor: StreamTopic | None = None
         merged = False
+        # Per-story last_seen_at: when in the stream this topic actually ended,
+        # so different stories in the same digest get different timestamps.
+        # Falls back to now (digest processing time) if stream_started_at unknown.
+        story_seen_at = (
+            stream_started_at + timedelta(seconds=story.end_seconds)
+            if stream_started_at is not None
+            else now
+        )
 
         if story.source_topic_ids:
             source_uuids = []
@@ -312,7 +321,7 @@ async def _upsert_stream_topics(
             survivor.quotes = [q.model_dump() for q in story.quotes]
             survivor.window_start_seconds = story.start_seconds
             survivor.window_end_seconds = story.end_seconds
-            survivor.last_seen_at = now
+            survivor.last_seen_at = story_seen_at
             if not merged:
                 # Simple update: extend last window or replace with current
                 survivor.windows = [_story_window(story.start_seconds, story.end_seconds, now)]
@@ -334,8 +343,8 @@ async def _upsert_stream_topics(
                 windows=[_story_window(story.start_seconds, story.end_seconds, now)],
                 window_start_seconds=story.start_seconds,
                 window_end_seconds=story.end_seconds,
-                first_seen_at=now,
-                last_seen_at=now,
+                first_seen_at=story_seen_at,
+                last_seen_at=story_seen_at,
             )
             session.add(topic)
 
@@ -481,7 +490,8 @@ async def run_subscription_pipeline(
                                 )
                             async with sm() as session:  # type: ignore[union-attr]
                                 await _upsert_stream_topics(
-                                    session, subscription_id, digest, datetime.now(UTC)
+                                    session, subscription_id, digest, datetime.now(UTC),
+                                    stream_started_at=stream_started_at,
                                 )
 
                         digest_event = {
