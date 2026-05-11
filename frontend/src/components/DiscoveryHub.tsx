@@ -46,6 +46,7 @@ export function DiscoveryHub() {
     loadMore: loadMoreTopics,
   } = useDiscoveryTopics({
     feedId: filters.feedId,
+    subscriptionId: filters.subscriptionId,
     categories: filters.categories,
     statuses: filters.statuses,
     sort,
@@ -140,6 +141,7 @@ export function DiscoveryHub() {
         availableCategories={availableCategories}
         value={filters}
         onChange={setFilters}
+        activeView={view}
       />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <div
@@ -299,3 +301,4 @@ export function DiscoveryHub() {
     </div>
   );
 }
+

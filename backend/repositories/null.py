@@ -466,6 +466,7 @@ class NullDiscoveryRepository:
         statuses: list[str] | None = None,
         since: datetime | None = None,
         feed_id: UUID | None = None,
+        subscription_id: UUID | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[DiscoveryTopic]:

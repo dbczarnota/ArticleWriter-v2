@@ -395,6 +395,7 @@ class PostgresDiscoveryRepository:
         statuses: list[str] | None = None,
         since: datetime | None = None,
         feed_id: UUID | None = None,
+        subscription_id: UUID | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[DiscoveryTopic]:
@@ -407,6 +408,7 @@ class PostgresDiscoveryRepository:
         - `statuses` (IN semantics): topic.status must equal one of the given.
         - `since`: topic.last_activity_at >= since.
         - `feed_id`: only topics that have at least one item attached to that feed.
+        - `subscription_id`: only topics linked to a StreamTopic from that subscription.
 
         Order: last_activity_at DESC. Pagination via limit/offset."""
         from sqlalchemy import cast, or_
@@ -442,6 +444,16 @@ class PostgresDiscoveryRepository:
                         .where(
                             DiscoveryItemFeed.feed_id == feed_id,  # type: ignore[arg-type]
                             DiscoveryItem.org_code == org_code,  # type: ignore[arg-type]
+                        )
+                    )
+                )
+            if subscription_id is not None:
+                from backend.db.models import StreamTopic as _ST
+                stmt = stmt.where(
+                    DiscoveryTopic.id.in_(  # type: ignore[arg-type]
+                        select(_ST.topic_id).where(  # type: ignore[arg-type]
+                            _ST.subscription_id == subscription_id,  # type: ignore[arg-type]
+                            _ST.topic_id.isnot(None),  # type: ignore[arg-type]
                         )
                     )
                 )

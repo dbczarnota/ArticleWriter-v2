@@ -1151,6 +1151,7 @@ async def list_discovery_topics(
     category: list[str] = Query(default_factory=list),
     status: list[str] = Query(default_factory=lambda: ["open", "resurfaced"]),
     feed_id: UUID | None = Query(default=None),
+    subscription_id: UUID | None = Query(default=None),
     since: datetime | None = None,
     sort: str = Query("last_activity"),
     limit: int = Query(100, ge=1, le=200),
@@ -1177,6 +1178,7 @@ async def list_discovery_topics(
         statuses=status or None,
         since=since,
         feed_id=feed_id,
+        subscription_id=subscription_id,
         limit=200,
         offset=0,
     )

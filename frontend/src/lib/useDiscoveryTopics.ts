@@ -6,6 +6,7 @@ export type DiscoveryTopicSort = "last_activity" | "first_seen" | "item_count";
 
 export interface DiscoveryTopicFilters {
   feedId?: string | null;
+  subscriptionId?: string | null;
   categories?: string[];
   statuses?: string[];
   sort?: DiscoveryTopicSort;
@@ -22,6 +23,7 @@ export function useDiscoveryTopics(filters: DiscoveryTopicFilters) {
 
   const filtersKey = JSON.stringify({
     feedId: filters.feedId ?? null,
+    subscriptionId: filters.subscriptionId ?? null,
     categories: filters.categories ?? [],
     statuses: filters.statuses ?? [],
     sort: filters.sort ?? "last_activity",
@@ -31,11 +33,13 @@ export function useDiscoveryTopics(filters: DiscoveryTopicFilters) {
     const params = new URLSearchParams();
     const parsed = JSON.parse(filtersKey) as {
       feedId: string | null;
+      subscriptionId: string | null;
       categories: string[];
       statuses: string[];
       sort: DiscoveryTopicSort;
     };
     if (parsed.feedId) params.set("feed_id", parsed.feedId);
+    if (parsed.subscriptionId) params.set("subscription_id", parsed.subscriptionId);
     for (const c of parsed.categories) params.append("category", c);
     for (const s of parsed.statuses) params.append("status", s);
     params.set("sort", parsed.sort);
