@@ -332,10 +332,11 @@ async def get_digests(
 async def list_stream_topics(
     org: Org = Depends(get_current_org),
     subscription_id: UUID | None = Query(default=None),
+    sort: str = Query(default="last_seen", pattern="^(last_seen|first_seen)$"),
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> list[dict]:
-    """List all topics discovered from streams for this org, newest first."""
+    """List all topics discovered from streams for this org."""
     if get_db_backend() != "postgres":
         return []
     sm = get_session_maker()
@@ -351,10 +352,11 @@ async def list_stream_topics(
             if subscription_id is not None and subscription_id in subs
             else list(subs.keys())
         )
+        order_col = StreamTopic.first_seen_at if sort == "first_seen" else StreamTopic.last_seen_at
         stmt = (
             select(StreamTopic)
             .where(StreamTopic.subscription_id.in_(sub_ids))  # type: ignore[arg-type]
-            .order_by(StreamTopic.last_seen_at.desc())  # type: ignore[arg-type]
+            .order_by(order_col.desc())  # type: ignore[arg-type]
             .offset(offset)
             .limit(limit)
         )

@@ -2,19 +2,25 @@ import { useState, useEffect, useCallback } from "react";
 import { useApi } from "./useApi";
 import type { StreamTopic } from "../types";
 
+export type StreamTopicSort = "last_seen" | "first_seen";
+
 const POLL_MS = 30_000;
 const PAGE_SIZE = 50;
 
-export function useStreamTopics(subscriptionId?: string | null) {
+export function useStreamTopics(subscriptionId?: string | null, sort: StreamTopicSort = "last_seen") {
   const { request, authReady } = useApi();
   const [topics, setTopics] = useState<StreamTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
 
+  const paramsKey = JSON.stringify({ subscriptionId: subscriptionId ?? null, sort });
+
   function buildUrl(offset: number): string {
+    const { subscriptionId: sid, sort: s } = JSON.parse(paramsKey) as { subscriptionId: string | null; sort: StreamTopicSort };
     const params = new URLSearchParams();
-    if (subscriptionId) params.set("subscription_id", subscriptionId);
+    if (sid) params.set("subscription_id", sid);
+    params.set("sort", s);
     params.set("limit", String(PAGE_SIZE));
     params.set("offset", String(offset));
     return `/v2/streams/topics?${params.toString()}`;
@@ -31,7 +37,7 @@ export function useStreamTopics(subscriptionId?: string | null) {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [request, subscriptionId]);
+  }, [request, paramsKey]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
@@ -46,7 +52,7 @@ export function useStreamTopics(subscriptionId?: string | null) {
       setLoadingMore(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [request, subscriptionId, topics.length, hasMore, loadingMore]);
+  }, [request, paramsKey, topics.length, hasMore, loadingMore]);
 
   useEffect(() => {
     if (!authReady) return;

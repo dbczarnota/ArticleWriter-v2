@@ -15,7 +15,7 @@ import { NewArticleForm } from "./NewArticleForm";
 import { useT } from "../i18n";
 import { TopicsIcon, ItemsIcon, FeedsIcon, StreamsIcon, StreamTopicsIcon } from "./ui/icons";
 import { useStreamSubscriptions } from "../lib/useStreamSubscriptions";
-import { useStreamTopics } from "../lib/useStreamTopics";
+import { useStreamTopics, type StreamTopicSort } from "../lib/useStreamTopics";
 import { StreamsHealth } from "./StreamsHealth";
 import { StreamTopicsList } from "./StreamTopicsList";
 
@@ -33,6 +33,7 @@ export function DiscoveryHub() {
     statuses: ["open", "resurfaced"],
   });
   const [sort, setSort] = useState<DiscoveryTopicSort>("item_count");
+  const [streamSort, setStreamSort] = useState<StreamTopicSort>("last_seen");
   const [pendingTopicAction, setPendingTopicAction] = useState<string | null>(null);
 
   const { feeds, loading: feedsLoading } = useDiscoveryFeeds();
@@ -67,7 +68,7 @@ export function DiscoveryHub() {
     loadingMore: streamTopicsLoadingMore,
     hasMore: streamTopicsHasMore,
     loadMore: loadMoreStreamTopics,
-  } = useStreamTopics(filters.subscriptionId);
+  } = useStreamTopics(filters.subscriptionId, streamSort);
   // Build the category list from whatever the user has visible right now.
   // Backend has no "list categories with counts" endpoint, and the existing
   // /discovery/categories endpoint returns just names — driving the sidebar
@@ -280,6 +281,8 @@ export function DiscoveryHub() {
                   hasMore={streamTopicsHasMore}
                   loadingMore={streamTopicsLoadingMore}
                   onLoadMore={loadMoreStreamTopics}
+                  sort={streamSort}
+                  onSortChange={setStreamSort}
                 />
               )}
             </>

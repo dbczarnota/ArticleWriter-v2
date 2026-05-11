@@ -5,6 +5,7 @@ import { LoadMoreButton } from "./ui/LoadMoreButton";
 import { CopyIcon } from "./ui/icons";
 import { useT } from "../i18n";
 import type { Translations } from "../i18n";
+import type { StreamTopicSort } from "../lib/useStreamTopics";
 
 function buildClipboardText(topic: StreamTopic, timeRange: string): string {
   const lines: string[] = [];
@@ -40,6 +41,8 @@ interface Props {
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
+  sort?: StreamTopicSort;
+  onSortChange?: (sort: StreamTopicSort) => void;
 }
 
 function relTime(iso: string, t: Translations): string {
@@ -78,13 +81,10 @@ function windowToClockRange(firstSeenAt: string, windowStartS: number, windowEnd
   return `${fmt(startMs)} – ${fmt(endMs)}`;
 }
 
-type StreamSort = "last_seen" | "first_seen";
-
-export function StreamTopicsList({ topics, loading, hasMore, loadingMore, onLoadMore }: Props) {
+export function StreamTopicsList({ topics, loading, hasMore, loadingMore, onLoadMore, sort = "last_seen", onSortChange }: Props) {
   const t = useT();
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState<string | null>(null);
-  const [sort, setSort] = useState<StreamSort>("last_seen");
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -107,11 +107,6 @@ export function StreamTopicsList({ topics, loading, hasMore, loadingMore, onLoad
   if (topics.length === 0)
     return <StatusMessage kind="empty">{t.streams.topic.noTopics}</StatusMessage>;
 
-  const sorted = [...topics].sort((a, b) => {
-    const key = sort === "last_seen" ? "last_seen_at" : "first_seen_at";
-    return b[key].localeCompare(a[key]);
-  });
-
   return (
     <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -121,7 +116,7 @@ export function StreamTopicsList({ topics, loading, hasMore, loadingMore, onLoad
         <select
           id="stream-topics-sort"
           value={sort}
-          onChange={(e) => setSort(e.target.value as StreamSort)}
+          onChange={(e) => onSortChange?.(e.target.value as StreamTopicSort)}
           style={{
             fontSize: 12,
             color: "var(--text)",
@@ -136,7 +131,7 @@ export function StreamTopicsList({ topics, loading, hasMore, loadingMore, onLoad
           <option value="first_seen">{t.discovery.sort.firstSeen}</option>
         </select>
       </div>
-      {sorted.map((topic) => {
+      {topics.map((topic) => {
         const isOpen = expanded.has(topic.topic_id);
         const isCopied = copied === topic.topic_id;
         const timeRange = windowToClockRange(
