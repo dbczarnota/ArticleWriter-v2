@@ -8,15 +8,18 @@ export interface DiscoveryFiltersValue {
   statuses: string[];
 }
 
+type ActiveView = "topics" | "items" | "feeds" | "streamy" | "tematy-streamow";
+
 interface Props {
   feeds: DiscoveryFeed[];
   subscriptions: StreamSubscription[];
   availableCategories: { name: string; count?: number }[];
   value: DiscoveryFiltersValue;
   onChange: (next: DiscoveryFiltersValue) => void;
+  activeView: ActiveView;
 }
 
-export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategories, value, onChange }: Props) {
+export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategories, value, onChange, activeView }: Props) {
   const t = useT();
   function setFeed(id: string | null) {
     onChange({ ...value, feedId: id });
@@ -78,6 +81,11 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
     fontWeight: 500,
   };
 
+  // Which filter sections apply to the current view
+  const showFeeds = activeView !== "tematy-streamow";
+  const showSubscriptions = (activeView === "topics" || activeView === "tematy-streamow") && subscriptions.length > 0;
+  const showStatuses = activeView === "topics" || activeView === "items";
+
   return (
     <aside
       style={{
@@ -89,31 +97,33 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
         flexShrink: 0,
       }}
     >
-      <details open style={{ marginBottom: 16 }}>
-        <summary style={labelStyle}>{t.discovery.filters.feeds}</summary>
-        <div style={{ marginTop: 8 }}>
-          <button
-            type="button"
-            onClick={() => setFeed(null)}
-            style={value.feedId === null ? buttonRowActive : buttonRow}
-          >
-            <span>{t.discovery.filters.all}</span>
-          </button>
-          {feeds.map((f) => (
+      {showFeeds && (
+        <details open style={{ marginBottom: 16 }}>
+          <summary style={labelStyle}>{t.discovery.filters.feeds}</summary>
+          <div style={{ marginTop: 8 }}>
             <button
               type="button"
-              key={f.id}
-              onClick={() => setFeed(f.id)}
-              style={value.feedId === f.id ? buttonRowActive : buttonRow}
+              onClick={() => setFeed(null)}
+              style={value.feedId === null ? buttonRowActive : buttonRow}
             >
-              <span>{hostname(f.feed_url)}</span>
-              <span style={{ color: "var(--muted)", fontSize: 12 }}>{f.items_24h_count}</span>
+              <span>{t.discovery.filters.all}</span>
             </button>
-          ))}
-        </div>
-      </details>
+            {feeds.map((f) => (
+              <button
+                type="button"
+                key={f.id}
+                onClick={() => setFeed(f.id)}
+                style={value.feedId === f.id ? buttonRowActive : buttonRow}
+              >
+                <span>{hostname(f.feed_url)}</span>
+                <span style={{ color: "var(--muted)", fontSize: 12 }}>{f.items_24h_count}</span>
+              </button>
+            ))}
+          </div>
+        </details>
+      )}
 
-      {subscriptions.length > 0 && (
+      {showSubscriptions && (
         <details open style={{ marginBottom: 16 }}>
           <summary style={labelStyle}>{t.discovery.filters.streams}</summary>
           <div style={{ marginTop: 8 }}>
@@ -184,35 +194,37 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
         </div>
       </details>
 
-      <details>
-        <summary style={labelStyle}>{t.discovery.filters.status}</summary>
-        <div style={{ marginTop: 8 }}>
-          {[
-            { id: "open", label: t.discovery.status.open },
-            { id: "resurfaced", label: t.discovery.status.resurfaced },
-            { id: "consumed", label: t.discovery.status.consumed },
-            { id: "dismissed", label: t.discovery.status.dismissed },
-          ].map((s) => (
-            <label
-              key={s.id}
-              style={{
-                display: "flex",
-                gap: 8,
-                padding: "4px 10px",
-                fontSize: 14,
-                cursor: "pointer",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={value.statuses.includes(s.id)}
-                onChange={() => toggleStatus(s.id)}
-              />
-              {s.label}
-            </label>
-          ))}
-        </div>
-      </details>
+      {showStatuses && (
+        <details open>
+          <summary style={labelStyle}>{t.discovery.filters.status}</summary>
+          <div style={{ marginTop: 8 }}>
+            {[
+              { id: "open", label: t.discovery.status.open },
+              { id: "resurfaced", label: t.discovery.status.resurfaced },
+              { id: "consumed", label: t.discovery.status.consumed },
+              { id: "dismissed", label: t.discovery.status.dismissed },
+            ].map((s) => (
+              <label
+                key={s.id}
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  padding: "4px 10px",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={value.statuses.includes(s.id)}
+                  onChange={() => toggleStatus(s.id)}
+                />
+                {s.label}
+              </label>
+            ))}
+          </div>
+        </details>
+      )}
     </aside>
   );
 }
