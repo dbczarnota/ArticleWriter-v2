@@ -2,8 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useApi } from "./useApi";
 import type { StreamSubscription } from "../types";
 
-const POLL_MS = 30_000;
-
 export function useStreamSubscriptions() {
   const { request, authReady } = useApi();
   const [subscriptions, setSubscriptions] = useState<StreamSubscription[]>([]);
@@ -23,8 +21,6 @@ export function useStreamSubscriptions() {
   useEffect(() => {
     if (!authReady) return;
     void refresh();
-    const id = window.setInterval(() => void refresh(), POLL_MS);
-    return () => window.clearInterval(id);
   }, [authReady, refresh]);
 
   const create = useCallback(

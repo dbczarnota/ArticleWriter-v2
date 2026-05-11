@@ -25,6 +25,7 @@ export function StreamsConfigSection({ config, saving: domainSaving, onSave }: P
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
   const [toggling, setToggling] = useState<Set<string>>(new Set());
+  const [pendingStatus, setPendingStatus] = useState<Record<string, "active" | "stopped">>({});
   const [retentionDays, setRetentionDays] = useState(config.stream_retention_days);
   const [retentionSavedMsg, setRetentionSavedMsg] = useState(false);
 
@@ -81,6 +82,8 @@ export function StreamsConfigSection({ config, saving: domainSaving, onSave }: P
   }
 
   async function handleToggle(id: string, isActive: boolean) {
+    const desired = isActive ? "stopped" : "active";
+    setPendingStatus((prev) => ({ ...prev, [id]: desired }));
     setToggling((prev) => new Set(prev).add(id));
     try {
       if (isActive) {
@@ -90,12 +93,10 @@ export function StreamsConfigSection({ config, saving: domainSaving, onSave }: P
       }
     } catch (err) {
       console.error("StreamsConfigSection: toggle failed", err);
+      setPendingStatus((prev) => { const n = { ...prev }; delete n[id]; return n; });
     } finally {
-      setToggling((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      setToggling((prev) => { const n = new Set(prev); n.delete(id); return n; });
+      setPendingStatus((prev) => { const n = { ...prev }; delete n[id]; return n; });
     }
   }
 
@@ -153,7 +154,8 @@ export function StreamsConfigSection({ config, saving: domainSaving, onSave }: P
       {!loading && subscriptions.length > 0 && (
         <div style={{ marginBottom: 24, display: "flex", flexDirection: "column", gap: 8 }}>
           {subscriptions.map((sub) => {
-            const isActive = sub.status === "active";
+            const displayStatus = pendingStatus[sub.id] ?? sub.status;
+            const isActive = displayStatus === "active";
             const isToggling = toggling.has(sub.id);
             return (
               <div
