@@ -95,6 +95,7 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
         borderRight: "1px solid var(--border)",
         padding: 12,
         background: "var(--sidebar)",
+        color: "var(--chrome-ink)",
         overflowY: "auto",
         flexShrink: 0,
       }}

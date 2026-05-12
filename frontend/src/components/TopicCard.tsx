@@ -174,7 +174,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
               borderRadius: "var(--radius)",
               flexShrink: 0,
               cursor: onSelect ? "pointer" : "default",
-              background: "var(--sidebar)",
+              background: "var(--canvas-bg)",
             }}
           />
         )}
@@ -349,8 +349,8 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
                     display: "flex", flexDirection: "column", gap: 4,
                     width: "100%", textAlign: "left",
                     padding: "6px 8px", marginBottom: 2,
-                    border: "1px solid var(--border)", borderRadius: "var(--radius)",
-                    background: "var(--sidebar)", cursor: "pointer",
+                    border: "1px solid var(--card-border)", borderRadius: "var(--radius)",
+                    background: "var(--card-bg)", cursor: "pointer",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
@@ -362,7 +362,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
                   {src.windows.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
                       {src.windows.map((w, i) => (
-                        <span key={i} style={{ fontSize: 10, color: "var(--muted)", background: "var(--bg)", borderRadius: 3, padding: "1px 5px", whiteSpace: "nowrap" }}>
+                        <span key={i} style={{ fontSize: 10, color: "var(--ink-subtle)", background: "var(--card-border)", borderRadius: 3, padding: "1px 5px", whiteSpace: "nowrap" }}>
                           {formatWindow(w)}
                         </span>
                       ))}
@@ -402,7 +402,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
                           objectFit: "cover",
                           borderRadius: 4,
                           flexShrink: 0,
-                          background: "var(--sidebar)",
+                          background: "var(--canvas-bg)",
                         }}
                       />
                     )}

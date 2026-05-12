@@ -207,7 +207,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                           <span
                             key={i}
                             style={{
-                              fontSize: 11, color: "var(--ink-muted)",
+                              fontSize: 11, color: "var(--ink-subtle)",
                               background: "var(--card-border)",
                               borderRadius: 4, padding: "2px 6px",
                               whiteSpace: "nowrap",
