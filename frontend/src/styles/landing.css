@@ -341,10 +341,12 @@
 
   /* Nav */
   .landing-logo-sub { display: none; }
+  .landing-nav-inner { gap: 12px; }
   .landing-nav-cta { font-size: 12px; padding: 7px 14px; }
 
   /* Hero */
   .landing-hero { padding: 48px 0 40px; }
+  .landing-hero-h { font-size: clamp(32px, 8vw, 48px); }
   .landing-hero-sub { font-size: 15px; margin-bottom: 28px; }
   .landing-hero-ctas { flex-direction: column; align-items: flex-start; margin-bottom: 32px; }
   .landing-btn-primary, .landing-btn-ghost { font-size: 14px; padding: 12px 22px; }
@@ -363,7 +365,8 @@
 
   /* Grids */
   .landing-features-grid { grid-template-columns: 1fr; }
-  .landing-audience-grid { grid-template-columns: 1fr 1fr; }
+  .landing-audience-grid { grid-template-columns: 1fr; }
+  .landing-lead-sources { grid-template-columns: 1fr; }
   .landing-footer-inner { grid-template-columns: 1fr 1fr; gap: 20px; }
   .landing-footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
 
@@ -378,15 +381,21 @@
   .landing-feat-icon { margin-bottom: 12px; }
 
   /* Discovery / Streams split */
-  .landing-split { gap: 32px; }
-  .landing-streams-grid { gap: 32px; }
+  .landing-split { gap: 24px; }
+  .landing-streams-grid { gap: 24px; }
 
   /* Contact */
   .landing-contact-form { padding: 24px 20px; }
   .landing-contact-inner { gap: 32px; }
+  .landing-contact-textarea { min-height: 80px; }
 
   /* Audience */
   .landing-audience-card { padding: 20px 14px; }
+
+  /* CTA bottom */
+  .landing-cta-actions { flex-direction: column; align-items: center; gap: 10px; }
+  .landing-cta-actions .landing-btn-primary,
+  .landing-cta-actions .landing-btn-ghost { width: 100%; max-width: 320px; justify-content: center; }
 
   /* Footer */
   .landing-footer { padding: 36px 0 24px; }

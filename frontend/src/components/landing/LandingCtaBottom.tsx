@@ -14,7 +14,6 @@ export function LandingCtaBottom() {
         <div className="landing-cta-actions">
           <button
             className="landing-btn-primary"
-            style={{ fontSize: 16, padding: "15px 32px" }}
             onClick={() => login()}
           >
             {c.ctaPrimary}
@@ -22,7 +21,6 @@ export function LandingCtaBottom() {
           <a
             href="mailto:demo@headlinesforge.com"
             className="landing-btn-ghost"
-            style={{ fontSize: 16, padding: "15px 32px" }}
           >
             {c.ctaGhost}
           </a>
