@@ -648,7 +648,7 @@ export const pl: Translations = {
       mockOutputLabel: "Gotowy artykuł",
       mockOutputTitle: "Pełny kontekst + fakty + cytaty + tekst",
       mockAltLabel: "Alternatywne tytuły",
-      mockAlt1: "Ekspert: „To może zmienić całą branżę"",
+      mockAlt1: 'Ekspert: „To może zmienić całą branżę”',
       mockAlt2: "Nowe dane pokazują zaskakujący trend",
       mockAlt3: "Co tak naprawdę stoi za tym zjawiskiem?",
       mockFbLabel: "Zajawka Facebook",
