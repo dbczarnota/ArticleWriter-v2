@@ -187,14 +187,20 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
   return (
     <div>
-      {/* Toolbar — flex row on desktop, stacked on mobile so the action
-          buttons don't squeeze the title into a vertical letter column. */}
+      {/* Metadata card — groups title, author, stats, and action buttons */}
+      <div style={{
+        background: "var(--card-bg)",
+        border: "1px solid var(--card-border)",
+        borderRadius: "var(--radius-lg)",
+        boxShadow: "var(--shadow-card)",
+        padding: isMobile ? "16px" : "20px 28px",
+        marginBottom: 24,
+      }}>
       <div style={{
         display: "flex",
         flexDirection: isMobile ? "column" : "row",
         alignItems: isMobile ? "stretch" : "flex-start",
         justifyContent: "space-between",
-        marginBottom: 20,
         gap: isMobile ? 12 : 16,
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -202,7 +208,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             <span>{av.statWords}: <strong style={{ color: "var(--text)" }}>{wordCount.toLocaleString()}</strong></span>
             <span>{av.statChars}: <strong style={{ color: "var(--text)" }}>{charCount.toLocaleString()}</strong></span>
           </div>
-          <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>{article.topic}</h2>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{article.topic}</h2>
           <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--muted)", flexWrap: "wrap", alignItems: "center" }}>
             <span>
               {(() => {
@@ -270,6 +276,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             {av.exportHtml}
           </Button>
         </div>
+      </div>
       </div>
 
       {/* Failed-status banner — explains why the body is mostly empty. */}

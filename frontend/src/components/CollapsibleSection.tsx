@@ -40,33 +40,43 @@ export function CollapsibleSection({ title, count, defaultOpen = false, prominen
 
   if (prominent) {
     return (
-      <section style={{ marginBottom: 24 }}>
+      <section style={{ marginBottom: 16 }}>
         <button
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           style={{
-            background: "none",
-            border: "none",
-            borderBottom: open ? "1px solid var(--border)" : "none",
+            background: "var(--card-bg)",
+            border: "1px solid var(--card-border)",
+            borderRadius: open ? "var(--radius) var(--radius) 0 0" : "var(--radius)",
             width: "100%",
             textAlign: "left",
             display: "flex",
             alignItems: "center",
             gap: 8,
-            padding: "6px 0",
-            marginBottom: open ? 12 : 0,
-            fontSize: 14,
+            padding: "10px 14px",
+            marginBottom: 0,
+            fontSize: 13,
             fontWeight: 600,
-            color: "var(--text)",
+            color: "var(--ink)",
             cursor: "pointer",
           }}
         >
-          <span style={{ color: "var(--muted)", flexShrink: 0, display: "inline-flex" }}>
+          <span style={{ color: "var(--ink-subtle)", flexShrink: 0, display: "inline-flex" }}>
             <Chevron open={open} />
           </span>
           {label}
         </button>
-        {open && <div>{children}</div>}
+        {open && (
+          <div style={{
+            background: "var(--card-bg)",
+            border: "1px solid var(--card-border)",
+            borderTop: "none",
+            borderRadius: "0 0 var(--radius) var(--radius)",
+            padding: "12px 14px",
+          }}>
+            {children}
+          </div>
+        )}
       </section>
     );
   }
