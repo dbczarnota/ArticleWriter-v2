@@ -199,11 +199,11 @@ export function Sidebar({
             <button key={f} onClick={() => setDoneFilter(f)} style={{
               background: active ? "var(--accent)" : "transparent",
               color: active ? "#fff" : "var(--chrome-muted)",
-              border: `1px solid ${active ? "var(--accent)" : "var(--chrome-border)"}`,
+              border: "none",
               borderRadius: 999,
               padding: "3px 8px",
               fontSize: 11,
-              fontWeight: 500,
+              fontWeight: active ? 600 : 400,
               cursor: "pointer",
             }}>{labels[f]}</button>
           );
@@ -212,11 +212,11 @@ export function Sidebar({
           <button onClick={() => setOnlyMine((v) => !v)} style={{
             background: onlyMine ? "var(--accent)" : "transparent",
             color: onlyMine ? "#fff" : "var(--chrome-muted)",
-            border: `1px solid ${onlyMine ? "var(--accent)" : "var(--chrome-border)"}`,
+            border: "none",
             borderRadius: 999,
             padding: "3px 8px",
             fontSize: 11,
-            fontWeight: 500,
+            fontWeight: onlyMine ? 600 : 400,
             cursor: "pointer",
           }}>{t.sidebar.filterMine}</button>
         )}
