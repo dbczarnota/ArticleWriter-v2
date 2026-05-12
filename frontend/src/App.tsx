@@ -67,6 +67,8 @@ export default function App() {
     return () => window.removeEventListener("discovery:open-article", onOpenArticle);
   }, []);
 
+  if (!window.location.pathname.startsWith("/app")) return <LandingPage />;
+
   if (!NULL_AUTH) {
     if (isLoading) return <div style={{ padding: 32 }}>{t.app.loading}</div>;
     if (!isAuthenticated) return <LandingPage />;
