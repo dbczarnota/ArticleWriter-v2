@@ -255,6 +255,50 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg);
 
 /* ── SVG icons ── */
 svg { display: inline-block; vertical-align: middle; }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .slide { padding: 40px 28px; justify-content: flex-start; padding-top: 52px; }
+  .logo { margin-bottom: 24px; }
+  .logo-name { font-size: 17px; }
+  .hero-h { font-size: clamp(32px, 9vw, 52px); margin-bottom: 14px; }
+  .hero-sub { font-size: 15px; margin-bottom: 28px; }
+  .sec-h { font-size: clamp(24px, 7vw, 38px); }
+  .sec-sub { font-size: 14px; }
+  .cols, .cols-3 { grid-template-columns: 1fr; gap: 20px; }
+  .cols-4 { grid-template-columns: 1fr 1fr; gap: 16px; }
+  .stats { gap: 28px; padding-top: 24px; margin-top: 24px; }
+  .stat-num { font-size: 28px; }
+  .points { gap: 12px; margin-top: 16px; }
+  .point-text { font-size: 13px; }
+  .big-num { font-size: clamp(48px, 14vw, 80px); }
+  .big-num-label { font-size: 15px; }
+  .card, .card-dark { padding: 20px; }
+  .btns { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .btn-primary, .btn-ghost { font-size: 13px; padding: 11px 22px; }
+  .shield-banner { flex-direction: column; gap: 16px; padding: 24px 20px; }
+  .conv { flex-direction: column; gap: 14px; padding: 20px 22px; }
+  .nav-arrow { width: 44px; height: 44px; }
+  .nav-prev { left: 10px; }
+  .nav-next { right: 10px; }
+  .progress { bottom: 18px; gap: 8px; }
+  .prog-dot { width: 7px; height: 7px; }
+  .prog-dot.on { width: 22px; }
+  .counter { top: 14px; right: 16px; font-size: 10px; }
+  .label { font-size: 10px; margin-bottom: 14px; }
+  .badge { font-size: 11px; padding: 4px 10px; }
+  .track-header { padding: 14px 16px; }
+  .track-steps { padding: 16px; gap: 12px; }
+}
+
+@media (max-width: 480px) {
+  .slide { padding: 36px 18px; padding-top: 48px; }
+  .hero-h { font-size: clamp(28px, 10vw, 44px); }
+  .sec-h { font-size: clamp(22px, 8vw, 32px); }
+  .cols-4 { grid-template-columns: 1fr; }
+  .btns { width: 100%; }
+  .btn-primary, .btn-ghost { width: 100%; text-align: center; justify-content: center; }
+}
 </style>
 </head>
 <body>
@@ -271,7 +315,10 @@ svg { display: inline-block; vertical-align: middle; }
         <div class="logo-sub">AI Newsroom Platform</div>
       </div>
     </div>
-    <div class="badge"><div class="badge-dot"></div>Live in production</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px">
+      <div class="badge" style="margin-bottom:0"><div class="badge-dot"></div>Live in production</div>
+      <div style="font-size:12px;font-weight:600;color:var(--subtle);letter-spacing:.12em;text-transform:uppercase">For media. AI inside.</div>
+    </div>
     <h1 class="hero-h">Write <em>faster</em>.<br>Publish more.</h1>
     <p class="hero-sub">The all-in-one platform that monitors sources, surfaces stories, and drafts articles — so your team focuses on editing, not hunting.</p>
     <div class="btns">
@@ -741,6 +788,7 @@ svg { display: inline-block; vertical-align: middle; }
       <a class="btn-primary" href="https://headlinesforge.com" target="_blank">headlinesforge.com</a>
       <a class="btn-ghost" href="https://headlinesforge.com/#contact" target="_blank">Skontaktuj się z nami</a>
     </div>
+    <div style="margin-top:56px;font-size:clamp(22px,2.8vw,38px);font-weight:800;letter-spacing:-.02em;color:var(--acc)">For media. AI inside.</div>
   </div>
 
 </div><!-- /deck -->
@@ -794,6 +842,14 @@ document.querySelector('.deck').addEventListener('click', e => {
   if (e.target.closest('.nav-arrow') || e.target.closest('.prog-dot')) return;
   go(e.clientX > window.innerWidth / 2 ? 1 : -1);
 });
+
+// Touch swipe
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+}, { passive: true });
 
 show(0);
 </script>
