@@ -31,7 +31,7 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg);
 .deck { position: fixed; inset: 0; }
 
 .slide {
-  position: absolute; inset: 0;
+  position: absolute; inset: 0; overflow: hidden;
   display: none; flex-direction: column; justify-content: center; align-items: flex-start;
   padding: 64px 96px;
   opacity: 0; transition: opacity .3s ease;
@@ -256,6 +256,8 @@ html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg);
 /* ── SVG icons ── */
 svg { display: inline-block; vertical-align: middle; }
 
+.article-gen-layout { display: flex; gap: 80px; align-items: flex-start; width: 100%; }
+
 /* ── Mobile ── */
 @media (max-width: 768px) {
   /* Slide: leave room at bottom for the nav bar */
@@ -283,6 +285,7 @@ svg { display: inline-block; vertical-align: middle; }
   .badge { font-size: 11px; padding: 4px 10px; }
   .track-header { padding: 14px 16px; }
   .track-steps { padding: 16px; gap: 12px; }
+  .article-gen-layout { flex-direction: column; gap: 20px; }
 
   /* Move counter to top-left, smaller */
   .counter { top: 14px; right: 14px; font-size: 10px; }
@@ -598,7 +601,7 @@ svg { display: inline-block; vertical-align: middle; }
   <div class="slide slide-dark" data-slide="6">
     <div class="glow"></div>
     <div class="label">Feature: AI Article Generation</div>
-    <div style="display:flex;gap:80px;align-items:flex-start;width:100%">
+    <div class="article-gen-layout">
       <div>
         <div class="big-num">~5<span style="font-size:.5em">min</span></div>
         <div class="big-num-label">Average time from lead to ready-to-review draft</div>
