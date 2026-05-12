@@ -18,11 +18,11 @@ const SIZE_STYLE: Record<ButtonSize, { padding: string; fontSize: string }> = {
 const VARIANT_STYLE: Record<ButtonVariant, React.CSSProperties> = {
   primary: {
     background: "var(--accent)",
-    color: "var(--white)",
+    color: "#fff",
     border: "1px solid var(--accent)",
   },
   outline: {
-    background: "var(--white)",
+    background: "transparent",
     color: "var(--accent)",
     border: "1px solid var(--accent)",
   },
@@ -33,7 +33,7 @@ const VARIANT_STYLE: Record<ButtonVariant, React.CSSProperties> = {
   },
   danger: {
     background: "var(--error)",
-    color: "var(--white)",
+    color: "#fff",
     border: "1px solid var(--error)",
   },
 };
@@ -60,11 +60,11 @@ export function Button({
         alignItems: "center",
         justifyContent: "center",
         gap: 6,
-        borderRadius: "var(--radius)",
+        borderRadius: "var(--radius-lg)",
         fontWeight: 500,
         cursor: disabled ? "default" : "pointer",
         opacity: disabled ? 0.6 : 1,
-        transition: "background 0.15s, color 0.15s, border-color 0.15s",
+        transition: "background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s",
         ...sizeStyle,
         ...variantStyle,
         ...style,

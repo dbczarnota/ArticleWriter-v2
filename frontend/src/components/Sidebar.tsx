@@ -292,6 +292,7 @@ export function Sidebar({
                 borderBottom: "1px solid var(--border)",
                 textAlign: "left",
                 cursor: "pointer",
+                transition: "background 0.12s",
                 // Done = strong dim, failed = subtle dim. Failed shouldn't
                 // shout — the red ✕ already signals state, opacity just keeps
                 // it from competing with active (running/done) entries.

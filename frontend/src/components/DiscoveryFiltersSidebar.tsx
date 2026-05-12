@@ -72,6 +72,7 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
     color: "var(--text)",
     fontSize: 13,
     textAlign: "left",
+    transition: "color 0.12s, background 0.12s",
   };
 
   const buttonRowActive: React.CSSProperties = {
@@ -145,7 +146,7 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
                 <span
                   style={{
                     fontSize: 10,
-                    color: s.status === "active" ? "rgb(22,163,74)" : "var(--muted)",
+                    color: s.status === "active" ? "var(--success)" : "var(--muted)",
                     fontWeight: 600,
                     textTransform: "uppercase",
                   }}
@@ -183,6 +184,7 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
                   type="checkbox"
                   checked={value.categories.includes(c.name)}
                   onChange={() => toggleCategory(c.name)}
+                  style={{ accentColor: "var(--accent)" }}
                 />
                 {c.name}
               </span>
@@ -218,6 +220,7 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
                   type="checkbox"
                   checked={value.statuses.includes(s.id)}
                   onChange={() => toggleStatus(s.id)}
+                  style={{ accentColor: "var(--accent)" }}
                 />
                 {s.label}
               </label>

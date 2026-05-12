@@ -307,7 +307,8 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             padding: 20,
             background: "var(--white)",
             border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
+            borderRadius: "var(--radius-lg)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
             marginBottom: 24,
             lineHeight: 1.7,
           }}
@@ -319,7 +320,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         <CollapsibleSection prominent title={av.altTitles} count={article.alternative_titles.length} defaultOpen>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {article.alternative_titles.map((title, i) => (
-              <div key={i} style={{ padding: "8px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <div key={i} style={{ padding: "8px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <span>{title}</span>
                 <CopyButton text={title} />
               </div>
@@ -509,7 +510,7 @@ function FactCard({ fact, muted }: { fact: Fact; muted?: boolean }) {
       borderLeft: `3px solid ${muted ? "var(--border)" : "var(--accent)"}`,
       marginBottom: 8,
       background: muted ? "transparent" : "var(--accent-lt)",
-      borderRadius: "0 var(--radius) var(--radius) 0",
+      borderRadius: "0 var(--radius-lg) var(--radius-lg) 0",
       padding: "8px 8px 8px 12px",
     }}>
       <p style={{ fontSize: 13, marginBottom: 4 }}>
@@ -530,7 +531,7 @@ function QuoteCard({ quote, muted }: { quote: Quote; muted?: boolean }) {
       padding: "8px 8px 8px 12px",
       marginBottom: 8,
       background: muted ? "transparent" : "var(--accent-lt)",
-      borderRadius: "0 var(--radius) var(--radius) 0",
+      borderRadius: "0 var(--radius-lg) var(--radius-lg) 0",
     }}>
       <p style={{ fontSize: 13, fontStyle: "italic" }}>
         "{quote.text}"
@@ -569,7 +570,7 @@ function CopyButton({ text }: { text: string }) {
 
 function TeaserCard({ text }: { text: string }) {
   return (
-    <div style={{ position: "relative", padding: "10px 44px 10px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13, minHeight: 48, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+    <div style={{ position: "relative", padding: "10px 44px 10px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", boxShadow: "0 1px 3px rgba(0,0,0,0.3)", fontSize: 13, minHeight: 48, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
       {text}
       <div style={{ position: "absolute", top: 6, right: 6 }}>
         <CopyButton text={text} />

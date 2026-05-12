@@ -915,7 +915,8 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
         style={{
           background: "var(--white)",
           border: "1px solid var(--border)",
-          borderRadius: "var(--radius)",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
           width: "100%",
           maxWidth,
           maxHeight: "90vh",
