@@ -6,7 +6,7 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { Button } from "./ui/Button";
-import { CodeIcon, CopyIcon, DownloadIcon, CheckIcon } from "./ui/icons";
+import { CodeIcon, CopyIcon, DownloadIcon, CheckIcon, TitlesIcon, DiscoveryIcon, ShareIcon, GlobeIcon, InfoIcon, QuoteIcon, SourcesIcon, ClockIcon } from "./ui/icons";
 import { safeHref } from "../lib/safeHref";
 import { useApi } from "../lib/useApi";
 
@@ -332,7 +332,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
       {/* Alternative titles */}
       {!isFailed && article.alternative_titles.length > 0 && (
-        <CollapsibleSection prominent title={av.altTitles} count={article.alternative_titles.length} defaultOpen>
+        <CollapsibleSection prominent icon={<TitlesIcon />} title={av.altTitles} count={article.alternative_titles.length} defaultOpen>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {article.alternative_titles.map((title, i) => (
               <div key={i} style={{ padding: "8px 12px", background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--radius-lg)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -346,7 +346,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
       {/* Follow-up topics */}
       {!isFailed && article.followup_topics.length > 0 && (
-        <CollapsibleSection prominent title={av.followupTopics} count={article.followup_topics.length} defaultOpen>
+        <CollapsibleSection prominent icon={<DiscoveryIcon />} title={av.followupTopics} count={article.followup_topics.length} defaultOpen>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {article.followup_topics.map((topic, i) => (
               <span key={i} style={{ padding: "5px 10px", background: "var(--accent-lt)", border: "1px solid var(--accent)", borderRadius: 20, fontSize: 12, color: "var(--accent)", fontWeight: 500 }}>
@@ -359,7 +359,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
       {/* Facebook teasers */}
       {!isFailed && article.facebook_teasers.length > 0 && (
-        <CollapsibleSection prominent title={av.facebookTeasers} count={article.facebook_teasers.length} defaultOpen>
+        <CollapsibleSection prominent icon={<ShareIcon />} title={av.facebookTeasers} count={article.facebook_teasers.length} defaultOpen>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {article.facebook_teasers.map((teaser, i) => (
               <TeaserCard key={i} text={teaser} />
@@ -370,7 +370,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
       {/* Social media embeds */}
       {!isFailed && (article.social_media_attachments.length > 0 || article.embed_candidates.length > 0) && (
-        <CollapsibleSection prominent title={av.socialMedia} count={article.social_media_attachments.length + article.embed_candidates.length}>
+        <CollapsibleSection prominent icon={<GlobeIcon />} title={av.socialMedia} count={article.social_media_attachments.length + article.embed_candidates.length}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {article.social_media_attachments.map((att, i) => (
               <SocialMediaAttachmentCard key={i} attachment={att} t={av} />
@@ -385,7 +385,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {!isFailed && (
         <>
           {/* Facts */}
-          <CollapsibleSection prominent title={av.factsUsed} count={usedFacts.length} defaultOpen>
+          <CollapsibleSection prominent icon={<InfoIcon />} title={av.factsUsed} count={usedFacts.length} defaultOpen>
             {usedFacts.map((f) => (
               <FactCard key={f.id} fact={f} />
             ))}
@@ -397,7 +397,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
           </CollapsibleSection>
 
           {/* Quotes */}
-          <CollapsibleSection prominent title={av.quotesUsed} count={usedQuotes.length} defaultOpen>
+          <CollapsibleSection prominent icon={<QuoteIcon />} title={av.quotesUsed} count={usedQuotes.length} defaultOpen>
             {usedQuotes.map((q) => (
               <QuoteCard key={q.id} quote={q} />
             ))}
@@ -409,7 +409,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
           </CollapsibleSection>
 
           {/* Sources */}
-          <CollapsibleSection prominent title={av.sourcesUsed} count={usedSources.length} defaultOpen>
+          <CollapsibleSection prominent icon={<SourcesIcon />} title={av.sourcesUsed} count={usedSources.length} defaultOpen>
             {usedSources.map((url) => (
               <div key={url} style={{ borderLeft: "3px solid var(--success)", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
                 <a href={safeHref(url)} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>{url}</a>
@@ -426,7 +426,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
           {/* Stats — words/chars are surfaced above the title so they're
               always visible; the rest stays in this collapsible block. */}
-          <CollapsibleSection prominent title={av.pipelineStats}>
+          <CollapsibleSection prominent icon={<ClockIcon />} title={av.pipelineStats}>
             <div style={{ padding: "8px 0", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, fontSize: 13 }}>
               <Stat label={av.statTime} value={article.total_duration_ms != null ? (article.total_duration_ms / 1000).toFixed(1) : "—"} />
               <Stat label={av.statFacts} value={article.facts.length} />
@@ -460,7 +460,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {/* Inputs — always visible. For successful articles it sits at the
           bottom for reference; for failed ones it's the only body section,
           so an editor can copy what they typed and try again. */}
-      <CollapsibleSection prominent title={av.inputs} defaultOpen={isFailed}>
+      <CollapsibleSection prominent icon={<CodeIcon />} title={av.inputs} defaultOpen={isFailed}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "8px 0" }}>
           <InputRow label={av.inputTopic} value={article.topic} />
           <InputRow
