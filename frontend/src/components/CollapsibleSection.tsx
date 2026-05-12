@@ -5,12 +5,10 @@ interface CollapsibleSectionProps {
   count?: number;
   defaultOpen?: boolean;
   prominent?: boolean;
+  icon?: React.ReactNode;
   children: React.ReactNode;
 }
 
-// 10×10 chevron SVG that rotates 90° when open. Replaces the previous
-// ▼/▶ unicode arrows whose weight rendered inconsistently across
-// macOS/Windows/Linux at the small font sizes the disclosure uses.
 function Chevron({ open }: { open: boolean }) {
   return (
     <svg
@@ -34,7 +32,7 @@ function Chevron({ open }: { open: boolean }) {
   );
 }
 
-export function CollapsibleSection({ title, count, defaultOpen = false, prominent = false, children }: CollapsibleSectionProps) {
+export function CollapsibleSection({ title, count, defaultOpen = false, prominent = false, icon, children }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   const label = count !== undefined ? `${title} (${count})` : title;
 
@@ -53,18 +51,34 @@ export function CollapsibleSection({ title, count, defaultOpen = false, prominen
             display: "flex",
             alignItems: "center",
             gap: 8,
-            padding: "10px 14px",
-            marginBottom: 0,
-            fontSize: 13,
-            fontWeight: 600,
-            color: "var(--ink)",
+            padding: "9px 12px",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--ink-subtle)",
             cursor: "pointer",
           }}
         >
-          <span style={{ color: "var(--ink-subtle)", flexShrink: 0, display: "inline-flex" }}>
+          {icon && (
+            <span style={{
+              width: 24,
+              height: 24,
+              borderRadius: 7,
+              background: "var(--accent-tint)",
+              color: "var(--accent)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}>
+              {icon}
+            </span>
+          )}
+          <span style={{ flex: 1 }}>{label}</span>
+          <span style={{ color: "var(--ink-subtle)", display: "inline-flex" }}>
             <Chevron open={open} />
           </span>
-          {label}
         </button>
         {open && (
           <div style={{
@@ -91,7 +105,7 @@ export function CollapsibleSection({ title, count, defaultOpen = false, prominen
           border: "none",
           fontSize: 13,
           fontWeight: 600,
-          color: "var(--muted)",
+          color: "var(--ink-muted)",
           display: "flex",
           alignItems: "center",
           gap: 6,
