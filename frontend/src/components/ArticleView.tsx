@@ -615,7 +615,7 @@ function EmbedCandidateRow({ e, t }: { e: EmbedCandidate; t: ReturnType<typeof u
           <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--muted)" }}>{e.source}</span>
           {e.channel && <span style={{ fontSize: 11, color: "var(--muted)" }}>· {e.channel}</span>}
           {e.competitor_source_url && (
-            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "#b45309", background: "var(--warning-lt)", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.04em" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", color: "var(--warning-fg)", background: "var(--warning-lt)", padding: "1px 5px", borderRadius: 3, letterSpacing: "0.04em" }}>
               {t.competitorStar}
             </span>
           )}
