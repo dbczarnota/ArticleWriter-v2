@@ -151,7 +151,7 @@ export function DiscoveryHub() {
             display: "flex",
             gap: 8,
             alignItems: "center",
-            background: "var(--bg2)",
+            background: "var(--card-bg)",
           }}
         >
           <button
@@ -206,7 +206,7 @@ export function DiscoveryHub() {
               alignItems: "center",
               justifyContent: "flex-end",
               gap: 8,
-              background: "var(--bg2)",
+              background: "var(--card-bg)",
             }}
           >
             <label htmlFor="discovery-topics-sort" style={{ fontSize: 12, color: "var(--muted)" }}>
@@ -220,7 +220,7 @@ export function DiscoveryHub() {
                 padding: "5px 8px",
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius)",
-                background: "var(--bg2)",
+                background: "var(--card-bg)",
                 color: "var(--text)",
                 fontSize: 13,
                 cursor: "pointer",

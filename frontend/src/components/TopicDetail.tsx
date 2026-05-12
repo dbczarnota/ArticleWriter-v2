@@ -137,7 +137,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                   objectFit: "cover",
                   borderRadius: "var(--radius)",
                   flexShrink: 0,
-                  background: "var(--sidebar)",
+                  background: "var(--canvas-bg)",
                 }}
               />
             )}
@@ -207,8 +207,8 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                           <span
                             key={i}
                             style={{
-                              fontSize: 11, color: "var(--muted)",
-                              background: "var(--sidebar)",
+                              fontSize: 11, color: "var(--ink-muted)",
+                              background: "var(--card-border)",
                               borderRadius: 4, padding: "2px 6px",
                               whiteSpace: "nowrap",
                             }}
@@ -237,10 +237,10 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
             >
               <div
                 style={{
-                  background: "var(--sidebar)",
+                  background: "var(--card-border)",
                   padding: "8px 16px",
                   fontSize: 13,
-                  borderBottom: "1px solid var(--border)",
+                  borderBottom: "1px solid var(--card-border-strong)",
                 }}
               >
                 <strong style={{ color: "var(--text)" }}>{host}</strong>{" "}
@@ -270,7 +270,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                         objectFit: "cover",
                         borderRadius: 4,
                         flexShrink: 0,
-                        background: "var(--sidebar)",
+                        background: "var(--canvas-bg)",
                       }}
                     />
                   )}
@@ -328,7 +328,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
               style={{
                 width: "100%",
                 padding: "10px 16px",
-                background: "var(--sidebar)",
+                background: "var(--canvas-bg)",
                 color: "var(--muted)",
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius)",
