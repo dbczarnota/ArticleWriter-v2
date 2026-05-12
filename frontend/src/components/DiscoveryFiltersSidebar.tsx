@@ -53,9 +53,10 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
   const labelStyle: React.CSSProperties = {
     fontSize: 11,
     textTransform: "uppercase",
-    color: "var(--muted)",
+    color: "var(--chrome-muted)",
     cursor: "pointer",
-    letterSpacing: "0.04em",
+    letterSpacing: "0.06em",
+    fontWeight: 600,
     padding: "4px 0",
   };
 
@@ -69,7 +70,7 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
     borderLeft: "3px solid transparent",
     borderRadius: 0,
     cursor: "pointer",
-    color: "var(--text)",
+    color: "var(--chrome-muted)",
     fontSize: 13,
     textAlign: "left",
     transition: "color 0.12s, background 0.12s",
