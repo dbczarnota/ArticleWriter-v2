@@ -90,11 +90,11 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
       <div
         style={{
           padding: "12px 24px",
-          borderBottom: "1px solid var(--border)",
+          borderBottom: "1px solid var(--card-border)",
           display: "flex",
           gap: 12,
           alignItems: "center",
-          background: "var(--white)",
+          background: "var(--card-bg)",
         }}
       >
         <button
@@ -103,7 +103,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
           style={{
             background: "none",
             border: 0,
-            color: "var(--muted)",
+            color: "var(--ink-subtle)",
             cursor: "pointer",
             padding: 0,
             fontSize: 14,
@@ -111,8 +111,8 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
         >
           {t.discovery.topic.backToTopics}
         </button>
-        <span style={{ color: "var(--muted)" }}>/</span>
-        <span style={{ color: "var(--text)", fontWeight: 500 }}>{detail.title}</span>
+        <span style={{ color: "var(--ink-subtle)" }}>/</span>
+        <span style={{ color: "var(--ink)", fontWeight: 500 }}>{detail.title}</span>
       </div>
       <div
         style={{
@@ -162,21 +162,21 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                   </span>
                 ))}
               </div>
-              <h2 style={{ margin: "0 0 12px", color: "var(--text)" }}>{detail.title}</h2>
+              <h2 style={{ margin: "0 0 12px", color: "var(--ink)" }}>{detail.title}</h2>
               {detail.blurb && (
-                <p style={{ color: "var(--muted)", lineHeight: 1.6, marginTop: 0 }}>
+                <p style={{ color: "var(--ink-subtle)", lineHeight: 1.6, marginTop: 0 }}>
                   {detail.blurb}
                 </p>
               )}
             </div>
           </div>
 
-          <h3 style={{ marginTop: 24, color: "var(--text)", fontSize: 15 }}>
+          <h3 style={{ marginTop: 24, color: "var(--ink)", fontSize: 15 }}>
             {t.discovery.topic.sources} ({detail.items.length})
           </h3>
           {detail.stream_sources?.length > 0 && (
             <>
-              <h3 style={{ marginTop: 24, color: "var(--text)", fontSize: 15 }}>
+              <h3 style={{ marginTop: 24, color: "var(--ink)", fontSize: 15 }}>
                 Źródła streamowe ({detail.stream_sources.length})
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
@@ -188,8 +188,8 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                     style={{
                       display: "flex", flexDirection: "column", gap: 6,
                       padding: "10px 12px",
-                      border: "1px solid var(--border)", borderRadius: "var(--radius)",
-                      background: "var(--white)", cursor: "pointer", textAlign: "left",
+                      border: "1px solid var(--card-border)", borderRadius: "var(--radius)",
+                      background: "var(--card-bg)", cursor: "pointer", textAlign: "left",
                       width: "100%",
                     }}
                   >
@@ -197,7 +197,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                       <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", background: "var(--accent-lt)", borderRadius: 4, padding: "1px 7px", flexShrink: 0 }}>
                         {src.subscription_name}
                       </span>
-                      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
                         {src.title}
                       </span>
                     </div>
@@ -228,11 +228,11 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
             <div
               key={host}
               style={{
-                border: "1px solid var(--border)",
+                border: "1px solid var(--card-border)",
                 borderRadius: "var(--radius)",
                 marginBottom: 12,
                 overflow: "hidden",
-                background: "var(--white)",
+                background: "var(--card-bg)",
               }}
             >
               <div
@@ -243,15 +243,15 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                   borderBottom: "1px solid var(--card-border-strong)",
                 }}
               >
-                <strong style={{ color: "var(--text)" }}>{host}</strong>{" "}
-                <span style={{ color: "var(--muted)" }}>· {group.length} {t.discovery.topic.itemsShort}</span>
+                <strong style={{ color: "var(--ink)" }}>{host}</strong>{" "}
+                <span style={{ color: "var(--ink-subtle)" }}>· {group.length} {t.discovery.topic.itemsShort}</span>
               </div>
               {group.map((it, idx) => (
                 <div
                   key={it.id}
                   style={{
                     padding: "12px 16px",
-                    borderTop: idx === 0 ? "none" : "1px solid var(--border)",
+                    borderTop: idx === 0 ? "none" : "1px solid var(--card-border)",
                     display: "flex",
                     gap: 12,
                     alignItems: "flex-start",
@@ -281,17 +281,17 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                       rel="noreferrer noopener"
                       style={{
                         fontWeight: 500,
-                        color: "var(--text)",
+                        color: "var(--ink)",
                         textDecoration: "none",
                         fontSize: 14,
                       }}
                     >
-                      {it.title} <span style={{ color: "var(--muted)" }}>↗</span>
+                      {it.title} <span style={{ color: "var(--ink-subtle)" }}>↗</span>
                     </a>
                     <div
                       style={{
                         fontSize: 12,
-                        color: "var(--muted)",
+                        color: "var(--ink-subtle)",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -305,7 +305,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                     <div
                       style={{
                         fontSize: 11,
-                        color: "var(--muted)",
+                        color: "var(--ink-subtle)",
                         flexShrink: 0,
                         whiteSpace: "nowrap",
                       }}
@@ -329,8 +329,8 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                 width: "100%",
                 padding: "10px 16px",
                 background: "var(--canvas-bg)",
-                color: "var(--muted)",
-                border: "1px solid var(--border)",
+                color: "var(--ink-subtle)",
+                border: "1px solid var(--card-border)",
                 borderRadius: "var(--radius)",
                 cursor: "default",
                 fontWeight: 500,
@@ -344,22 +344,34 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
             <Button
               variant="primary"
               size="md"
-              style={{ width: "100%", marginBottom: 16 }}
+              style={{ width: "100%", marginBottom: 12 }}
               onClick={() => onWrite(topicId)}
             >
               {t.discovery.topic.writeArticle}
             </Button>
           )}
-          <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.8 }}>
-            <div>
-              {t.discovery.topic.firstSeen}:{" "}
-              {detail.first_seen_at ? new Date(detail.first_seen_at).toLocaleString() : "—"}
-            </div>
-            <div>
-              {t.discovery.topic.lastActivity}: {new Date(detail.last_activity_at).toLocaleString()}
-            </div>
-            <div>{t.discovery.topic.statusLabel}: {detail.status}</div>
-            <div>{t.discovery.topic.itemsCount}: {detail.items.length}</div>
+          <div style={{
+            background: "var(--card-bg)",
+            border: "1px solid var(--card-border)",
+            borderRadius: 10,
+            padding: "16px 20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}>
+            {[
+              { label: t.discovery.topic.firstSeen, value: detail.first_seen_at ? new Date(detail.first_seen_at).toLocaleString() : "—" },
+              { label: t.discovery.topic.lastActivity, value: new Date(detail.last_activity_at).toLocaleString() },
+              { label: t.discovery.topic.statusLabel, value: detail.status },
+              { label: t.discovery.topic.itemsCount, value: String(detail.items.length) },
+            ].map(({ label, value }) => (
+              <div key={label}>
+                <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-subtle)", marginBottom: 2 }}>
+                  {label}
+                </div>
+                <div style={{ fontSize: 13, color: "var(--ink)" }}>{value}</div>
+              </div>
+            ))}
           </div>
         </aside>
       </div>

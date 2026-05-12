@@ -455,15 +455,15 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "8px 10px",
-    border: "1px solid var(--border)",
+    border: "1px solid var(--card-border)",
     borderRadius: "var(--radius)",
     fontSize: 13,
     fontFamily: "var(--font)",
-    background: "var(--white)",
-    color: "var(--text)",
+    background: "var(--card-bg)",
+    color: "var(--ink)",
     boxSizing: "border-box",
   };
-  const labelSt: React.CSSProperties = { display: "block", fontSize: 12, marginBottom: 4, color: "var(--muted)" };
+  const labelSt: React.CSSProperties = { display: "block", fontSize: 12, marginBottom: 4, color: "var(--ink-subtle)" };
   const sm: React.CSSProperties = { ...inputStyle, fontSize: 12 };
 
   const tabLabels: Record<TabId, string> = {
@@ -497,31 +497,31 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
         </label>
         {topicId ? (
           <>
-            <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius)", maxHeight: 280, overflowY: "auto" }}>
+            <div style={{ border: "1px solid var(--card-border)", borderRadius: "var(--radius)", maxHeight: 280, overflowY: "auto" }}>
               {discoveryLoading ? (
-                <div style={{ padding: "10px 12px", color: "var(--muted)", fontSize: 13 }}>{t.discovery.topic.loading}</div>
+                <div style={{ padding: "10px 12px", color: "var(--ink-subtle)", fontSize: 13 }}>{t.discovery.topic.loading}</div>
               ) : (
                 <>
                   {discoveryDetail?.stream_sources?.map((src, idx) => (
-                    <div key={`stream-${src.id}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderTop: idx === 0 ? "none" : "1px solid var(--border)", background: "var(--accent-lt)" }}>
+                    <div key={`stream-${src.id}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderTop: idx === 0 ? "none" : "1px solid var(--card-border)", background: "var(--accent-lt)" }}>
                       <input type="checkbox" checked={selectedStreamTopicIds.has(src.id)} onChange={() => toggleStreamTopic(src.id)} disabled={loading || (!selectedStreamTopicIds.has(src.id) && totalSelected >= MAX_DISCOVERY_URLS)} style={{ flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--accent)", background: "var(--white)", borderRadius: 4, padding: "1px 6px", flexShrink: 0 }}>📡 {src.subscription_name}</span>
-                          <span style={{ fontWeight: 500, fontSize: 14, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{src.title}</span>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: "var(--accent)", background: "var(--card-bg)", borderRadius: 4, padding: "1px 6px", flexShrink: 0 }}>📡 {src.subscription_name}</span>
+                          <span style={{ fontWeight: 500, fontSize: 14, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{src.title}</span>
                         </div>
                       </div>
                     </div>
                   ))}
                   {discoveryDetail?.items.map((it, idx) => (
-                    <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderTop: (idx === 0 && (discoveryDetail?.stream_sources?.length ?? 0) === 0) ? "none" : "1px solid var(--border)" }}>
+                    <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderTop: (idx === 0 && (discoveryDetail?.stream_sources?.length ?? 0) === 0) ? "none" : "1px solid var(--card-border)" }}>
                       <input type="checkbox" checked={selectedUrls.has(it.canonical_url)} onChange={() => toggleUrl(it.canonical_url)} disabled={loading || (!selectedUrls.has(it.canonical_url) && totalSelected >= MAX_DISCOVERY_URLS)} style={{ flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 500, fontSize: 14, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.title}</div>
-                        <a href={safeHref(it.canonical_url)} target="_blank" rel="noreferrer noopener" style={{ fontSize: 11, color: "var(--muted)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "none" }}>{it.canonical_url} ↗</a>
+                        <div style={{ fontWeight: 500, fontSize: 14, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.title}</div>
+                        <a href={safeHref(it.canonical_url)} target="_blank" rel="noreferrer noopener" style={{ fontSize: 11, color: "var(--ink-subtle)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "none" }}>{it.canonical_url} ↗</a>
                       </div>
                       <button type="button" onClick={() => copyTitle(it.title)} disabled={loading} title={t.discovery.dialog.copyTitle}
-                        style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "3px 4px", background: "transparent", color: copiedUrl === it.title ? "var(--success)" : "var(--muted)", border: "none", borderRadius: "var(--radius)", cursor: "pointer", lineHeight: 1 }}>
+                        style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "3px 4px", background: "transparent", color: copiedUrl === it.title ? "var(--success)" : "var(--ink-subtle)", border: "none", borderRadius: "var(--radius)", cursor: "pointer", lineHeight: 1 }}>
                         {copiedUrl === it.title ? (
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                         ) : (
@@ -531,11 +531,11 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
                     </div>
                   ))}
                   {customUrls.map((url) => (
-                    <div key={url} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderTop: "1px solid var(--border)", background: "var(--accent-lt)" }}>
+                    <div key={url} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderTop: "1px solid var(--card-border)", background: "var(--accent-lt)" }}>
                       <input type="checkbox" checked={selectedUrls.has(url)} onChange={() => toggleUrl(url)} disabled={loading || (!selectedUrls.has(url) && totalSelected >= MAX_DISCOVERY_URLS)} style={{ flexShrink: 0 }} />
-                      <a href={safeHref(url)} target="_blank" rel="noreferrer noopener" style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url} ↗</a>
+                      <a href={safeHref(url)} target="_blank" rel="noreferrer noopener" style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--ink)", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url} ↗</a>
                       <button type="button" onClick={() => removeCustomUrl(url)} disabled={loading} title={t.discovery.dialog.removeUrl}
-                        style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 6, background: "var(--white)", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: "var(--radius)", cursor: "pointer" }}>
+                        style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 6, background: "var(--card-bg)", color: "var(--ink-subtle)", border: "1px solid var(--card-border)", borderRadius: "var(--radius)", cursor: "pointer" }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                       </button>
                     </div>
@@ -564,13 +564,13 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
           style={{
             background: "none",
             border: "none",
-            color: "var(--muted)",
+            color: "var(--ink-subtle)",
             fontSize: 12,
             cursor: "pointer",
             padding: "2px 0",
           }}
           onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "var(--ink-subtle)"; }}
         >
           {advancedOpen ? na.advancedToggleHide : na.advancedToggleShow}
         </button>
@@ -595,10 +595,10 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
         {selectedTemplateId ? (
           <div style={{
             padding: "8px 10px",
-            border: "1px solid var(--border)",
+            border: "1px solid var(--card-border)",
             borderRadius: "var(--radius)",
             fontSize: 12,
-            color: "var(--muted)",
+            color: "var(--ink-subtle)",
             fontFamily: "monospace",
             maxHeight: 120,
             overflowY: "auto",
@@ -630,11 +630,11 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
         />
         {/* Image preview */}
         {imagePreview && (
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: 8, marginTop: 8, border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: 8, marginTop: 8, border: "1px solid var(--card-border)", borderRadius: "var(--radius)" }}>
             <img src={imagePreview} alt="preview" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: "var(--radius)", flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{imageFile?.name}</div>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>{imageFile ? `${Math.round(imageFile.size / 1024)} KB` : ""}</div>
+              <div style={{ fontSize: 12, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{imageFile?.name}</div>
+              <div style={{ fontSize: 11, color: "var(--ink-subtle)", marginBottom: 4 }}>{imageFile ? `${Math.round(imageFile.size / 1024)} KB` : ""}</div>
               <button type="button" onClick={() => pickImage(null)} disabled={loading || extracting}
                 style={{ background: "none", border: "none", fontSize: 12, color: "var(--error)", cursor: "pointer", padding: 0 }}>
                 {na.removeImage}
@@ -644,11 +644,11 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
         )}
         {/* Video preview */}
         {videoFile && (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 8, marginTop: 8, border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 8, marginTop: 8, border: "1px solid var(--card-border)", borderRadius: "var(--radius)" }}>
             <span style={{ fontSize: 24, flexShrink: 0 }}>🎬</span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{videoFile.name}</div>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>{`${Math.round(videoFile.size / 1024)} KB`}</div>
+              <div style={{ fontSize: 12, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{videoFile.name}</div>
+              <div style={{ fontSize: 11, color: "var(--ink-subtle)", marginBottom: 4 }}>{`${Math.round(videoFile.size / 1024)} KB`}</div>
               <button type="button" onClick={() => pickVideo(null)} disabled={loading || extracting}
                 style={{ background: "none", border: "none", fontSize: 12, color: "var(--error)", cursor: "pointer", padding: 0 }}>
                 {na.removeVideo}
@@ -658,7 +658,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
         )}
         {/* X.com URL input */}
         {showXInput && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "6px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "6px 10px", border: "1px solid var(--card-border)", borderRadius: "var(--radius)" }}>
             <span style={{ fontSize: 14, flexShrink: 0, fontWeight: 700 }}>𝕏</span>
             <input
               autoFocus
@@ -676,7 +676,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
         )}
         {/* Instagram URL input */}
         {showInstagramInput && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "6px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, padding: "6px 10px", border: "1px solid var(--card-border)", borderRadius: "var(--radius)" }}>
             <span style={{ fontSize: 16, flexShrink: 0 }}>📸</span>
             <input
               autoFocus
@@ -696,11 +696,11 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
         <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
           {!imagePreview && !videoFile && (
             <>
-              <label htmlFor="newArticleImage" style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
+              <label htmlFor="newArticleImage" style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--card-border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--ink-subtle)", cursor: (loading || extracting) ? "default" : "pointer" }}>
                 {na.addImage}
               </label>
               <input id="newArticleImage" type="file" accept="image/*" disabled={loading || extracting} style={{ display: "none" }} onChange={(e) => pickImage(e.target.files?.[0] ?? null)} />
-              <label htmlFor="newArticleVideo" style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
+              <label htmlFor="newArticleVideo" style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--card-border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--ink-subtle)", cursor: (loading || extracting) ? "default" : "pointer" }}>
                 {na.addVideo}
               </label>
               <input id="newArticleVideo" type="file" accept="video/*" disabled={loading || extracting} style={{ display: "none" }} onChange={(e) => pickVideo(e.target.files?.[0] ?? null)} />
@@ -708,18 +708,18 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
           )}
           {!showInstagramInput && (
             <button type="button" onClick={() => setShowInstagramInput(true)} disabled={loading || extracting}
-              style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
+              style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--card-border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--ink-subtle)", cursor: (loading || extracting) ? "default" : "pointer" }}>
               {na.addInstagram}
             </button>
           )}
           {!showXInput && (
             <button type="button" onClick={() => setShowXInput(true)} disabled={loading || extracting}
-              style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: (loading || extracting) ? "default" : "pointer" }}>
+              style={{ display: "inline-block", padding: "5px 12px", background: "none", border: "1px dashed var(--card-border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--ink-subtle)", cursor: (loading || extracting) ? "default" : "pointer" }}>
               {na.addX}
             </button>
           )}
         </div>
-        <p style={{ fontSize: 11, color: "var(--muted)", margin: "6px 0 0" }}>{na.mediaHint}</p>
+        <p style={{ fontSize: 11, color: "var(--ink-subtle)", margin: "6px 0 0" }}>{na.mediaHint}</p>
       </div>
         </>
       )}
@@ -735,7 +735,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {AGENT_DEFS.map(({ key, label }) => (
               <div key={key} style={{ display: "grid", gridTemplateColumns: "150px 1fr 1fr", gap: 6, alignItems: "center" }}>
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>{label}</span>
+                <span style={{ fontSize: 12, color: "var(--ink-subtle)" }}>{label}</span>
                 <select value={agentModels[key] ?? ""} onChange={(e) => setAgentModels((m) => ({ ...m, [key]: e.target.value }))} style={sm}>
                   <option value="">{na.defaultModel}</option>
                   {AVAILABLE_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
@@ -913,8 +913,8 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
         aria-modal="true"
         aria-labelledby="new-article-title"
         style={{
-          background: "var(--white)",
-          border: "1px solid var(--border)",
+          background: "var(--card-bg)",
+          border: "1px solid var(--card-border)",
           borderRadius: "var(--radius-lg)",
           boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
           width: "100%",
@@ -932,13 +932,13 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
         <header
           style={{
             padding: "16px 20px",
-            borderBottom: "1px solid var(--border)",
+            borderBottom: "1px solid var(--card-border)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
           }}
         >
-          <h3 id="new-article-title" style={{ margin: 0, fontSize: 16, color: "var(--text)" }}>
+          <h3 id="new-article-title" style={{ margin: 0, fontSize: 16, color: "var(--ink)" }}>
             {step === "step2" ? na.step2Heading : topicId ? t.discovery.dialog.title : (isSettings ? na.headingSettings : na.heading)}
           </h3>
           {onCancel && (
@@ -949,7 +949,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
               style={{
                 background: "none",
                 border: 0,
-                color: "var(--muted)",
+                color: "var(--ink-subtle)",
                 fontSize: 22,
                 cursor: loading ? "default" : "pointer",
                 padding: 0,
@@ -969,16 +969,16 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
           {step === "step2" ? (
             // ── Step 2: review / edit extracted facts and quotes ─────────
             <div style={{ padding: 20, overflowY: "auto", flex: 1 }}>
-              <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 16px" }}>
+              <p style={{ fontSize: 13, color: "var(--ink-subtle)", margin: "0 0 16px" }}>
                 {na.step2Hint}
               </p>
 
               {/* Facts list */}
-              <h4 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 8px", color: "var(--text)" }}>
+              <h4 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 8px", color: "var(--ink)" }}>
                 {na.step2FactsLabel} ({extraction?.facts.length ?? 0})
               </h4>
               {extraction && extraction.facts.length === 0 && (
-                <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 10px" }}>{na.step2NoFacts}</p>
+                <p style={{ fontSize: 12, color: "var(--ink-subtle)", margin: "0 0 10px" }}>{na.step2NoFacts}</p>
               )}
               {extraction?.facts.map((f, i) => {
                 const fromPhoto = f.source === "editor-provided-photo";
@@ -986,9 +986,9 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
                 const fromInstagram = f.source === "editor-provided-instagram";
                 const fromX = f.source === "editor-provided-x";
                 return (
-                <div key={`f-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo || fromInstagram || fromX) ? "var(--accent-lt)" : undefined }}>
+                <div key={`f-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--card-border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo || fromInstagram || fromX) ? "var(--accent-lt)" : undefined }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 11, color: "var(--ink-subtle)", display: "inline-flex", alignItems: "center", gap: 4 }}>
                       {fromPhoto && <span title="ze zdjęcia">📷</span>}
                       {fromVideo && <span title="z wideo">🎬</span>}
                       {fromInstagram && <span title="z Instagrama">📸</span>}
@@ -1031,17 +1031,17 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
               <button
                 type="button"
                 onClick={() => setExtraction((prev) => prev ? { ...prev, facts: [...prev.facts, { text: "", context: "", source: "editor-provided" }] } : prev)}
-                style={{ padding: "4px 10px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: "pointer", marginBottom: 20 }}
+                style={{ padding: "4px 10px", background: "none", border: "1px dashed var(--card-border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--ink-subtle)", cursor: "pointer", marginBottom: 20 }}
               >
                 {na.step2AddFact}
               </button>
 
               {/* Quotes list */}
-              <h4 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 8px", color: "var(--text)" }}>
+              <h4 style={{ fontSize: 13, fontWeight: 600, margin: "0 0 8px", color: "var(--ink)" }}>
                 {na.step2QuotesLabel} ({extraction?.quotes.length ?? 0})
               </h4>
               {extraction && extraction.quotes.length === 0 && (
-                <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 10px" }}>{na.step2NoQuotes}</p>
+                <p style={{ fontSize: 12, color: "var(--ink-subtle)", margin: "0 0 10px" }}>{na.step2NoQuotes}</p>
               )}
               {extraction?.quotes.map((q, i) => {
                 const fromPhoto = q.source === "editor-provided-photo";
@@ -1049,9 +1049,9 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
                 const fromInstagram = q.source === "editor-provided-instagram";
                 const fromX = q.source === "editor-provided-x";
                 return (
-                <div key={`q-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo || fromInstagram || fromX) ? "var(--accent-lt)" : undefined }}>
+                <div key={`q-${i}`} style={{ marginBottom: 10, padding: "8px 10px", border: "1px solid var(--card-border)", borderRadius: "var(--radius)", background: (fromPhoto || fromVideo || fromInstagram || fromX) ? "var(--accent-lt)" : undefined }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 11, color: "var(--ink-subtle)", display: "inline-flex", alignItems: "center", gap: 4 }}>
                       {fromPhoto && <span title="ze zdjęcia">📷</span>}
                       {fromVideo && <span title="z wideo">🎬</span>}
                       {fromInstagram && <span title="z Instagrama">📸</span>}
@@ -1107,7 +1107,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
               <button
                 type="button"
                 onClick={() => setExtraction((prev) => prev ? { ...prev, quotes: [...prev.quotes, { text: "", speaker: "", context: "", source: "editor-provided" }] } : prev)}
-                style={{ padding: "4px 10px", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--muted)", cursor: "pointer", marginBottom: 20 }}
+                style={{ padding: "4px 10px", background: "none", border: "1px dashed var(--card-border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--ink-subtle)", cursor: "pointer", marginBottom: 20 }}
               >
                 {na.step2AddQuote}
               </button>
@@ -1123,7 +1123,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
                   />
                   <span style={{ fontWeight: 500 }}>{na.step2WebSearchLabel}</span>
                 </label>
-                <p style={{ fontSize: 11, color: "var(--muted)", margin: "4px 0 0 24px" }}>
+                <p style={{ fontSize: 11, color: "var(--ink-subtle)", margin: "4px 0 0 24px" }}>
                   {na.step2WebSearchHint}
                 </p>
               </div>
@@ -1135,7 +1135,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
                 style={{
                   width: 200,
                   flexShrink: 0,
-                  borderRight: "1px solid var(--border)",
+                  borderRight: "1px solid var(--card-border)",
                   paddingTop: 8,
                   overflowY: "auto",
                 }}
@@ -1159,7 +1159,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
                         borderBottom: "none",
                         fontSize: 13,
                         fontWeight: active ? 500 : 400,
-                        color: active ? "var(--accent)" : "var(--text)",
+                        color: active ? "var(--accent)" : "var(--ink)",
                         cursor: "pointer",
                         borderRadius: "0 var(--radius) var(--radius) 0",
                       }}
@@ -1178,7 +1178,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
                 }}
               >
                 {activeTab !== "topic" && (
-                  <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 12px" }}>
+                  <p style={{ fontSize: 11, color: "var(--ink-subtle)", margin: "0 0 12px" }}>
                     {na.advancedHint}
                   </p>
                 )}
@@ -1196,7 +1196,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
             <div
               style={{
                 padding: "8px 20px",
-                borderTop: "1px solid var(--border)",
+                borderTop: "1px solid var(--card-border)",
                 background: "var(--error-lt)",
                 color: "var(--error-fg)",
                 fontSize: 12,
@@ -1210,7 +1210,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
           <footer
             style={{
               padding: "12px 20px",
-              borderTop: "1px solid var(--border)",
+              borderTop: "1px solid var(--card-border)",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -1225,13 +1225,13 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
                 style={{
                   background: "none",
                   border: "none",
-                  color: "var(--muted)",
+                  color: "var(--ink-subtle)",
                   fontSize: 13,
                   cursor: loading ? "default" : "pointer",
                   padding: "4px 0",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--ink-subtle)"; }}
               >
                 {na.back}
               </button>
@@ -1243,7 +1243,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
                 style={{
                   background: "none",
                   border: "none",
-                  color: "var(--muted)",
+                  color: "var(--ink-subtle)",
                   fontSize: 13,
                   cursor: (loading || extracting) ? "default" : "pointer",
                   padding: "4px 0",
@@ -1252,7 +1252,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
                   gap: 6,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--ink-subtle)"; }}
               >
                 {isSettings ? na.backToBasic : (
                   <>
