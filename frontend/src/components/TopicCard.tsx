@@ -3,8 +3,22 @@ import type { DiscoveryTopicSummary, DiscoveryItem, StreamSource } from "../type
 import { useDiscoveryTopicDetail } from "../lib/useDiscoveryTopicDetail";
 import { useT } from "../i18n";
 import { Button } from "./ui/Button";
+import { RadioIcon } from "./ui/icons";
 import { safeHref } from "../lib/safeHref";
 import { StreamSourceModal } from "./StreamSourceModal";
+
+function MetaIconBox({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 24, height: 24, borderRadius: 6,
+      background: "var(--accent-tint)", color: "var(--accent)",
+      flexShrink: 0,
+    }}>
+      {children}
+    </span>
+  );
+}
 
 function formatWindow(w: { start_at: string; end_at: string }): string {
   const start = new Date(w.start_at);
@@ -248,27 +262,27 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
             }}
           >
             <span style={metaItem}>
-              <SourcesIcon />
+              <MetaIconBox><SourcesIcon /></MetaIconBox>
               {topic.item_count + topic.stream_source_count} {t.discovery.hub.sourcesCount}
               {topic.stream_source_count > 0 && (
-                <span style={{ color: "var(--accent)", fontWeight: 500, marginLeft: 4 }}>
-                  · 📡 {topic.stream_source_count}
+                <span style={{ color: "var(--accent)", fontWeight: 500, marginLeft: 4, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                  · <RadioIcon width={10} height={10} /> {topic.stream_source_count}
                 </span>
               )}
             </span>
             {topic.first_seen_at && (
               <span style={metaItem} title={t.discovery.topic.firstSeen}>
-                <CalendarIcon />
+                <MetaIconBox><CalendarIcon /></MetaIconBox>
                 {t.discovery.topic.firstSeenShort}: {new Date(topic.first_seen_at).toLocaleString()}
               </span>
             )}
             <span style={metaItem} title={t.discovery.topic.lastActivity}>
-              <ClockIcon />
+              <MetaIconBox><ClockIcon /></MetaIconBox>
               {t.discovery.topic.lastActivityShort}: {new Date(topic.last_activity_at).toLocaleString()}
             </span>
             {topic.feed_hosts.length > 0 && (
               <span style={metaItem}>
-                <GlobeIcon />
+                <MetaIconBox><GlobeIcon /></MetaIconBox>
                 {topic.feed_hosts.join(", ")}
               </span>
             )}
@@ -366,8 +380,14 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: "var(--accent)", background: "var(--accent-lt)", borderRadius: 4, padding: "1px 6px", flexShrink: 0 }}>
-                      📡 {src.subscription_name}
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, color: "var(--accent)",
+                      background: "var(--accent-tint)", border: "1px solid var(--accent-border)",
+                      borderRadius: 4, padding: "1px 6px", flexShrink: 0,
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                    }}>
+                      <RadioIcon width={10} height={10} />
+                      {src.subscription_name}
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{src.title}</span>
                   </div>

@@ -6,7 +6,7 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { Button } from "./ui/Button";
-import { CodeIcon, CopyIcon, DownloadIcon, CheckIcon, TitlesIcon, DiscoveryIcon, ShareIcon, GlobeIcon, InfoIcon, QuoteIcon, SourcesIcon, ClockIcon } from "./ui/icons";
+import { CodeIcon, CopyIcon, DownloadIcon, CheckIcon, TitlesIcon, DiscoveryIcon, ShareIcon, GlobeIcon, InfoIcon, QuoteIcon, SourcesIcon, ClockIcon, PlayIcon } from "./ui/icons";
 import { safeHref } from "../lib/safeHref";
 import { useApi } from "../lib/useApi";
 
@@ -684,7 +684,6 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
   const isInstagram = attachment.platform === "instagram";
   const isVideo = attachment.media_type === "video/mp4";
   const platformLabel = isInstagram ? "Instagram" : "X.com";
-  const platformIcon = isInstagram ? "📸" : "𝕏";
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [embedCopied, setEmbedCopied] = useState(false);
@@ -724,7 +723,6 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
     }}>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 16, lineHeight: 1 }}>{platformIcon}</span>
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--accent)", letterSpacing: "0.04em" }}>
             {platformLabel}
           </span>
@@ -743,7 +741,7 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
               style={{
                 fontSize: 12,
                 fontWeight: 600,
-                color: downloading ? "var(--muted)" : "var(--accent)",
+                color: downloading ? "var(--ink-subtle)" : "var(--accent)",
                 background: "var(--card-bg)",
                 border: `1px solid ${downloading ? "var(--card-border)" : "var(--accent)"}`,
                 borderRadius: "var(--radius)",
@@ -754,7 +752,10 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
                 gap: 4,
               }}
             >
-              {downloading ? "⏳" : "⬇"} {isVideo ? t.socialMediaDownloadVideo : t.socialMediaDownloadPhoto}
+              {downloading
+                ? <span style={{ display: "inline-block", width: 12, height: 12, border: "2px solid currentColor", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                : <DownloadIcon width={12} height={12} />
+              }{" "}{isVideo ? t.socialMediaDownloadVideo : t.socialMediaDownloadPhoto}
             </button>
             {isVideo && (
               <a
@@ -764,7 +765,7 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
                 style={{
                   fontSize: 12,
                   fontWeight: 600,
-                  color: "var(--muted)",
+                  color: "var(--ink-subtle)",
                   background: "var(--card-bg)",
                   border: "1px solid var(--card-border)",
                   borderRadius: "var(--radius)",
@@ -775,7 +776,7 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
                   gap: 4,
                 }}
               >
-                ▶ {t.socialMediaOpenVideo}
+                <PlayIcon width={12} height={12} />{" "}{t.socialMediaOpenVideo}
               </a>
             )}
             <button
@@ -783,8 +784,8 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
               style={{
                 fontSize: 12,
                 fontWeight: 600,
-                color: embedCopied ? "var(--success)" : "var(--muted)",
-                background: "var(--white)",
+                color: embedCopied ? "var(--success)" : "var(--ink-subtle)",
+                background: "var(--card-bg)",
                 border: `1px solid ${embedCopied ? "var(--success)" : "var(--card-border)"}`,
                 borderRadius: "var(--radius)",
                 padding: "3px 10px",
