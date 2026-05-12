@@ -689,6 +689,26 @@ export interface Translations {
       h: string;
       p: string;
     };
+    contact: {
+      tag: string;
+      h: string;
+      sub: string;
+      labelName: string;
+      labelEmail: string;
+      labelCompany: string;
+      labelMessage: string;
+      placeholderName: string;
+      placeholderEmail: string;
+      placeholderCompany: string;
+      placeholderMessage: string;
+      submit: string;
+      submitting: string;
+      successH: string;
+      successP: string;
+      errorP: string;
+      infoEmail: string;
+      infoDemo: string;
+    };
     cta: {
       h: string;
       sub: string;

@@ -7,6 +7,7 @@ import { LandingStreamsSpotlight } from "./landing/LandingStreamsSpotlight";
 import { LandingLeadToArticle } from "./landing/LandingLeadToArticle";
 import { LandingAudience } from "./landing/LandingAudience";
 import { LandingNoPlagiat } from "./landing/LandingNoPlagiat";
+import { LandingContact } from "./landing/LandingContact";
 import { LandingCtaBottom } from "./landing/LandingCtaBottom";
 import { LandingFooter } from "./landing/LandingFooter";
 
@@ -22,6 +23,7 @@ export function LandingPage() {
       <LandingLeadToArticle />
       <LandingAudience />
       <LandingNoPlagiat />
+      <LandingContact />
       <LandingCtaBottom />
       <LandingFooter />
     </div>
