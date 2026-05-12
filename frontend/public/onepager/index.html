@@ -292,9 +292,77 @@
   .footer-copy { font-size: 9px; color: var(--subtle); text-align: right; white-space: nowrap; line-height: 1.5; }
 
   @media print {
-    body { padding: 0; background: var(--bg); }
-    .page { box-shadow: none; min-height: 297mm; }
     @page { size: A4; margin: 0; }
+    body { padding: 0; background: var(--bg); }
+    .page { box-shadow: none; width: 210mm; height: 297mm; min-height: 0; overflow: hidden; }
+
+    /* Header */
+    .header { padding: 11px 24px; }
+
+    /* Hero */
+    .hero { padding: 18px 24px 14px; gap: 16px; }
+    .hero-kicker { font-size: 9px; margin-bottom: 7px; }
+    .hero-h1 { font-size: 26px; margin-bottom: 7px; }
+    .hero-sub { font-size: 10.5px; margin-bottom: 13px; }
+    .stat { padding: 9px 11px; }
+    .stat-val { font-size: 16px; }
+    .stat-val span { font-size: 11px; }
+    .stat-label { font-size: 8.5px; }
+
+    /* Mock panel */
+    .mock-topbar { padding: 6px 10px; }
+    .mock-body { padding: 8px 10px; gap: 5px; }
+    .mock-row { padding: 5px 8px; }
+    .mock-row-text { font-size: 9.5px; }
+    .mock-count { font-size: 8.5px; }
+    .mock-write-btn { font-size: 8px; padding: 2px 5px; }
+    .mock-article-preview { padding: 6px 8px; }
+    .mock-article-label { font-size: 8px; margin-bottom: 4px; }
+    .mock-article-title { font-size: 9.5px; margin-bottom: 4px; }
+    .mock-line { height: 5px; margin-bottom: 3px; }
+    .mock-tags { margin-top: 5px; gap: 3px; }
+    .mock-tag { font-size: 7.5px; padding: 1px 5px; }
+
+    /* Sections */
+    .section { padding: 0 24px 12px; }
+    .section-label { font-size: 9px; margin-bottom: 8px; }
+
+    /* Steps */
+    .steps { gap: 10px; }
+    .step { padding: 11px 12px; }
+    .step-num { width: 19px; height: 19px; font-size: 10px; margin-bottom: 7px; }
+    .step-connector { width: 20px; }
+    .step-h { font-size: 11px; margin-bottom: 4px; }
+    .step-p { font-size: 9px; line-height: 1.5; }
+
+    /* Features */
+    .features { gap: 8px; }
+    .feature { padding: 10px 11px; gap: 8px; }
+    .feature-icon { width: 24px; height: 24px; border-radius: 6px; }
+    .feature-icon svg { width: 12px; height: 12px; }
+    .feature-h { font-size: 10px; margin-bottom: 2px; }
+    .feature-p { font-size: 8.5px; line-height: 1.45; }
+
+    /* Ethics */
+    .ethics { margin: 0 24px 12px; padding: 9px 13px; gap: 9px; }
+    .ethics-icon svg { width: 14px; height: 14px; }
+    .ethics-text { font-size: 9.5px; }
+
+    /* Audience */
+    .audience { padding: 0 24px 12px; gap: 8px; }
+    .aud-card { padding: 10px 10px; }
+    .aud-icon svg { width: 15px; height: 15px; }
+    .aud-icon { margin-bottom: 4px; }
+    .aud-h { font-size: 9.5px; margin-bottom: 2px; }
+    .aud-p { font-size: 8px; }
+
+    /* Footer */
+    .footer { padding: 10px 24px; }
+    .footer-contact-item { font-size: 9.5px; gap: 5px; }
+    .footer-contact-item svg { width: 11px; height: 11px; }
+    .btn-primary { font-size: 10px; padding: 6px 12px; }
+    .btn-ghost { font-size: 10px; padding: 5px 11px; }
+    .footer-copy { font-size: 8px; }
   }
 </style>
 </head>
