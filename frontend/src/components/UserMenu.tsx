@@ -54,7 +54,7 @@ export function UserMenu({ onSettings }: UserMenuProps) {
           position: "absolute",
           right: 0,
           top: "calc(100% + 4px)",
-          background: "var(--white)",
+          background: "var(--bg2)",
           border: "1px solid var(--border)",
           borderRadius: "var(--radius)",
           minWidth: 160,

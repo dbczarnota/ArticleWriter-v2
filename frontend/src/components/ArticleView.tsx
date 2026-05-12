@@ -277,14 +277,14 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         <div style={{
           padding: 16,
           background: "var(--error-lt)",
-          border: "1px solid #fecaca",
+          border: "1px solid var(--error)",
           borderRadius: "var(--radius)",
           marginBottom: 20,
         }}>
           <p style={{ fontSize: 14, fontWeight: 600, color: "var(--error-fg)", marginBottom: 4 }}>
             {av.failedTitle}
           </p>
-          <p style={{ fontSize: 12, color: "#7f1d1d" }}>
+          <p style={{ fontSize: 12, color: "var(--error-fg)" }}>
             {av.failedHint}
           </p>
         </div>
@@ -333,7 +333,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         <CollapsibleSection prominent title={av.followupTopics} count={article.followup_topics.length} defaultOpen>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {article.followup_topics.map((topic, i) => (
-              <span key={i} style={{ padding: "5px 10px", background: "var(--accent-lt)", border: "1px solid #fed7aa", borderRadius: 20, fontSize: 12, color: "var(--accent)", fontWeight: 500 }}>
+              <span key={i} style={{ padding: "5px 10px", background: "var(--accent-lt)", border: "1px solid var(--accent)", borderRadius: 20, fontSize: 12, color: "var(--accent)", fontWeight: 500 }}>
                 {topic}
               </span>
             ))}
@@ -608,7 +608,7 @@ function EmbedCandidateRow({ e, t }: { e: EmbedCandidate; t: ReturnType<typeof u
   }, [e.url, e.source]);
 
   return (
-    <div style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "#fffbeb" : "var(--white)", border: `1px solid ${e.competitor_source_url ? "var(--warning)" : "var(--border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
+    <div style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "var(--warning-lt)" : "var(--white)", border: `1px solid ${e.competitor_source_url ? "var(--warning)" : "var(--border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
       {e.thumbnail_url && <img src={e.thumbnail_url} alt="" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 4, flexShrink: 0 }} />}
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2, flexWrap: "wrap" }}>

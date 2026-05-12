@@ -107,7 +107,7 @@ export function Sidebar({
           title={t.sidebar.newArticle}
           style={{
             background: "var(--accent)",
-            color: "var(--white)",
+            color: "#fff",
             border: "none",
             borderRadius: "var(--radius)",
             width: 32,
@@ -195,7 +195,7 @@ export function Sidebar({
           return (
             <button key={f} onClick={() => setDoneFilter(f)} style={{
               background: active ? "var(--accent)" : "transparent",
-              color: active ? "var(--white)" : "var(--muted)",
+              color: active ? "#fff" : "var(--muted)",
               border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
               borderRadius: "var(--radius)",
               padding: "3px 8px",
@@ -208,7 +208,7 @@ export function Sidebar({
         {currentUserId && (
           <button onClick={() => setOnlyMine((v) => !v)} style={{
             background: onlyMine ? "var(--accent)" : "transparent",
-            color: onlyMine ? "var(--white)" : "var(--muted)",
+            color: onlyMine ? "#fff" : "var(--muted)",
             border: `1px solid ${onlyMine ? "var(--accent)" : "var(--border)"}`,
             borderRadius: "var(--radius)",
             padding: "3px 8px",
@@ -285,9 +285,7 @@ export function Sidebar({
                   ? a.marked_done
                     ? "rgba(234, 88, 12, 0.06)"
                     : "var(--accent-lt)"
-                  : isMine
-                    ? "#fff9f5"
-                    : "transparent",
+                  : "transparent",
                 borderLeft: isSelected ? "3px solid var(--accent)" : "3px solid transparent",
                 borderTop: "none",
                 borderRight: "none",
@@ -343,7 +341,7 @@ export function Sidebar({
                   {isMine && (
                     <span style={{
                       background: "var(--accent)",
-                      color: "var(--white)",
+                      color: "#fff",
                       borderRadius: 3,
                       padding: "0 4px",
                       fontSize: 10,
