@@ -3,7 +3,7 @@ import { useAuth } from "./lib/useAuth";
 import { useArticles } from "./lib/useArticles";
 import { useMediaQuery } from "./lib/useMediaQuery";
 import { useT } from "./i18n";
-import { LoginGate } from "./components/LoginGate";
+import { LandingPage } from "./components/LandingPage";
 import { Topbar } from "./components/Topbar";
 import { Sidebar } from "./components/Sidebar";
 import { ArticleView } from "./components/ArticleView";
@@ -69,7 +69,7 @@ export default function App() {
 
   if (!NULL_AUTH) {
     if (isLoading) return <div style={{ padding: 32 }}>{t.app.loading}</div>;
-    if (!isAuthenticated) return <LoginGate />;
+    if (!isAuthenticated) return <LandingPage />;
   }
 
   return (
