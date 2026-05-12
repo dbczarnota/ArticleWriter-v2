@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HeadlinesForge — One Pager</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --acc:    #ea580c;
+  --accl:   #fb923c;
+  --text:   #1c1917;
+  --muted:  #57534e;
+  --sub:    #78716c;
+  --border: #e7e5e4;
+  --bg:     #fafaf9;
+  --white:  #ffffff;
+}
+
+html {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 10pt;
+  color: var(--text);
+  background: #f0ede8;
+}
+
+/* A4 page shell */
+.page {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 12mm auto;
+  background: var(--white);
+  padding: 14mm 16mm 12mm;
+  box-shadow: 0 4px 32px rgba(0,0,0,.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10pt;
+  border-bottom: 2px solid var(--acc);
+  margin-bottom: 14pt;
+}
+
+.logo {
+  display: flex;
+  align-items: stretch;
+  gap: 9pt;
+}
+.logo-bar { width: 3pt; background: var(--acc); border-radius: 2pt; }
+.logo-stack { display: flex; flex-direction: column; gap: 1pt; }
+.logo-name { font-size: 16pt; font-weight: 800; letter-spacing: -.03em; color: var(--text); line-height: 1; }
+.logo-name .lt { font-weight: 300; }
+.logo-sub { font-size: 7pt; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--sub); }
+
+.header-badge {
+  display: inline-flex; align-items: center; gap: 5pt;
+  background: #fff7ed; border: 1px solid rgba(234,88,12,.3);
+  color: var(--acc); font-size: 7pt; font-weight: 600;
+  padding: 3pt 9pt; border-radius: 20pt;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.badge-dot { width: 5pt; height: 5pt; background: var(--acc); border-radius: 50%; }
+
+/* ── Hero ── */
+.hero {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16pt;
+  align-items: center;
+  background: var(--bg);
+  border-radius: 10pt;
+  padding: 14pt 18pt;
+  margin-bottom: 14pt;
+  border: 1px solid var(--border);
+}
+
+.hero-text h1 {
+  font-size: 22pt;
+  font-weight: 800;
+  letter-spacing: -.04em;
+  line-height: 1.05;
+  color: var(--text);
+  margin-bottom: 6pt;
+}
+.hero-text h1 em { font-style: normal; color: var(--acc); }
+.hero-text p {
+  font-size: 9.5pt;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 280pt;
+}
+
+.hero-stat {
+  text-align: center;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8pt;
+  padding: 12pt 16pt;
+  min-width: 90pt;
+}
+.stat-big { font-size: 28pt; font-weight: 800; color: var(--acc); letter-spacing: -.04em; line-height: 1; }
+.stat-label { font-size: 7pt; color: var(--sub); margin-top: 3pt; line-height: 1.4; max-width: 80pt; }
+
+/* ── Two-col layout ── */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12pt;
+  margin-bottom: 12pt;
+}
+
+/* ── Section box ── */
+.section {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8pt;
+  padding: 12pt 14pt;
+}
+
+.section-label {
+  display: inline-flex; align-items: center; gap: 5pt;
+  font-size: 7pt; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--acc); margin-bottom: 6pt;
+}
+.section-label::before { content: ''; width: 4pt; height: 4pt; background: currentColor; border-radius: 50%; }
+
+.section h2 {
+  font-size: 12pt;
+  font-weight: 800;
+  letter-spacing: -.025em;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 8pt;
+}
+
+/* ── Points list ── */
+.points { display: flex; flex-direction: column; gap: 6pt; }
+.point { display: flex; align-items: flex-start; gap: 7pt; }
+.point-check {
+  width: 14pt; height: 14pt; background: #fff7ed; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1pt; color: var(--acc);
+}
+.point-text { font-size: 8.5pt; color: var(--muted); line-height: 1.5; }
+.point-text strong { color: var(--text); font-weight: 600; }
+
+/* ── Feature pills (4-col) ── */
+.features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8pt;
+  margin-bottom: 12pt;
+}
+.feat {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8pt;
+  padding: 10pt 10pt;
+  text-align: center;
+}
+.feat-icon {
+  width: 28pt; height: 28pt;
+  background: #fff7ed; color: var(--acc);
+  border-radius: 7pt;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 6pt;
+}
+.feat-name { font-size: 9pt; font-weight: 700; color: var(--text); margin-bottom: 3pt; }
+.feat-desc { font-size: 7.5pt; color: var(--sub); line-height: 1.45; }
+
+/* ── Metrics strip ── */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  background: var(--acc);
+  border-radius: 8pt;
+  overflow: hidden;
+  margin-bottom: 12pt;
+}
+.metric {
+  padding: 10pt 12pt;
+  text-align: center;
+  border-right: 1px solid rgba(255,255,255,.2);
+}
+.metric:last-child { border-right: none; }
+.metric-num { font-size: 20pt; font-weight: 800; color: #fff; letter-spacing: -.03em; line-height: 1; }
+.metric-num sup { font-size: 11pt; }
+.metric-desc { font-size: 7pt; color: rgba(255,255,255,.8); margin-top: 2pt; line-height: 1.4; }
+
+/* ── Who it's for ── */
+.audience {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8pt;
+  margin-bottom: 12pt;
+}
+.aud-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8pt;
+  padding: 9pt 10pt;
+}
+.aud-icon {
+  width: 24pt; height: 24pt;
+  background: #fff7ed; color: var(--acc);
+  border-radius: 6pt;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 5pt;
+}
+.aud-name { font-size: 8.5pt; font-weight: 700; color: var(--text); margin-bottom: 2pt; }
+.aud-desc { font-size: 7pt; color: var(--sub); line-height: 1.4; }
+
+/* ── Footer CTA ── */
+.footer {
+  margin-top: auto;
+  padding-top: 10pt;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10pt;
+}
+.footer-left { flex: 1; }
+.footer-title { font-size: 11pt; font-weight: 800; color: var(--text); letter-spacing: -.02em; margin-bottom: 4pt; }
+.footer-title em { font-style: normal; color: var(--acc); }
+.footer-contacts { display: flex; gap: 16pt; }
+.contact-item { font-size: 8pt; color: var(--muted); }
+.contact-item strong { color: var(--text); }
+
+.cta-block { text-align: right; }
+.cta-link {
+  display: inline-block;
+  background: var(--acc);
+  color: #fff;
+  font-size: 8.5pt;
+  font-weight: 700;
+  padding: 8pt 16pt;
+  border-radius: 6pt;
+  text-decoration: none;
+  letter-spacing: .01em;
+  margin-bottom: 5pt;
+}
+.pitch-link {
+  display: block;
+  font-size: 7.5pt;
+  color: var(--acc);
+  text-decoration: none;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 3pt;
+}
+.pitch-link:hover { text-decoration: underline; }
+
+/* ── Print styles ── */
+@media print {
+  html { background: white; font-size: 9.5pt; }
+  .page {
+    margin: 0;
+    box-shadow: none;
+    width: 100%;
+    min-height: 297mm;
+    padding: 12mm 14mm 10mm;
+  }
+  a { color: inherit; }
+  .cta-link { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .metrics { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-bar"></div>
+      <div class="logo-stack">
+        <div class="logo-name"><span class="lt">headlines</span><span style="font-weight:800">forge</span></div>
+        <div class="logo-sub">AI Newsroom Platform</div>
+      </div>
+    </div>
+    <div class="header-badge"><div class="badge-dot"></div>Live in production</div>
+  </header>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-text">
+      <h1>Write <em>faster</em>.<br>Publish more.</h1>
+      <p>The all-in-one platform that monitors sources, surfaces stories, and drafts full articles — so your journalists focus on editing and judgment, not on hunting and copy-pasting.</p>
+    </div>
+    <div class="hero-stat">
+      <div class="stat-big">3×</div>
+      <div class="stat-label">more articles per journalist per day</div>
+    </div>
+  </div>
+
+  <!-- FEATURES (4 steps) -->
+  <div class="features">
+    <div class="feat">
+      <div class="feat-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19"/></svg>
+      </div>
+      <div class="feat-name">Monitor</div>
+      <div class="feat-desc">Web, social, TV & radio — continuous 24/7</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"/></svg>
+      </div>
+      <div class="feat-name">Discover</div>
+      <div class="feat-desc">Hot topics surfaced in real time automatically</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </div>
+      <div class="feat-name">Draft</div>
+      <div class="feat-desc">Full article from any lead — ~5 minutes</div>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="feat-name">Publish</div>
+      <div class="feat-desc">Journalist reviews, edits, approves — done</div>
+    </div>
+  </div>
+
+  <!-- TWO COLUMNS: Problem + Solution -->
+  <div class="two-col">
+    <div class="section">
+      <div class="section-label">The problem</div>
+      <h2>Journalists spend most of their day not writing</h2>
+      <div class="points">
+        <div class="point">
+          <div class="point-check"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="point-text"><strong>2–3 hours daily</strong> monitoring news feeds, social, TV & radio</div>
+        </div>
+        <div class="point">
+          <div class="point-check"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="point-text"><strong>Manually searching</strong> for angles, quotes, background facts</div>
+        </div>
+        <div class="point">
+          <div class="point-check"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="point-text"><strong>Copy-pasting sources</strong> before a single sentence is written</div>
+        </div>
+        <div class="point">
+          <div class="point-check"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="point-text"><strong>Repeating</strong> the same routine every single day</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">The solution</div>
+      <h2>Automate the grind, not the craft</h2>
+      <div class="points">
+        <div class="point">
+          <div class="point-check"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="point-text">Paste a URL, headline, or idea — get a <strong>full draft in ~5 minutes</strong></div>
+        </div>
+        <div class="point">
+          <div class="point-check"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="point-text">Broadcast Streams: <strong>continuous TV & radio transcription</strong> with keyword alerts</div>
+        </div>
+        <div class="point">
+          <div class="point-check"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="point-text">Works from <strong>any source</strong>: article, Instagram, tweet, photo, video</div>
+        </div>
+        <div class="point">
+          <div class="point-check"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="point-text">Synthesis, <strong>never plagiarism</strong> — every fact is traceable</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- METRICS STRIP -->
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-num">3×</div>
+      <div class="metric-desc">more articles per journalist per day</div>
+    </div>
+    <div class="metric">
+      <div class="metric-num">10<sup>min</sup></div>
+      <div class="metric-desc">per article instead of 60 minutes</div>
+    </div>
+    <div class="metric">
+      <div class="metric-num">~5<sup>min</sup></div>
+      <div class="metric-desc">from lead to ready-to-review draft</div>
+    </div>
+  </div>
+
+  <!-- WHO IT'S FOR -->
+  <div class="audience">
+    <div class="aud-card">
+      <div class="aud-icon">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
+      </div>
+      <div class="aud-name">News portals</div>
+      <div class="aud-desc">High volume, breaking news, speed is everything</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-icon">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"/></svg>
+      </div>
+      <div class="aud-name">Lifestyle & entertainment</div>
+      <div class="aud-desc">Trend-driven, social-first, fast cycle</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-icon">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+      </div>
+      <div class="aud-name">Sports media</div>
+      <div class="aud-desc">Live events, real-time, high frequency</div>
+    </div>
+    <div class="aud-card">
+      <div class="aud-icon">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      </div>
+      <div class="aud-name">Business & trade press</div>
+      <div class="aud-desc">Deep research, complex stories</div>
+    </div>
+  </div>
+
+  <!-- FOOTER / CTA -->
+  <footer class="footer">
+    <div class="footer-left">
+      <div class="footer-title">Ready to write <em>faster</em>?</div>
+      <div class="footer-contacts">
+        <div class="contact-item">📧 <strong>hello@headlinesforge.com</strong></div>
+        <div class="contact-item">🎯 Demo: <strong>demo@headlinesforge.com</strong></div>
+        <div class="contact-item">🌐 <strong>headlinesforge.com</strong></div>
+      </div>
+    </div>
+    <div class="cta-block">
+      <a class="cta-link" href="https://headlinesforge.com/#contact">Book a demo</a>
+      <a class="pitch-link" href="https://headlinesforge.com/pitch/">▶ View full pitch deck →</a>
+    </div>
+  </footer>
+
+</div>
+
+</body>
+</html>
