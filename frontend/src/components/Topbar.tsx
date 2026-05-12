@@ -18,7 +18,7 @@ export function Topbar({ onSettings, onDiscovery, onToggleSidebar, sidebarOpen }
   return (
     <header style={{
       height: 48,
-      background: "var(--white)",
+      background: "var(--bg2)",
       borderBottom: "1px solid var(--border)",
       display: "flex",
       alignItems: "center",
@@ -47,7 +47,7 @@ export function Topbar({ onSettings, onDiscovery, onToggleSidebar, sidebarOpen }
           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
         >
           {/* Hamburger icon — three horizontal lines */}
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
             <line x1="4" y1="6" x2="20" y2="6" />
             <line x1="4" y1="12" x2="20" y2="12" />
             <line x1="4" y1="18" x2="20" y2="18" />
