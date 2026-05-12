@@ -296,7 +296,7 @@
     body { padding: 0; background: var(--bg); }
 
     /* Page fills exactly A4 — explicit gap distributes space evenly */
-    .page { box-shadow: none; width: 210mm; height: 297mm; min-height: 0; display: flex; flex-direction: column; gap: 9mm; }
+    .page { box-shadow: none; width: 210mm; height: 297mm; min-height: 0; display: flex; flex-direction: column; gap: 8mm; justify-content: space-between; }
 
     /* Header */
     .header { padding: 13px 26px; flex-shrink: 0; }
@@ -353,7 +353,7 @@
     .aud-p { font-size: 8.5px; }
 
     /* Footer */
-    .footer { padding: 12px 26px; flex-shrink: 0; }
+    .footer { padding: 12px 26px; flex-shrink: 0; margin-top: 0; }
     .footer-contact-item { font-size: 10px; }
     .btn-primary { font-size: 10.5px; padding: 7px 13px; }
     .btn-ghost { font-size: 10.5px; padding: 6px 12px; }
