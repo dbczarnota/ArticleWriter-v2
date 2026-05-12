@@ -33,9 +33,44 @@ async function renderLanding(initial: Lang = "pl") {
 describe("LandingPage", () => {
   beforeEach(() => mockLogin.mockClear());
 
-  it("renders Polish hero headline by default", async () => {
+  it("renders all major section headings in PL", async () => {
     await renderLanding("pl");
-    expect(screen.getByText(/szybciej/i)).toBeInTheDocument();
+    expect(screen.getByText(/pisz /i)).toBeInTheDocument();
+    expect(screen.getByText(/cały newsroom w jednym miejscu/i)).toBeInTheDocument();
+    expect(screen.getByText(/wszystko, czego potrzebuje/i)).toBeInTheDocument();
+    expect(screen.getByText(/zawsze wiesz, co jest gorące/i)).toBeInTheDocument();
+    expect(screen.getByText(/słuchamy mediów za ciebie/i)).toBeInTheDocument();
+    expect(screen.getByText(/wystarczy ślad/i)).toBeInTheDocument();
+    expect(screen.getByText(/zbudowane dla redakcji/i)).toBeInTheDocument();
+    expect(screen.getByText(/nigdy nie kopiujemy/i)).toBeInTheDocument();
+    expect(screen.getByText(/gotowy pisać szybciej/i)).toBeInTheDocument();
+  });
+
+  it("renders all major section headings in EN", async () => {
+    await renderLanding("en");
+    expect(screen.getAllByText(/write /i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/your whole newsroom in one place/i)).toBeInTheDocument();
+    expect(screen.getByText(/everything a modern newsroom needs/i)).toBeInTheDocument();
+    expect(screen.getByText(/we never copy/i)).toBeInTheDocument();
+  });
+
+  it("toggles language from PL to EN via lang toggle", async () => {
+    await renderLanding("pl");
+    expect(screen.queryByText(/your whole newsroom in one place/i)).not.toBeInTheDocument();
+
+    const enBtn = screen.getByRole("button", { name: "EN" });
+    await userEvent.click(enBtn);
+
+    expect(screen.getByText(/your whole newsroom in one place/i)).toBeInTheDocument();
+    expect(screen.queryByText(/cały newsroom w jednym miejscu/i)).not.toBeInTheDocument();
+  });
+
+  it("clicking primary CTA in hero calls login()", async () => {
+    await renderLanding("pl");
+    const ctas = screen.getAllByRole("button", { name: /wypróbuj za darmo/i });
+    expect(ctas.length).toBeGreaterThanOrEqual(1);
+    await userEvent.click(ctas[0]);
+    expect(mockLogin).toHaveBeenCalledOnce();
   });
 
   it("clicking nav 'Zaloguj się' calls login()", async () => {
