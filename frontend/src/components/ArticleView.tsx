@@ -6,7 +6,7 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { Button } from "./ui/Button";
-import { CodeIcon, CopyIcon, DownloadIcon } from "./ui/icons";
+import { CodeIcon, CopyIcon, DownloadIcon, CheckIcon } from "./ui/icons";
 import { safeHref } from "../lib/safeHref";
 import { useApi } from "../lib/useApi";
 
@@ -227,30 +227,38 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
               })()}
             </span>
             <span>{article.created_at ? new Date(article.created_at).toLocaleString(lang) : "—"}</span>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" }}>
-              <input
-                type="checkbox"
-                checked={article.marked_done}
-                onChange={async (e) => {
-                  const done = e.target.checked;
-                  setArticle((a) => a ? { ...a, marked_done: done } : a);
-                  try {
-                    await onMarkDone?.(article.id, done);
-                  } catch {
-                    setArticle((a) => a ? { ...a, marked_done: !done } : a);
-                  }
-                }}
-                style={{ width: 14, height: 14, accentColor: "var(--success)", cursor: "pointer" }}
-              />
-              <span style={{ fontWeight: article.marked_done ? 600 : 400, color: article.marked_done ? "var(--success)" : "var(--muted)" }}>
-                {article.marked_done ? `${av.markDone} ✓` : av.markDone}
-              </span>
+            <button
+              onClick={async () => {
+                const done = !article.marked_done;
+                setArticle((a) => a ? { ...a, marked_done: done } : a);
+                try {
+                  await onMarkDone?.(article.id, done);
+                } catch {
+                  setArticle((a) => a ? { ...a, marked_done: !done } : a);
+                }
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "3px 9px",
+                background: article.marked_done ? "var(--success-tint)" : "var(--card-bg)",
+                border: `1px solid ${article.marked_done ? "#bbf7d0" : "var(--card-border)"}`,
+                borderRadius: 999,
+                fontSize: 12,
+                fontWeight: article.marked_done ? 600 : 400,
+                color: article.marked_done ? "var(--success-fg)" : "var(--ink-subtle)",
+                cursor: "pointer",
+              }}
+            >
+              {article.marked_done && <CheckIcon width={11} height={11} strokeWidth={3} />}
+              {av.markDone}
               {article.marked_done && article.marked_done_by_name && (
-                <span style={{ color: "var(--muted)", fontSize: 11 }}>
-                  {av.markedBy} {article.marked_done_by_name}
+                <span style={{ fontWeight: 400, color: "var(--success-fg)", opacity: 0.7 }}>
+                  · {article.marked_done_by_name}
                 </span>
               )}
-            </label>
+            </button>
           </div>
         </div>
         <div style={{
