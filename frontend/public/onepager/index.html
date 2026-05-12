@@ -5,23 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HeadlinesForge — One Pager</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0d1117;
-    --bg2: #161b22;
-    --bg3: #1e2530;
-    --acc: #ea580c;
-    --text: #f0f0f0;
-    --muted: #8b8fa8;
-    --border: rgba(255,255,255,0.08);
-    --green: #22c55e;
+    --bg:     #0d1117;
+    --bg2:    #111827;
+    --bgd:    #090c10;
+    --border: #1f2937;
+    --text:   #f9fafb;
+    --muted:  #9ca3af;
+    --subtle: #6b7280;
+    --faint:  #374151;
+    --acc:    #ea580c;
+    --accl:   #fb923c;
+    --green:  #22c55e;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background: #1a1a2e;
     display: flex;
     justify-content: center;
@@ -41,122 +44,107 @@
     overflow: hidden;
   }
 
-  /* HEADER */
+  /* ── HEADER ── */
   .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 18px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 28px;
     border-bottom: 1px solid var(--border);
     background: var(--bg2);
   }
 
-  .logo { display: flex; align-items: center; gap: 10px; }
+  /* Logo — identical to landing page / pitch deck */
+  .logo { display: flex; align-items: stretch; gap: 10px; text-decoration: none; }
+  .logo-bar { width: 3px; background: var(--acc); border-radius: 2px; flex-shrink: 0; }
+  .logo-stack { display: flex; flex-direction: column; gap: 2px; }
+  .logo-name { font-size: 16px; letter-spacing: -.03em; line-height: 1; color: var(--text); }
+  .logo-name .lt { font-weight: 300; }
+  .logo-name .bd { font-weight: 800; }
+  .logo-sub { font-size: 8px; font-weight: 500; letter-spacing: .15em; text-transform: uppercase; color: var(--subtle); }
 
-  .logo-icon {
-    width: 30px; height: 30px;
-    background: var(--acc);
-    border-radius: 7px;
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  .logo-wordmark { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
-  .logo-wordmark span { color: var(--acc); }
-
-  .header-right { display: flex; align-items: center; gap: 18px; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
 
   .header-badge {
-    font-size: 10px; font-weight: 600;
-    color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px;
+    font-size: 10px; font-weight: 600; color: var(--subtle);
+    text-transform: uppercase; letter-spacing: 0.8px;
   }
 
   .header-link {
     font-size: 11px; font-weight: 600; color: var(--acc);
-    text-decoration: none;
-    border: 1px solid rgba(234,88,12,0.4);
+    text-decoration: none; border: 1px solid rgba(234,88,12,0.4);
     border-radius: 5px; padding: 5px 10px;
     display: flex; align-items: center; gap: 5px;
   }
 
-  /* HERO */
-  .hero { padding: 28px 28px 22px; display: flex; gap: 22px; align-items: flex-start; }
+  /* ── HERO ── */
+  .hero { padding: 32px 28px 28px; display: flex; gap: 26px; align-items: flex-start; }
   .hero-left { flex: 1.1; }
   .hero-right { flex: 0.9; }
 
   .hero-kicker {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 10px; font-weight: 600; color: var(--acc);
-    text-transform: uppercase; letter-spacing: 0.9px; margin-bottom: 10px;
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 600; color: var(--acc);
+    text-transform: uppercase; letter-spacing: .12em; margin-bottom: 10px;
   }
+  .hero-kicker::before { content: ''; width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 2.4s ease-out infinite; }
 
-  .hero-kicker-dot {
-    width: 5px; height: 5px; border-radius: 50%; background: var(--green);
-    animation: pulse 2s infinite;
-  }
-
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.7)} 60%{box-shadow:0 0 0 5px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
 
   .hero-h1 {
-    font-size: 34px; font-weight: 800; line-height: 1.1;
-    letter-spacing: -1px; margin-bottom: 12px;
+    font-size: 34px; font-weight: 800; line-height: 1.05;
+    letter-spacing: -.04em; margin-bottom: 12px;
   }
-
-  .hero-h1 em { font-style: italic; color: var(--acc); }
+  .hero-h1 em { font-style: normal; color: var(--acc); }
 
   .hero-sub {
     font-size: 12.5px; line-height: 1.65; color: var(--muted);
-    margin-bottom: 20px; max-width: 320px;
+    margin-bottom: 24px; max-width: 320px;
   }
 
   .stats-row { display: flex; }
 
   .stat {
-    flex: 1; padding: 12px 14px;
+    flex: 1; padding: 13px 15px;
     background: var(--bg2); border: 1px solid var(--border);
   }
-
   .stat:first-child { border-radius: 8px 0 0 8px; }
-  .stat:last-child { border-radius: 0 8px 8px 0; }
+  .stat:last-child  { border-radius: 0 8px 8px 0; }
   .stat + .stat { border-left: none; }
 
   .stat-val { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; }
   .stat-val span { font-size: 13px; font-weight: 600; color: var(--acc); }
   .stat-label { font-size: 9.5px; color: var(--muted); margin-top: 3px; line-height: 1.3; }
 
-  /* Mock panel */
+  /* ── MOCK PANEL ── */
   .mock-panel {
     background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 10px; overflow: hidden; font-size: 11px;
+    border-radius: 10px; overflow: hidden;
   }
 
   .mock-topbar {
-    background: var(--bg3); padding: 8px 12px;
+    background: var(--bgd); padding: 7px 12px;
     display: flex; align-items: center; justify-content: space-between;
     border-bottom: 1px solid var(--border);
   }
 
   .mock-dots { display: flex; gap: 4px; }
-  .mock-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+  .mock-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
   .mock-dot.r { background: #ef4444; }
   .mock-dot.y { background: #eab308; }
   .mock-dot.g { background: var(--green); }
 
-  .mock-title { font-size: 10px; font-weight: 600; color: var(--muted); }
+  .mock-title { font-size: 10px; font-weight: 600; color: var(--subtle); }
 
-  .mock-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .mock-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
 
   .mock-row {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 7px 10px; background: var(--bg3); border-radius: 6px; gap: 8px;
+    padding: 9px 10px; background: var(--bgd); border-radius: 6px; gap: 8px;
   }
-
   .mock-row-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
 
   .mock-fire {
-    width: 16px; height: 16px;
-    background: rgba(234,88,12,0.15); border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; font-size: 9px;
+    width: 16px; height: 16px; background: rgba(234,88,12,0.15); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 9px;
   }
 
   .mock-row-text {
@@ -167,81 +155,77 @@
   .mock-count { font-size: 9.5px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
 
   .mock-write-btn {
-    font-size: 9px; font-weight: 700; color: #fff;
-    background: var(--acc); border-radius: 4px; padding: 3px 7px;
-    white-space: nowrap; flex-shrink: 0;
+    font-size: 9px; font-weight: 700; color: #fff; background: var(--acc);
+    border-radius: 4px; padding: 3px 7px; white-space: nowrap; flex-shrink: 0;
   }
 
-  .mock-divider { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+  .mock-divider { border: none; border-top: 1px solid var(--border); margin: 2px 0; }
 
-  .mock-article-preview { background: var(--bg3); border-radius: 6px; padding: 8px 10px; }
+  .mock-article-preview { background: var(--bgd); border-radius: 6px; padding: 8px 10px; }
 
   .mock-article-label {
     font-size: 9px; font-weight: 700; color: var(--acc);
-    text-transform: uppercase; letter-spacing: 0.6px;
+    text-transform: uppercase; letter-spacing: .12em;
     margin-bottom: 5px; display: flex; align-items: center; gap: 5px;
   }
 
-  .mock-article-title { font-size: 11px; font-weight: 700; line-height: 1.35; color: var(--text); margin-bottom: 5px; }
+  .mock-article-title { font-size: 10.5px; font-weight: 700; line-height: 1.35; margin-bottom: 5px; }
 
-  .mock-article-lines { display: flex; flex-direction: column; gap: 3px; }
-
-  .mock-line { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.08); }
+  .mock-lines { display: flex; flex-direction: column; gap: 3px; }
+  .mock-line { height: 6px; border-radius: 3px; background: var(--faint); }
 
   .mock-tags { display: flex; gap: 4px; margin-top: 7px; flex-wrap: wrap; }
 
   .mock-tag {
     font-size: 8.5px; font-weight: 600; padding: 2px 6px; border-radius: 3px;
-    background: rgba(234,88,12,0.12); color: var(--acc);
+    background: rgba(234,88,12,0.12); color: var(--accl);
     border: 1px solid rgba(234,88,12,0.25);
   }
-
   .mock-tag.ok {
     background: rgba(34,197,94,0.1); color: var(--green);
     border-color: rgba(34,197,94,0.25);
   }
 
-  /* SECTIONS */
-  .section { padding: 0 28px 18px; }
+  /* ── SECTION LABEL — same style as landing-label-tag ── */
+  .section { padding: 0 28px 22px; }
 
   .section-label {
-    font-size: 9.5px; font-weight: 700; color: var(--acc);
-    text-transform: uppercase; letter-spacing: 0.9px;
-    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--acc); margin-bottom: 12px;
   }
+  .section-label::before { content: ''; width: 6px; height: 6px; background: currentColor; border-radius: 50%; }
 
-  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-
-  /* HOW IT WORKS */
-  .steps { display: flex; gap: 12px; }
+  /* ── HOW IT WORKS ── */
+  .steps { display: flex; align-items: stretch; gap: 0; }
 
   .step {
     flex: 1; background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 10px; padding: 14px; position: relative;
+    border-radius: 10px; padding: 18px 16px;
+  }
+
+  .step-connector {
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    width: 28px; color: var(--faint); align-self: center;
   }
 
   .step-num {
-    width: 22px; height: 22px; border-radius: 50%;
-    background: rgba(234,88,12,0.15); border: 1px solid rgba(234,88,12,0.3);
-    color: var(--acc); font-size: 11px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center; margin-bottom: 8px;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: rgba(234,88,12,0.12); border: 1px solid rgba(234,88,12,0.3);
+    color: var(--accl); font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 10px;
   }
 
-  .step-h { font-size: 12px; font-weight: 700; margin-bottom: 5px; }
-  .step-p { font-size: 10.5px; line-height: 1.55; color: var(--muted); }
+  .step-h { font-size: 12.5px; font-weight: 700; margin-bottom: 6px; }
+  .step-p { font-size: 10.5px; line-height: 1.6; color: var(--muted); }
 
-  .step-arrow {
-    position: absolute; right: -9px; top: 50%; transform: translateY(-50%);
-    color: var(--muted); font-size: 12px; background: var(--bg); padding: 0 1px; z-index: 1;
-  }
-
-  /* FEATURES */
-  .features { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  /* ── CAPABILITIES ── */
+  .features { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
 
   .feature {
     background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 12px 14px;
-    display: flex; gap: 10px; align-items: flex-start;
+    border-radius: 8px; padding: 15px 14px;
+    display: flex; gap: 12px; align-items: flex-start;
   }
 
   .feature-icon {
@@ -251,35 +235,32 @@
     color: var(--acc); margin-top: 1px;
   }
 
-  .feature-h { font-size: 11px; font-weight: 700; margin-bottom: 3px; }
-  .feature-p { font-size: 9.5px; line-height: 1.5; color: var(--muted); }
+  .feature-h { font-size: 11.5px; font-weight: 700; margin-bottom: 4px; }
+  .feature-p { font-size: 10px; line-height: 1.55; color: var(--muted); }
 
-  /* ETHICS */
+  /* ── ETHICS ── */
   .ethics {
-    margin: 0 28px 18px;
+    margin: 0 28px 22px;
     background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.18);
-    border-radius: 8px; padding: 10px 14px;
+    border-radius: 8px; padding: 13px 16px;
     display: flex; align-items: center; gap: 10px;
   }
-
   .ethics-icon { color: var(--green); flex-shrink: 0; }
-
-  .ethics-text { font-size: 10.5px; line-height: 1.5; }
+  .ethics-text { font-size: 10.5px; line-height: 1.5; color: var(--text); }
   .ethics-text strong { color: var(--green); }
 
-  /* AUDIENCE */
-  .audience { display: flex; gap: 10px; padding: 0 28px 18px; }
+  /* ── AUDIENCE ── */
+  .audience { display: flex; gap: 12px; padding: 0 28px 22px; }
 
   .aud-card {
     flex: 1; background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 12px; text-align: center;
+    border-radius: 8px; padding: 14px 12px; text-align: center;
   }
-
-  .aud-icon { font-size: 18px; margin-bottom: 4px; }
+  .aud-icon { margin-bottom: 5px; color: var(--acc); display: flex; justify-content: center; }
   .aud-h { font-size: 10.5px; font-weight: 700; margin-bottom: 3px; }
   .aud-p { font-size: 9px; line-height: 1.45; color: var(--muted); }
 
-  /* FOOTER */
+  /* ── FOOTER ── */
   .footer {
     margin-top: auto; padding: 14px 28px;
     background: var(--bg2); border-top: 1px solid var(--border);
@@ -292,24 +273,23 @@
     display: flex; align-items: center; gap: 6px;
     font-size: 10.5px; color: var(--muted);
   }
-
-  .footer-contact-item svg { color: var(--acc); }
+  .footer-contact-item svg { color: var(--acc); flex-shrink: 0; }
 
   .footer-cta { display: flex; gap: 8px; align-items: center; }
 
   .btn-primary {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 11px; font-weight: 700; background: var(--acc); color: #fff;
-    text-decoration: none; border-radius: 6px; padding: 7px 14px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; background: var(--acc); color: #fff;
+    text-decoration: none; border-radius: 8px; padding: 8px 16px;
   }
 
   .btn-ghost {
     display: inline-flex; align-items: center; gap: 5px;
-    font-size: 11px; font-weight: 600; background: transparent; color: var(--text);
-    text-decoration: none; border: 1px solid var(--border); border-radius: 6px; padding: 6px 13px;
+    font-size: 11px; font-weight: 500; background: transparent; color: var(--muted);
+    text-decoration: none; border: 1px solid var(--faint); border-radius: 8px; padding: 7px 15px;
   }
 
-  .footer-copy { font-size: 9px; color: var(--muted); text-align: right; white-space: nowrap; }
+  .footer-copy { font-size: 9px; color: var(--subtle); text-align: right; white-space: nowrap; line-height: 1.5; }
 
   @media print {
     body { padding: 0; background: var(--bg); }
@@ -319,24 +299,24 @@
 </style>
 </head>
 <body>
-
 <div class="page">
 
   <!-- HEADER -->
   <header class="header">
-    <div class="logo">
-      <div class="logo-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
-          <path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/>
-        </svg>
+    <a class="logo" href="https://headlinesforge.com" target="_blank">
+      <div class="logo-bar"></div>
+      <div class="logo-stack">
+        <div class="logo-name"><span class="lt">headlines</span><span class="bd">forge</span></div>
+        <div class="logo-sub">AI Newsroom Platform</div>
       </div>
-      <div class="logo-wordmark"><span>headlines</span>forge</div>
-    </div>
+    </a>
     <div class="header-right">
-      <div class="header-badge">AI Editorial Platform</div>
-      <a class="header-link" href="https://headlinesforge.com/pitch" target="_blank">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+<a class="header-link" href="https://headlinesforge.com/pitch" target="_blank">
+        <!-- NewspaperIcon -->
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+          <path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>
+        </svg>
         Full presentation →
       </a>
     </div>
@@ -345,10 +325,7 @@
   <!-- HERO -->
   <div class="hero">
     <div class="hero-left">
-      <div class="hero-kicker">
-        <div class="hero-kicker-dot"></div>
-        Built for modern newsrooms
-      </div>
+      <div class="hero-kicker">Built for modern newsrooms</div>
       <h1 class="hero-h1">Write <em>faster</em>.<br>Publish more.</h1>
       <p class="hero-sub">We monitor competitors, television and radio. We capture facts and quotes. We write the first draft. The final word is always yours.</p>
       <div class="stats-row">
@@ -395,22 +372,23 @@
             <div class="mock-count">5 sources</div>
             <div class="mock-write-btn">Write →</div>
           </div>
-          <div class="mock-row" style="opacity:0.6">
+          <div class="mock-row" style="opacity:0.55">
             <div class="mock-row-left">
               <div class="mock-fire" style="font-size:8px">🎵</div>
               <div class="mock-row-text">Album release — fan reactions</div>
             </div>
             <div class="mock-count">3 sources</div>
-            <div class="mock-write-btn" style="background:var(--bg3);color:var(--muted)">Write →</div>
+            <div class="mock-write-btn" style="background:var(--faint);color:var(--muted)">Write →</div>
           </div>
           <hr class="mock-divider">
           <div class="mock-article-preview">
             <div class="mock-article-label">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <!-- CheckIcon -->
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               Article ready
             </div>
             <div class="mock-article-title">Social media giants face toughest regulation in a decade</div>
-            <div class="mock-article-lines">
+            <div class="mock-lines">
               <div class="mock-line" style="width:100%"></div>
               <div class="mock-line" style="width:88%"></div>
               <div class="mock-line" style="width:72%"></div>
@@ -433,25 +411,31 @@
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-h">Monitor</div>
-        <div class="step-p">Competitor sites, agencies, RSS feeds, live TV &amp; radio — all in one continuously updated view.</div>
-        <div class="step-arrow">→</div>
+        <div class="step-p">Competitor sites, agencies, RSS feeds, live TV &amp; radio — one continuously updated view.</div>
+      </div>
+      <div class="step-connector">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-h">Discover</div>
-        <div class="step-p">AI groups the same story across sources into topics. The more coverage a story gets, the higher it rises.</div>
-        <div class="step-arrow">→</div>
+        <div class="step-p">AI groups the same story across sources. The more coverage it gets, the higher it rises.</div>
+      </div>
+      <div class="step-connector">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-h">Write</div>
-        <div class="step-p">One click from a hot topic — or paste a lead, photo, post, or video. Pipeline gathers facts and writes the draft.</div>
-        <div class="step-arrow">→</div>
+        <div class="step-p">One click from a hot topic — or paste a lead, photo, post, or video. Pipeline gathers facts and drafts the article.</div>
+      </div>
+      <div class="step-connector">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
       </div>
       <div class="step">
         <div class="step-num">4</div>
         <div class="step-h">Publish</div>
-        <div class="step-p">Article + 5 headline alternatives + Facebook teaser + IG media. Review, approve, paste into your CMS.</div>
+        <div class="step-p">Article + 5 headline alternatives + Facebook teaser + IG media download. Review, approve, paste into CMS.</div>
       </div>
     </div>
   </div>
@@ -460,67 +444,105 @@
   <div class="section">
     <div class="section-label">Capabilities</div>
     <div class="features">
+
       <div class="feature">
         <div class="feature-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <!-- EyeIcon -->
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
         </div>
         <div>
           <div class="feature-h">Source monitoring</div>
           <div class="feature-p">Hundreds of competitor sites, agencies and social feeds — around the clock, in one view.</div>
         </div>
       </div>
+
       <div class="feature">
         <div class="feature-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <!-- BroadcastIcon -->
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/>
+            <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/>
+            <circle cx="12" cy="12" r="2"/>
+            <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/>
+            <path d="M19.1 4.9C23 8.8 23 15.2 19.1 19"/>
+          </svg>
         </div>
         <div>
           <div class="feature-h">Live TV &amp; radio</div>
           <div class="feature-p">Connect any channel. Real-time transcription catches breaking stories the moment they hit the air.</div>
         </div>
       </div>
+
       <div class="feature">
         <div class="feature-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          <!-- BookOpenIcon -->
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
         </div>
         <div>
           <div class="feature-h">Your editorial voice</div>
-          <div class="feature-p">Example articles + guidelines. Every output matches your publication's style, length, and tone.</div>
+          <div class="feature-p">Upload example articles + guidelines. Every output matches your publication's style and tone.</div>
         </div>
       </div>
+
       <div class="feature">
         <div class="feature-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          <!-- FileTextIcon -->
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <path d="M14 2v6h6"/>
+            <path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>
+          </svg>
         </div>
         <div>
           <div class="feature-h">Any input works</div>
-          <div class="feature-p">Topic, URL, photo, video, Instagram or X post — the system reads the context and builds the story.</div>
+          <div class="feature-p">Topic, URL, photo, video, Instagram or X post — the system reads context and builds the story.</div>
         </div>
       </div>
+
       <div class="feature">
         <div class="feature-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <!-- UsersIcon -->
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
         </div>
         <div>
           <div class="feature-h">Team workflow</div>
           <div class="feature-p">Multiple editors, author attribution, article statuses. Always know who's writing what.</div>
         </div>
       </div>
+
       <div class="feature">
         <div class="feature-icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <!-- ShieldCheckIcon -->
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
         </div>
         <div>
           <div class="feature-h">You have final word</div>
           <div class="feature-p">Nothing publishes automatically. Every article goes to an editor. You decide what goes out.</div>
         </div>
       </div>
+
     </div>
   </div>
 
   <!-- ETHICS -->
   <div class="ethics">
     <div class="ethics-icon">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <!-- CheckIcon -->
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
     <div class="ethics-text">
       <strong>No plagiarism, ever.</strong> We don't rewrite competitor articles. We extract facts from multiple sources, gather quotes, verify information — and write an <strong>original text in your voice</strong>. Every fact has a traceable source.
@@ -531,26 +553,58 @@
   <div class="section">
     <div class="section-label">Who it's for</div>
     <div class="audience">
+
       <div class="aud-card">
-        <div class="aud-icon">📰</div>
+        <div class="aud-icon">
+          <!-- NewspaperIcon -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+            <path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/>
+          </svg>
+        </div>
         <div class="aud-h">News &amp; politics</div>
         <div class="aud-p">Fast reporting, real-time updates, TV and agency monitoring.</div>
       </div>
+
       <div class="aud-card">
-        <div class="aud-icon">✨</div>
+        <div class="aud-icon">
+          <!-- SparklesIcon -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"/>
+          </svg>
+        </div>
         <div class="aud-h">Lifestyle &amp; celebrities</div>
         <div class="aud-p">Social tracking, instant reaction to trending topics.</div>
       </div>
+
       <div class="aud-card">
-        <div class="aud-icon">⚽</div>
+        <div class="aud-icon">
+          <!-- TrophyIcon -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+            <path d="M4 22h16"/>
+            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+          </svg>
+        </div>
         <div class="aud-h">Sports</div>
         <div class="aud-p">Match coverage, transfers, result analysis.</div>
       </div>
+
       <div class="aud-card">
-        <div class="aud-icon">📊</div>
+        <div class="aud-icon">
+          <!-- BriefcaseIcon -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+          </svg>
+        </div>
         <div class="aud-h">Business &amp; industry</div>
         <div class="aud-p">Market analysis, expert commentary, competitor monitoring.</div>
       </div>
+
     </div>
   </div>
 
@@ -558,17 +612,33 @@
   <div class="footer">
     <div class="footer-contact">
       <div class="footer-contact-item">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+        <!-- envelope — same as LandingContact.tsx -->
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="20" height="16" x="2" y="4" rx="2"/>
+          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+        </svg>
         hello@headlinesforge.com
       </div>
       <div class="footer-contact-item">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10a5 5 0 0 1-5 5"/><path d="M3 10a9 9 0 0 0 9 9"/><path d="M21 10a9 9 0 0 0-9-9"/><circle cx="12" cy="10" r="3"/></svg>
+        <!-- globe — same as LandingContact.tsx -->
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 10a5 5 0 0 1-5 5"/>
+          <path d="M3 10a9 9 0 0 0 9 9"/>
+          <path d="M21 10a9 9 0 0 0-9-9"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
         demo@headlinesforge.com
       </div>
     </div>
     <div class="footer-cta">
       <a class="btn-ghost" href="https://headlinesforge.com" target="_blank">headlinesforge.com</a>
-      <a class="btn-primary" href="https://headlinesforge.com/#contact" target="_blank">Book a demo →</a>
+      <a class="btn-primary" href="https://headlinesforge.com/#contact" target="_blank">
+        Book a demo
+        <!-- ArrowUpRightIcon -->
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 17 17 7"/><path d="M7 7h10v10"/>
+        </svg>
+      </a>
     </div>
     <div class="footer-copy">© 2026 HeadlinesForge<br>For media. AI inside.</div>
   </div>
