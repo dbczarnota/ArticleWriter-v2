@@ -3,6 +3,7 @@ import { KindeProvider } from "@kinde-oss/kinde-auth-react";
 import React, { useState } from "react";
 import ReactDOM from "react-dom/client";
 import "./styles/tokens.css";
+import "./styles/landing.css";
 import App from "./App";
 import { LangContext, LANGS, STORAGE_KEY, getInitialLang } from "./i18n";
 import type { Lang } from "./i18n";
@@ -46,3 +47,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <Root />
   </React.StrictMode>
 );
+
+
