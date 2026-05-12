@@ -334,6 +334,7 @@ export function Sidebar({
                   background: STATUS_DOT[a.status] ?? "#94a3b8",
                   flexShrink: 0,
                   marginTop: 5,
+                  animation: a.status === "running" ? "pulse-dot 1.8s ease-out infinite" : undefined,
                 }} />
               )}
               <div style={{ minWidth: 0, flex: 1 }}>
