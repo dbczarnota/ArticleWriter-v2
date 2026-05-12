@@ -130,15 +130,27 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
     padding: "2px 8px",
     borderRadius: 999,
     fontSize: 11,
-    fontWeight: 500,
+    fontWeight: 600,
   };
 
   return (
     <div
       style={{
-        padding: "16px 24px",
-        borderBottom: "1px solid var(--border)",
-        background: "var(--white)",
+        margin: "0 12px 8px",
+        background: "var(--card-bg)",
+        border: "1px solid var(--card-border)",
+        borderRadius: 12,
+        boxShadow: "var(--shadow-card)",
+        padding: "16px 20px",
+        transition: "box-shadow .2s, border-color .2s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.boxShadow = "var(--shadow-card-hover)";
+        e.currentTarget.style.borderColor = "var(--card-border-strong)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.boxShadow = "var(--shadow-card)";
+        e.currentTarget.style.borderColor = "var(--card-border)";
       }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -151,7 +163,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
             background: "none",
             border: 0,
             cursor: "pointer",
-            color: "var(--muted)",
+            color: "var(--ink-subtle)",
             marginTop: 2,
             fontSize: 14,
             padding: 4,
@@ -184,17 +196,17 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
         >
           <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4, flexWrap: "wrap" }}>
             {isResurfaced && (
-              <span style={{ ...chipBase, background: "var(--error-lt)", color: "var(--error-fg)" }}>
+              <span style={{ ...chipBase, background: "var(--error-lt)", color: "var(--error-fg)", border: "1px solid #fecaca" }}>
                 {t.discovery.hub.resurfaced}
               </span>
             )}
             {isConsumed && (
-              <span style={{ ...chipBase, background: "var(--success-lt)", color: "var(--success-fg)" }}>
+              <span style={{ ...chipBase, background: "var(--success-lt)", color: "var(--success-fg)", border: "1px solid #bbf7d0" }}>
                 {t.discovery.hub.written}
               </span>
             )}
             {topic.categories.map((c) => (
-              <span key={c} style={{ ...chipBase, background: "var(--accent-lt)", color: "var(--accent)" }}>
+              <span key={c} style={{ ...chipBase, background: "var(--accent-tint)", color: "var(--accent)", border: "1px solid var(--accent-border)" }}>
                 {c}
               </span>
             ))}
@@ -203,7 +215,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
             fontWeight: 600,
             margin: 0,
             fontSize: 15,
-            color: "var(--text)",
+            color: "var(--ink)",
             textDecoration: isConsumed ? "line-through" : undefined,
           }}>
             {topic.title}
@@ -211,7 +223,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
           {topic.blurb && (
             <p
               style={{
-                color: "var(--muted)",
+                color: "var(--ink-subtle)",
                 fontSize: 14,
                 margin: "4px 0 0",
                 display: "-webkit-box",
@@ -229,7 +241,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
               display: "flex",
               gap: 14,
               fontSize: 12,
-              color: "var(--muted)",
+              color: "var(--ink-subtle)",
               marginTop: 8,
               flexWrap: "wrap",
               alignItems: "center",
@@ -270,14 +282,14 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
                   border: 0,
                   padding: 0,
                   fontSize: 12,
-                  color: "var(--muted)",
+                  color: "var(--ink-subtle)",
                   cursor: isPending ? "default" : "pointer",
                   textDecoration: "underline",
                   textUnderlineOffset: 2,
                   opacity: isPending ? 0.5 : undefined,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = "var(--error-fg)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--ink-subtle)"; }}
               >
                 {t.discovery.topic.dismiss}
               </button>
@@ -315,7 +327,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
             </Button>
           )}
           {!isConsumed && (
-            <span style={{ fontSize: 11, color: "var(--muted)" }}>
+            <span style={{ fontSize: 11, color: "var(--ink-subtle)" }}>
               {topic.item_count + topic.stream_source_count} {t.discovery.topic.itemsShort}
             </span>
           )}
@@ -328,16 +340,16 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
             marginLeft: 28,
             marginTop: 12,
             paddingLeft: 16,
-            borderLeft: "2px solid var(--border)",
+            borderLeft: "2px solid var(--card-border)",
           }}
         >
-          <div style={{ fontSize: 11, textTransform: "uppercase", color: "var(--muted)", marginBottom: 6, letterSpacing: "0.04em" }}>
+          <div style={{ fontSize: 11, textTransform: "uppercase", color: "var(--ink-subtle)", marginBottom: 6, letterSpacing: "0.04em" }}>
             {t.discovery.topic.sources}
           </div>
           {error ? (
             <div style={{ color: "var(--error-fg)", fontSize: 13 }}>{t.discovery.topic.error}: {error}</div>
           ) : items === null ? (
-            <div style={{ color: "var(--muted)", fontSize: 13 }}>{t.discovery.topic.loading}</div>
+            <div style={{ color: "var(--ink-subtle)", fontSize: 13 }}>{t.discovery.topic.loading}</div>
           ) : (
             <>
               {streamSources.map((src) => (
@@ -357,7 +369,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
                     <span style={{ fontSize: 10, fontWeight: 600, color: "var(--accent)", background: "var(--accent-lt)", borderRadius: 4, padding: "1px 6px", flexShrink: 0 }}>
                       📡 {src.subscription_name}
                     </span>
-                    <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>{src.title}</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{src.title}</span>
                   </div>
                   {src.windows.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -371,7 +383,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
                 </button>
               ))}
               {items.length === 0 && streamSources.length === 0 ? (
-                <div style={{ color: "var(--muted)", fontSize: 13 }}>{t.discovery.item.uncategorized}</div>
+                <div style={{ color: "var(--ink-subtle)", fontSize: 13 }}>{t.discovery.item.uncategorized}</div>
               ) : (
                 items.map((it) => (
                   <a
@@ -386,7 +398,7 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
                       alignItems: "center",
                       padding: "6px 0",
                       textDecoration: "none",
-                      color: "var(--text)",
+                      color: "var(--ink)",
                     }}
                   >
                     {it.image_url && (
@@ -408,12 +420,12 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14 }}>
-                        {it.title} <span style={{ color: "var(--muted)" }}>↗</span>
+                        {it.title} <span style={{ color: "var(--ink-subtle)" }}>↗</span>
                       </div>
                       <div
                         style={{
                           fontSize: 12,
-                          color: "var(--muted)",
+                          color: "var(--ink-subtle)",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",

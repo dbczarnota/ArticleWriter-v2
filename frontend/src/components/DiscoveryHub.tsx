@@ -123,14 +123,17 @@ export function DiscoveryHub() {
   }
 
   const tabBtn = (active: boolean): React.CSSProperties => ({
-    padding: "6px 12px",
-    background: active ? "var(--accent-lt)" : "transparent",
-    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-    borderRadius: "var(--radius)",
-    color: active ? "var(--accent)" : "var(--text)",
+    padding: "6px 14px",
+    background: active ? "var(--accent)" : "transparent",
+    border: "none",
+    borderRadius: 999,
+    color: active ? "#fff" : "var(--ink-subtle)",
     cursor: active ? "default" : "pointer",
     fontSize: 13,
     fontWeight: active ? 600 : 400,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
   });
 
   return (
@@ -146,7 +149,7 @@ export function DiscoveryHub() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <div
           style={{
-            borderBottom: "1px solid var(--border)",
+            borderBottom: "1px solid var(--card-border)",
             padding: "12px 24px",
             display: "flex",
             gap: 8,
@@ -158,7 +161,7 @@ export function DiscoveryHub() {
             type="button"
             onClick={() => setView("topics")}
             disabled={view === "topics"}
-            style={{ ...tabBtn(view === "topics"), display: "inline-flex", alignItems: "center", gap: 6 }}
+            style={tabBtn(view === "topics")}
           >
             <TopicsIcon /> {t.discovery.views.topics}
           </button>
@@ -166,7 +169,7 @@ export function DiscoveryHub() {
             type="button"
             onClick={() => setView("items")}
             disabled={view === "items"}
-            style={{ ...tabBtn(view === "items"), display: "inline-flex", alignItems: "center", gap: 6 }}
+            style={tabBtn(view === "items")}
           >
             <ItemsIcon /> {t.discovery.views.items}
           </button>
@@ -174,7 +177,7 @@ export function DiscoveryHub() {
             type="button"
             onClick={() => setView("tematy-streamow")}
             disabled={view === "tematy-streamow"}
-            style={{ ...tabBtn(view === "tematy-streamow"), display: "inline-flex", alignItems: "center", gap: 6 }}
+            style={tabBtn(view === "tematy-streamow")}
           >
             <StreamTopicsIcon /> {t.streams.views.topics}
           </button>
@@ -183,7 +186,7 @@ export function DiscoveryHub() {
               type="button"
               onClick={() => setView("feeds")}
               disabled={view === "feeds"}
-              style={{ ...tabBtn(view === "feeds"), display: "inline-flex", alignItems: "center", gap: 6 }}
+              style={tabBtn(view === "feeds")}
             >
               <FeedsIcon /> {t.discovery.views.feeds}
             </button>
@@ -191,7 +194,7 @@ export function DiscoveryHub() {
               type="button"
               onClick={() => setView("streamy")}
               disabled={view === "streamy"}
-              style={{ ...tabBtn(view === "streamy"), display: "inline-flex", alignItems: "center", gap: 6 }}
+              style={tabBtn(view === "streamy")}
             >
               <StreamsIcon /> {t.streams.views.subscriptions}
             </button>
@@ -200,7 +203,7 @@ export function DiscoveryHub() {
         {view === "topics" && !selectedTopicId && (
           <div
             style={{
-              borderBottom: "1px solid var(--border)",
+              borderBottom: "1px solid var(--card-border)",
               padding: "6px 24px",
               display: "flex",
               alignItems: "center",
@@ -209,7 +212,7 @@ export function DiscoveryHub() {
               background: "var(--card-bg)",
             }}
           >
-            <label htmlFor="discovery-topics-sort" style={{ fontSize: 12, color: "var(--muted)" }}>
+            <label htmlFor="discovery-topics-sort" style={{ fontSize: 12, color: "var(--ink-subtle)" }}>
               {t.discovery.sort.label}
             </label>
             <select
@@ -218,10 +221,10 @@ export function DiscoveryHub() {
               onChange={(e) => setSort(e.target.value as DiscoveryTopicSort)}
               style={{
                 padding: "5px 8px",
-                border: "1px solid var(--border)",
+                border: "1px solid var(--card-border)",
                 borderRadius: "var(--radius)",
                 background: "var(--card-bg)",
-                color: "var(--text)",
+                color: "var(--ink)",
                 fontSize: 13,
                 cursor: "pointer",
               }}
