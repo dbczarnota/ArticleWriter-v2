@@ -76,7 +76,8 @@ export function Sidebar({
       <aside style={{
         width: 48,
         background: "var(--sidebar)",
-        borderRight: "1px solid var(--border)",
+        borderRight: "1px solid var(--chrome-border)",
+        color: "var(--chrome-ink)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -92,7 +93,7 @@ export function Sidebar({
             border: "none",
             padding: 8,
             cursor: "pointer",
-            color: "var(--muted)",
+            color: "var(--chrome-muted)",
             borderRadius: "var(--radius)",
           }}
         >
@@ -136,22 +137,24 @@ export function Sidebar({
   const containerStyle: React.CSSProperties = isMobile
     ? {
         position: "fixed",
-        top: 48, // below topbar
+        top: 56,
         left: 0,
         bottom: 0,
         width: "min(85vw, 320px)",
         background: "var(--sidebar)",
-        borderRight: "1px solid var(--border)",
+        borderRight: "1px solid var(--chrome-border)",
+        color: "var(--chrome-ink)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
         zIndex: 60,
-        boxShadow: "2px 0 12px rgba(0,0,0,0.12)",
+        boxShadow: "4px 0 24px rgba(0,0,0,0.35)",
       }
     : {
         width: "var(--sidebar-width)",
         background: "var(--sidebar)",
-        borderRight: "1px solid var(--border)",
+        borderRight: "1px solid var(--chrome-border)",
+        color: "var(--chrome-ink)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -179,9 +182,9 @@ export function Sidebar({
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        borderBottom: "1px solid var(--border)",
+        borderBottom: "1px solid var(--chrome-border)",
       }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--chrome-muted)", textTransform: "uppercase", letterSpacing: ".05em" }}>
           {t.sidebar.articles}
         </span>
         <Button variant="primary" size="sm" onClick={onNew}>
@@ -189,14 +192,14 @@ export function Sidebar({
         </Button>
       </div>
 
-      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--chrome-border)", display: "flex", gap: 6, flexWrap: "wrap" }}>
         {(["all", "undone", "done"] as DoneFilter[]).map((f) => {
           const active = doneFilter === f;
           return (
             <button key={f} onClick={() => setDoneFilter(f)} style={{
               background: active ? "var(--accent)" : "transparent",
-              color: active ? "#fff" : "var(--muted)",
-              border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+              color: active ? "#fff" : "var(--chrome-muted)",
+              border: `1px solid ${active ? "var(--accent)" : "var(--chrome-border)"}`,
               borderRadius: "var(--radius)",
               padding: "3px 8px",
               fontSize: 11,
@@ -208,8 +211,8 @@ export function Sidebar({
         {currentUserId && (
           <button onClick={() => setOnlyMine((v) => !v)} style={{
             background: onlyMine ? "var(--accent)" : "transparent",
-            color: onlyMine ? "#fff" : "var(--muted)",
-            border: `1px solid ${onlyMine ? "var(--accent)" : "var(--border)"}`,
+            color: onlyMine ? "#fff" : "var(--chrome-muted)",
+            border: `1px solid ${onlyMine ? "var(--accent)" : "var(--chrome-border)"}`,
             borderRadius: "var(--radius)",
             padding: "3px 8px",
             fontSize: 11,
@@ -223,14 +226,14 @@ export function Sidebar({
           presets on the left and a two-month calendar on the right. The
           popover renders through a portal so it can escape the sidebar's
           overflow:hidden and the page's right edge. */}
-      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--chrome-border)" }}>
         <button
           ref={datesAnchorRef}
           onClick={() => setDatesOpen((v) => !v)}
           style={{
             background: "transparent",
-            border: "1px solid var(--border)",
-            color: "var(--muted)",
+            border: "1px solid var(--chrome-border)",
+            color: "var(--chrome-muted)",
             borderRadius: "var(--radius)",
             padding: "4px 8px",
             fontSize: 11,
@@ -261,7 +264,7 @@ export function Sidebar({
 
       <div style={{ overflowY: "auto", flex: 1 }}>
         {visible.length === 0 && (
-          <p style={{ padding: 16, color: "var(--muted)", fontSize: 13 }}>
+          <p style={{ padding: 16, color: "var(--chrome-muted)", fontSize: 13 }}>
             {isFiltered ? t.sidebar.noArticlesInRange : t.sidebar.noArticles}
           </p>
         )}
@@ -289,7 +292,7 @@ export function Sidebar({
                 borderLeft: isSelected ? "3px solid var(--accent)" : "3px solid transparent",
                 borderTop: "none",
                 borderRight: "none",
-                borderBottom: "1px solid var(--border)",
+                borderBottom: "1px solid var(--chrome-border)",
                 textAlign: "left",
                 cursor: "pointer",
                 transition: "background 0.12s",
@@ -337,7 +340,7 @@ export function Sidebar({
                 <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {a.topic}
                 </div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2, display: "flex", gap: 6, alignItems: "center" }}>
+                <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginTop: 2, display: "flex", gap: 6, alignItems: "center" }}>
                   <span>{a.created_at ? new Date(a.created_at).toLocaleDateString(lang) : "—"}</span>
                   {isMine && (
                     <span style={{
@@ -367,10 +370,10 @@ export function Sidebar({
               padding: "10px 12px",
               background: "transparent",
               border: "none",
-              borderTop: "1px solid var(--border)",
+              borderTop: "1px solid var(--chrome-border)",
               fontSize: 12,
               fontWeight: 500,
-              color: loadingMore ? "var(--muted)" : "var(--accent)",
+              color: loadingMore ? "var(--chrome-subtle)" : "var(--accent)",
               cursor: loadingMore ? "default" : "pointer",
               textAlign: "center",
             }}

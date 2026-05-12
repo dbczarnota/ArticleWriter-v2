@@ -261,7 +261,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             size="sm"
             onClick={handleCopy}
             iconLeft={<CopyIcon />}
-            style={copied ? { background: "var(--success)", color: "var(--white)", borderColor: "var(--success)" } : undefined}
+            style={copied ? { background: "var(--success)", color: "var(--fg-inverse)", borderColor: "var(--success)" } : undefined}
             title={av.copyHtml}
           >
             {copied ? av.copied : av.copyHtml}
@@ -304,11 +304,11 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             __html: DOMPurify.sanitize(article.html, { USE_PROFILES: { html: true } }),
           }}
           style={{
-            padding: 20,
-            background: "var(--white)",
-            border: "1px solid var(--border)",
+            padding: "28px 36px",
+            background: "var(--card-bg)",
+            border: "1px solid var(--card-border)",
             borderRadius: "var(--radius-lg)",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+            boxShadow: "var(--shadow-card)",
             marginBottom: 24,
             lineHeight: 1.7,
           }}
@@ -320,7 +320,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         <CollapsibleSection prominent title={av.altTitles} count={article.alternative_titles.length} defaultOpen>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {article.alternative_titles.map((title, i) => (
-              <div key={i} style={{ padding: "8px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <div key={i} style={{ padding: "8px 12px", background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--radius-lg)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <span>{title}</span>
                 <CopyButton text={title} />
               </div>
@@ -402,7 +402,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             ))}
             <CollapsibleSection title={av.sourcesUnused} count={uniqueUnused.length}>
               {uniqueUnused.map((url) => (
-                <div key={url} style={{ borderLeft: "3px solid var(--border)", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
+                <div key={url} style={{ borderLeft: "3px solid var(--card-border)", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
                   <a href={safeHref(url)} target="_blank" rel="noreferrer" style={{ color: "var(--muted)", wordBreak: "break-all" }}>{url}</a>
                 </div>
               ))}
@@ -425,7 +425,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             <div style={{
               marginTop: 12,
               paddingTop: 10,
-              borderTop: "1px solid var(--border)",
+              borderTop: "1px solid var(--card-border)",
               fontSize: 11,
               color: "var(--muted)",
               display: "flex",
@@ -507,7 +507,7 @@ function FactCard({ fact, muted }: { fact: Fact; muted?: boolean }) {
   const corroboration = fact.source_urls?.length ?? 0;
   return (
     <div style={{
-      borderLeft: `3px solid ${muted ? "var(--border)" : "var(--accent)"}`,
+      borderLeft: `3px solid ${muted ? "var(--card-border)" : "var(--accent)"}`,
       marginBottom: 8,
       background: muted ? "transparent" : "var(--accent-lt)",
       borderRadius: "0 var(--radius-lg) var(--radius-lg) 0",
@@ -527,7 +527,7 @@ function QuoteCard({ quote, muted }: { quote: Quote; muted?: boolean }) {
   const corroboration = quote.source_urls?.length ?? 0;
   return (
     <div style={{
-      borderLeft: `3px solid ${muted ? "var(--border)" : "var(--accent)"}`,
+      borderLeft: `3px solid ${muted ? "var(--card-border)" : "var(--accent)"}`,
       padding: "8px 8px 8px 12px",
       marginBottom: 8,
       background: muted ? "transparent" : "var(--accent-lt)",
@@ -570,7 +570,7 @@ function CopyButton({ text }: { text: string }) {
 
 function TeaserCard({ text }: { text: string }) {
   return (
-    <div style={{ position: "relative", padding: "10px 44px 10px 12px", background: "var(--white)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", boxShadow: "0 1px 3px rgba(0,0,0,0.3)", fontSize: 13, minHeight: 48, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+    <div style={{ position: "relative", padding: "10px 44px 10px 12px", background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-card)", fontSize: 13, minHeight: 48, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
       {text}
       <div style={{ position: "absolute", top: 6, right: 6 }}>
         <CopyButton text={text} />
@@ -609,7 +609,7 @@ function EmbedCandidateRow({ e, t }: { e: EmbedCandidate; t: ReturnType<typeof u
   }, [e.url, e.source]);
 
   return (
-    <div style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "var(--warning-lt)" : "var(--white)", border: `1px solid ${e.competitor_source_url ? "var(--warning)" : "var(--border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
+    <div style={{ display: "flex", gap: 10, padding: "8px 12px", background: e.competitor_source_url ? "var(--warning-lt)" : "var(--card-bg)", border: `1px solid ${e.competitor_source_url ? "var(--warning)" : "var(--card-border)"}`, borderRadius: "var(--radius)", fontSize: 13, alignItems: "flex-start" }}>
       {e.thumbnail_url && <img src={e.thumbnail_url} alt="" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} style={{ width: 64, height: 48, objectFit: "cover", borderRadius: 4, flexShrink: 0 }} />}
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2, flexWrap: "wrap" }}>
@@ -713,7 +713,7 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
           <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--accent)", letterSpacing: "0.04em" }}>
             {platformLabel}
           </span>
-          <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--white)", background: "var(--accent)", padding: "1px 6px", borderRadius: 10, letterSpacing: "0.04em" }}>
+          <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", color: "var(--fg-inverse)", background: "var(--accent)", padding: "1px 6px", borderRadius: 10, letterSpacing: "0.04em" }}>
             {t.socialMediaSourceBadge}
           </span>
         </div>
@@ -729,8 +729,8 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
                 fontSize: 12,
                 fontWeight: 600,
                 color: downloading ? "var(--muted)" : "var(--accent)",
-                background: "var(--white)",
-                border: `1px solid ${downloading ? "var(--border)" : "var(--accent)"}`,
+                background: "var(--card-bg)",
+                border: `1px solid ${downloading ? "var(--card-border)" : "var(--accent)"}`,
                 borderRadius: "var(--radius)",
                 padding: "3px 10px",
                 cursor: downloading ? "default" : "pointer",
@@ -750,8 +750,8 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
                   fontSize: 12,
                   fontWeight: 600,
                   color: "var(--muted)",
-                  background: "var(--white)",
-                  border: "1px solid var(--border)",
+                  background: "var(--card-bg)",
+                  border: "1px solid var(--card-border)",
                   borderRadius: "var(--radius)",
                   padding: "3px 10px",
                   textDecoration: "none",
@@ -770,7 +770,7 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
                 fontWeight: 600,
                 color: embedCopied ? "var(--success)" : "var(--muted)",
                 background: "var(--white)",
-                border: `1px solid ${embedCopied ? "var(--success)" : "var(--border)"}`,
+                border: `1px solid ${embedCopied ? "var(--success)" : "var(--card-border)"}`,
                 borderRadius: "var(--radius)",
                 padding: "3px 10px",
                 cursor: "pointer",
@@ -798,7 +798,7 @@ function SocialMediaAttachmentCard({ attachment, t }: { attachment: SocialMediaA
                 height: 18,
                 borderRadius: "50%",
                 background: "#fbbf24",
-                color: "var(--white)",
+                color: "var(--fg-inverse)",
                 fontSize: 11,
                 fontWeight: 700,
                 cursor: "help",
