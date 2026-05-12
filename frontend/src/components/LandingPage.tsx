@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { LandingNav } from "./landing/LandingNav";
 import { LandingHero } from "./landing/LandingHero";
 import { LandingHowItWorks } from "./landing/LandingHowItWorks";
@@ -12,6 +13,13 @@ import { LandingCtaBottom } from "./landing/LandingCtaBottom";
 import { LandingFooter } from "./landing/LandingFooter";
 
 export function LandingPage() {
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const el = document.getElementById(hash);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
   return (
     <div className="landing-root">
       <LandingNav />
