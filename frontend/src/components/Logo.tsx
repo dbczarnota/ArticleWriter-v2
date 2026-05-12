@@ -14,11 +14,11 @@ export function Logo({ size = "sm", chrome = false }: LogoProps) {
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <span style={{ fontSize, letterSpacing: "-0.03em", lineHeight: 1 }}>
           <span style={{ fontWeight: 300, color: textColor }}>headlines</span>
-          <span style={{ fontWeight: 800, color: textColor }}>forge</span>
+          <span style={{ fontWeight: 800, color: "var(--accent)" }}>forge</span>
         </span>
         {size === "sm" && (
           <span style={{ fontSize: 8, fontWeight: 500, letterSpacing: ".15em", textTransform: "uppercase", color: chrome ? "var(--chrome-subtle)" : "var(--ink-subtle)" }}>
-            AI Editorial Pipeline
+            AI Newsroom Platform
           </span>
         )}
       </div>
