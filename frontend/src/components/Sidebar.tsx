@@ -200,7 +200,7 @@ export function Sidebar({
               background: active ? "var(--accent)" : "transparent",
               color: active ? "#fff" : "var(--chrome-muted)",
               border: `1px solid ${active ? "var(--accent)" : "var(--chrome-border)"}`,
-              borderRadius: "var(--radius)",
+              borderRadius: 999,
               padding: "3px 8px",
               fontSize: 11,
               fontWeight: 500,
@@ -213,7 +213,7 @@ export function Sidebar({
             background: onlyMine ? "var(--accent)" : "transparent",
             color: onlyMine ? "#fff" : "var(--chrome-muted)",
             border: `1px solid ${onlyMine ? "var(--accent)" : "var(--chrome-border)"}`,
-            borderRadius: "var(--radius)",
+            borderRadius: 999,
             padding: "3px 8px",
             fontSize: 11,
             fontWeight: 500,
@@ -344,8 +344,8 @@ export function Sidebar({
                   <span>{a.created_at ? new Date(a.created_at).toLocaleDateString(lang) : "—"}</span>
                   {isMine && (
                     <span style={{
-                      background: "var(--accent)",
-                      color: "#fff",
+                      background: "rgba(234,88,12,.12)",
+                      color: "var(--accent-light)",
                       borderRadius: 3,
                       padding: "0 4px",
                       fontSize: 10,
