@@ -14,13 +14,13 @@ const kindeProps = NULL_AUTH
   ? {
       clientId: "null",
       domain: "https://null.kinde.com",
-      redirectUri: window.location.origin + "/app/",
+      redirectUri: window.location.origin + "/app",
       logoutUri: window.location.origin,
     }
   : {
       clientId: import.meta.env.VITE_KINDE_CLIENT_ID,
       domain: import.meta.env.VITE_KINDE_DOMAIN,
-      redirectUri: window.location.origin + "/app/",
+      redirectUri: window.location.origin + "/app",
       logoutUri: window.location.origin,
       audience: import.meta.env.VITE_KINDE_AUDIENCE,
     };
