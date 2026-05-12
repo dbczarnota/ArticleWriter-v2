@@ -258,43 +258,58 @@ svg { display: inline-block; vertical-align: middle; }
 
 /* ── Mobile ── */
 @media (max-width: 768px) {
-  .slide { padding: 40px 28px; justify-content: flex-start; padding-top: 52px; }
-  .logo { margin-bottom: 24px; }
+  /* Slide: leave room at bottom for the nav bar */
+  .slide { padding: 40px 24px 96px; justify-content: flex-start; padding-top: 48px; }
+  .logo { margin-bottom: 20px; }
   .logo-name { font-size: 17px; }
-  .hero-h { font-size: clamp(32px, 9vw, 52px); margin-bottom: 14px; }
-  .hero-sub { font-size: 15px; margin-bottom: 28px; }
-  .sec-h { font-size: clamp(24px, 7vw, 38px); }
+  .hero-h { font-size: clamp(30px, 9vw, 52px); margin-bottom: 14px; }
+  .hero-sub { font-size: 15px; margin-bottom: 24px; }
+  .sec-h { font-size: clamp(22px, 7vw, 38px); }
   .sec-sub { font-size: 14px; }
-  .cols, .cols-3 { grid-template-columns: 1fr; gap: 20px; }
-  .cols-4 { grid-template-columns: 1fr 1fr; gap: 16px; }
-  .stats { gap: 28px; padding-top: 24px; margin-top: 24px; }
+  .cols, .cols-3 { grid-template-columns: 1fr; gap: 18px; }
+  .cols-4 { grid-template-columns: 1fr 1fr; gap: 14px; }
+  .stats { gap: 24px; padding-top: 20px; margin-top: 20px; }
   .stat-num { font-size: 28px; }
-  .points { gap: 12px; margin-top: 16px; }
+  .points { gap: 10px; margin-top: 14px; }
   .point-text { font-size: 13px; }
   .big-num { font-size: clamp(48px, 14vw, 80px); }
   .big-num-label { font-size: 15px; }
-  .card, .card-dark { padding: 20px; }
+  .card, .card-dark { padding: 18px; }
   .btns { flex-direction: column; align-items: flex-start; gap: 10px; }
   .btn-primary, .btn-ghost { font-size: 13px; padding: 11px 22px; }
-  .shield-banner { flex-direction: column; gap: 16px; padding: 24px 20px; }
-  .conv { flex-direction: column; gap: 14px; padding: 20px 22px; }
-  .nav-arrow { width: 44px; height: 44px; }
-  .nav-prev { left: 10px; }
-  .nav-next { right: 10px; }
-  .progress { bottom: 18px; gap: 8px; }
-  .prog-dot { width: 7px; height: 7px; }
-  .prog-dot.on { width: 22px; }
-  .counter { top: 14px; right: 16px; font-size: 10px; }
-  .label { font-size: 10px; margin-bottom: 14px; }
+  .shield-banner { flex-direction: column; gap: 14px; padding: 20px 18px; }
+  .conv { flex-direction: column; gap: 12px; padding: 18px 20px; }
+  .label { font-size: 10px; margin-bottom: 12px; }
   .badge { font-size: 11px; padding: 4px 10px; }
   .track-header { padding: 14px 16px; }
   .track-steps { padding: 16px; gap: 12px; }
+
+  /* Move counter to top-left, smaller */
+  .counter { top: 14px; right: 14px; font-size: 10px; }
+
+  /* Bottom nav bar: hide mid-screen arrows, move everything to bottom strip */
+  .nav-arrow {
+    top: auto; transform: none;
+    bottom: 22px; width: 40px; height: 40px;
+    background: rgba(255,255,255,.08); border-color: var(--border);
+  }
+  .nav-prev { left: 20px; }
+  .nav-next { right: 20px; }
+
+  /* Center the progress dots in the bottom bar */
+  .progress {
+    bottom: 30px;
+    left: 50%; transform: translateX(-50%);
+    gap: 7px;
+  }
+  .prog-dot { width: 7px; height: 7px; }
+  .prog-dot.on { width: 20px; }
 }
 
 @media (max-width: 480px) {
-  .slide { padding: 36px 18px; padding-top: 48px; }
-  .hero-h { font-size: clamp(28px, 10vw, 44px); }
-  .sec-h { font-size: clamp(22px, 8vw, 32px); }
+  .slide { padding: 36px 18px 96px; padding-top: 44px; }
+  .hero-h { font-size: clamp(26px, 10vw, 40px); }
+  .sec-h { font-size: clamp(20px, 8vw, 30px); }
   .cols-4 { grid-template-columns: 1fr; }
   .btns { width: 100%; }
   .btn-primary, .btn-ghost { width: 100%; text-align: center; justify-content: center; }
