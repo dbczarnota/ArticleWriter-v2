@@ -98,6 +98,7 @@ body {
 button {
   cursor: pointer;
   font-family: var(--font);
+  color: inherit;
 }
 
 /* Scrollbar — light canvas style */
