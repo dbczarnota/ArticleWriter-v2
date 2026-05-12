@@ -649,6 +649,12 @@ export interface Translations {
       point2: string;
       point3Strong: string;
       point3: string;
+      point4Strong: string;
+      point4: string;
+      point5Strong: string;
+      point5: string;
+      point6Strong: string;
+      point6: string;
       mockLabel: string;
       mockSourceIgSub: string;
       mockSourceXSub: string;
@@ -656,6 +662,14 @@ export interface Translations {
       mockSourceTtSub: string;
       mockOutputLabel: string;
       mockOutputTitle: string;
+      mockAltLabel: string;
+      mockAlt1: string;
+      mockAlt2: string;
+      mockAlt3: string;
+      mockFbLabel: string;
+      mockFbText: string;
+      mockMediaLabel: string;
+      mockMediaSub: string;
     };
     audience: {
       tag: string;
