@@ -1,9 +1,7 @@
 import { useT } from "../../i18n";
-import { useAuth } from "../../lib/useAuth";
 
 export function LandingHero() {
   const t = useT();
-  const { login } = useAuth();
 
   return (
     <section id="hero" className="landing-hero">
@@ -19,7 +17,7 @@ export function LandingHero() {
         </h1>
         <p className="landing-hero-sub">{t.landing.hero.sub}</p>
         <div className="landing-hero-ctas">
-          <button className="landing-btn-primary" onClick={() => login()}>
+          <button className="landing-btn-primary" onClick={() => document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" })}>
             {t.landing.hero.ctaPrimary}
           </button>
           <a href="#how" className="landing-btn-ghost">

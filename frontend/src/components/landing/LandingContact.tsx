@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useT } from "../../i18n";
 
-const FORMSPREE_ENDPOINT = "https://formspree.io/dczarnota@gmail.com";
+const FORMSPREE_ENDPOINT = "https://formspree.io/hello@headlinesforge.com";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
