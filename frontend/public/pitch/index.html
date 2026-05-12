@@ -260,8 +260,8 @@ svg { display: inline-block; vertical-align: middle; }
 
 /* ── Mobile ── */
 @media (max-width: 768px) {
-  /* Slide: leave room at bottom for the nav bar */
-  .slide { padding: 40px 24px 96px; justify-content: flex-start; padding-top: 48px; }
+  /* Slide: leave room at bottom for the nav bar; allow vertical scroll if content overflows */
+  .slide { padding: 40px 24px 96px; justify-content: flex-start; padding-top: 48px; overflow-y: auto; }
   .logo { margin-bottom: 20px; }
   .logo-name { font-size: 17px; }
   .hero-h { font-size: clamp(30px, 9vw, 52px); margin-bottom: 14px; }
