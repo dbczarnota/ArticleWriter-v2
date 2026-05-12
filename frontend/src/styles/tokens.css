@@ -172,3 +172,9 @@ button {
   margin-bottom: 6px;
   line-height: 1.65;
 }
+
+/* Chrome-toned scrollbar for dark sidebar/panel areas */
+.chrome-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+.chrome-scroll::-webkit-scrollbar-track { background: transparent; }
+.chrome-scroll::-webkit-scrollbar-thumb { background: var(--chrome-faint); border-radius: 2px; }
+.chrome-scroll::-webkit-scrollbar-thumb:hover { background: var(--chrome-subtle); }

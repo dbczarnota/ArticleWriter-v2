@@ -262,7 +262,7 @@ export function Sidebar({
         )}
       </div>
 
-      <div style={{ overflowY: "auto", flex: 1 }}>
+      <div className="chrome-scroll" style={{ overflowY: "auto", flex: 1 }}>
         {visible.length === 0 && (
           <p style={{ padding: 16, color: "var(--chrome-muted)", fontSize: 13 }}>
             {isFiltered ? t.sidebar.noArticlesInRange : t.sidebar.noArticles}
@@ -277,13 +277,10 @@ export function Sidebar({
               onClick={() => onSelect(a.id)}
               style={{
                 display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
+                flexDirection: "column",
+                gap: 4,
                 width: "100%",
-                padding: "10px 12px",
-                // 'done' articles stay muted even when selected — readers need to
-                // remember the article is already done. Selection still shows
-                // through the orange left border + a subtler tint.
+                padding: "11px 14px",
                 background: isSelected
                   ? a.marked_done
                     ? "rgba(234, 88, 12, 0.06)"
@@ -296,9 +293,6 @@ export function Sidebar({
                 textAlign: "left",
                 cursor: "pointer",
                 transition: "background 0.12s",
-                // Done = strong dim, failed = subtle dim. Failed shouldn't
-                // shout — the red ✕ already signals state, opacity just keeps
-                // it from competing with active (running/done) entries.
                 opacity: a.marked_done
                   ? 0.55
                   : (a.status === "failed" || a.status === "insufficient_sources")
@@ -306,57 +300,32 @@ export function Sidebar({
                     : 1,
               }}
             >
-              {a.marked_done ? (
-                <span style={{ color: "var(--success)", fontWeight: 700, fontSize: 14, flexShrink: 0, lineHeight: 1, marginTop: 3 }}>✓</span>
-              ) : (a.status === "failed" || a.status === "insufficient_sources") ? (
-                // Red disc with white ✕ — clearly different from the orange/green
-                // dots so failed articles read at a glance in a long list.
-                <span style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: "50%",
-                  background: "var(--error)",
-                  color: "#fff",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  flexShrink: 0,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginTop: 2,
-                  lineHeight: 1,
-                }}>✕</span>
-              ) : (
-                <span style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: STATUS_DOT[a.status] ?? "#94a3b8",
-                  flexShrink: 0,
-                  marginTop: 5,
-                  animation: a.status === "running" ? "pulse-dot 1.8s ease-out infinite" : undefined,
-                }} />
-              )}
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {a.topic}
-                </div>
-                <div style={{ fontSize: 11, color: "var(--chrome-muted)", marginTop: 2, display: "flex", gap: 6, alignItems: "center" }}>
-                  <span>{a.created_at ? new Date(a.created_at).toLocaleDateString(lang) : "—"}</span>
-                  {isMine && (
-                    <span style={{
-                      background: "rgba(234,88,12,.12)",
-                      color: "var(--accent-light)",
-                      borderRadius: 3,
-                      padding: "0 4px",
-                      fontSize: 10,
-                      fontWeight: 600,
-                      lineHeight: "16px",
-                    }}>
-                      {t.sidebar.mine}
-                    </span>
-                  )}
-                </div>
+              <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-.01em", color: "var(--chrome-ink)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {a.topic}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--chrome-muted)", display: "flex", gap: 6, alignItems: "center" }}>
+                {a.marked_done ? (
+                  <span style={{ color: "var(--success)", fontWeight: 700, fontSize: 12, lineHeight: 1 }}>✓</span>
+                ) : (a.status === "failed" || a.status === "insufficient_sources") ? (
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--error)", flexShrink: 0, display: "inline-block" }} />
+                ) : (
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_DOT[a.status] ?? "#94a3b8", flexShrink: 0, display: "inline-block", animation: a.status === "running" ? "pulse-dot 1.8s ease-out infinite" : undefined }} />
+                )}
+                <span>{a.created_at ? new Date(a.created_at).toLocaleDateString(lang) : "—"}</span>
+                {isMine && (
+                  <span style={{
+                    background: "rgba(234,88,12,.12)",
+                    color: "var(--accent)",
+                    borderRadius: 999,
+                    border: "1px solid var(--accent-border)",
+                    padding: "0 5px",
+                    fontSize: 10,
+                    fontWeight: 600,
+                    lineHeight: "16px",
+                  }}>
+                    {t.sidebar.mine}
+                  </span>
+                )}
               </div>
             </button>
           );

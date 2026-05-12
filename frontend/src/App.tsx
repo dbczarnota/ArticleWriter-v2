@@ -112,7 +112,7 @@ export default function App() {
             // DiscoveryHub renders edge-to-edge (own sidebar + scroll regions),
             // so the standard <main> padding would clip its bottom and leave
             // gaps around its sidebar.
-            padding: view === "discovery" ? 0 : isMobile ? 12 : 24,
+            padding: view === "discovery" ? 0 : isMobile ? 12 : "28px 36px",
           }}
         >
           {view === "list" && (

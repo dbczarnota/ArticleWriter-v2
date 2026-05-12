@@ -899,7 +899,9 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(0, 0, 0, 0.7)",
+        background: "rgba(13,17,23,.65)",
+        backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -915,8 +917,8 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
         style={{
           background: "var(--card-bg)",
           border: "1px solid var(--card-border)",
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+          borderRadius: 14,
+          boxShadow: "var(--shadow-modal)",
           width: "100%",
           maxWidth,
           maxHeight: "90vh",
@@ -938,7 +940,7 @@ export function NewArticleForm({ onCreated, onCancel, topicId }: NewArticleFormP
             alignItems: "center",
           }}
         >
-          <h3 id="new-article-title" style={{ margin: 0, fontSize: 16, color: "var(--ink)" }}>
+          <h3 id="new-article-title" style={{ margin: 0, fontSize: 16, color: "var(--ink)", fontWeight: 800, letterSpacing: "-.025em" }}>
             {step === "step2" ? na.step2Heading : topicId ? t.discovery.dialog.title : (isSettings ? na.headingSettings : na.heading)}
           </h3>
           {onCancel && (

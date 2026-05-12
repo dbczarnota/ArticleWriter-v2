@@ -180,10 +180,10 @@ export function DateRangePicker({
         top: pos.top,
         left: pos.left,
         zIndex: 1000,
-        background: "var(--white)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius)",
-        boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+        background: "var(--card-bg)",
+        border: "1px solid var(--card-border)",
+        borderRadius: "var(--radius-lg)",
+        boxShadow: "var(--shadow-modal)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -201,7 +201,7 @@ export function DateRangePicker({
         .hf-rdp .rdp-nav { padding: 0 4px; }
         .hf-rdp .rdp-button_previous,
         .hf-rdp .rdp-button_next {
-          width: 28px; height: 28px; padding: 0; color: var(--muted);
+          width: 28px; height: 28px; padding: 0; color: var(--ink-subtle);
           display: inline-flex; align-items: center; justify-content: center;
           background: transparent; border-radius: 4px;
         }
@@ -211,7 +211,7 @@ export function DateRangePicker({
         .hf-rdp .rdp-weekdays { display: table-row; }
         .hf-rdp .rdp-weekday {
           width: 36px; height: 28px; padding: 0;
-          font-size: 11px; color: var(--muted); font-weight: 500;
+          font-size: 11px; color: var(--ink-subtle); font-weight: 500;
           text-transform: none;
         }
         .hf-rdp .rdp-week { display: table-row; }
@@ -219,7 +219,7 @@ export function DateRangePicker({
         .hf-rdp .rdp-day_button {
           width: 34px; height: 34px; padding: 0; margin: 0;
           font: inherit; font-size: 12px;
-          background: transparent; color: var(--text); border: none;
+          background: transparent; color: var(--ink); border: none;
           border-radius: 4px;
           cursor: pointer;
           display: inline-flex; align-items: center; justify-content: center;
@@ -233,25 +233,25 @@ export function DateRangePicker({
         /* Range middle: full-bleed light background, no per-cell radius. */
         .hf-rdp .rdp-range_middle { background: var(--accent-lt); }
         .hf-rdp .rdp-range_middle .rdp-day_button {
-          background: transparent; color: var(--text); border-radius: 0; width: 100%;
+          background: transparent; color: var(--ink); border-radius: 0; width: 100%;
         }
         /* Range start / end: solid accent disc. */
         .hf-rdp .rdp-range_start .rdp-day_button,
         .hf-rdp .rdp-range_end .rdp-day_button,
         .hf-rdp .rdp-selected:not(.rdp-range_middle) .rdp-day_button {
-          background: var(--accent); color: var(--white); border: none; border-radius: 4px;
+          background: var(--accent); color: var(--card-bg); border: none; border-radius: 4px;
         }
         .hf-rdp .rdp-day_button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-        .hf-rdp .rdp-disabled .rdp-day_button { color: var(--muted); opacity: 0.4; cursor: default; }
-        .hf-rdp .rdp-outside .rdp-day_button { color: var(--muted); opacity: 0.5; }
+        .hf-rdp .rdp-disabled .rdp-day_button { color: var(--ink-subtle); opacity: 0.4; cursor: default; }
+        .hf-rdp .rdp-outside .rdp-day_button { color: var(--ink-subtle); opacity: 0.5; }
       `}</style>
       <div style={{ display: "flex", flexDirection: narrow ? "column" : "row", flex: 1, minHeight: 0, overflow: "auto" }}>
         {/* Left rail — presets */}
         <div
           style={{
             width: narrow ? "100%" : 140,
-            borderRight: narrow ? "none" : "1px solid var(--border)",
-            borderBottom: narrow ? "1px solid var(--border)" : "none",
+            borderRight: narrow ? "none" : "1px solid var(--card-border)",
+            borderBottom: narrow ? "1px solid var(--card-border)" : "none",
             padding: narrow ? "4px" : "8px 0",
             display: "flex",
             flexDirection: narrow ? "row" : "column",
@@ -274,13 +274,13 @@ export function DateRangePicker({
                   style={{
                     background: active ? "var(--accent-lt)" : "none",
                     border: narrow
-                      ? `1px solid ${active ? "var(--accent)" : "var(--border)"}`
+                      ? `1px solid ${active ? "var(--accent)" : "var(--card-border)"}`
                       : "none",
                     borderRadius: "var(--radius)",
                     textAlign: "left",
                     padding: narrow ? "4px 8px" : "8px 14px",
                     fontSize: 12,
-                    color: active ? "var(--accent)" : "var(--text)",
+                    color: active ? "var(--accent)" : "var(--ink)",
                     fontWeight: active ? 600 : 400,
                     cursor: "pointer",
                     whiteSpace: "nowrap",
@@ -318,12 +318,12 @@ export function DateRangePicker({
       {/* Bottom bar — sticky to popover regardless of inner scroll */}
       <div
         style={{
-          borderTop: "1px solid var(--border)",
+          borderTop: "1px solid var(--card-border)",
           padding: "8px 12px",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          background: "var(--sidebar)",
+          background: "var(--canvas-bg)",
           flexShrink: 0,
         }}
       >
@@ -333,7 +333,7 @@ export function DateRangePicker({
           style={{
             background: "none",
             border: "none",
-            color: "var(--muted)",
+            color: "var(--ink-subtle)",
             fontSize: 12,
             cursor: "pointer",
             padding: "4px 8px",
@@ -347,11 +347,11 @@ export function DateRangePicker({
             onClick={onClose}
             style={{
               background: "none",
-              border: "1px solid var(--border)",
+              border: "1px solid var(--card-border)",
               borderRadius: "var(--radius)",
               padding: "4px 12px",
               fontSize: 12,
-              color: "var(--text)",
+              color: "var(--ink)",
               cursor: "pointer",
             }}
           >
@@ -362,12 +362,12 @@ export function DateRangePicker({
             onClick={handleApply}
             style={{
               background: "var(--accent)",
-              color: "var(--white)",
+              color: "var(--card-bg)",
               border: "none",
               borderRadius: "var(--radius)",
               padding: "4px 12px",
               fontSize: 12,
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: "pointer",
             }}
           >

@@ -3,7 +3,7 @@ import type { DiscoveryTopicSummary, DiscoveryItem, StreamSource } from "../type
 import { useDiscoveryTopicDetail } from "../lib/useDiscoveryTopicDetail";
 import { useT } from "../i18n";
 import { Button } from "./ui/Button";
-import { RadioIcon } from "./ui/icons";
+import { RadioIcon, ExternalLinkIcon } from "./ui/icons";
 import { safeHref } from "../lib/safeHref";
 import { StreamSourceModal } from "./StreamSourceModal";
 
@@ -80,6 +80,10 @@ function GlobeIcon() {
     </svg>
   );
 }
+function hostnameOf(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; }
+}
+
 const metaItem: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -416,9 +420,22 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
                       display: "flex",
                       gap: 10,
                       alignItems: "center",
-                      padding: "6px 0",
+                      padding: "10px 12px",
+                      marginBottom: 4,
                       textDecoration: "none",
                       color: "var(--ink)",
+                      border: "1px solid var(--card-border)",
+                      borderRadius: 8,
+                      background: "var(--card-bg)",
+                      transition: "box-shadow .15s, border-color .15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = "var(--shadow-card-hover)";
+                      e.currentTarget.style.borderColor = "var(--card-border-strong)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = "none";
+                      e.currentTarget.style.borderColor = "var(--card-border)";
                     }}
                   >
                     {it.image_url && (
@@ -432,26 +449,19 @@ export function TopicCard({ topic, onWrite, onSelect, onDismiss, onRestore, pend
                           width: 44,
                           height: 44,
                           objectFit: "cover",
-                          borderRadius: 4,
+                          borderRadius: 6,
                           flexShrink: 0,
                           background: "var(--canvas-bg)",
                         }}
                       />
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14 }}>
-                        {it.title} <span style={{ color: "var(--ink-subtle)" }}>↗</span>
+                      <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {it.title}
                       </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: "var(--ink-subtle)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {it.canonical_url}
+                      <div style={{ fontSize: 11, color: "var(--ink-subtle)", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                        <ExternalLinkIcon width={10} height={10} />
+                        {hostnameOf(it.canonical_url)}
                       </div>
                     </div>
                   </a>

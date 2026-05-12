@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 interface CollapsibleSectionProps {
   title: string;
@@ -34,6 +34,9 @@ function Chevron({ open }: { open: boolean }) {
 
 export function CollapsibleSection({ title, count, defaultOpen = false, prominent = false, icon, children }: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const [headerHovered, setHeaderHovered] = useState(false);
+  const handleMouseEnter = useCallback(() => setHeaderHovered(true), []);
+  const handleMouseLeave = useCallback(() => setHeaderHovered(false), []);
   const label = count !== undefined ? `${title} (${count})` : title;
 
   if (prominent) {
@@ -42,8 +45,10 @@ export function CollapsibleSection({ title, count, defaultOpen = false, prominen
         <button
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
           style={{
-            background: "var(--card-bg)",
+            background: headerHovered ? "var(--accent-tint)" : "var(--card-bg)",
             border: "1px solid var(--card-border)",
             borderRadius: open ? "var(--radius) var(--radius) 0 0" : "var(--radius)",
             width: "100%",
@@ -51,21 +56,23 @@ export function CollapsibleSection({ title, count, defaultOpen = false, prominen
             display: "flex",
             alignItems: "center",
             gap: 8,
-            padding: "9px 12px",
+            padding: "11px 16px",
             fontSize: 11,
             fontWeight: 700,
             letterSpacing: "0.1em",
             textTransform: "uppercase",
             color: "var(--ink-subtle)",
             cursor: "pointer",
+            transition: "background 0.12s",
           }}
         >
           {icon && (
             <span style={{
-              width: 24,
-              height: 24,
+              width: 26,
+              height: 26,
               borderRadius: 7,
               background: "var(--accent-tint)",
+              border: "1px solid var(--accent-border)",
               color: "var(--accent)",
               display: "inline-flex",
               alignItems: "center",

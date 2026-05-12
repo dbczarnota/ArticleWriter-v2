@@ -6,6 +6,7 @@ import { Button } from "./ui/Button";
 import { StatusMessage } from "./ui/StatusMessage";
 import { safeHref } from "../lib/safeHref";
 import { StreamSourceModal } from "./StreamSourceModal";
+import { ExternalLinkIcon } from "./ui/icons";
 
 interface Props {
   topicId: string;
@@ -171,14 +172,20 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
             </div>
           </div>
 
-          <h3 style={{ marginTop: 24, color: "var(--ink)", fontSize: 15 }}>
-            {t.discovery.topic.sources} ({detail.items.length})
-          </h3>
+          <div style={{ marginTop: 24, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", display: "inline-block", flexShrink: 0 }} />
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "var(--accent)" }}>
+              {t.discovery.topic.sources} ({detail.items.length})
+            </span>
+          </div>
           {detail.stream_sources?.length > 0 && (
             <>
-              <h3 style={{ marginTop: 24, color: "var(--ink)", fontSize: 15 }}>
-                Źródła streamowe ({detail.stream_sources.length})
-              </h3>
+              <div style={{ marginTop: 24, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", display: "inline-block", flexShrink: 0 }} />
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "var(--accent)" }}>
+                  Źródła streamowe ({detail.stream_sources.length})
+                </span>
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
                 {detail.stream_sources.map((src) => (
                   <button
@@ -268,7 +275,7 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                         width: 64,
                         height: 64,
                         objectFit: "cover",
-                        borderRadius: 4,
+                        borderRadius: 8,
                         flexShrink: 0,
                         background: "var(--canvas-bg)",
                       }}
@@ -284,21 +291,17 @@ export function TopicDetail({ topicId, onBack, onWrite }: Props) {
                         color: "var(--ink)",
                         textDecoration: "none",
                         fontSize: 14,
-                      }}
-                    >
-                      {it.title} <span style={{ color: "var(--ink-subtle)" }}>↗</span>
-                    </a>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "var(--ink-subtle)",
+                        display: "block",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
-                        marginTop: 2,
                       }}
                     >
-                      {it.canonical_url}
+                      {it.title}
+                    </a>
+                    <div style={{ fontSize: 11, color: "var(--ink-subtle)", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                      <ExternalLinkIcon width={10} height={10} />
+                      {hostnameOf(it.canonical_url).replace(/^www\./, "")}
                     </div>
                   </div>
                   {it.fetched_at && (

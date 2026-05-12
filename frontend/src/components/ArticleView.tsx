@@ -113,8 +113,8 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
           <span>{article.created_at ? new Date(article.created_at).toLocaleString(lang) : "—"}</span>
         </div>
         <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12 }}>{article.topic}</h2>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--muted)", fontSize: 14 }}>
-          <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid var(--accent)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 10, fontSize: 14, color: "var(--ink-subtle)", background: "rgba(234,88,12,.08)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "8px 14px" }}>
+          <span style={{ display: "inline-block", width: 14, height: 14, border: "2px solid var(--accent)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
           {stageLabel}
         </div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
