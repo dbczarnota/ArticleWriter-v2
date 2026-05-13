@@ -20,6 +20,25 @@ interface Props {
   activeView: ActiveView;
 }
 
+function CustomCheckbox({ checked }: { checked: boolean }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 15, height: 15, flexShrink: 0,
+      borderRadius: 3,
+      background: checked ? "var(--accent)" : "transparent",
+      border: checked ? "1.5px solid var(--accent)" : "1.5px solid var(--chrome-faint)",
+      transition: "background .12s, border-color .12s",
+    }}>
+      {checked && (
+        <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="1.5 5 4 7.5 8.5 2.5" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
 export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategories, value, onChange, activeView }: Props) {
   const t = useT();
   const [feedsOpen, setFeedsOpen] = useState(true);
@@ -199,9 +218,10 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
               </div>
             )}
             {availableCategories.map((c) => (
-              <label key={c.name} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer", color: "var(--chrome-muted)" }}>
+              <label key={c.name} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "5px 8px", fontSize: 13, cursor: "pointer", color: "var(--chrome-muted)", userSelect: "none" }}>
                 <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input type="checkbox" checked={value.categories.includes(c.name)} onChange={() => toggleCategory(c.name)} style={{ accentColor: "var(--accent)" }} />
+                  <input type="checkbox" checked={value.categories.includes(c.name)} onChange={() => toggleCategory(c.name)} style={{ position: "absolute", opacity: 0, width: 0, height: 0 }} />
+                  <CustomCheckbox checked={value.categories.includes(c.name)} />
                   {c.name}
                 </span>
                 {c.count !== undefined && <span style={{ color: "var(--chrome-faint)", fontSize: 11 }}>{c.count}</span>}
@@ -227,8 +247,9 @@ export function DiscoveryFiltersSidebar({ feeds, subscriptions, availableCategor
                 { id: "consumed", label: t.discovery.status.consumed },
                 { id: "dismissed", label: t.discovery.status.dismissed },
               ].map((s) => (
-                <label key={s.id} style={{ display: "flex", gap: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer", color: "var(--chrome-muted)" }}>
-                  <input type="checkbox" checked={value.statuses.includes(s.id)} onChange={() => toggleStatus(s.id)} style={{ accentColor: "var(--accent)" }} />
+                <label key={s.id} style={{ display: "flex", gap: 8, padding: "5px 8px", fontSize: 13, cursor: "pointer", color: "var(--chrome-muted)", alignItems: "center", userSelect: "none" }}>
+                  <input type="checkbox" checked={value.statuses.includes(s.id)} onChange={() => toggleStatus(s.id)} style={{ position: "absolute", opacity: 0, width: 0, height: 0 }} />
+                  <CustomCheckbox checked={value.statuses.includes(s.id)} />
                   {s.label}
                 </label>
               ))}
