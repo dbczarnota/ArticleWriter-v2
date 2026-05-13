@@ -219,6 +219,8 @@ export interface Translations {
     followup: string;
     media_search: string;
     media_extraction: string;
+    stream_analysis: string;
+    stream_digest: string;
   };
   newArticle: {
     heading: string;
@@ -415,6 +417,8 @@ export interface Translations {
     followup: string;
     media_search: string;
     media_extraction: string;
+    stream_analysis: string;
+    stream_digest: string;
   };
   freshness: {
     day: string;

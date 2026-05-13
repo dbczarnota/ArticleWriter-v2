@@ -378,6 +378,8 @@ export const pl: Translations = {
     followup: "Follow-up",
     media_search: "Media search",
     media_extraction: "Media extraction",
+    stream_analysis: "Transkrypcja streamu",
+    stream_digest: "Digest streamu",
   },
   freshness: {
     day: "Ostatni dzień",
@@ -406,6 +408,8 @@ export const pl: Translations = {
     followup: "Generuje alternatywne tytuły, tematy powiązane i śledzi które fakty/cytaty trafiły do artykułu. Pro bo wymaga kreatywności stylistycznej.",
     media_search: "Formułuje zapytania słów kluczowych do wyszukiwania YouTube, mediów społecznościowych i Reddita. Lekki krok — Flash Lite wystarczy.",
     media_extraction: "Agent wizji wyciągający fakty i cytaty ze zdjęć i wideo przesłanych przez redaktora. Wymaga modelu z dobrą obsługą multimodalną.",
+    stream_analysis: "Transkrybuje chunki audio i wyciąga z nich tematy, fakty i cytaty. Działa dla każdego chunka — Flash Lite jest wystarczający i tani.",
+    stream_digest: "Łączy tematy z wielu chunków w jeden digest i decyduje czy warto zapisać nowy temat. Flash wystarczy.",
   },
   discovery: {
     views: { topics: "Tematy", items: "Itemy", feeds: "Feedy", streams: "Streamy" },

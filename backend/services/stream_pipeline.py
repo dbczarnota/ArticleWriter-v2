@@ -362,12 +362,28 @@ async def run_subscription_pipeline(
     url_refresh_headers: dict | None = None,
     url_refresh_field: str = "url",
     topic_merge_window_hours: int = 6,
+    agent_models: dict[str, str] | None = None,
+    agent_fallback_models: dict[str, list[str]] | None = None,
 ) -> None:
     """Long-running pipeline task for one subscription."""
     from backend.services.stream_manager import get_stream_manager
 
-    analysis_config = StreamAnalysisAgentConfig()
-    digest_config = StreamDigestAgentConfig()
+    _models = agent_models or {}
+    _fallbacks = agent_fallback_models or {}
+
+    _analysis_overrides: dict = {}
+    if _models.get("stream_analysis"):
+        _analysis_overrides["model"] = _models["stream_analysis"]
+    if _fallbacks.get("stream_analysis"):
+        _analysis_overrides["fallback_models"] = tuple(_fallbacks["stream_analysis"])
+    analysis_config = StreamAnalysisAgentConfig(**_analysis_overrides)
+
+    _digest_overrides: dict = {}
+    if _models.get("stream_digest"):
+        _digest_overrides["model"] = _models["stream_digest"]
+    if _fallbacks.get("stream_digest"):
+        _digest_overrides["fallback_models"] = tuple(_fallbacks["stream_digest"])
+    digest_config = StreamDigestAgentConfig(**_digest_overrides)
     _db = get_db_backend() == "postgres"
     manager = get_stream_manager()
     _refresh_headers = url_refresh_headers or {}

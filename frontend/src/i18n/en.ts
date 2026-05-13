@@ -378,6 +378,8 @@ export const en: Translations = {
     followup: "Follow-up",
     media_search: "Media search",
     media_extraction: "Media extraction",
+    stream_analysis: "Stream transcription",
+    stream_digest: "Stream digest",
   },
   freshness: {
     day: "Past day",
@@ -406,6 +408,8 @@ export const en: Translations = {
     followup: "Generates alternative titles, related topics, and tracks which facts/quotes ended up in the article. Pro because it needs stylistic creativity.",
     media_search: "Formulates keyword queries to find YouTube, social media, and Reddit embed candidates. Lightweight step — Flash Lite is fine.",
     media_extraction: "Vision agent that extracts facts and quotes from editor-uploaded images and video. Needs a model with strong multimodal support.",
+    stream_analysis: "Transcribes audio chunks and extracts topics, facts, and quotes from each one. Runs per chunk — Flash Lite is sufficient and cheap.",
+    stream_digest: "Merges topics from multiple chunks into a single digest and decides whether a topic is worth saving. Flash is fine.",
   },
   discovery: {
     views: { topics: "Topics", items: "Items", feeds: "Feeds", streams: "Streams" },

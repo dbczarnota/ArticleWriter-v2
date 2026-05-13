@@ -16,8 +16,31 @@ from sqlmodel import select
 
 from backend.auth.deps import get_current_org
 from backend.database import get_db_backend, get_session_maker
-from backend.db.models import Org, StreamChunk, StreamDigest, StreamSubscription, StreamTopic
+from backend.db.models import (
+    Org,
+    OrgConfig,
+    StreamChunk,
+    StreamDigest,
+    StreamSubscription,
+    StreamTopic,
+)
 from backend.services.stream_manager import get_stream_manager
+
+
+async def _load_agent_overrides(org_code: str) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """Return (agent_models, agent_fallback_models) from OrgConfig, or empty dicts if unavailable."""
+    if get_db_backend() != "postgres":
+        return {}, {}
+    sm = get_session_maker()
+    async with sm() as session:  # type: ignore[union-attr]
+        result = await session.execute(select(OrgConfig).where(OrgConfig.org_code == org_code))  # type: ignore[arg-type]
+        cfg = result.scalar_one_or_none()
+    if not cfg:
+        return {}, {}
+    return (
+        dict(cfg.agent_models or {}),
+        {k: list(v) for k, v in (cfg.agent_fallback_models or {}).items()},
+    )
 
 router = APIRouter(prefix="/v2/streams", tags=["streams"])
 _log = logging.getLogger(__name__)
@@ -110,6 +133,7 @@ async def create_subscription(
             await session.commit()
             await session.refresh(sub)
 
+    agent_models, agent_fallback_models = await _load_agent_overrides(org.code)
     manager = get_stream_manager()
     await manager.start(
         sub.id,
@@ -121,6 +145,8 @@ async def create_subscription(
         url_refresh_headers=sub.url_refresh_headers,
         url_refresh_field=sub.url_refresh_field,
         topic_merge_window_hours=sub.topic_merge_window_hours,
+        agent_models=agent_models or None,
+        agent_fallback_models=agent_fallback_models or None,
     )
     logfire.info("stream.subscribed", subscription_id=str(sub.id), org_code=org.code)
     return _sub_to_response(sub)
@@ -200,6 +226,7 @@ async def start_subscription(
         session.add(sub)
         await session.commit()
         await session.refresh(sub)
+    agent_models, agent_fallback_models = await _load_agent_overrides(org.code)
     manager = get_stream_manager()
     await manager.start(
         sub.id,
@@ -211,6 +238,8 @@ async def start_subscription(
         url_refresh_headers=sub.url_refresh_headers or {},
         url_refresh_field=sub.url_refresh_field,
         topic_merge_window_hours=sub.topic_merge_window_hours,
+        agent_models=agent_models or None,
+        agent_fallback_models=agent_fallback_models or None,
     )
     logfire.info("stream.started", subscription_id=str(subscription_id), org_code=org.code)
     return _sub_to_response(sub)

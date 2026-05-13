@@ -23,7 +23,7 @@ export const AVAILABLE_MODELS = [
   { id: "groq:openai/gpt-oss-120b", label: "Groq OSS 120B (fast/cheap)" },
 ];
 
-type AgentKey = "search" | "scraping" | "parsing" | "extraction" | "adaptive_search" | "instructions" | "writer" | "reflection" | "followup" | "media_search" | "media_extraction";
+type AgentKey = "search" | "scraping" | "parsing" | "extraction" | "adaptive_search" | "instructions" | "writer" | "reflection" | "followup" | "media_search" | "media_extraction" | "stream_analysis" | "stream_digest";
 
 const DEFAULT_MODEL_PER_AGENT: Record<AgentKey, string> = {
   search:           "google-gla:gemini-flash-latest",
@@ -37,6 +37,8 @@ const DEFAULT_MODEL_PER_AGENT: Record<AgentKey, string> = {
   followup:         "google-gla:gemini-pro-latest",
   media_search:     "google-gla:gemini-flash-lite-latest",
   media_extraction: "google-gla:gemini-flash-latest",
+  stream_analysis:  "google-gla:gemini-flash-lite-latest",
+  stream_digest:    "google-gla:gemini-flash-latest",
 };
 
 const DEFAULT_FALLBACK = "google-gla:gemini-flash-latest";
@@ -125,6 +127,8 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
     { key: "followup", label: t.agents.followup, tip: t.agentTips.followup },
     { key: "media_search", label: t.agents.media_search, tip: t.agentTips.media_search },
     { key: "media_extraction", label: t.agents.media_extraction, tip: t.agentTips.media_extraction },
+    { key: "stream_analysis", label: t.agents.stream_analysis, tip: t.agentTips.stream_analysis },
+    { key: "stream_digest", label: t.agents.stream_digest, tip: t.agentTips.stream_digest },
   ];
 
   useEffect(() => {

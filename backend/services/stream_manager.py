@@ -54,6 +54,8 @@ class StreamSessionManager:
         url_refresh_headers: dict | None = None,
         url_refresh_field: str = "url",
         topic_merge_window_hours: int = 6,
+        agent_models: dict[str, str] | None = None,
+        agent_fallback_models: dict[str, list[str]] | None = None,
     ) -> None:
         """Start pipeline task for subscription_id. Idempotent."""
         if subscription_id in self._tasks and not self._tasks[subscription_id].done():
@@ -69,6 +71,8 @@ class StreamSessionManager:
                 url_refresh_headers=url_refresh_headers or {},
                 url_refresh_field=url_refresh_field,
                 topic_merge_window_hours=topic_merge_window_hours,
+                agent_models=agent_models,
+                agent_fallback_models=agent_fallback_models,
             ),
             name=f"stream-{subscription_id}",
         )
@@ -104,13 +108,21 @@ class StreamSessionManager:
         """
         from sqlmodel import select
 
-        from backend.db.models import StreamSubscription
+        from backend.db.models import OrgConfig, StreamSubscription
 
         result = await session.execute(
             select(StreamSubscription).where(StreamSubscription.status == "active")  # type: ignore[arg-type]
         )
         subs = result.scalars().all()
+        # Batch-load OrgConfig rows to avoid N+1 queries.
+        org_codes = {sub.org_code for sub in subs}
+        cfg_result = await session.execute(
+            select(OrgConfig).where(OrgConfig.org_code.in_(org_codes))  # type: ignore[arg-type]
+        )
+        org_configs: dict[str, OrgConfig] = {cfg.org_code: cfg for cfg in cfg_result.scalars().all()}
+
         for sub in subs:
+            cfg = org_configs.get(sub.org_code)
             await self.start(
                 sub.id,
                 sub.stream_url,
@@ -121,6 +133,8 @@ class StreamSessionManager:
                 url_refresh_headers=sub.url_refresh_headers,
                 url_refresh_field=sub.url_refresh_field,
                 topic_merge_window_hours=sub.topic_merge_window_hours,
+                agent_models=dict(cfg.agent_models) if cfg and cfg.agent_models else None,
+                agent_fallback_models={k: list(v) for k, v in cfg.agent_fallback_models.items()} if cfg and cfg.agent_fallback_models else None,
             )
         if subs:
             logfire.info("stream.manager.resumed", count=len(subs))
