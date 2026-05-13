@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 import logfire
 
 from agents._base.resilient import InsufficientSourcesError
-from agents._base.run_context import get_fallback_events, init_collector
+from agents._base.run_context import get_fallback_events, get_serper_queries, init_collector
 from agents._base.types import ArticleOutput, EmbedCandidate
 from agents.extraction.agent import ExtractionResult, run_extraction_agent
 from agents.followup.agent import run_followup_agent
@@ -810,6 +810,17 @@ async def _run_pipeline_inner(
         _total_ms = (time.perf_counter() - _pipeline_t0) * 1000
         _status = "error" if _errors else "ok"
         record_pipeline_run(domain.name, _status, _total_ms)
+        _serper_queries = get_serper_queries()
+        logfire.info(
+            "serper.cost",
+            n_queries=len(_serper_queries),
+            cost_usd=len(_serper_queries) * 0.001,
+            endpoints=_serper_queries,
+            article_id=str(_article_id),
+            org_code=org_code,
+            user_id=author_user_id,
+            domain=domain.name,
+        )
         log.done(len(sources), len(_errors))
         await persist_article_done(
             repo=_article_repo,

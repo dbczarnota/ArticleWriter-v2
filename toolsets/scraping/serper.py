@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import logfire
 
+from agents._base.run_context import record_serper_query
 from agents._base.types import EmbedCandidate, SearchResult
 
 _BASE = "https://google.serper.dev"
@@ -21,6 +22,7 @@ def _log_serper_results(
     link_key: str = "link",
     title_key: str = "title",
     snippet_key: str = "snippet",
+    cost_usd: float = 0.001,
 ) -> None:
     """Emit a structured `serper.results` event with the response shape.
 
@@ -29,6 +31,10 @@ def _log_serper_results(
     items Serper returned (URL + title + first ~200 chars of snippet)
     queryable in Logfire by article_id + endpoint, so a post-mortem can
     see exactly what the LLM got handed without re-running the search.
+
+    cost_usd is the estimated monetary cost of this query ($0.001 per Serper
+    request, $0.0 for free endpoints like Reddit). With article_id propagated
+    via OTEL baggage, Logfire can SUM(cost_usd) GROUP BY article_id or org_code.
     """
     summarized = [
         {
@@ -44,7 +50,10 @@ def _log_serper_results(
         query=query,
         result_count=len(items),
         results=summarized,
+        cost_usd=cost_usd,
     )
+    if cost_usd > 0:
+        record_serper_query(endpoint)
 
 
 async def search(
@@ -205,12 +214,14 @@ async def search_reddit(
         data = response.json()
     children = data.get("data", {}).get("children", [])
     # Reddit's shape is `{data: {url, title, ...}}` per child — flatten for the helper.
+    # cost_usd=0.0: Reddit JSON API is free, no Serper credit consumed.
     _log_serper_results(
         "reddit/search.json",
         query,
         [c.get("data", {}) for c in children],
         link_key="url",
         snippet_key="selftext",
+        cost_usd=0.0,
     )
 
     results = []
