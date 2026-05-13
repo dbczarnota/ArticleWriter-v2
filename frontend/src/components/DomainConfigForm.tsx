@@ -171,13 +171,6 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
               </label>
               <input value={form.language} onChange={(e) => set("language", e.target.value)} style={inputStyle} />
             </div>
-          </div>
-        </section>
-
-        {/* Wyszukiwanie */}
-        <section id="wyszukiwanie" style={{ display: sectionVisible("wyszukiwanie") ? "block" : "none", marginBottom: 32 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>{dc.sectionSearch}</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
               <label style={labelStyle}>
                 {dc.targetWordCount}
@@ -185,6 +178,13 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
               </label>
               <input type="number" value={form.target_word_count} onChange={(e) => set("target_word_count", +e.target.value)} min={100} max={5000} style={inputStyle} />
             </div>
+          </div>
+        </section>
+
+        {/* Wyszukiwanie */}
+        <section id="wyszukiwanie" style={{ display: sectionVisible("wyszukiwanie") ? "block" : "none", marginBottom: 32 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>{dc.sectionSearch}</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div>
               <label style={labelStyle}>
                 {dc.searchFreshness}
