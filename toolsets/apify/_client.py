@@ -13,15 +13,23 @@ import logfire
 
 from agents._base.run_context import record_apify_run
 
-# Default cost per run (USD) per actor. Override or extend via APIFY_ACTOR_COSTS env var
-# (JSON dict), e.g.: {"apify~instagram-scraper": 0.03, "some~new-actor": 0.10}
-# Env var values take precedence over defaults below — update ConfigMap, no rebuild needed.
-_PRICE_PER_ITEM_DEFAULTS: dict[str, float] = {
-    "apify~instagram-scraper": 0.03,
-    "apidojo~twitter-scraper-lite": 0.05,
+# Flat cost per actor run (USD). Keyed by "actor" or "actor:service" for per-call granularity.
+# "actor:service" wins over "actor" when both exist.
+# Override/extend via APIFY_ACTOR_COSTS env var (JSON), no rebuild needed.
+#
+# Pricing basis:
+#   apify~instagram-scraper         — pay-per-result $1.50/1k + proxies; ~$0.003/post flat
+#   apidojo~twitter-scraper-lite    — per-query flat:
+#       :x.tweet  → Single Tweet Query  $0.05/query
+#       :x.replies → Standard Query     $0.016/query
+_COST_PER_RUN_DEFAULTS: dict[str, float] = {
+    "apify~instagram-scraper": 0.003,
+    "apidojo~twitter-scraper-lite:x.tweet": 0.05,
+    "apidojo~twitter-scraper-lite:x.replies": 0.016,
+    "apidojo~twitter-scraper-lite": 0.05,  # fallback if service not specified
 }
-_PRICE_PER_ITEM: dict[str, float] = {
-    **_PRICE_PER_ITEM_DEFAULTS,
+_COST_PER_RUN: dict[str, float] = {
+    **_COST_PER_RUN_DEFAULTS,
     **json.loads(os.environ.get("APIFY_ACTOR_COSTS", "{}")),
 }
 
@@ -97,8 +105,7 @@ class ApifyClient:
 
             latency_ms = (time.monotonic() - t0) * 1000
             item_count = len(items)
-            price_per = _PRICE_PER_ITEM.get(actor, 0.0)
-            estimated_cost = price_per * max(item_count, 1)
+            estimated_cost = _COST_PER_RUN.get(f"{actor}:{service}", _COST_PER_RUN.get(actor, 0.0))
 
             # Log first item's text fields so Logfire traces show what the actor returned.
             first_text = ""
