@@ -13,6 +13,7 @@ import logfire
 
 from agents._base.resilient import InsufficientSourcesError
 from agents._base.run_context import (
+    get_apify_runs,
     get_fallback_events,
     get_jina_scrapes,
     get_serper_queries,
@@ -767,6 +768,17 @@ async def _run_pipeline_inner(
                         user_id=author_user_id,
                         domain=domain.name,
                     )
+                    _apify_runs = get_apify_runs()
+                    logfire.info(
+                        "apify.cost",
+                        n_runs=len(_apify_runs),
+                        cost_usd=round(sum(r["cost_usd"] for r in _apify_runs), 6),
+                        runs=_apify_runs,
+                        article_id=str(_article_id),
+                        org_code=org_code,
+                        user_id=author_user_id,
+                        domain=domain.name,
+                    )
                     _final_sources = _ensure_user_urls(list(result.sources or scraped_urls), urls)
                     log.done(len(_final_sources), len(_errors))
                     await persist_article_done(
@@ -856,6 +868,17 @@ async def _run_pipeline_inner(
             "jina.cost",
             n_pages=len(_jina_pages),
             cost_usd=len(_jina_pages) * _jina_cost_per_page,
+            article_id=str(_article_id),
+            org_code=org_code,
+            user_id=author_user_id,
+            domain=domain.name,
+        )
+        _apify_runs = get_apify_runs()
+        logfire.info(
+            "apify.cost",
+            n_runs=len(_apify_runs),
+            cost_usd=round(sum(r["cost_usd"] for r in _apify_runs), 6),
+            runs=_apify_runs,
             article_id=str(_article_id),
             org_code=org_code,
             user_id=author_user_id,

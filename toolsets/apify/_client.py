@@ -3,17 +3,26 @@
 
 from __future__ import annotations
 
+import json
+import os
 import time
 from dataclasses import dataclass
 
 import httpx
 import logfire
 
-# Estimated cost per item (USD) for each actor.
-# Used for spend tracking in Logfire; update when Apify changes pricing.
+from agents._base.run_context import record_apify_run
+
+# Default cost per run (USD) per actor. Override or extend via APIFY_ACTOR_COSTS env var
+# (JSON dict), e.g.: {"apify~instagram-scraper": 0.03, "some~new-actor": 0.10}
+# Env var values take precedence over defaults below — update ConfigMap, no rebuild needed.
+_PRICE_PER_ITEM_DEFAULTS: dict[str, float] = {
+    "apify~instagram-scraper": 0.03,
+    "apidojo~twitter-scraper-lite": 0.05,
+}
 _PRICE_PER_ITEM: dict[str, float] = {
-    "apify~instagram-scraper": 0.03,  # flat ~$0.03/run (1 post + comments)
-    "apidojo~twitter-scraper-lite": 0.05,  # ~$0.05/run estimate (subscription plan, compute-based)
+    **_PRICE_PER_ITEM_DEFAULTS,
+    **json.loads(os.environ.get("APIFY_ACTOR_COSTS", "{}")),
 }
 
 _DEFAULT_TIMEOUT = 180.0
@@ -117,6 +126,7 @@ class ApifyClient:
                 latency_ms=round(latency_ms),
                 first_item_text_preview=first_text[:300],
             )
+            record_apify_run(actor, service, estimated_cost)
 
             return ApifyResult(
                 items=items,

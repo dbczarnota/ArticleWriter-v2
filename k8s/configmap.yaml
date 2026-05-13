@@ -10,3 +10,6 @@ data:
   SERPER_COST_PER_QUERY_USD: "0.001"
   # Jina Reader paid tier: ~$0.02 per 1000 pages = $0.00002 per page.
   JINA_COST_PER_PAGE_USD: "0.00002"
+  # Apify actor costs (USD per run) as JSON. Add new actors here without rebuild.
+  # apify~instagram-scraper: ~$0.03/run; apidojo~twitter-scraper-lite: ~$0.05/run
+  APIFY_ACTOR_COSTS: '{"apify~instagram-scraper": 0.03, "apidojo~twitter-scraper-lite": 0.05}'

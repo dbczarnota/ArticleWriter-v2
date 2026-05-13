@@ -47,6 +47,7 @@ def init_collector() -> list[AgentCallRecord]:
     _fallback_collector.set(fallback_records)
     _serper_counter.set([])
     _jina_counter.set([])
+    _apify_counter.set([])
     return records
 
 
@@ -97,3 +98,20 @@ def record_jina_scrape(url: str) -> None:
 def get_jina_scrapes() -> list[str]:
     """Return all Jina-scraped URLs in this async context."""
     return _jina_counter.get() or []
+
+
+_apify_counter: contextvars.ContextVar[list[dict] | None] = contextvars.ContextVar(
+    "_apify_counter", default=None
+)
+
+
+def record_apify_run(actor: str, service: str, cost_usd: float) -> None:
+    """Record one Apify actor run. No-op outside a pipeline context."""
+    runs = _apify_counter.get()
+    if runs is not None:
+        runs.append({"actor": actor, "service": service, "cost_usd": cost_usd})
+
+
+def get_apify_runs() -> list[dict]:
+    """Return all Apify actor runs recorded in this async context."""
+    return _apify_counter.get() or []

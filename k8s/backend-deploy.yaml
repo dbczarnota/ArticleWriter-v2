@@ -103,6 +103,11 @@ spec:
                 configMapKeyRef:
                   name: articlewriter-config
                   key: JINA_COST_PER_PAGE_USD
+            - name: APIFY_ACTOR_COSTS
+              valueFrom:
+                configMapKeyRef:
+                  name: articlewriter-config
+                  key: APIFY_ACTOR_COSTS
           readinessProbe:
             httpGet:
               path: /health
