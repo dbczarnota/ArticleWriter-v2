@@ -289,6 +289,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {!isFailed && article.html && (
         <div
           className="article-html"
+          lang={lang}
           // Article HTML comes from the LLM pipeline. Even though we control the
           // pipeline, prompt-injection from any third-party source URL could
           // smuggle <script> or onerror= payloads into the output. DOMPurify
