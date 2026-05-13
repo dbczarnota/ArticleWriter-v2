@@ -324,7 +324,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         <CollapsibleSection prominent icon={<TitlesIcon />} title={av.altTitles} count={article.alternative_titles.length} defaultOpen>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {article.alternative_titles.map((title, i) => (
-              <div key={i} style={{ padding: "8px 12px", background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--radius-lg)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <div key={i} style={{ padding: "8px 12px", background: "var(--canvas-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--radius-lg)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <span>{title}</span>
                 <CopyButton text={title} />
               </div>
@@ -574,7 +574,7 @@ function CopyButton({ text }: { text: string }) {
 
 function TeaserCard({ text }: { text: string }) {
   return (
-    <div style={{ position: "relative", padding: "10px 44px 10px 12px", background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-card)", fontSize: 13, minHeight: 48, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+    <div style={{ position: "relative", padding: "10px 44px 10px 12px", background: "var(--canvas-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-card)", fontSize: 13, minHeight: 48, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
       {text}
       <div style={{ position: "absolute", top: 6, right: 6 }}>
         <CopyButton text={text} />
