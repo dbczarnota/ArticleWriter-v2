@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import httpx
 
+from agents._base.run_context import record_jina_scrape
 from agents._base.types import ScrapedPage
 from toolsets.scraping.rate_limiter import get_jina_semaphore
 
@@ -30,6 +31,7 @@ async def scrape_with_jina(
                 response = await client.get(f"{_JINA_BASE}/{url}", headers=headers)
                 response.raise_for_status()
                 content = response.text.strip()
+                record_jina_scrape(url)
         except (httpx.HTTPStatusError, httpx.HTTPError, httpx.TimeoutException):
             return None
 

@@ -98,6 +98,11 @@ spec:
                 configMapKeyRef:
                   name: articlewriter-config
                   key: SERPER_COST_PER_QUERY_USD
+            - name: JINA_COST_PER_PAGE_USD
+              valueFrom:
+                configMapKeyRef:
+                  name: articlewriter-config
+                  key: JINA_COST_PER_PAGE_USD
           readinessProbe:
             httpGet:
               path: /health

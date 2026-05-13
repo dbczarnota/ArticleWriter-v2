@@ -12,7 +12,12 @@ if TYPE_CHECKING:
 import logfire
 
 from agents._base.resilient import InsufficientSourcesError
-from agents._base.run_context import get_fallback_events, get_serper_queries, init_collector
+from agents._base.run_context import (
+    get_fallback_events,
+    get_jina_scrapes,
+    get_serper_queries,
+    init_collector,
+)
 from agents._base.types import ArticleOutput, EmbedCandidate
 from agents.extraction.agent import ExtractionResult, run_extraction_agent
 from agents.followup.agent import run_followup_agent
@@ -751,6 +756,17 @@ async def _run_pipeline_inner(
                         user_id=author_user_id,
                         domain=domain.name,
                     )
+                    _jina_pages = get_jina_scrapes()
+                    _jina_cost_per_page = settings.pipeline.jina_cost_per_page_usd
+                    logfire.info(
+                        "jina.cost",
+                        n_pages=len(_jina_pages),
+                        cost_usd=len(_jina_pages) * _jina_cost_per_page,
+                        article_id=str(_article_id),
+                        org_code=org_code,
+                        user_id=author_user_id,
+                        domain=domain.name,
+                    )
                     _final_sources = _ensure_user_urls(list(result.sources or scraped_urls), urls)
                     log.done(len(_final_sources), len(_errors))
                     await persist_article_done(
@@ -829,6 +845,17 @@ async def _run_pipeline_inner(
             n_queries=len(_serper_queries),
             cost_usd=len(_serper_queries) * _serper_cost_per_q,
             endpoints=_serper_queries,
+            article_id=str(_article_id),
+            org_code=org_code,
+            user_id=author_user_id,
+            domain=domain.name,
+        )
+        _jina_pages = get_jina_scrapes()
+        _jina_cost_per_page = settings.pipeline.jina_cost_per_page_usd
+        logfire.info(
+            "jina.cost",
+            n_pages=len(_jina_pages),
+            cost_usd=len(_jina_pages) * _jina_cost_per_page,
             article_id=str(_article_id),
             org_code=org_code,
             user_id=author_user_id,

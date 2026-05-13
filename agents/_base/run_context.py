@@ -34,6 +34,10 @@ _serper_counter: contextvars.ContextVar[list[str] | None] = contextvars.ContextV
     "_serper_counter", default=None
 )
 
+_jina_counter: contextvars.ContextVar[list[str] | None] = contextvars.ContextVar(
+    "_jina_counter", default=None
+)
+
 
 def init_collector() -> list[AgentCallRecord]:
     """Create fresh collectors for this async context. Call once per pipeline run."""
@@ -42,6 +46,7 @@ def init_collector() -> list[AgentCallRecord]:
     fallback_records: list[FallbackEvent] = []
     _fallback_collector.set(fallback_records)
     _serper_counter.set([])
+    _jina_counter.set([])
     return records
 
 
@@ -80,3 +85,15 @@ def record_serper_query(endpoint: str) -> None:
 def get_serper_queries() -> list[str]:
     """Return all Serper endpoints called in this async context."""
     return _serper_counter.get() or []
+
+
+def record_jina_scrape(url: str) -> None:
+    """Count one successful Jina page scrape. No-op outside a pipeline context."""
+    pages = _jina_counter.get()
+    if pages is not None:
+        pages.append(url)
+
+
+def get_jina_scrapes() -> list[str]:
+    """Return all Jina-scraped URLs in this async context."""
+    return _jina_counter.get() or []

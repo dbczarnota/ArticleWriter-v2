@@ -8,3 +8,5 @@ data:
   # Update this value if Serper changes their pricing — no rebuild needed,
   # just apply this file and restart the backend pod.
   SERPER_COST_PER_QUERY_USD: "0.001"
+  # Jina Reader paid tier: ~$0.02 per 1000 pages = $0.00002 per page.
+  JINA_COST_PER_PAGE_USD: "0.00002"

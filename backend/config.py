@@ -64,6 +64,9 @@ class PipelineFlags:
     serper_cost_per_query_usd: float = field(
         default_factory=lambda: float(os.environ.get("SERPER_COST_PER_QUERY_USD", "0.001"))
     )
+    jina_cost_per_page_usd: float = field(
+        default_factory=lambda: float(os.environ.get("JINA_COST_PER_PAGE_USD", "0.00002"))
+    )
 
 
 _FALLBACK: tuple[str, ...] = ("google-gla:gemini-flash-latest",)
