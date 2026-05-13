@@ -485,13 +485,27 @@ function CorroborationBadge({ count }: { count: number }) {
   );
 }
 
+function hostnameOf(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, ""); }
+  catch { return url; }
+}
+
 function SourceList({ urls }: { urls: string[] }) {
   if (!urls || urls.length === 0) return null;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 4 }}>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
       {urls.map((u) => (
-        <a key={u} href={safeHref(u)} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "var(--accent)", wordBreak: "break-all" }}>
-          {u}
+        <a key={u} href={safeHref(u)} target="_blank" rel="noreferrer" title={u} style={{
+          fontSize: 10,
+          color: "var(--ink-subtle)",
+          background: "var(--canvas-bg)",
+          border: "1px solid var(--card-border)",
+          borderRadius: 4,
+          padding: "2px 7px",
+          textDecoration: "none",
+          whiteSpace: "nowrap",
+        }}>
+          {hostnameOf(u)}
         </a>
       ))}
     </div>
@@ -502,17 +516,19 @@ function FactCard({ fact, muted }: { fact: Fact; muted?: boolean }) {
   const corroboration = fact.source_urls?.length ?? 0;
   return (
     <div style={{
-      borderLeft: `3px solid ${muted ? "var(--card-border)" : "var(--accent)"}`,
-      marginBottom: 8,
-      background: muted ? "transparent" : "var(--accent-lt)",
-      borderRadius: "0 var(--radius-lg) var(--radius-lg) 0",
-      padding: "8px 8px 8px 12px",
+      marginBottom: 6,
+      background: muted ? "transparent" : "var(--card-bg)",
+      border: "1px solid var(--card-border)",
+      borderLeftWidth: 3,
+      borderLeftColor: muted ? "var(--card-border)" : "var(--accent)",
+      borderRadius: "0 var(--radius) var(--radius) 0",
+      padding: "10px 14px 10px 14px",
     }}>
-      <p style={{ fontSize: 13, marginBottom: 4 }}>
+      <p style={{ fontSize: 13, lineHeight: 1.55, color: muted ? "var(--ink-subtle)" : "var(--ink)" }}>
         {fact.text}
         <CorroborationBadge count={corroboration} />
       </p>
-      {fact.context && <p style={{ fontSize: 12, color: "var(--muted)" }}>{fact.context}</p>}
+      {fact.context && <p style={{ fontSize: 12, color: "var(--ink-subtle)", marginTop: 4 }}>{fact.context}</p>}
       <SourceList urls={fact.source_urls ?? []} />
     </div>
   );
@@ -522,18 +538,32 @@ function QuoteCard({ quote, muted }: { quote: Quote; muted?: boolean }) {
   const corroboration = quote.source_urls?.length ?? 0;
   return (
     <div style={{
-      borderLeft: `3px solid ${muted ? "var(--card-border)" : "var(--accent)"}`,
-      padding: "8px 8px 8px 12px",
-      marginBottom: 8,
-      background: muted ? "transparent" : "var(--accent-lt)",
-      borderRadius: "0 var(--radius-lg) var(--radius-lg) 0",
+      marginBottom: 6,
+      background: muted ? "transparent" : "var(--card-bg)",
+      border: "1px solid var(--card-border)",
+      borderLeftWidth: 3,
+      borderLeftColor: muted ? "var(--card-border)" : "var(--ink-subtle)",
+      borderRadius: "0 var(--radius) var(--radius) 0",
+      padding: "10px 14px 10px 14px",
+      position: "relative",
     }}>
-      <p style={{ fontSize: 13, fontStyle: "italic" }}>
-        "{quote.text}"
+      {!muted && (
+        <span style={{
+          position: "absolute", top: 6, right: 12,
+          fontSize: 28, lineHeight: 1, color: "var(--card-border-strong)",
+          fontFamily: "Georgia, serif", userSelect: "none",
+        }}>"</span>
+      )}
+      <p style={{ fontSize: 13, fontStyle: "italic", lineHeight: 1.6, color: muted ? "var(--ink-subtle)" : "var(--ink)", paddingRight: 24 }}>
+        {quote.text}
         <CorroborationBadge count={corroboration} />
       </p>
-      {quote.speaker && <p style={{ fontSize: 12, fontWeight: 500, marginTop: 4 }}>— {quote.speaker}</p>}
-      {quote.context && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{quote.context}</p>}
+      {quote.speaker && (
+        <p style={{ fontSize: 12, fontWeight: 600, color: "var(--ink-subtle)", marginTop: 6, fontStyle: "normal" }}>
+          — {quote.speaker}
+        </p>
+      )}
+      {quote.context && <p style={{ fontSize: 11, color: "var(--ink-subtle)", marginTop: 3, fontStyle: "normal" }}>{quote.context}</p>}
       <SourceList urls={quote.source_urls ?? []} />
     </div>
   );
