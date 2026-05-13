@@ -187,15 +187,8 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
   return (
     <div>
-      {/* Metadata card — groups title, author, stats, and action buttons */}
-      <div style={{
-        background: "var(--card-bg)",
-        border: "1px solid var(--card-border)",
-        borderRadius: "var(--radius-lg)",
-        boxShadow: "var(--shadow-card)",
-        padding: isMobile ? "16px" : "20px 28px",
-        marginBottom: 24,
-      }}>
+      {/* Article head — frameless, sits directly on canvas */}
+      <div style={{ marginBottom: 24 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.015em", lineHeight: 1.3, margin: 0 }}>
           {article.topic}
