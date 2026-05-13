@@ -115,10 +115,10 @@ button {
 
 /* Article HTML rendered content */
 .article-html h1 {
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.025em;
-  margin: 0 0 16px;
+  margin: 0 0 18px;
   line-height: 1.15;
   color: var(--ink);
 }
@@ -148,16 +148,40 @@ button {
 }
 .article-html blockquote {
   border-left: 3px solid var(--accent);
+  border-top: 1px solid var(--accent-border);
+  border-right: 1px solid var(--accent-border);
+  border-bottom: 1px solid var(--accent-border);
   background: var(--accent-tint);
-  margin: 20px 0;
+  margin: 18px 0;
   padding: 14px 18px;
   border-radius: 0 var(--radius) var(--radius) 0;
   font-style: italic;
   color: var(--ink);
 }
+.article-html blockquote::before {
+  content: 'CYTAT';
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-style: normal;
+  margin-bottom: 6px;
+}
 .article-html blockquote p {
   margin: 0;
   color: var(--ink);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.article-html blockquote p::before {
+  content: '\201C';
+  font-size: 20px;
+  color: var(--accent);
+  margin-right: 2px;
+  vertical-align: -3px;
+  font-style: normal;
 }
 .article-html a {
   color: var(--accent);
