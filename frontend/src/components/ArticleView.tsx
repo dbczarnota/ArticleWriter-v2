@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import DOMPurify from "dompurify";
 import type { Article, EmbedCandidate, Fact, Quote, SocialMediaAttachment } from "../types";
 import { useArticles } from "../lib/useArticles";
-import { useMediaQuery } from "../lib/useMediaQuery";
 import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { Button } from "./ui/Button";
@@ -21,7 +20,6 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   const t = useT();
   const av = t.articleView;
   const { lang } = useLang();
-  const isMobile = useMediaQuery("(max-width: 767px)");
   const [article, setArticle] = useState<Article | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
