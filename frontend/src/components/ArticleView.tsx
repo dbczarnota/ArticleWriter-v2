@@ -196,93 +196,82 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         padding: isMobile ? "16px" : "20px 28px",
         marginBottom: 24,
       }}>
-      <div style={{
-        display: "flex",
-        flexDirection: isMobile ? "column" : "row",
-        alignItems: isMobile ? "stretch" : "flex-start",
-        justifyContent: "space-between",
-        gap: isMobile ? 12 : 16,
-      }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", gap: 12, fontSize: 11, color: "var(--muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            <span>{av.statWords}: <strong style={{ color: "var(--text)" }}>{wordCount.toLocaleString()}</strong></span>
-            <span>{av.statChars}: <strong style={{ color: "var(--text)" }}>{charCount.toLocaleString()}</strong></span>
-          </div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{article.topic}</h2>
-          <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--muted)", flexWrap: "wrap", alignItems: "center" }}>
-            <span>
-              {(() => {
-                const isMe = !!currentUserId && article.author_user_id === currentUserId;
-                // Prefer the explicit author_name (full name from Kinde JWT,
-                // sent by the frontend on create). Fall back to the email
-                // local-part for legacy rows. Last resort: 'Inny redaktor'.
-                if (article.author_name) {
-                  return isMe ? `${av.me} (${article.author_name})` : article.author_name;
-                }
-                if (article.author_email) {
-                  const handle = article.author_email.split("@")[0];
-                  return isMe ? `${av.me} (${handle})` : handle;
-                }
-                return isMe ? av.me : av.otherEditor;
-              })()}
-            </span>
-            <span>{article.created_at ? new Date(article.created_at).toLocaleString(lang) : "—"}</span>
-            <button
-              onClick={async () => {
-                const done = !article.marked_done;
-                setArticle((a) => a ? { ...a, marked_done: done } : a);
-                try {
-                  await onMarkDone?.(article.id, done);
-                } catch {
-                  setArticle((a) => a ? { ...a, marked_done: !done } : a);
-                }
-              }}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 5,
-                padding: "3px 9px",
-                background: article.marked_done ? "var(--success-tint)" : "var(--card-bg)",
-                border: `1px solid ${article.marked_done ? "#bbf7d0" : "var(--card-border)"}`,
-                borderRadius: 999,
-                fontSize: 12,
-                fontWeight: article.marked_done ? 600 : 400,
-                color: article.marked_done ? "var(--success-fg)" : "var(--ink-subtle)",
-                cursor: "pointer",
-              }}
-            >
-              {article.marked_done && <CheckIcon width={11} height={11} strokeWidth={3} />}
-              {av.markDone}
-              {article.marked_done && article.marked_done_by_name && (
-                <span style={{ fontWeight: 400, color: "var(--success-fg)", opacity: 0.7 }}>
-                  · {article.marked_done_by_name}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-        <div style={{
-          display: "flex",
-          gap: 8,
-          flexShrink: 0,
-          flexWrap: "wrap",
-          // On mobile the toolbar stacks; let the action row span full width.
-          width: isMobile ? "100%" : "auto",
-          justifyContent: isMobile ? "flex-start" : "flex-start",
-        }}>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCopy}
-            iconLeft={<CopyIcon />}
-            style={copied ? { background: "var(--success)", color: "var(--fg-inverse)", borderColor: "var(--success)" } : undefined}
-            title={av.copyHtml}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.015em", lineHeight: 1.3, margin: 0 }}>
+          {article.topic}
+        </h2>
+
+        {/* Meta pills — author · date · mark-done */}
+        <div style={{ display: "flex", gap: 6, fontSize: 12, color: "var(--ink-subtle)", flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ padding: "3px 9px", background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: 999 }}>
+            {(() => {
+              const isMe = !!currentUserId && article.author_user_id === currentUserId;
+              if (article.author_name) return isMe ? `${av.me} (${article.author_name})` : article.author_name;
+              if (article.author_email) {
+                const handle = article.author_email.split("@")[0];
+                return isMe ? `${av.me} (${handle})` : handle;
+              }
+              return isMe ? av.me : av.otherEditor;
+            })()}
+          </span>
+          <span style={{ padding: "3px 9px", background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: 999 }}>
+            {article.created_at ? new Date(article.created_at).toLocaleString(lang) : "—"}
+          </span>
+          <button
+            onClick={async () => {
+              const done = !article.marked_done;
+              setArticle((a) => a ? { ...a, marked_done: done } : a);
+              try {
+                await onMarkDone?.(article.id, done);
+              } catch {
+                setArticle((a) => a ? { ...a, marked_done: !done } : a);
+              }
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "3px 9px",
+              background: article.marked_done ? "var(--success-tint)" : "var(--card-bg)",
+              border: `1px solid ${article.marked_done ? "#bbf7d0" : "var(--card-border)"}`,
+              borderRadius: 999,
+              fontSize: 12,
+              fontWeight: article.marked_done ? 600 : 400,
+              color: article.marked_done ? "var(--success-fg)" : "var(--ink-subtle)",
+              cursor: "pointer",
+            }}
           >
-            {copied ? av.copied : av.copyHtml}
-          </Button>
-          <Button variant="primary" size="sm" onClick={handleExport}>
-            {av.exportHtml}
-          </Button>
+            {article.marked_done && <CheckIcon width={11} height={11} strokeWidth={3} />}
+            {av.markDone}
+            {article.marked_done && article.marked_done_by_name && (
+              <span style={{ fontWeight: 400, color: "var(--success-fg)", opacity: 0.7 }}>
+                · {article.marked_done_by_name}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Toolbar — word/char stats left, action buttons right */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 14, fontSize: 12, color: "var(--ink-subtle)" }}>
+            <span>{av.statWords}: <strong style={{ color: "var(--ink)", fontWeight: 600 }}>{wordCount.toLocaleString()}</strong></span>
+            <span>{av.statChars}: <strong style={{ color: "var(--ink)", fontWeight: 600 }}>{charCount.toLocaleString()}</strong></span>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopy}
+              iconLeft={<CopyIcon />}
+              style={copied ? { background: "var(--success)", color: "var(--fg-inverse)", borderColor: "var(--success)" } : undefined}
+              title={av.copyHtml}
+            >
+              {copied ? av.copied : av.copyHtml}
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleExport} iconLeft={<DownloadIcon />}>
+              {av.exportHtml}
+            </Button>
+          </div>
         </div>
       </div>
       </div>
