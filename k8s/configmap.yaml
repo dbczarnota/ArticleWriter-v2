@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: articlewriter-config
+  namespace: headlinesforge
+data:
+  # Serper.dev pricing: $1 per 1000 queries = $0.001 per query.
+  # Update this value if Serper changes their pricing — no rebuild needed,
+  # just apply this file and restart the backend pod.
+  SERPER_COST_PER_QUERY_USD: "0.001"

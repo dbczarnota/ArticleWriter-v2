@@ -93,6 +93,11 @@ spec:
                   name: headlinesforge-secrets
                   key: LOGFIRE_TOKEN
                   optional: true
+            - name: SERPER_COST_PER_QUERY_USD
+              valueFrom:
+                configMapKeyRef:
+                  name: articlewriter-config
+                  key: SERPER_COST_PER_QUERY_USD
           readinessProbe:
             httpGet:
               path: /health
