@@ -739,6 +739,18 @@ async def _run_pipeline_inner(
                     record_stage("followup", _timing["followup"], domain.name)
                     _total_ms = (time.perf_counter() - _pipeline_t0) * 1000
                     record_pipeline_run(domain.name, "error" if _errors else "ok", _total_ms)
+                    _serper_queries = get_serper_queries()
+                    _serper_cost_per_q = settings.pipeline.serper_cost_per_query_usd
+                    logfire.info(
+                        "serper.cost",
+                        n_queries=len(_serper_queries),
+                        cost_usd=len(_serper_queries) * _serper_cost_per_q,
+                        endpoints=_serper_queries,
+                        article_id=str(_article_id),
+                        org_code=org_code,
+                        user_id=author_user_id,
+                        domain=domain.name,
+                    )
                     _final_sources = _ensure_user_urls(list(result.sources or scraped_urls), urls)
                     log.done(len(_final_sources), len(_errors))
                     await persist_article_done(
