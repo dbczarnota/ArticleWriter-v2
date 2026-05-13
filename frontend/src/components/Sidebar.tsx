@@ -262,7 +262,7 @@ export function Sidebar({
         )}
       </div>
 
-      <div className="chrome-scroll" style={{ overflowY: "auto", flex: 1 }}>
+      <div className="chrome-scroll" style={{ overflowY: "auto", flex: 1, padding: 8 }}>
         {visible.length === 0 && (
           <p style={{ padding: 16, color: "var(--chrome-muted)", fontSize: 13 }}>
             {isFiltered ? t.sidebar.noArticlesInRange : t.sidebar.noArticles}
@@ -280,16 +280,19 @@ export function Sidebar({
                 flexDirection: "column",
                 gap: 4,
                 width: "100%",
-                padding: "11px 14px",
+                padding: "10px 12px 10px 14px",
+                marginBottom: 2,
+                borderRadius: 6,
+                position: "relative",
                 background: isSelected
                   ? a.marked_done
                     ? "rgba(234, 88, 12, 0.06)"
-                    : "var(--accent-lt)"
+                    : "rgba(234,88,12,.08)"
                   : "transparent",
                 borderLeft: isSelected ? "3px solid var(--accent)" : "3px solid transparent",
                 borderTop: "none",
                 borderRight: "none",
-                borderBottom: "1px solid var(--chrome-border)",
+                borderBottom: "none",
                 textAlign: "left",
                 cursor: "pointer",
                 transition: "background 0.12s",
@@ -300,28 +303,29 @@ export function Sidebar({
                     : 1,
               }}
             >
-              <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-.01em", color: "var(--chrome-ink)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4, color: "var(--chrome-ink)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                 {a.topic}
               </div>
-              <div style={{ fontSize: 11, color: "var(--chrome-muted)", display: "flex", gap: 6, alignItems: "center" }}>
+              <div style={{ fontSize: 11, color: "var(--chrome-subtle)", display: "flex", gap: 8, alignItems: "center" }}>
                 {a.marked_done ? (
                   <span style={{ color: "var(--success)", fontWeight: 700, fontSize: 12, lineHeight: 1 }}>✓</span>
                 ) : (a.status === "failed" || a.status === "insufficient_sources") ? (
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--error)", flexShrink: 0, display: "inline-block" }} />
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--error)", flexShrink: 0, display: "inline-block" }} />
                 ) : (
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_DOT[a.status] ?? "#94a3b8", flexShrink: 0, display: "inline-block", animation: a.status === "running" ? "pulse-dot 1.8s ease-out infinite" : undefined }} />
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: STATUS_DOT[a.status] ?? "#94a3b8", flexShrink: 0, display: "inline-block", animation: a.status === "running" ? "pulse-dot 1.8s ease-out infinite" : undefined }} />
                 )}
                 <span>{a.created_at ? new Date(a.created_at).toLocaleDateString(lang) : "—"}</span>
                 {isMine && (
                   <span style={{
-                    background: "transparent",
-                    color: "var(--accent)",
-                    borderRadius: 999,
-                    border: "1px solid var(--accent)",
-                    padding: "0 5px",
-                    fontSize: 10,
-                    fontWeight: 600,
-                    lineHeight: "16px",
+                    background: "rgba(234,88,12,.12)",
+                    color: "var(--accent-light)",
+                    borderRadius: 4,
+                    border: "none",
+                    padding: "1px 6px",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: ".08em",
+                    textTransform: "uppercase",
                   }}>
                     {t.sidebar.mine}
                   </span>
