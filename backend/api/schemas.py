@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, EmailStr, field_validator
 from pydantic import Field as PydanticField
 
 
@@ -219,3 +219,10 @@ class DomainConfigUpdate(BaseModel):
         default_factory=lambda: ["groq:openai/gpt-oss-120b"]
     )
     article_templates: list[ArticleTemplateItem] = PydanticField(default_factory=list)
+
+
+class ContactRequest(BaseModel):
+    name: str = PydanticField(min_length=1, max_length=200)
+    email: EmailStr
+    company: str | None = PydanticField(default=None, max_length=200)
+    message: str = PydanticField(min_length=1, max_length=4000)

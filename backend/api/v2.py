@@ -1,10 +1,12 @@
 # backend/api/v2.py
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+import httpx
 import logfire
 from fastapi import (
     APIRouter,
@@ -23,6 +25,7 @@ from agents.pipeline.runner import run_pipeline
 from backend.api.schemas import (
     ArticleRequest,
     ArticleUpdate,
+    ContactRequest,
     DomainConfigUpdate,
     EditorExtractionPayload,
     EditorFactItem,
@@ -48,6 +51,36 @@ from backend.repositories.protocols import (
 from backend.secrets import Secrets, get_secrets
 
 router = APIRouter(prefix="/v2")
+
+
+@router.post("/contact")
+async def contact(req: ContactRequest) -> dict:
+    """Public endpoint — no auth. Sends landing-page contact form to hello@headlinesforge.com via Resend."""
+    api_key = os.environ.get("RESEND_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Email service not configured")
+
+    body_text = f"Od: {req.name} <{req.email}>\nFirma: {req.company or '—'}\n\n{req.message}"
+
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "from": "noreply@headlinesforge.com",
+                "to": ["hello@headlinesforge.com"],
+                "reply_to": [req.email],
+                "subject": f"[HeadlinesForge] Wiadomość od {req.name}",
+                "text": body_text,
+            },
+            timeout=10.0,
+        )
+
+    if not response.is_success:
+        raise HTTPException(status_code=500, detail="Failed to send email")
+
+    return {"ok": True}
+
 
 # Lifted to module scope — rebuilt per-call inside _apply_article_domain_overrides
 # before this move, which was wasteful.
@@ -1247,7 +1280,10 @@ async def list_discovery_topics(
     elif sort == "item_count":
         # Include stream sources in the count so the sort reflects total coverage.
         # Tie-break by last_activity so equal-count topics still order predictably.
-        out.sort(key=lambda x: (x["item_count"] + x["stream_source_count"], x["last_activity_at"] or ""), reverse=True)
+        out.sort(
+            key=lambda x: (x["item_count"] + x["stream_source_count"], x["last_activity_at"] or ""),
+            reverse=True,
+        )
     else:  # last_activity (default)
         out.sort(key=lambda x: x["last_activity_at"] or "", reverse=True)
 
@@ -1297,13 +1333,15 @@ async def get_discovery_topic(
                 sm_select(StreamTopic).where(StreamTopic.topic_id == topic_id)  # type: ignore[arg-type]
             )
             for st in _st_res.scalars().all():
-                stream_sources.append({
-                    "id": str(st.id),
-                    "subscription_id": str(st.subscription_id),
-                    "subscription_name": _subs.get(st.subscription_id, ""),
-                    "title": st.title,
-                    "windows": st.windows,
-                })
+                stream_sources.append(
+                    {
+                        "id": str(st.id),
+                        "subscription_id": str(st.subscription_id),
+                        "subscription_name": _subs.get(st.subscription_id, ""),
+                        "title": st.title,
+                        "windows": st.windows,
+                    }
+                )
 
     return {
         **_topic_to_json(
@@ -1443,23 +1481,27 @@ async def _stream_topics_to_editor_items(
                     ctx_parts.append(speaker)
                 if summary:
                     ctx_parts.append(summary)
-                facts.append(EditorFactItem(
-                    text=text,
-                    context=" — ".join(ctx_parts),
-                    source=source_tag,
-                ))
+                facts.append(
+                    EditorFactItem(
+                        text=text,
+                        context=" — ".join(ctx_parts),
+                        source=source_tag,
+                    )
+                )
 
             for q in st.quotes or []:
                 text = (q.get("text") or "").strip()
                 if not text:
                     continue
                 speaker = (q.get("speaker") or "").strip()
-                quotes.append(EditorQuoteItem(
-                    text=text,
-                    speaker=speaker,
-                    context=summary,
-                    source=source_tag,
-                ))
+                quotes.append(
+                    EditorQuoteItem(
+                        text=text,
+                        speaker=speaker,
+                        context=summary,
+                        source=source_tag,
+                    )
+                )
 
     return (facts, quotes)
 
@@ -1570,8 +1612,12 @@ async def write_article_from_discovery_topic(
         )
         if stream_facts or stream_quotes:
             existing_facts = list(final_editor_extraction.facts) if final_editor_extraction else []
-            existing_quotes = list(final_editor_extraction.quotes) if final_editor_extraction else []
-            existing_keywords = list(final_editor_extraction.keywords) if final_editor_extraction else []
+            existing_quotes = (
+                list(final_editor_extraction.quotes) if final_editor_extraction else []
+            )
+            existing_keywords = (
+                list(final_editor_extraction.keywords) if final_editor_extraction else []
+            )
             final_editor_extraction = EditorExtractionPayload(
                 facts=existing_facts + stream_facts,
                 quotes=existing_quotes + stream_quotes,

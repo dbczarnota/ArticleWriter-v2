@@ -1,24 +1,25 @@
 import { useState } from "react";
 import { useT } from "../../i18n";
 
-const FORMSPREE_ENDPOINT = "https://formspree.io/hello@headlinesforge.com";
-
 type Status = "idle" | "submitting" | "success" | "error";
 
 export function LandingContact() {
   const t = useT();
   const c = t.landing.contact;
   const [status, setStatus] = useState<Status>("idle");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
+  const [message, setMessage] = useState("");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus("submitting");
-    const form = e.currentTarget;
     try {
-      const res = await fetch(FORMSPREE_ENDPOINT, {
+      const res = await fetch("/v2/contact", {
         method: "POST",
-        body: new FormData(form),
-        headers: { Accept: "application/json" },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, company: company || undefined, message }),
       });
       setStatus(res.ok ? "success" : "error");
     } catch {
@@ -69,24 +70,56 @@ export function LandingContact() {
               <form onSubmit={handleSubmit}>
                 <div className="landing-contact-row">
                   <label className="landing-contact-label">{c.labelName}</label>
-                  <input name="name" type="text" required className="landing-contact-input" placeholder={c.placeholderName} />
+                  <input
+                    type="text"
+                    required
+                    className="landing-contact-input"
+                    placeholder={c.placeholderName}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
                 </div>
                 <div className="landing-contact-row">
                   <label className="landing-contact-label">{c.labelEmail}</label>
-                  <input name="email" type="email" required className="landing-contact-input" placeholder={c.placeholderEmail} />
+                  <input
+                    type="email"
+                    required
+                    className="landing-contact-input"
+                    placeholder={c.placeholderEmail}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
                 </div>
                 <div className="landing-contact-row">
                   <label className="landing-contact-label">{c.labelCompany}</label>
-                  <input name="company" type="text" className="landing-contact-input" placeholder={c.placeholderCompany} />
+                  <input
+                    type="text"
+                    className="landing-contact-input"
+                    placeholder={c.placeholderCompany}
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                  />
                 </div>
                 <div className="landing-contact-row">
                   <label className="landing-contact-label">{c.labelMessage}</label>
-                  <textarea name="message" required className="landing-contact-textarea" placeholder={c.placeholderMessage} />
+                  <textarea
+                    required
+                    className="landing-contact-textarea"
+                    placeholder={c.placeholderMessage}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                  />
                 </div>
-                <button type="submit" className="landing-contact-submit" disabled={status === "submitting"}>
+                <button
+                  type="submit"
+                  className="landing-contact-submit"
+                  disabled={status === "submitting"}
+                >
                   {status === "submitting" ? c.submitting : c.submit}
                 </button>
-                {status === "error" && <div className="landing-contact-error">{c.errorP}</div>}
+                {status === "error" && (
+                  <div className="landing-contact-error">{c.errorP}</div>
+                )}
               </form>
             )}
           </div>
