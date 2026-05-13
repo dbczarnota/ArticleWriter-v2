@@ -99,6 +99,7 @@ button {
   cursor: pointer;
   font-family: var(--font);
   color: inherit;
+  outline: none;
 }
 
 @keyframes pulse-dot {
@@ -169,11 +170,8 @@ button {
   font-style: normal;
   margin-bottom: 6px;
 }
-[lang="en"] .article-html blockquote::before {
+.article-html[lang="en"] blockquote::before {
   content: 'QUOTE';
-}
-button:focus:not(:focus-visible) {
-  outline: none;
 }
 .article-html blockquote p {
   margin: 0;
