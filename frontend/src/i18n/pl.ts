@@ -22,7 +22,7 @@ export const pl: Translations = {
   },
   sidebar: {
     articles: "Artykuły",
-    newArticle: "+ Nowy",
+    newArticle: "Nowy",
     filterAll: "Wszystkie",
     filterUndone: "Undone",
     filterDone: "Done",
@@ -36,6 +36,8 @@ export const pl: Translations = {
     loadMore: "Załaduj więcej",
     loadingMore: "Ładuję…",
     mine: "Moje",
+    statusRunning: "Running",
+    statusFailed: "Błąd",
   },
   topbar: {
     discovery: "Odkrywanie",

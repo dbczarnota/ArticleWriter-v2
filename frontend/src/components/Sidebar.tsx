@@ -68,9 +68,6 @@ export function Sidebar({
   };
 
   // ── Collapsed rail (desktop only) ─────────────────────────────────────────
-  // When the user closes the sidebar on desktop we still keep a 48px rail
-  // anchored to the left edge so the new-article button and the expand
-  // affordance are always one click away.
   if (!open && !isMobile) {
     return (
       <aside style={{
@@ -97,7 +94,6 @@ export function Sidebar({
             borderRadius: "var(--radius)",
           }}
         >
-          {/* Right-pointing chevron — 'expand to show list' */}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <polyline points="9 18 15 12 9 6" />
           </svg>
@@ -127,9 +123,7 @@ export function Sidebar({
     );
   }
 
-  // ── Mobile drawer (overlay + backdrop) — rendered only when open ──────────
-  // Hidden state on mobile == nothing rendered so the article view gets the
-  // full screen. Backdrop click closes.
+  // ── Mobile drawer ─────────────────────────────────────────────────────────
   if (isMobile && !open) {
     return null;
   }
@@ -177,190 +171,202 @@ export function Sidebar({
         />
       )}
       <aside style={containerStyle}>
-      <div style={{
-        padding: "12px 12px 8px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        borderBottom: "1px solid var(--chrome-border)",
-      }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--chrome-muted)", textTransform: "uppercase", letterSpacing: ".05em" }}>
-          {t.sidebar.articles}
-        </span>
-        <Button
-          variant="primary"
-          size="sm"
-          onClick={onNew}
-          iconLeft={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
-        >
-          {t.sidebar.newArticle}
-        </Button>
-      </div>
 
-      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--chrome-border)", display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {(["all", "undone", "done"] as DoneFilter[]).map((f) => {
-          const active = doneFilter === f;
-          return (
-            <button key={f} onClick={() => setDoneFilter(f)} style={{
-              background: active ? "var(--accent)" : "transparent",
-              color: active ? "#fff" : "var(--chrome-muted)",
-              border: "none",
-              borderRadius: 999,
-              padding: "3px 8px",
-              fontSize: 11,
-              fontWeight: active ? 600 : 400,
-              cursor: "pointer",
-            }}>{labels[f]}</button>
-          );
-        })}
-        {currentUserId && (
-          <button onClick={() => setOnlyMine((v) => !v)} style={{
-            background: onlyMine ? "var(--accent)" : "transparent",
-            color: onlyMine ? "#fff" : "var(--chrome-muted)",
-            border: "none",
-            borderRadius: 999,
-            padding: "3px 8px",
-            fontSize: 11,
-            fontWeight: onlyMine ? 600 : 400,
-            cursor: "pointer",
-          }}>{t.sidebar.filterMine}</button>
-        )}
-      </div>
+        {/* sidebar-head: title row + filter chips + date range — one grouped block */}
+        <div style={{
+          padding: "16px 16px 12px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+          borderBottom: "1px solid var(--chrome-border)",
+        }}>
+          {/* sb-row: title + new button */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--chrome-subtle)", textTransform: "uppercase", letterSpacing: ".12em" }}>
+              {t.sidebar.articles}
+            </span>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={onNew}
+              iconLeft={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
+            >
+              {t.sidebar.newArticle}
+            </Button>
+          </div>
 
-      {/* Date range filter — opens a popover picker (DateRangePicker) with
-          presets on the left and a two-month calendar on the right. The
-          popover renders through a portal so it can escape the sidebar's
-          overflow:hidden and the page's right edge. */}
-      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--chrome-border)" }}>
-        <button
-          ref={datesAnchorRef}
-          onClick={() => setDatesOpen((v) => !v)}
-          style={{
-            background: "transparent",
-            border: "1px solid var(--chrome-border)",
-            color: "var(--chrome-muted)",
-            borderRadius: "var(--radius)",
-            padding: "4px 8px",
-            fontSize: 11,
-            fontWeight: 500,
-            cursor: "pointer",
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 6,
-          }}
-        >
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {formatRangeLabel(dateRange, t, lang)}
-          </span>
-          <span style={{ fontSize: 9 }}>{datesOpen ? "▲" : "▼"}</span>
-        </button>
-        {datesOpen && (
-          <DateRangePicker
-            anchorEl={datesAnchorRef.current}
-            value={dateRange}
-            onApply={(range) => onDateRangeChange(range)}
-            onClear={() => onDateRangeChange({ from: null, to: null })}
-            onClose={() => setDatesOpen(false)}
-          />
-        )}
-      </div>
-
-      <div className="chrome-scroll" style={{ overflowY: "auto", flex: 1, padding: 8 }}>
-        {visible.length === 0 && (
-          <p style={{ padding: 16, color: "var(--chrome-muted)", fontSize: 13 }}>
-            {isFiltered ? t.sidebar.noArticlesInRange : t.sidebar.noArticles}
-          </p>
-        )}
-        {visible.map((a) => {
-          const isMine = currentUserId && a.author_user_id === currentUserId;
-          const isSelected = a.id === selectedId;
-          return (
-            <button
-              key={a.id}
-              onClick={() => onSelect(a.id)}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 4,
-                width: "100%",
-                padding: "10px 12px 10px 14px",
-                marginBottom: 2,
-                borderRadius: 6,
-                position: "relative",
-                background: isSelected
-                  ? a.marked_done
-                    ? "rgba(234, 88, 12, 0.06)"
-                    : "rgba(234,88,12,.08)"
-                  : "transparent",
-                borderLeft: isSelected ? "3px solid var(--accent)" : "3px solid transparent",
-                borderTop: "none",
-                borderRight: "none",
-                borderBottom: "none",
-                textAlign: "left",
+          {/* filter-chips */}
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            {(["all", "undone", "done"] as DoneFilter[]).map((f) => {
+              const active = doneFilter === f;
+              return (
+                <button key={f} onClick={() => setDoneFilter(f)} style={{
+                  background: active ? "var(--accent)" : "transparent",
+                  color: active ? "#fff" : "var(--chrome-muted)",
+                  border: active ? "1px solid var(--accent)" : "1px solid var(--chrome-border)",
+                  borderRadius: 999,
+                  padding: "4px 9px",
+                  fontSize: 11,
+                  fontWeight: active ? 600 : 500,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}>{labels[f]}</button>
+              );
+            })}
+            {currentUserId && (
+              <button onClick={() => setOnlyMine((v) => !v)} style={{
+                background: onlyMine ? "var(--accent)" : "transparent",
+                color: onlyMine ? "#fff" : "var(--chrome-muted)",
+                border: onlyMine ? "1px solid var(--accent)" : "1px solid var(--chrome-border)",
+                borderRadius: 999,
+                padding: "4px 9px",
+                fontSize: 11,
+                fontWeight: onlyMine ? 600 : 500,
                 cursor: "pointer",
-                transition: "background 0.12s",
-                opacity: a.marked_done
-                  ? 0.55
-                  : (a.status === "failed" || a.status === "insufficient_sources")
-                    ? 0.65
-                    : 1,
+                fontFamily: "inherit",
+              }}>{t.sidebar.filterMine}</button>
+            )}
+          </div>
+
+          {/* date range — styled like mockup .sb-select */}
+          <div>
+            <button
+              ref={datesAnchorRef}
+              onClick={() => setDatesOpen((v) => !v)}
+              style={{
+                background: "var(--chrome-bg)",
+                border: "1px solid var(--chrome-border)",
+                color: "var(--chrome-muted)",
+                borderRadius: "var(--radius)",
+                padding: "6px 10px",
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: "pointer",
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 6,
+                fontFamily: "inherit",
               }}
             >
-              <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4, color: "var(--chrome-ink)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {a.topic}
-              </div>
-              <div style={{ fontSize: 11, color: "var(--chrome-subtle)", display: "flex", gap: 8, alignItems: "center" }}>
-                {a.marked_done ? (
-                  <span style={{ color: "var(--success)", fontWeight: 700, fontSize: 12, lineHeight: 1 }}>✓</span>
-                ) : (a.status === "failed" || a.status === "insufficient_sources") ? (
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--error)", flexShrink: 0, display: "inline-block" }} />
-                ) : (
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: STATUS_DOT[a.status] ?? "#94a3b8", flexShrink: 0, display: "inline-block", animation: a.status === "running" ? "pulse-dot 1.8s ease-out infinite" : undefined }} />
-                )}
-                <span>{a.created_at ? new Date(a.created_at).toLocaleDateString(lang) : "—"}</span>
-                {isMine && (
-                  <span style={{
-                    background: "rgba(234,88,12,.12)",
-                    color: "var(--accent-light)",
-                    borderRadius: 4,
-                    border: "none",
-                    padding: "1px 6px",
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: ".08em",
-                    textTransform: "uppercase",
-                  }}>
-                    {t.sidebar.mine}
-                  </span>
-                )}
-              </div>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {formatRangeLabel(dateRange, t, lang)}
+              </span>
+              <span style={{ fontSize: 9 }}>{datesOpen ? "▲" : "▼"}</span>
             </button>
-          );
-        })}
-        {hasMore && visible.length > 0 && (
-          <button
-            onClick={onLoadMore}
-            disabled={loadingMore}
-            style={{
-              display: "block",
-              width: "100%",
-              padding: "10px 12px",
-              background: "transparent",
-              border: "none",
-              borderTop: "1px solid var(--chrome-border)",
-              fontSize: 12,
-              fontWeight: 500,
-              color: loadingMore ? "var(--chrome-subtle)" : "var(--accent)",
-              cursor: loadingMore ? "default" : "pointer",
-              textAlign: "center",
-            }}
-          >
-            {loadingMore ? t.sidebar.loadingMore : t.sidebar.loadMore}
-          </button>
-        )}
-      </div>
+            {datesOpen && (
+              <DateRangePicker
+                anchorEl={datesAnchorRef.current}
+                value={dateRange}
+                onApply={(range) => onDateRangeChange(range)}
+                onClear={() => onDateRangeChange({ from: null, to: null })}
+                onClose={() => setDatesOpen(false)}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* article list */}
+        <div className="chrome-scroll" style={{ overflowY: "auto", flex: 1, padding: 8 }}>
+          {visible.length === 0 && (
+            <p style={{ padding: 16, color: "var(--chrome-muted)", fontSize: 13 }}>
+              {isFiltered ? t.sidebar.noArticlesInRange : t.sidebar.noArticles}
+            </p>
+          )}
+          {visible.map((a) => {
+            const isMine = currentUserId && a.author_user_id === currentUserId;
+            const isSelected = a.id === selectedId;
+            const isRunning = a.status === "running" && !a.marked_done;
+            const isFailed = (a.status === "failed" || a.status === "insufficient_sources") && !a.marked_done;
+            const dotColor = isFailed ? "var(--error)" : (STATUS_DOT[a.status] ?? "#94a3b8");
+            return (
+              <button
+                key={a.id}
+                onClick={() => onSelect(a.id)}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  width: "100%",
+                  padding: "10px 12px 10px 14px",
+                  marginBottom: 2,
+                  borderRadius: 6,
+                  position: "relative",
+                  background: isSelected ? "rgba(234,88,12,.08)" : "transparent",
+                  border: "none",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  transition: "background 0.12s",
+                }}
+              >
+                {isSelected && (
+                  <span style={{
+                    position: "absolute", left: 0, top: 8, bottom: 8,
+                    width: 3, background: "var(--accent)", borderRadius: "0 2px 2px 0",
+                  }} />
+                )}
+                <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4, color: "var(--chrome-ink)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                  {a.topic}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--chrome-subtle)", display: "flex", gap: 8, alignItems: "center" }}>
+                  {a.marked_done ? (
+                    <span style={{ color: "var(--success)", fontWeight: 700, fontSize: 12, lineHeight: 1 }}>✓</span>
+                  ) : (
+                    <span style={{
+                      width: 6, height: 6, borderRadius: "50%", background: dotColor,
+                      flexShrink: 0, display: "inline-block",
+                      animation: isRunning ? "pulse-dot 1.8s ease-out infinite" : undefined,
+                    }} />
+                  )}
+                  {isRunning ? (
+                    <span>{t.sidebar.statusRunning}</span>
+                  ) : isFailed ? (
+                    <span>{t.sidebar.statusFailed}</span>
+                  ) : (
+                    <span>{a.created_at ? new Date(a.created_at).toLocaleDateString(lang) : "—"}</span>
+                  )}
+                  {isMine && (
+                    <span style={{
+                      background: "rgba(234,88,12,.12)",
+                      color: "var(--accent-light)",
+                      borderRadius: 4,
+                      border: "none",
+                      padding: "1px 6px",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: ".08em",
+                      textTransform: "uppercase",
+                    }}>
+                      {t.sidebar.mine}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+          {hasMore && visible.length > 0 && (
+            <button
+              onClick={onLoadMore}
+              disabled={loadingMore}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "10px 12px",
+                background: "transparent",
+                border: "none",
+                borderTop: "1px solid var(--chrome-border)",
+                fontSize: 12,
+                fontWeight: 500,
+                color: loadingMore ? "var(--chrome-subtle)" : "var(--accent)",
+                cursor: loadingMore ? "default" : "pointer",
+                textAlign: "center",
+              }}
+            >
+              {loadingMore ? t.sidebar.loadingMore : t.sidebar.loadMore}
+            </button>
+          )}
+        </div>
       </aside>
     </>
   );

@@ -34,6 +34,8 @@ export interface Translations {
     loadMore: string;
     loadingMore: string;
     mine: string;
+    statusRunning: string;
+    statusFailed: string;
   };
   topbar: {
     discovery: string;
