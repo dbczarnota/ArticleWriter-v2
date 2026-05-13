@@ -25,6 +25,22 @@ export const AVAILABLE_MODELS = [
 
 type AgentKey = "search" | "scraping" | "parsing" | "extraction" | "adaptive_search" | "instructions" | "writer" | "reflection" | "followup" | "media_search" | "media_extraction";
 
+const DEFAULT_MODEL_PER_AGENT: Record<AgentKey, string> = {
+  search:           "google-gla:gemini-flash-latest",
+  scraping:         "google-gla:gemini-flash-latest",
+  parsing:          "google-gla:gemini-flash-latest",
+  extraction:       "google-gla:gemini-flash-latest",
+  adaptive_search:  "google-gla:gemini-flash-latest",
+  instructions:     "google-gla:gemini-pro-latest",
+  writer:           "google-gla:gemini-pro-latest",
+  reflection:       "google-gla:gemini-flash-latest",
+  followup:         "google-gla:gemini-pro-latest",
+  media_search:     "google-gla:gemini-flash-lite-latest",
+  media_extraction: "google-gla:gemini-flash-latest",
+};
+
+const DEFAULT_FALLBACK = "google-gla:gemini-flash-latest";
+
 const FIXED_FRESHNESS = new Set(["qdr:d", "qdr:w", "qdr:m", "qdr:y"]);
 
 // Small tooltip icon — shows a floating box on hover.
@@ -352,7 +368,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
                   onChange={(e) => set("agent_models", { ...form.agent_models, [key]: e.target.value })}
                   style={inputStyle}
                 >
-                  <option value="">{dc.defaultModel}</option>
+                  <option value="">{AVAILABLE_MODELS.find((m) => m.id === DEFAULT_MODEL_PER_AGENT[key])?.label ?? DEFAULT_MODEL_PER_AGENT[key]} ({dc.defaultModel})</option>
                   {AVAILABLE_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
                 </select>
                 <div style={{ position: "relative" }}>
@@ -362,7 +378,7 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
                       const vals = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
                       set("agent_fallback_models", { ...form.agent_fallback_models, [key]: vals });
                     }}
-                    placeholder={dc.fallbacksOptional}
+                    placeholder={DEFAULT_FALLBACK}
                     style={{ ...inputStyle, fontSize: 12, fontFamily: "monospace" }}
                   />
                   <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)" }}>
