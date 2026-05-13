@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -60,6 +61,9 @@ class PipelineFlags:
     """Wall-clock cap for the entire pipeline (15 min). Backend wraps
     run_pipeline() in asyncio.wait_for using this value; on timeout the
     article is marked failed via the runner's exception handler."""
+    serper_cost_per_query_usd: float = field(
+        default_factory=lambda: float(os.environ.get("SERPER_COST_PER_QUERY_USD", "0.001"))
+    )
 
 
 _FALLBACK: tuple[str, ...] = ("google-gla:gemini-flash-latest",)

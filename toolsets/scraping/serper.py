@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import httpx
 import logfire
 
@@ -7,6 +9,7 @@ from agents._base.run_context import record_serper_query
 from agents._base.types import EmbedCandidate, SearchResult
 
 _BASE = "https://google.serper.dev"
+_SERPER_COST_PER_QUERY = float(os.environ.get("SERPER_COST_PER_QUERY_USD", "0.001"))
 
 
 def _lang_payload(language: str) -> dict:
@@ -22,7 +25,7 @@ def _log_serper_results(
     link_key: str = "link",
     title_key: str = "title",
     snippet_key: str = "snippet",
-    cost_usd: float = 0.001,
+    cost_usd: float = _SERPER_COST_PER_QUERY,
 ) -> None:
     """Emit a structured `serper.results` event with the response shape.
 

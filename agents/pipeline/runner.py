@@ -811,10 +811,11 @@ async def _run_pipeline_inner(
         _status = "error" if _errors else "ok"
         record_pipeline_run(domain.name, _status, _total_ms)
         _serper_queries = get_serper_queries()
+        _serper_cost_per_q = settings.pipeline.serper_cost_per_query_usd
         logfire.info(
             "serper.cost",
             n_queries=len(_serper_queries),
-            cost_usd=len(_serper_queries) * 0.001,
+            cost_usd=len(_serper_queries) * _serper_cost_per_q,
             endpoints=_serper_queries,
             article_id=str(_article_id),
             org_code=org_code,
