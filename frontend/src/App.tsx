@@ -67,6 +67,13 @@ export default function App() {
     return () => window.removeEventListener("discovery:open-article", onOpenArticle);
   }, []);
 
+  // Auto-select first article on initial load when nothing is selected yet.
+  useEffect(() => {
+    if (!selectedArticleId && articles.length > 0) {
+      selectArticleRef.current(articles[0].id);
+    }
+  }, [articles, selectedArticleId]);
+
   if (!window.location.pathname.startsWith("/app")) return <LandingPage />;
 
   if (!NULL_AUTH) {
