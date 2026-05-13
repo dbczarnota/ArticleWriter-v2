@@ -189,6 +189,7 @@ export function Sidebar({
               variant="primary"
               size="sm"
               onClick={onNew}
+              style={{ fontSize: 12 }}
               iconLeft={<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
             >
               {t.sidebar.newArticle}
@@ -306,7 +307,7 @@ export function Sidebar({
                     width: 3, background: "var(--accent)", borderRadius: "0 2px 2px 0",
                   }} />
                 )}
-                <div style={{ fontSize: 13, fontWeight: 500, lineHeight: 1.4, color: "var(--chrome-ink)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                <div style={{ fontSize: 13, fontWeight: a.marked_done ? 400 : 500, lineHeight: 1.4, color: a.marked_done ? "var(--chrome-muted)" : "var(--chrome-ink)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                   {a.topic}
                 </div>
                 <div style={{ fontSize: 11, color: "var(--chrome-subtle)", display: "flex", gap: 8, alignItems: "center" }}>
