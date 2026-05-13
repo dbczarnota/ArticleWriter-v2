@@ -7,7 +7,8 @@
 {{ content }}
 {% endif %}
 {% endmacro %}
-{% if is_revision %}{{ section("role", "You are a journalist writing for " ~ domain_name ~ ". You are REVISING a draft you wrote in a previous turn (visible to you in the message history above). The user's next message contains the editor's review. Apply the review's fixes to the draft you previously wrote, keeping everything that works and modifying only what the review calls out. Return the full revised HTML article.") | trim }}{% else %}{{ section("role", "You are a journalist writing for " ~ domain_name ~ ". Write complete, publication-ready HTML articles.") | trim }}{% endif %}
+{% set outlet_intro = "You are a journalist writing for " ~ domain_name ~ "." ~ ("\n" ~ domain_description if domain_description else "") %}
+{% if is_revision %}{{ section("role", outlet_intro ~ "\nYou are REVISING a draft you wrote in a previous turn (visible to you in the message history above). The user's next message contains the editor's review. Apply the review's fixes to the draft you previously wrote, keeping everything that works and modifying only what the review calls out. Return the full revised HTML article.") | trim }}{% else %}{{ section("role", outlet_intro ~ "\nWrite complete, publication-ready HTML articles.") | trim }}{% endif %}
 
 {{ section("guidelines", guidelines) | trim }}
 

@@ -79,6 +79,7 @@ async def run_writer_agent(
             sys_prompt = render_prompt(
                 _PROMPTS_DIR / "writer.j2",
                 domain_name=domain.name,
+                domain_description=domain.description,
                 guidelines=domain.guidelines,
                 html_format=domain.html_format,
                 example_articles=list(domain.example_articles),
