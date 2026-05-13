@@ -327,11 +327,12 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {/* Follow-up topics */}
       {!isFailed && article.followup_topics.length > 0 && (
         <CollapsibleSection prominent icon={<DiscoveryIcon />} title={av.followupTopics} count={article.followup_topics.length} defaultOpen>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {article.followup_topics.map((topic, i) => (
-              <span key={i} style={{ padding: "5px 10px", background: "var(--accent-lt)", border: "1px solid var(--accent)", borderRadius: 20, fontSize: 12, color: "var(--accent)", fontWeight: 500 }}>
-                {topic}
-              </span>
+              <div key={i} style={{ padding: "8px 12px", background: "var(--canvas-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--radius-lg)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span>{topic}</span>
+                <CopyButton text={topic} />
+              </div>
             ))}
           </div>
         </CollapsibleSection>
