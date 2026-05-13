@@ -314,10 +314,10 @@ export function Sidebar({
                 <span>{a.created_at ? new Date(a.created_at).toLocaleDateString(lang) : "—"}</span>
                 {isMine && (
                   <span style={{
-                    background: "rgba(234,88,12,.12)",
-                    color: "var(--accent)",
+                    background: "var(--accent)",
+                    color: "#fff",
                     borderRadius: 999,
-                    border: "1px solid var(--accent-border)",
+                    border: "none",
                     padding: "0 5px",
                     fontSize: 10,
                     fontWeight: 600,
