@@ -520,7 +520,7 @@ function FactCard({ fact, muted }: { fact: Fact; muted?: boolean }) {
       background: muted ? "transparent" : "var(--card-bg)",
       border: "1px solid var(--card-border)",
       borderLeftWidth: 3,
-      borderLeftColor: muted ? "var(--card-border)" : "var(--accent)",
+      borderLeftColor: muted ? "var(--card-border)" : "var(--ink-subtle)",
       borderRadius: "0 var(--radius) var(--radius) 0",
       padding: "10px 14px 10px 14px",
     }}>
@@ -542,7 +542,7 @@ function QuoteCard({ quote, muted }: { quote: Quote; muted?: boolean }) {
       background: muted ? "transparent" : "var(--card-bg)",
       border: "1px solid var(--card-border)",
       borderLeftWidth: 3,
-      borderLeftColor: muted ? "var(--card-border)" : "var(--ink-subtle)",
+      borderLeftColor: muted ? "var(--card-border)" : "var(--accent)",
       borderRadius: "0 var(--radius) var(--radius) 0",
       padding: "10px 14px 10px 14px",
       position: "relative",
