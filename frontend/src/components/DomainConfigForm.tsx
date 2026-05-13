@@ -58,6 +58,25 @@ function Tip({ text }: { text: string }) {
   );
 }
 
+function CustomCheckbox({ checked }: { checked: boolean }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      width: 15, height: 15, flexShrink: 0,
+      borderRadius: 3,
+      background: checked ? "var(--accent)" : "transparent",
+      border: checked ? "1.5px solid var(--accent)" : "1.5px solid var(--border)",
+      transition: "background .12s, border-color .12s",
+    }}>
+      {checked && (
+        <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="1.5 5 4 7.5 8.5 2.5" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
 interface DomainConfigFormProps {
   initialConfig: DomainConfigData;
   activeSection: string;
@@ -274,12 +293,8 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
                   fontSize: 13,
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={form[key] as boolean}
-                  onChange={(e) => set(key, e.target.checked as DomainConfigData[typeof key])}
-                  style={{ accentColor: "var(--accent)" }}
-                />
+                <input type="checkbox" checked={form[key] as boolean} onChange={(e) => set(key, e.target.checked as DomainConfigData[typeof key])} style={{ position: "absolute", opacity: 0, width: 0, height: 0 }} />
+                <CustomCheckbox checked={form[key] as boolean} />
                 {label}
                 <Tip text={t.mediaTips[tipKey]} />
               </label>
@@ -313,12 +328,8 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
               <input type="number" value={form.media_search_max_query_tiers} onChange={(e) => set("media_search_max_query_tiers", +e.target.value)} min={1} max={5} style={inputStyle} />
             </div>
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", paddingTop: 20 }}>
-              <input
-                type="checkbox"
-                checked={form.youtube_sort_by_date}
-                onChange={(e) => set("youtube_sort_by_date", e.target.checked)}
-                style={{ accentColor: "var(--accent)" }}
-              />
+              <input type="checkbox" checked={form.youtube_sort_by_date} onChange={(e) => set("youtube_sort_by_date", e.target.checked)} style={{ position: "absolute", opacity: 0, width: 0, height: 0 }} />
+              <CustomCheckbox checked={form.youtube_sort_by_date} />
               {dc.youtubeSortByDate}
               <Tip text={dc.tipYoutubeSortByDate} />
             </label>
@@ -609,12 +620,8 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
               width: "fit-content",
             }}
           >
-            <input
-              type="checkbox"
-              checked={form.discovery_enabled}
-              onChange={(e) => set("discovery_enabled", e.target.checked)}
-              style={{ accentColor: "var(--accent)" }}
-            />
+            <input type="checkbox" checked={form.discovery_enabled} onChange={(e) => set("discovery_enabled", e.target.checked)} style={{ position: "absolute", opacity: 0, width: 0, height: 0 }} />
+            <CustomCheckbox checked={form.discovery_enabled} />
             {dc.discoveryEnabled}
             <Tip text={dc.tipDiscoveryEnabled} />
           </label>

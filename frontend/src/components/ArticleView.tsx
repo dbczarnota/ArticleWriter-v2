@@ -391,17 +391,33 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
 
           {/* Sources */}
           <CollapsibleSection prominent icon={<SourcesIcon />} title={av.sourcesUsed} count={usedSources.length} defaultOpen>
-            {usedSources.map((url) => (
-              <div key={url} style={{ borderLeft: "3px solid var(--success)", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
-                <a href={safeHref(url)} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>{url}</a>
-              </div>
-            ))}
-            <CollapsibleSection title={av.sourcesUnused} count={uniqueUnused.length}>
-              {uniqueUnused.map((url) => (
-                <div key={url} style={{ borderLeft: "3px solid var(--card-border)", paddingLeft: 10, marginBottom: 6, fontSize: 13 }}>
-                  <a href={safeHref(url)} target="_blank" rel="noreferrer" style={{ color: "var(--muted)", wordBreak: "break-all" }}>{url}</a>
-                </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4 }}>
+              {usedSources.map((url) => (
+                <a key={url} href={safeHref(url)} target="_blank" rel="noreferrer" title={url} style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "4px 8px", borderRadius: 5,
+                  background: "var(--canvas-bg)", border: "1px solid var(--card-border)",
+                  textDecoration: "none",
+                }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "var(--accent)", flexShrink: 0 }}>{hostnameOf(url)}</span>
+                  <span style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url}</span>
+                </a>
               ))}
+            </div>
+            <CollapsibleSection title={av.sourcesUnused} count={uniqueUnused.length}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4 }}>
+                {uniqueUnused.map((url) => (
+                  <a key={url} href={safeHref(url)} target="_blank" rel="noreferrer" title={url} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "4px 8px", borderRadius: 5,
+                    background: "var(--canvas-bg)", border: "1px solid var(--card-border)",
+                    textDecoration: "none", opacity: 0.6,
+                  }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-subtle)", flexShrink: 0 }}>{hostnameOf(url)}</span>
+                    <span style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url}</span>
+                  </a>
+                ))}
+              </div>
             </CollapsibleSection>
           </CollapsibleSection>
 
