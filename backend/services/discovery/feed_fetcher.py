@@ -132,7 +132,7 @@ async def fetch_feed(
     if last_modified:
         headers["If-Modified-Since"] = last_modified
 
-    async with httpx.AsyncClient(timeout=timeout_s) as client:
+    async with httpx.AsyncClient(timeout=timeout_s, follow_redirects=True) as client:
         try:
             response = await client.get(feed_url, headers=headers)
         except httpx.HTTPError as e:
