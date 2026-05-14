@@ -60,7 +60,7 @@ async def run_search_agent(
             user_prompt=_user_prompt,
             agent_name="search",
         )
-    _u = result.usage()
+    _u = result.usage
     record_agent_call(
         "search",
         _model_used,

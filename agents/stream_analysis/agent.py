@@ -136,7 +136,7 @@ async def run_stream_analysis_agent(
     except Exception:
         return StreamChunkResult()
 
-    u = result.usage()
+    u = result.usage
     record_agent_call(
         "stream_analysis",
         model_used,

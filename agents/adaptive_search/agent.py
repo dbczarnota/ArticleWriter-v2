@@ -85,7 +85,7 @@ async def run_adaptive_search_agent(
             user_prompt=summary,
             agent_name="adaptive_search",
         )
-    _u = result.usage()
+    _u = result.usage
     record_agent_call(
         "adaptive_search",
         _model_used,

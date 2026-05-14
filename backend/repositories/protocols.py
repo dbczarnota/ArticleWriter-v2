@@ -383,4 +383,3 @@ class DiscoveryRepository(Protocol):
 
         Null implementation always yields True (single-process semantics)."""
         ...
-

@@ -242,7 +242,7 @@ async def extract_facts_from_text(
             user_prompt=raw_text,
             agent_name=agent_name,
         )
-        u = result.usage()
+        u = result.usage
         record_agent_call(
             agent_name,
             model_used,

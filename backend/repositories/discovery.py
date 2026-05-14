@@ -449,6 +449,7 @@ class PostgresDiscoveryRepository:
                 )
             if subscription_id is not None:
                 from backend.db.models import StreamTopic as _ST
+
                 stmt = stmt.where(
                     DiscoveryTopic.id.in_(  # type: ignore[arg-type]
                         select(_ST.topic_id).where(  # type: ignore[arg-type]

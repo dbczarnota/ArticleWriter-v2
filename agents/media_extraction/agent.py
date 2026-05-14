@@ -88,7 +88,7 @@ async def run_media_extraction_agent(
         user_prompt=user_prompt_parts,
         agent_name="media_extraction",
     )
-    u = result.usage()
+    u = result.usage
     record_agent_call(
         "media_extraction",
         model_used,

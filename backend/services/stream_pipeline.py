@@ -171,8 +171,6 @@ async def _save_digest(
     return record.id
 
 
-
-
 async def _get_historical_topics(
     session: AsyncSession,
     subscription_id: UUID,
@@ -243,6 +241,7 @@ async def _upsert_stream_topics(
             for sid in story.source_topic_ids:
                 try:
                     from uuid import UUID as _UUID
+
                     source_uuids.append(_UUID(sid))
                 except ValueError:
                     continue
@@ -281,14 +280,19 @@ async def _upsert_stream_topics(
                         import sqlalchemy as _sa
 
                         from backend.db.models import DiscoveryItem, DiscoveryTopic
+
                         for dtid in orphaned_topic_ids:
                             has_items = await session.scalar(
-                                _sa.select(_sa.func.count()).select_from(DiscoveryItem).where(
+                                _sa.select(_sa.func.count())
+                                .select_from(DiscoveryItem)
+                                .where(
                                     DiscoveryItem.topic_id == dtid  # type: ignore[arg-type]
                                 )
                             )
                             has_stream = await session.scalar(
-                                _sa.select(_sa.func.count()).select_from(StreamTopic).where(
+                                _sa.select(_sa.func.count())
+                                .select_from(StreamTopic)
+                                .where(
                                     StreamTopic.topic_id == dtid  # type: ignore[arg-type]
                                 )
                             )
@@ -506,7 +510,10 @@ async def run_subscription_pipeline(
                                 )
                             async with sm() as session:  # type: ignore[union-attr]
                                 await _upsert_stream_topics(
-                                    session, subscription_id, digest, datetime.now(UTC),
+                                    session,
+                                    subscription_id,
+                                    digest,
+                                    datetime.now(UTC),
                                     stream_started_at=stream_started_at,
                                 )
 
@@ -536,7 +543,9 @@ async def run_subscription_pipeline(
                     attempt,
                     type(exc).__name__,
                     exc,
-                    f" | ffmpeg: {stderr_out.decode(errors='replace').strip()}" if stderr_out else "",
+                    f" | ffmpeg: {stderr_out.decode(errors='replace').strip()}"
+                    if stderr_out
+                    else "",
                 )
                 logfire.warn(
                     "stream.ffmpeg_error",

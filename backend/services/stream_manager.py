@@ -119,7 +119,9 @@ class StreamSessionManager:
         cfg_result = await session.execute(
             select(OrgConfig).where(OrgConfig.org_code.in_(org_codes))  # type: ignore[arg-type]
         )
-        org_configs: dict[str, OrgConfig] = {cfg.org_code: cfg for cfg in cfg_result.scalars().all()}
+        org_configs: dict[str, OrgConfig] = {
+            cfg.org_code: cfg for cfg in cfg_result.scalars().all()
+        }
 
         for sub in subs:
             cfg = org_configs.get(sub.org_code)
@@ -134,7 +136,9 @@ class StreamSessionManager:
                 url_refresh_field=sub.url_refresh_field,
                 topic_merge_window_hours=sub.topic_merge_window_hours,
                 agent_models=dict(cfg.agent_models) if cfg and cfg.agent_models else None,
-                agent_fallback_models={k: list(v) for k, v in cfg.agent_fallback_models.items()} if cfg and cfg.agent_fallback_models else None,
+                agent_fallback_models={k: list(v) for k, v in cfg.agent_fallback_models.items()}
+                if cfg and cfg.agent_fallback_models
+                else None,
             )
         if subs:
             logfire.info("stream.manager.resumed", count=len(subs))

@@ -64,7 +64,7 @@ async def run_simple_agent[T: BaseModel](
             agent_name=agent_name,
         )
 
-    usage = result.usage()
+    usage = result.usage
     input_tokens = usage.input_tokens or 0
     output_tokens = usage.output_tokens or 0
     record_agent_call(

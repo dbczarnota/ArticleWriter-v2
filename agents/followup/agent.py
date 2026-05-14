@@ -109,7 +109,7 @@ async def run_followup_agent(
             user_prompt=user_prompt,
             agent_name="followup",
         )
-    _u = result.usage()
+    _u = result.usage
     record_agent_call(
         "followup",
         _model_used,

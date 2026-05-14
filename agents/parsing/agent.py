@@ -55,7 +55,7 @@ async def run_parsing_agent(
                 user_prompt=f"URL: {page.url}\nTitle: {page.title}\n\n{page.content}",
                 agent_name="parsing",
             )
-        _u = result.usage()
+        _u = result.usage
         record_agent_call(
             "parsing",
             _model_used,

@@ -88,7 +88,7 @@ async def run_instructions_agent(
             user_prompt=material,
             agent_name="instructions",
         )
-    _u = result.usage()
+    _u = result.usage
     record_agent_call(
         "instructions",
         _model_used,

@@ -20,11 +20,13 @@ sub_id = None
 
 
 def subscribe():
-    body = json.dumps({
-        "name": "TVP Info test",
-        "stream_url": STREAM_URL,
-        "stream_type": "tv",
-    }).encode()
+    body = json.dumps(
+        {
+            "name": "TVP Info test",
+            "stream_url": STREAM_URL,
+            "stream_type": "tv",
+        }
+    ).encode()
     req = urllib.request.Request(
         f"{BASE}/v2/streams/subscriptions", data=body, headers=HEADERS, method="POST"
     )

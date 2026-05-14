@@ -316,7 +316,7 @@ async def run_stream_digest_agent(
             window_end_seconds=window_end,
         )
 
-    u = result.usage()
+    u = result.usage
     record_agent_call(
         "stream_digest",
         model_used,

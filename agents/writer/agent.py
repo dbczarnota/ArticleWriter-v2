@@ -98,7 +98,7 @@ async def run_writer_agent(
             message_history=message_history,
             agent_name="writer",
         )
-    _u = result.usage()
+    _u = result.usage
     record_agent_call(
         "writer",
         _model_used,

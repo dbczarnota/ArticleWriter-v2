@@ -52,6 +52,7 @@ async def _classify_streams_safely(org_code: str) -> None:
     with logfire.set_baggage(org_code=org_code):
         try:
             from backend.database import get_db_backend
+
             if get_db_backend() != "postgres":
                 return
             org_repo = get_org_repo()
@@ -60,12 +61,14 @@ async def _classify_streams_safely(org_code: str) -> None:
             if org is None:
                 return
             from backend.domain import get_domain_config
+
             domain = await get_domain_config(org_code, org.domain_name, cfg_repo)
             if domain is None or not domain.discovery_enabled:
                 return
             from backend.services.discovery.stream_pipeline import (
                 process_unclassified_stream_topics,
             )
+
             count = await process_unclassified_stream_topics(org_code=org_code, domain=domain)
             if count:
                 logfire.info("stream.classify.tick", org_code=org_code, processed=count)

@@ -42,6 +42,7 @@ async def _load_agent_overrides(org_code: str) -> tuple[dict[str, str], dict[str
         {k: list(v) for k, v in (cfg.agent_fallback_models or {}).items()},
     )
 
+
 router = APIRouter(prefix="/v2/streams", tags=["streams"])
 _log = logging.getLogger(__name__)
 

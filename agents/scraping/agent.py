@@ -69,7 +69,7 @@ async def run_scraping_agent(
             user_prompt=results_text,
             agent_name="scraping_filter",
         )
-    _u = filter_result.usage()
+    _u = filter_result.usage
     record_agent_call(
         "scraping_filter",
         _filter_model_used,

@@ -109,7 +109,7 @@ async def _formulate_queries(
         )
     _t0 = time.perf_counter()
     result = await agent.run(user_msg)
-    _u = result.usage()
+    _u = result.usage
     record_agent_call(
         "media_search_formulate",
         model,

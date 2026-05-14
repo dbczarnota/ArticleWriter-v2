@@ -85,7 +85,7 @@ async def run_extraction_agent(
             user_prompt=articles_text,
             agent_name="extraction",
         )
-    _u = result.usage()
+    _u = result.usage
     record_agent_call(
         "extraction",
         _model_used,
