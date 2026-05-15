@@ -7,6 +7,7 @@ Create Date: 2026-05-15
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision = "a9b0c1d2e3f4"
@@ -18,11 +19,11 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "org_configs",
-        sa.Column("image_templates", JSONB, nullable=False, server_default="'[]'"),
+        sa.Column("image_templates", JSONB(), nullable=False, server_default=text("'[]'")),
     )
     op.add_column(
         "articles",
-        sa.Column("generated_images", JSONB, nullable=False, server_default="'[]'"),
+        sa.Column("generated_images", JSONB(), nullable=False, server_default=text("'[]'")),
     )
 
 
