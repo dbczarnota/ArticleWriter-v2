@@ -14,6 +14,12 @@ class ArticleTemplateItem(BaseModel):
     image_instructions: str = ""
 
 
+class ImageTemplateItem(BaseModel):
+    id: str
+    name: str
+    html: str
+
+
 class EditorFactItem(BaseModel):
     text: str
     context: str = ""
@@ -219,6 +225,8 @@ class DomainConfigUpdate(BaseModel):
         default_factory=lambda: ["groq:openai/gpt-oss-120b"]
     )
     article_templates: list[ArticleTemplateItem] = PydanticField(default_factory=list)
+    image_templates: list[ImageTemplateItem] = PydanticField(default_factory=list)
+    image_templates: list[ImageTemplateItem] = PydanticField(default_factory=list)
 
 
 class ContactRequest(BaseModel):
