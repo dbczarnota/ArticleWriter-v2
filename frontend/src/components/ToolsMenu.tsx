@@ -10,10 +10,6 @@ export function ToolsMenu({ onCreateImage }: ToolsMenuProps) {
   const t = useT();
   const imageCreatorEnabled = useImageCreatorEnabled();
   const [open, setOpen] = useState(false);
-
-  if (!imageCreatorEnabled) {
-    return null;
-  }
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -34,6 +30,10 @@ export function ToolsMenu({ onCreateImage }: ToolsMenuProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
+
+  if (!imageCreatorEnabled) {
+    return null;
+  }
 
   return (
     <div style={{ position: "relative" }}>
