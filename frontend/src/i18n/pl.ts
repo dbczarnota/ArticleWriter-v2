@@ -131,6 +131,7 @@ export const pl: Translations = {
     addTemplate: "+ Dodaj szablon",
     removeTemplate: "Usuń",
     tipTemplates: "Szablony to instrukcje redakcyjne wielokrotnego użytku. Redaktor wybiera szablon przy tworzeniu artykułu.",
+    imageTemplates: "Szablony obrazków",
     saving: "Zapisywanie…",
     save: "Zapisz zmiany",
     saveHint: "Zmiany są widoczne od następnego uruchomienia pipeline'u",

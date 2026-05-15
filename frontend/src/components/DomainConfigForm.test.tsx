@@ -38,6 +38,8 @@ const BASE_CONFIG: DomainConfigData = {
   agent_models: {},
   agent_fallback_models: {},
   article_templates: [],
+  image_templates: [],
+  image_creator_enabled: false,
   discovery_enabled: false,
   discovery_feeds: [],
   discovery_categories: [],

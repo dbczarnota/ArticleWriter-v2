@@ -139,6 +139,8 @@ export interface Translations {
     addTemplate: string;
     removeTemplate: string;
     tipTemplates: string;
+    // image templates section
+    imageTemplates: string;
     // actions
     saving: string;
     save: string;
@@ -539,8 +541,15 @@ export interface Translations {
   };
   imageCreator: {
     modalTitle: string;
+    resultTitle: string;
     selectTemplate: string;
     noTemplates: string;
+    backToTemplate: string;
+    generateImage: string;
+    generatingImage: string;
+    tryAgain: string;
+    close: string;
+    done: string;
     textPlaceholder: string;
     uploadImage: string;
     assignToArticle: string;

@@ -131,6 +131,7 @@ export const en: Translations = {
     addTemplate: "+ Add template",
     removeTemplate: "Remove",
     tipTemplates: "Templates are reusable editorial instructions. The editor picks a template when creating an article.",
+    imageTemplates: "Image templates",
     saving: "Saving…",
     save: "Save changes",
     saveHint: "Changes apply from the next pipeline run",
