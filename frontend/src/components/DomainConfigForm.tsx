@@ -619,6 +619,62 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
           </button>
         </section>
 
+        {/* Szablony obrazków */}
+        <section id="szablony-obrazkow" style={{ display: sectionVisible("szablony-obrazkow") ? "block" : "none", marginBottom: 32 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>
+            {dc.imageTemplates ?? "Szablony obrazków"}
+          </h3>
+          {(form.image_templates ?? []).map((tmpl, i) => (
+            <div
+              key={tmpl.id}
+              style={{ marginBottom: 16, padding: "12px 14px", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 8 }}>
+                <input
+                  value={tmpl.name}
+                  onChange={(e) => {
+                    const updated = [...(form.image_templates ?? [])];
+                    updated[i] = { ...updated[i], name: e.target.value };
+                    set("image_templates", updated);
+                  }}
+                  placeholder="Nazwa szablonu"
+                  style={{ ...inputStyle, fontWeight: 500, flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => set("image_templates", (form.image_templates ?? []).filter((_, j) => j !== i))}
+                  style={{ background: "none", border: "none", fontSize: 12, color: "var(--error)", cursor: "pointer", flexShrink: 0 }}
+                >
+                  Usuń
+                </button>
+              </div>
+              <textarea
+                value={tmpl.html}
+                onChange={(e) => {
+                  const updated = [...(form.image_templates ?? [])];
+                  updated[i] = { ...updated[i], html: e.target.value };
+                  set("image_templates", updated);
+                }}
+                placeholder="Wklej HTML szablonu z placeholderami {{TEXT:label}} i {{IMAGE:label}}"
+                rows={8}
+                style={{ ...inputStyle, resize: "vertical", fontFamily: "monospace", fontSize: 12 }}
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              set("image_templates", [
+                { id: crypto.randomUUID(), name: "", html: "" },
+                ...(form.image_templates ?? []),
+              ])
+            }
+            style={{ padding: "6px 14px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer" }}
+          >
+            + Dodaj szablon
+          </button>
+        </section>
+
         {/* Discovery */}
         <section id="discovery" style={{ display: sectionVisible("discovery") ? "block" : "none", marginBottom: 32 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{dc.sectionDiscovery}</h3>
