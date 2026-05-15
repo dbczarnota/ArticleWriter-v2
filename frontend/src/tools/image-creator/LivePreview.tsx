@@ -22,7 +22,7 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
       const posX = parseFloat(style.objectPosition?.split(" ")[0] ?? "50") || 50;
       const posY = parseFloat(style.objectPosition?.split(" ")[1] ?? "50") || 50;
       dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: posX, startPosY: posY };
-      el!.setPointerCapture((e as any).pointerId);
+      el!.setPointerCapture(e.pointerId);
     }
 
     function onPointerMove(e: PointerEvent) {
