@@ -42,6 +42,8 @@ export interface Translations {
     settings: string;
     tools: string;
     createImage: string;
+    downloadInstagram: string;
+    downloadX: string;
   };
   userMenu: {
     account: string;

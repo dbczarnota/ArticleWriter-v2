@@ -44,6 +44,8 @@ export const pl: Translations = {
     settings: "Ustawienia",
     tools: "Narzędzia",
     createImage: "Stwórz obraz",
+    downloadInstagram: "Ściągnij post z Instagrama",
+    downloadX: "Ściągnij post z X.com",
   },
   userMenu: {
     account: "konto",

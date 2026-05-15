@@ -10,6 +10,7 @@ import { ArticleView } from "./components/ArticleView";
 import { NewArticleForm } from "./components/NewArticleForm";
 import { StatusMessage } from "./components/ui/StatusMessage";
 import { ImageCreatorModal } from "./tools/image-creator/ImageCreatorModal";
+import { SocialDownloadModal, type SocialPlatform } from "./tools/social-download/SocialDownloadModal";
 
 const SettingsView = lazy(() => import("./components/SettingsView").then((m) => ({ default: m.SettingsView })));
 const DiscoveryHub = lazy(() => import("./components/DiscoveryHub").then((m) => ({ default: m.DiscoveryHub })));
@@ -27,6 +28,7 @@ export default function App() {
   const [newModalOpen, setNewModalOpen] = useState(false);
   const [newFormKey, setNewFormKey] = useState(0);
   const [showImageCreator, setShowImageCreator] = useState(false);
+  const [socialDownloadPlatform, setSocialDownloadPlatform] = useState<SocialPlatform | null>(null);
   // Default: open on desktop, closed on mobile (drawer must not cover content
   // out of the gate). The user toggles via the hamburger in Topbar.
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
@@ -89,6 +91,8 @@ export default function App() {
         onSettings={() => setView("settings")}
         onDiscovery={() => setView("discovery")}
         onCreateImage={() => setShowImageCreator(true)}
+        onDownloadInstagram={() => setSocialDownloadPlatform("instagram")}
+        onDownloadX={() => setSocialDownloadPlatform("x")}
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
         sidebarOpen={sidebarOpen}
       />
@@ -195,6 +199,44 @@ export default function App() {
               onClose={() => setShowImageCreator(false)}
               articles={articles}
               currentArticleId={selectedArticleId}
+            />
+          </div>
+        </div>
+      )}
+      {socialDownloadPlatform && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(13,17,23,.65)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            padding: 16,
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            style={{
+              background: "var(--card-bg)",
+              border: "1px solid var(--card-border)",
+              borderRadius: 14,
+              boxShadow: "var(--shadow-modal)",
+              width: "100%",
+              maxWidth: 720,
+              height: "min(720px, 88vh)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <SocialDownloadModal
+              platform={socialDownloadPlatform}
+              onClose={() => setSocialDownloadPlatform(null)}
             />
           </div>
         </div>

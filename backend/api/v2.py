@@ -476,6 +476,85 @@ async def extract_editor_facts_endpoint(
     return {"facts": facts, "quotes": quotes, "keywords": keywords}
 
 
+class SocialDownloadRequest(BaseModel):
+    url: str
+
+
+@router.post(
+    "/tools/social-download/instagram",
+    summary="Fetch an Instagram post — media URL, description, comments (no LLM extraction)",
+    tags=["social-download"],
+)
+async def social_download_instagram(
+    body: SocialDownloadRequest,
+    _org: Org = Depends(get_current_org),
+) -> dict:
+    """Light-weight Instagram fetch for the 'Download post' tool. Re-uses the
+    existing fetcher infrastructure (ApifyInstagramFetcher when APIFY_API_TOKEN
+    is configured, else HttpxInstagramFetcher) but returns only the raw post
+    metadata — no LLM extraction, no DB writes. The frontend renders the
+    media URL via /v2/download_media and shows description + comments with
+    copy buttons."""
+    from toolsets.apify.instagram.fetcher import (
+        ApifyInstagramFetcher,
+        HttpxInstagramFetcher,
+        parse_shortcode,
+    )
+
+    try:
+        shortcode = parse_shortcode(body.url)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    secrets = get_secrets()
+    fetcher = (
+        ApifyInstagramFetcher(secrets.apify_api_token)
+        if secrets.apify_api_token
+        else HttpxInstagramFetcher()
+    )
+    try:
+        post = await fetcher.fetch(shortcode)
+    except RuntimeError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    return {
+        "media_url": post.media_url,
+        "media_type": post.media_type,
+        "description": post.description,
+        "comments": post.comments,
+    }
+
+
+@router.post(
+    "/tools/social-download/x",
+    summary="Fetch an X.com post — media URL, text, replies (no LLM extraction)",
+    tags=["social-download"],
+)
+async def social_download_x(
+    body: SocialDownloadRequest,
+    _org: Org = Depends(get_current_org),
+) -> dict:
+    """Light-weight X.com fetch for the 'Download post' tool. Requires
+    APIFY_API_TOKEN (we don't ship a no-Apify fallback for X). Returns text,
+    author handle, replies, and the media URL (if the tweet contains media).
+    No LLM extraction, no DB writes."""
+    from toolsets.apify.x.fetcher import ApifyXFetcher
+
+    secrets = get_secrets()
+    if not secrets.apify_api_token:
+        raise HTTPException(status_code=422, detail="APIFY_API_TOKEN not configured")
+    try:
+        post = await ApifyXFetcher(secrets.apify_api_token).fetch(body.url)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    return {
+        "text": post.text,
+        "author": post.author,
+        "media_url": post.media_url,
+        "media_type": post.media_type,
+        "comments": post.comments,
+    }
+
+
 class InstagramFetchRequest(BaseModel):
     url: str
     topic: str

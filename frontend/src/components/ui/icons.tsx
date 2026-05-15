@@ -82,6 +82,22 @@ export function FeedsIcon(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+export function InstagramIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...baseProps} {...props}>
+      <rect x="3" y="3" width="18" height="18" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" />
+    </svg>
+  );
+}
+export function XIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...baseProps} {...props}>
+      <path d="M5 5 L19 19 M19 5 L5 19" />
+    </svg>
+  );
+}
 export function TextIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...baseProps} {...props}>

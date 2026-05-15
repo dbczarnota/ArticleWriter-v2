@@ -44,6 +44,8 @@ export const en: Translations = {
     settings: "Settings",
     tools: "Tools",
     createImage: "Create image",
+    downloadInstagram: "Download Instagram post",
+    downloadX: "Download X.com post",
   },
   userMenu: {
     account: "account",

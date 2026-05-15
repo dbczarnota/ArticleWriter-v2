@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { useT } from "../i18n";
 import { useImageCreatorEnabled } from "../tools/image-creator/useImageTemplates";
-import { ToolsIcon, ImageIcon } from "./ui/icons";
+import { ToolsIcon, ImageIcon, InstagramIcon, XIcon } from "./ui/icons";
 
 interface ToolsMenuProps {
   onCreateImage: () => void;
+  onDownloadInstagram: () => void;
+  onDownloadX: () => void;
 }
 
-export function ToolsMenu({ onCreateImage }: ToolsMenuProps) {
+export function ToolsMenu({ onCreateImage, onDownloadInstagram, onDownloadX }: ToolsMenuProps) {
   const t = useT();
   const imageCreatorEnabled = useImageCreatorEnabled();
   const [open, setOpen] = useState(false);
@@ -31,10 +33,6 @@ export function ToolsMenu({ onCreateImage }: ToolsMenuProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
-
-  if (!imageCreatorEnabled) {
-    return null;
-  }
 
   return (
     <div style={{ position: "relative" }}>
@@ -84,41 +82,62 @@ export function ToolsMenu({ onCreateImage }: ToolsMenuProps) {
             borderRadius: "var(--radius)",
             boxShadow: "0 2px 8px rgba(0, 0, 0, 0.12)",
             zIndex: 1000,
-            minWidth: 200,
+            minWidth: 240,
           }}
         >
-          <button
-            onClick={() => {
-              onCreateImage();
-              setOpen(false);
-            }}
-            style={{
-              display: "block",
-              width: "100%",
-              padding: "10px 14px",
-              textAlign: "left",
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 13,
-              color: "var(--chrome-ink)",
-              fontFamily: "inherit",
-              transition: "background .15s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--chrome-bg2)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-            }}
-          >
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-              <ImageIcon />
-              {t.topbar.createImage}
-            </span>
-          </button>
+          {imageCreatorEnabled && (
+            <MenuItem
+              icon={<ImageIcon />}
+              label={t.topbar.createImage}
+              onClick={() => { onCreateImage(); setOpen(false); }}
+            />
+          )}
+          <MenuItem
+            icon={<InstagramIcon />}
+            label={t.topbar.downloadInstagram ?? "Ściągnij post z Instagrama"}
+            onClick={() => { onDownloadInstagram(); setOpen(false); }}
+          />
+          <MenuItem
+            icon={<XIcon />}
+            label={t.topbar.downloadX ?? "Ściągnij post z X.com"}
+            onClick={() => { onDownloadX(); setOpen(false); }}
+          />
         </div>
       )}
     </div>
+  );
+}
+
+interface MenuItemProps {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}
+
+function MenuItem({ icon, label, onClick }: MenuItemProps) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "block",
+        width: "100%",
+        padding: "10px 14px",
+        textAlign: "left",
+        background: "transparent",
+        border: "none",
+        cursor: "pointer",
+        fontSize: 13,
+        color: "var(--chrome-ink)",
+        fontFamily: "inherit",
+        transition: "background .15s",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--chrome-bg2)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+        {icon}
+        {label}
+      </span>
+    </button>
   );
 }
