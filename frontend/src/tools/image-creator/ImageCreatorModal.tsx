@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ImageTemplate } from "../../types";
+import type { ImageTemplate, ArticleListItem } from "../../types";
 import { useImageTemplates } from "./useImageTemplates";
 import { useImageCreatorJob } from "./useImageCreatorJob";
 import { TemplateSelector } from "./TemplateSelector";
@@ -11,14 +11,12 @@ type Step = "template" | "filling" | "result";
 
 interface ImageCreatorModalProps {
   onClose: () => void;
-  articleId?: string | null;
-  articleSelector?: React.ReactNode;
+  currentArticle: ArticleListItem | null;
 }
 
 export function ImageCreatorModal({
   onClose,
-  articleId,
-  articleSelector,
+  currentArticle,
 }: ImageCreatorModalProps) {
   const t = useT();
   const templates = useImageTemplates();
@@ -26,6 +24,7 @@ export function ImageCreatorModal({
 
   const [step, setStep] = useState<Step>("template");
   const [selectedTemplate, setSelectedTemplate] = useState<ImageTemplate | null>(null);
+  const [attachToArticle, setAttachToArticle] = useState<boolean>(!!currentArticle);
 
   function handleSelectTemplate(template: ImageTemplate) {
     setSelectedTemplate(template);
@@ -38,7 +37,8 @@ export function ImageCreatorModal({
   }
 
   async function handleSubmitFilled(html: string) {
-    await submit(html, articleId ?? null, selectedTemplate?.name ?? "");
+    const articleId = attachToArticle && currentArticle ? currentArticle.id : null;
+    await submit(html, articleId, selectedTemplate?.name ?? "");
     setStep("result");
   }
 
@@ -63,6 +63,34 @@ export function ImageCreatorModal({
     step === "template" ? t.imageCreator.modalTitle :
     step === "filling" ? (selectedTemplate?.name ?? t.imageCreator.modalTitle) :
     t.imageCreator.resultTitle;
+
+  const articleSelector = currentArticle ? (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <label style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--ink-subtle)" }}>
+        {t.imageCreator.assignToArticle}
+      </label>
+      <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", padding: "8px 10px", border: `1px solid ${attachToArticle ? "var(--accent)" : "var(--card-border)"}`, background: attachToArticle ? "var(--accent-lt)" : "var(--card-bg)", borderRadius: "var(--radius)", transition: "border-color .15s, background .15s" }}>
+        <input
+          type="checkbox"
+          checked={attachToArticle}
+          onChange={(e) => setAttachToArticle(e.target.checked)}
+          style={{ marginTop: 2, flexShrink: 0, accentColor: "var(--accent)" }}
+        />
+        <span style={{ fontSize: 12, color: "var(--ink)", lineHeight: 1.35, wordBreak: "break-word" }}>
+          {currentArticle.topic}
+        </span>
+      </label>
+      {!attachToArticle && (
+        <span style={{ fontSize: 10, color: "var(--ink-subtle)" }}>
+          {t.imageCreator.noArticle}
+        </span>
+      )}
+    </div>
+  ) : (
+    <div style={{ fontSize: 11, color: "var(--ink-subtle)", fontStyle: "italic", padding: "6px 0" }}>
+      {t.imageCreator.noArticle}
+    </div>
+  );
 
   return (
     <>
