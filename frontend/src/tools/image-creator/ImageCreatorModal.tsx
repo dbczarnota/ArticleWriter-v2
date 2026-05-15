@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ImageTemplate, ArticleListItem } from "../../types";
 import { useImageTemplates } from "./useImageTemplates";
 import { useImageCreatorJob } from "./useImageCreatorJob";
@@ -29,6 +29,22 @@ export function ImageCreatorModal({
   // Default to the article currently open in the sidebar (if any); user can
   // re-pick from the dropdown or pick "" (no attachment).
   const [targetArticleId, setTargetArticleId] = useState<string | null>(currentArticleId);
+  // Track the article we submitted with — separate from targetArticleId, which
+  // the user can still change between submits. This is the one the webhook
+  // attached the image to and the one we need to refresh in ArticleView.
+  const submittedArticleIdRef = useRef<string | null>(null);
+
+  // When SSE delivers a successful result and we submitted with an article_id,
+  // notify ArticleView so it refetches and shows the new image.
+  useEffect(() => {
+    if (status === "done" && result.url && submittedArticleIdRef.current) {
+      window.dispatchEvent(
+        new CustomEvent("article:refresh", {
+          detail: { articleId: submittedArticleIdRef.current },
+        }),
+      );
+    }
+  }, [status, result.url]);
 
   const sortedArticles = useMemo(() => {
     const epoch = (a: ArticleListItem) =>
@@ -47,6 +63,7 @@ export function ImageCreatorModal({
   }
 
   async function handleSubmitFilled(html: string) {
+    submittedArticleIdRef.current = targetArticleId;
     await submit(html, targetArticleId, selectedTemplate?.name ?? "");
     setStep("result");
   }

@@ -24,6 +24,8 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const [refreshTick, setRefreshTick] = useState(0);
+
   useEffect(() => {
     setArticle(null);
     setError(null);
@@ -48,6 +50,21 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
+  }, [articleId, refreshTick]);
+
+  // External components (e.g. ImageCreatorModal) can request a refetch by
+  // dispatching `article:refresh` with the article id. Used after an image
+  // render is attached to an article so the generated_images section shows
+  // up without a hard page reload.
+  useEffect(() => {
+    function onRefresh(e: Event) {
+      const ce = e as CustomEvent<{ articleId: string }>;
+      if (ce.detail?.articleId === articleId) {
+        setRefreshTick((t) => t + 1);
+      }
+    }
+    window.addEventListener("article:refresh", onRefresh);
+    return () => window.removeEventListener("article:refresh", onRefresh);
   }, [articleId]);
 
   if (error) return <p style={{ color: "var(--error)" }}>{av.error}: {error}</p>;

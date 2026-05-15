@@ -114,11 +114,13 @@ async def handle_webhook(
             "name": job["template_name"],
             "created_at": datetime.now(UTC).isoformat(),
         }
+        # CAST(... AS jsonb) instead of '::jsonb' — SQLAlchemy's text() parser
+        # sees '::' as colon-ambiguous and refuses to bind parameters around it.
         await db_session.execute(
             sa.text(
                 "UPDATE articles "
-                "SET generated_images = generated_images || :entry::jsonb "
-                "WHERE id = :article_id"
+                "SET generated_images = generated_images || CAST(:entry AS jsonb) "
+                "WHERE id = CAST(:article_id AS uuid)"
             ),
             {"entry": json.dumps([entry]), "article_id": job["article_id"]},
         )
