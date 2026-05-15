@@ -36,7 +36,7 @@ export function PlaceholderForm({
     <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "12px 14px", overflowY: "auto" }}>
       {placeholders.map((ph) => (
         <div key={`${ph.type}:${ph.label}`}>
-          <label style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--muted)", display: "block", marginBottom: 4 }}>
+          <label style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--ink-subtle)", display: "block", marginBottom: 4 }}>
             {ph.type === "TEXT" ? "🔤" : "🖼"} {ph.label}
           </label>
           {ph.type === "TEXT" ? (
@@ -44,7 +44,7 @@ export function PlaceholderForm({
               value={textValues[ph.label] ?? ""}
               onChange={(e) => onTextChange(ph.label, e.target.value)}
               placeholder={t.imageCreator.textPlaceholder}
-              style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box" }}
+              style={{ width: "100%", padding: "6px 8px", border: "1px solid var(--card-border)", borderRadius: "var(--radius)", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box", background: "var(--card-bg)", color: "var(--ink)" }}
             />
           ) : (
             <div
@@ -56,16 +56,16 @@ export function PlaceholderForm({
                 }
               }}
               style={{
-                border: `1.5px ${activeSlot === ph.label ? "solid var(--accent)" : "dashed var(--border)"}`,
+                border: `1.5px ${activeSlot === ph.label ? "solid var(--accent)" : "dashed var(--card-border)"}`,
                 borderRadius: "var(--radius)",
                 padding: 8,
                 cursor: "pointer",
-                background: activeSlot === ph.label ? "var(--accent-lt)" : "var(--chrome-bg2)",
+                background: activeSlot === ph.label ? "var(--accent-lt)" : "var(--card-bg)",
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
                 fontSize: 12,
-                color: "var(--muted)",
+                color: "var(--ink-subtle)",
               }}
             >
               {imageStates[ph.label]?.dataUrl ? (

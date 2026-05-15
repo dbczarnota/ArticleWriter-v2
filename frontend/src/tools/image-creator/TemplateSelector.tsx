@@ -11,7 +11,7 @@ export function TemplateSelector({ templates, onSelect }: TemplateSelectorProps)
 
   if (templates.length === 0) {
     return (
-      <p style={{ color: "var(--muted)", fontSize: 13, padding: "16px 0" }}>
+      <p style={{ color: "var(--ink-subtle)", fontSize: 13, padding: "16px 0" }}>
         {t.imageCreator.noTemplates}
       </p>
     );
@@ -19,7 +19,7 @@ export function TemplateSelector({ templates, onSelect }: TemplateSelectorProps)
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>
+      <p style={{ fontSize: 13, color: "var(--ink-subtle)", marginBottom: 4 }}>
         {t.imageCreator.selectTemplate}
       </p>
       {templates.map((tmpl) => (
@@ -29,17 +29,24 @@ export function TemplateSelector({ templates, onSelect }: TemplateSelectorProps)
           style={{
             padding: "10px 14px",
             textAlign: "left",
-            background: "var(--chrome-bg2)",
-            border: "1px solid var(--chrome-border)",
+            background: "var(--card-bg)",
+            border: "1px solid var(--card-border)",
             borderRadius: "var(--radius)",
             cursor: "pointer",
             fontSize: 13,
             fontWeight: 500,
-            color: "var(--chrome-ink)",
+            color: "var(--ink)",
             fontFamily: "inherit",
+            transition: "border-color .15s, background .15s",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--chrome-border)"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "var(--accent)";
+            e.currentTarget.style.background = "var(--accent-lt)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--card-border)";
+            e.currentTarget.style.background = "var(--card-bg)";
+          }}
         >
           {tmpl.name || "(bez nazwy)"}
         </button>

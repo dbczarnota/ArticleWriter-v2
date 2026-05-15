@@ -69,10 +69,10 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
   }, [html, activeSlot, onImageStateChange]);
 
   return (
-    <div style={{ flex: 1, overflow: "auto", background: "#1a1a2e", position: "relative" }}>
+    <div style={{ flex: 1, overflow: "auto", background: "var(--canvas-bg)", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       {activeSlot && (
-        <div style={{ position: "absolute", top: 6, left: 0, right: 0, textAlign: "center", zIndex: 10, pointerEvents: "none" }}>
-          <span style={{ background: "rgba(79,70,229,.8)", color: "white", fontSize: 10, padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>
+        <div style={{ position: "absolute", top: 8, left: 0, right: 0, textAlign: "center", zIndex: 10, pointerEvents: "none" }}>
+          <span style={{ background: "var(--accent)", color: "white", fontSize: 11, padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>
             ↔ Przeciągnij · Scroll = zoom
           </span>
         </div>
@@ -81,7 +81,7 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
         ref={containerRef}
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: html }}
-        style={{ width: "100%", height: "100%" }}
+        style={{ maxWidth: "100%", maxHeight: "100%", boxShadow: "0 4px 16px rgba(0,0,0,.08)" }}
       />
     </div>
   );

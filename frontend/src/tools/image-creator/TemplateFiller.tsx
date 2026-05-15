@@ -57,7 +57,7 @@ export function TemplateFiller({
 
   return (
     <div style={{ display: "flex", gap: 0, height: "100%", minHeight: 0 }}>
-      <div style={{ width: 280, display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)", background: "var(--chrome-bg)" }}>
+      <div style={{ width: 300, display: "flex", flexDirection: "column", borderRight: "1px solid var(--card-border)", background: "var(--card-bg)" }}>
         <div style={{ flex: 1, overflowY: "auto" }}>
           <PlaceholderForm
             placeholders={placeholders}
@@ -71,7 +71,7 @@ export function TemplateFiller({
         </div>
 
         {articleSelector && (
-          <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)" }}>
+          <div style={{ padding: "12px 14px", borderTop: "1px solid var(--card-border)" }}>
             {articleSelector}
           </div>
         )}

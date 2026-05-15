@@ -164,31 +164,31 @@ export default function App() {
         <div
           style={{
             position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.5)",
+            inset: 0,
+            background: "rgba(13,17,23,.65)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 1000,
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowImageCreator(false);
+            zIndex: 100,
+            padding: 16,
           }}
         >
           <div
+            role="dialog"
+            aria-modal="true"
             style={{
-              background: "var(--chrome-bg)",
-              borderRadius: "var(--radius)",
-              boxShadow: "0 10px 40px rgba(0, 0, 0, 0.2)",
-              width: "90vw",
-              maxWidth: 900,
-              height: "80vh",
-              maxHeight: 600,
+              background: "var(--card-bg)",
+              border: "1px solid var(--card-border)",
+              borderRadius: 14,
+              boxShadow: "var(--shadow-modal)",
+              width: "100%",
+              maxWidth: 980,
+              height: "min(720px, 88vh)",
               display: "flex",
               flexDirection: "column",
+              overflow: "hidden",
             }}
           >
             <ImageCreatorModal
