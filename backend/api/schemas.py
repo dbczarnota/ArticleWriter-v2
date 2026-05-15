@@ -226,6 +226,7 @@ class DomainConfigUpdate(BaseModel):
     )
     article_templates: list[ArticleTemplateItem] = PydanticField(default_factory=list)
     image_templates: list[ImageTemplateItem] = PydanticField(default_factory=list)
+    image_creator_enabled: bool = False
     image_templates: list[ImageTemplateItem] = PydanticField(default_factory=list)
 
 

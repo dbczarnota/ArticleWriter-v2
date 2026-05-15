@@ -27,6 +27,7 @@ async def test_submit_job_calls_htmltomedia_and_stores_job():
         org_code="org-1",
         template_name="Card",
         callback_url="https://headlinesforge.com/api/v2/tools/image-creator/webhook",
+        api_key="htm_testkey",
     )
     assert job_id == "abc-123"
     assert "abc-123" in service._jobs
