@@ -77,6 +77,11 @@ spec:
                 secretKeyRef:
                   name: headlinesforge-secrets
                   key: JINA_API_KEY
+            - name: HTML2MEDIA_ADMIN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: headlinesforge-secrets
+                  key: HTML2MEDIA_ADMIN_SECRET
             - name: KINDE_DOMAIN
               valueFrom:
                 secretKeyRef:
