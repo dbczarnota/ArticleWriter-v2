@@ -374,6 +374,7 @@ export interface Translations {
     otherEditor: string;
     // sections
     altTitles: string;
+    generatedImages: string;
     followupTopics: string;
     facebookTeasers: string;
     socialMedia: string;

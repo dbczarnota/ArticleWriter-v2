@@ -335,6 +335,7 @@ export const en: Translations = {
     me: "You",
     otherEditor: "Other editor",
     altTitles: "Alternative titles",
+    generatedImages: "Generated images",
     followupTopics: "Follow-up topics",
     facebookTeasers: "Facebook teasers",
     socialMedia: "Social media",

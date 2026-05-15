@@ -325,6 +325,57 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         </CollapsibleSection>
       )}
 
+      {/* Generated images */}
+      {!isFailed && article.generated_images && article.generated_images.length > 0 && (
+        <CollapsibleSection prominent icon={<ShareIcon />} title={av.generatedImages} count={article.generated_images.length} defaultOpen>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {article.generated_images.map((img, i) => (
+              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <img
+                  src={img.url}
+                  alt={img.name || `Generated image ${i + 1}`}
+                  style={{
+                    maxWidth: "100%",
+                    height: "auto",
+                    borderRadius: "var(--radius)",
+                    border: "1px solid var(--card-border)",
+                  }}
+                />
+                {img.name && (
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                    {img.name}
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    const link = document.createElement("a");
+                    link.href = img.url;
+                    link.download = `${img.name || `image-${i + 1}`}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  style={{
+                    alignSelf: "flex-start",
+                    padding: "6px 12px",
+                    background: "var(--accent)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "var(--radius)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  💾 {lang === "pl" ? "Pobierz" : "Download"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
+
       {/* Follow-up topics */}
       {!isFailed && article.followup_topics.length > 0 && (
         <CollapsibleSection prominent icon={<DiscoveryIcon />} title={av.followupTopics} count={article.followup_topics.length} defaultOpen>

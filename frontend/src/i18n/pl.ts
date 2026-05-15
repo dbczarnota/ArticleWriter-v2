@@ -335,6 +335,7 @@ export const pl: Translations = {
     me: "Ty",
     otherEditor: "Inny redaktor",
     altTitles: "Alternatywne tytuły",
+    generatedImages: "Wygenerowane obrazy",
     followupTopics: "Tematy na follow-up",
     facebookTeasers: "Zajawki Facebook",
     socialMedia: "Social media",
