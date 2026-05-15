@@ -535,6 +535,13 @@ export const pl: Translations = {
     copyLink: "Kopiuj link",
     copied: "Skopiowano!",
     errorGeneration: "Błąd generowania obrazka",
+    resultTitle: "Gotowe!",
+    generatingImage: "Generowanie obrazu…",
+    generateImage: "Generuj obraz",
+    backToTemplate: "Wróć do szablonu",
+    tryAgain: "Spróbuj ponownie",
+    close: "Zamknij",
+    done: "Gotowe",
   },
   landing: {
     nav: {

@@ -535,6 +535,13 @@ export const en: Translations = {
     copyLink: "Copy link",
     copied: "Copied!",
     errorGeneration: "Image generation failed",
+    resultTitle: "Done!",
+    generatingImage: "Generating image…",
+    generateImage: "Generate image",
+    backToTemplate: "Back to template",
+    tryAgain: "Try again",
+    close: "Close",
+    done: "Done",
   },
   landing: {
     nav: {
