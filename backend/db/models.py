@@ -138,6 +138,12 @@ class Article(SQLModel, table=True):
     followup_topics: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
     facebook_teasers: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
     social_media_attachments: list[dict] = Field(default_factory=list, sa_column=Column(JSONB))
+    generated_images: list[dict] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'[]'")),
+    )
+    """Images generated via the Image Creator tool and pinned to this article.
+    Each entry: {url: str, name: str, created_at: ISO str}."""
     sources: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
 
     # Operational metadata:
@@ -384,6 +390,12 @@ class OrgConfig(SQLModel, table=True):
         sa_column=Column(JSONB, nullable=False, server_default=text("'[]'")),
     )
     """List of editorial templates: [{id: str, name: str, body: str}]."""
+
+    image_templates: list = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'[]'")),
+    )
+    """List of image card templates: [{id: str, name: str, html: str}]."""
 
     # ── Discovery ────────────────────────────────────────────────────────────
     discovery_enabled: bool = Field(default=False)
