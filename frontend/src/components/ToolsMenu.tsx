@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useT } from "../i18n";
+import { useImageCreatorEnabled } from "../tools/image-creator/useImageTemplates";
 
 interface ToolsMenuProps {
   onCreateImage: () => void;
@@ -7,7 +8,12 @@ interface ToolsMenuProps {
 
 export function ToolsMenu({ onCreateImage }: ToolsMenuProps) {
   const t = useT();
+  const imageCreatorEnabled = useImageCreatorEnabled();
   const [open, setOpen] = useState(false);
+
+  if (!imageCreatorEnabled) {
+    return null;
+  }
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 

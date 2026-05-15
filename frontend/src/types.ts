@@ -173,6 +173,7 @@ export interface DomainConfigData {
   agent_fallback_models: Record<string, string[]>;
   article_templates: ArticleTemplate[];
   image_templates: ImageTemplate[];
+  image_creator_enabled: boolean;
   discovery_enabled: boolean;
   discovery_feeds: FeedConfig[];
   discovery_categories: CategoryConfig[];

@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import asyncio
 import json
+import secrets
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 import sqlalchemy as sa
 
 from tools.image_creator.config import HTML2MEDIA_ADMIN_SECRET, HTML2MEDIA_BASE_URL
 
-# job_id → {"queue": asyncio.Queue, "article_id": str|None, "org_code": str, "template_name": str}
+# job_id → {"queue": asyncio.Queue, "article_id": str|None, "org_code": str,
+#           "template_name": str, "nonce": str}
 _jobs: dict[str, dict[str, Any]] = {}
 
 
@@ -40,13 +43,23 @@ async def submit_job(
 ) -> str:
     """Submit an HTML-to-image job to the htmltomedia service.
 
+    Generates a per-job nonce and embeds it as a query parameter on the
+    callback_url. htmltomedia treats the URL as opaque and replays it on
+    completion. The webhook handler then verifies the nonce against what
+    we stored — only we and htmltomedia know it, so a third party cannot
+    forge a callback even if they guess the job_id.
+
     Returns the job_id issued by htmltomedia and registers an in-process
     asyncio.Queue so the SSE endpoint can await the webhook notification.
     """
+    nonce = secrets.token_urlsafe(32)
+    sep = "&" if "?" in callback_url else "?"
+    callback_with_nonce = f"{callback_url}{sep}{urlencode({'nonce': nonce})}"
+
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.post(
             f"{HTML2MEDIA_BASE_URL}/images",
-            json={"html": html, "callback_url": callback_url},
+            json={"html": html, "callback_url": callback_with_nonce},
             headers={"X-API-Key": api_key},
         )
         resp.raise_for_status()
@@ -57,8 +70,21 @@ async def submit_job(
         "article_id": article_id,
         "org_code": org_code,
         "template_name": template_name,
+        "nonce": nonce,
     }
     return job_id
+
+
+def verify_nonce(job_id: str, nonce: str | None) -> bool:
+    """Constant-time check that nonce matches the one issued for job_id.
+
+    Returns False if the job is unknown OR the nonce mismatches. Caller
+    must reject the request on False.
+    """
+    job = _jobs.get(job_id)
+    if job is None or nonce is None:
+        return False
+    return secrets.compare_digest(nonce, job["nonce"])
 
 
 async def handle_webhook(

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import secrets
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
 from backend.auth.deps import get_current_org
@@ -14,14 +13,70 @@ from backend.db.models import Org
 from backend.repositories import get_article_repo, get_org_config_repo
 from backend.repositories.protocols import ArticleRepository, OrgConfigRepository
 from tools.image_creator import service
-from tools.image_creator.config import (
-    HTML2MEDIA_WEBHOOK_SECRET,
-    PUBLIC_BASE_URL,
-    WEBHOOK_PATH,
+from tools.image_creator.config import PUBLIC_BASE_URL, WEBHOOK_PATH
+from tools.image_creator.schemas import (
+    CreateJobRequest,
+    CreateJobResponse,
+    EnableResponse,
+    WebhookPayload,
 )
-from tools.image_creator.schemas import CreateJobRequest, CreateJobResponse, WebhookPayload
 
 router = APIRouter(prefix="/tools/image-creator", tags=["image-creator"])
+
+
+@router.post("/enable", response_model=EnableResponse)
+async def enable(
+    org: Org = Depends(get_current_org),
+    config_repo: OrgConfigRepository = Depends(get_org_config_repo),
+) -> EnableResponse:
+    """Enable Image Creator for this org.
+
+    Idempotent: if an api_key is already provisioned in OrgConfig we just
+    flip `image_creator_enabled` to True without touching htmltomedia.
+    Otherwise we call htmltomedia to mint a new per-org key, persist it,
+    and enable the feature.
+    """
+    config = await config_repo.get(org.code)
+    if config is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="OrgConfig not found.",
+        )
+
+    if not config.image_creator_api_key:
+        try:
+            api_key = await service.enable_org(org.code)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to provision htmltomedia key: {e}",
+            ) from e
+        config.image_creator_api_key = api_key
+
+    config.image_creator_enabled = True
+    await config_repo.upsert(config)
+    return EnableResponse(enabled=True)
+
+
+@router.post("/disable", response_model=EnableResponse)
+async def disable(
+    org: Org = Depends(get_current_org),
+    config_repo: OrgConfigRepository = Depends(get_org_config_repo),
+) -> EnableResponse:
+    """Disable Image Creator for this org.
+
+    Keeps the api_key in storage so re-enabling later does not waste a
+    provisioning call to htmltomedia.
+    """
+    config = await config_repo.get(org.code)
+    if config is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="OrgConfig not found.",
+        )
+    config.image_creator_enabled = False
+    await config_repo.upsert(config)
+    return EnableResponse(enabled=False)
 
 
 class _NullSession:
@@ -101,26 +156,20 @@ async def stream_job(job_id: str) -> StreamingResponse:
 @router.post("/webhook")
 async def webhook(
     body: WebhookPayload,
-    x_webhook_secret: str | None = Header(default=None, alias="X-Webhook-Secret"),
+    nonce: str = Query(..., description="Per-job nonce we issued in callback_url"),
 ) -> dict:
     """Inbound callback from htmltomedia — notifies the waiting SSE stream.
 
-    Requires `X-Webhook-Secret` header matching HTML2MEDIA_WEBHOOK_SECRET env
-    var. Comparison is constant-time. If the env var is unset (dev mode),
-    the endpoint rejects all calls — never accept unauthenticated webhooks
-    even in dev, since they mutate articles.
+    Authentication: per-job nonce embedded as a query parameter on the
+    callback URL we hand to htmltomedia. We compare it constant-time against
+    the nonce we stored when submitting the job. An attacker forging this
+    request would need to know both the job_id (UUID4) and the nonce (32-byte
+    urlsafe token) — ~250 bits of combined entropy.
     """
-    if not HTML2MEDIA_WEBHOOK_SECRET:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Webhook secret not configured.",
-        )
-    if not x_webhook_secret or not secrets.compare_digest(
-        x_webhook_secret, HTML2MEDIA_WEBHOOK_SECRET
-    ):
+    if not service.verify_nonce(body.job_id, nonce):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid webhook secret.",
+            detail="Invalid nonce or unknown job.",
         )
 
     sm = get_session_maker()

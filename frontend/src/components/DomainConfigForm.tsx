@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { DomainConfigData } from "../types";
 import { useT } from "../i18n";
+import { useApi } from "../lib/useApi";
 
 type MediaTipKey = "youtube" | "twitter" | "tiktok" | "instagram" | "reddit" | "news" | "facebook";
 
@@ -106,7 +107,26 @@ interface DomainConfigFormProps {
 export function DomainConfigForm({ initialConfig, activeSection, saving, error, onSave }: DomainConfigFormProps) {
   const t = useT();
   const dc = t.domainConfig;
+  const { request } = useApi();
   const [form, setForm] = useState<DomainConfigData>(initialConfig);
+  const [icToggling, setIcToggling] = useState(false);
+  const [icError, setIcError] = useState<string | null>(null);
+
+  async function toggleImageCreator(enable: boolean) {
+    setIcToggling(true);
+    setIcError(null);
+    try {
+      const { enabled } = await request<{ enabled: boolean }>(
+        `/v2/tools/image-creator/${enable ? "enable" : "disable"}`,
+        { method: "POST" },
+      );
+      setForm((f) => ({ ...f, image_creator_enabled: enabled }));
+    } catch (e) {
+      setIcError(e instanceof Error ? e.message : "Toggle failed");
+    } finally {
+      setIcToggling(false);
+    }
+  }
 
   const FRESHNESS_OPTIONS = [
     { value: "qdr:d", label: dc.freshnessDay },
@@ -624,7 +644,48 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>
             {dc.imageTemplates ?? "Szablony obrazków"}
           </h3>
-          {(form.image_templates ?? []).map((tmpl, i) => (
+
+          <div style={{ marginBottom: 16, padding: "10px 12px", background: "var(--chrome-bg2)", border: "1px solid var(--border)", borderRadius: "var(--radius)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>
+                {form.image_creator_enabled ? "Image Creator: włączony" : "Image Creator: wyłączony"}
+              </span>
+              <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                Pierwsze włączenie automatycznie tworzy klucz API w htmltomedia dla tej organizacji.
+              </span>
+              {icError && (
+                <span style={{ fontSize: 11, color: "var(--error)" }}>{icError}</span>
+              )}
+            </div>
+            <button
+              type="button"
+              disabled={icToggling}
+              onClick={() => toggleImageCreator(!form.image_creator_enabled)}
+              style={{
+                padding: "6px 14px",
+                background: form.image_creator_enabled ? "var(--error-lt)" : "var(--accent)",
+                color: form.image_creator_enabled ? "var(--error-fg)" : "white",
+                border: form.image_creator_enabled ? "1px solid var(--error)" : "none",
+                borderRadius: "var(--radius)",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: icToggling ? "not-allowed" : "pointer",
+                opacity: icToggling ? 0.6 : 1,
+                fontFamily: "inherit",
+                flexShrink: 0,
+              }}
+            >
+              {icToggling ? "..." : (form.image_creator_enabled ? "Wyłącz" : "Włącz")}
+            </button>
+          </div>
+
+          {!form.image_creator_enabled && (
+            <p style={{ fontSize: 12, color: "var(--muted)", fontStyle: "italic", padding: "16px 0" }}>
+              Włącz Image Creator, aby dodawać i edytować szablony obrazków.
+            </p>
+          )}
+
+          {form.image_creator_enabled && (form.image_templates ?? []).map((tmpl, i) => (
             <div
               key={tmpl.id}
               style={{ marginBottom: 16, padding: "12px 14px", border: "1px solid var(--border)", borderRadius: "var(--radius)" }}
@@ -661,18 +722,20 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
               />
             </div>
           ))}
-          <button
-            type="button"
-            onClick={() =>
-              set("image_templates", [
-                { id: crypto.randomUUID(), name: "", html: "" },
-                ...(form.image_templates ?? []),
-              ])
-            }
-            style={{ padding: "6px 14px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer" }}
-          >
-            + Dodaj szablon
-          </button>
+          {form.image_creator_enabled && (
+            <button
+              type="button"
+              onClick={() =>
+                set("image_templates", [
+                  { id: crypto.randomUUID(), name: "", html: "" },
+                  ...(form.image_templates ?? []),
+                ])
+              }
+              style={{ padding: "6px 14px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 13, cursor: "pointer" }}
+            >
+              + Dodaj szablon
+            </button>
+          )}
         </section>
 
         {/* Discovery */}

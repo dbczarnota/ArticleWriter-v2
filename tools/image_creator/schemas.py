@@ -16,3 +16,7 @@ class WebhookPayload(BaseModel):
     status: str  # "done" | "failed"
     url: str | None = None
     error: str | None = None
+
+
+class EnableResponse(BaseModel):
+    enabled: bool
