@@ -645,16 +645,16 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
             {dc.imageTemplates ?? "Szablony obrazków"}
           </h3>
 
-          <div style={{ marginBottom: 16, padding: "10px 12px", background: "var(--chrome-bg2)", border: "1px solid var(--border)", borderRadius: "var(--radius)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>
+          <div style={{ marginBottom: 16, padding: "12px 14px", background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--radius-lg)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
                 {form.image_creator_enabled ? "Image Creator: włączony" : "Image Creator: wyłączony"}
               </span>
-              <span style={{ fontSize: 11, color: "var(--muted)" }}>
+              <span style={{ fontSize: 11, color: "var(--ink-subtle)" }}>
                 Pierwsze włączenie automatycznie tworzy klucz API w htmltomedia dla tej organizacji.
               </span>
               {icError && (
-                <span style={{ fontSize: 11, color: "var(--error)" }}>{icError}</span>
+                <span style={{ fontSize: 11, color: "var(--error-fg)", wordBreak: "break-word" }}>{icError}</span>
               )}
             </div>
             <button
