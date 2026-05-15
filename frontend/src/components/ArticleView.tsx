@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import DOMPurify from "dompurify";
 import type { Article, EmbedCandidate, Fact, Quote, SocialMediaAttachment } from "../types";
 import { useArticles } from "../lib/useArticles";
@@ -28,6 +28,20 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   const [deletingImageUrl, setDeletingImageUrl] = useState<string | null>(null);
 
   const [refreshTick, setRefreshTick] = useState(0);
+
+  // Split the rendered article HTML into "first H1 text" + "the rest" so we
+  // can render the H1 with a copy-to-clipboard button beside it without
+  // duplicating the title. Sanitized via DOMPurify first, then parsed.
+  const { h1Text, htmlRest } = useMemo(() => {
+    if (!article?.html) return { h1Text: null as string | null, htmlRest: "" };
+    const safe = DOMPurify.sanitize(article.html, { USE_PROFILES: { html: true } });
+    const doc = new DOMParser().parseFromString(safe, "text/html");
+    const h1 = doc.querySelector("h1");
+    if (!h1) return { h1Text: null, htmlRest: safe };
+    const text = h1.textContent ?? "";
+    h1.remove();
+    return { h1Text: text, htmlRest: doc.body.innerHTML };
+  }, [article?.html]);
 
   async function handleDeleteGeneratedImage(imageUrl: string) {
     if (!article) return;
@@ -233,43 +247,9 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {/* Article head — frameless, sits directly on canvas */}
       <div style={{ marginBottom: 24 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.015em", lineHeight: 1.3, margin: 0, flex: 1, minWidth: 0 }}>
-            {article.topic}
-          </h2>
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(article.topic);
-                setTitleCopied(true);
-                setTimeout(() => setTitleCopied(false), 1500);
-              } catch {
-                // clipboard may be unavailable in some embeds; ignore
-              }
-            }}
-            title={lang === "pl" ? "Kopiuj tytuł do schowka" : "Copy title to clipboard"}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              marginTop: 4,
-              width: 26,
-              height: 26,
-              padding: 0,
-              background: "transparent",
-              border: "1px solid var(--card-border)",
-              borderRadius: "var(--radius)",
-              color: titleCopied ? "var(--success, #16a34a)" : "var(--ink-subtle)",
-              cursor: "pointer",
-              transition: "color .15s, border-color .15s",
-              lineHeight: 0,
-            }}
-          >
-            {titleCopied ? <CheckIcon width={12} height={12} /> : <CopyIcon width={12} height={12} />}
-          </button>
-        </div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.015em", lineHeight: 1.3, margin: 0 }}>
+          {article.topic}
+        </h2>
 
         {/* Meta pills — author · date · mark-done */}
         <div style={{ display: "flex", gap: 6, fontSize: 12, color: "var(--ink-subtle)", flexWrap: "wrap", alignItems: "center" }}>
@@ -364,20 +344,14 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
         </div>
       )}
 
-      {/* Article HTML */}
+      {/* Article HTML — split so the first H1 gets a copy-title button next
+          to it. The rest is rendered via dangerouslySetInnerHTML (sanitized
+          via DOMPurify upstream in the useMemo above to strip <script> /
+          event-handler vectors that could come via prompt injection). */}
       {!isFailed && article.html && (
         <div
           className="article-html"
           lang={lang}
-          // Article HTML comes from the LLM pipeline. Even though we control the
-          // pipeline, prompt-injection from any third-party source URL could
-          // smuggle <script> or onerror= payloads into the output. DOMPurify
-          // strips all script/event-handler vectors while keeping the
-          // formatting tags the writer actually emits (h1-h3, p, ul, ol, li,
-          // blockquote, a, strong, em).
-          dangerouslySetInnerHTML={{
-            __html: DOMPurify.sanitize(article.html, { USE_PROFILES: { html: true } }),
-          }}
           style={{
             padding: "28px 36px",
             background: "var(--card-bg)",
@@ -387,7 +361,46 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             marginBottom: 24,
             lineHeight: 1.7,
           }}
-        />
+        >
+          {h1Text && (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <h1 style={{ flex: 1, minWidth: 0 }}>{h1Text}</h1>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(h1Text);
+                    setTitleCopied(true);
+                    setTimeout(() => setTitleCopied(false), 1500);
+                  } catch {
+                    // clipboard may be unavailable in some embeds; ignore
+                  }
+                }}
+                title={lang === "pl" ? "Kopiuj nagłówek H1 do schowka" : "Copy H1 to clipboard"}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  marginTop: 8,
+                  width: 28,
+                  height: 28,
+                  padding: 0,
+                  background: "transparent",
+                  border: "1px solid var(--card-border)",
+                  borderRadius: "var(--radius)",
+                  color: titleCopied ? "var(--success, #16a34a)" : "var(--ink-subtle)",
+                  cursor: "pointer",
+                  transition: "color .15s, border-color .15s",
+                  lineHeight: 0,
+                }}
+              >
+                {titleCopied ? <CheckIcon width={13} height={13} /> : <CopyIcon width={13} height={13} />}
+              </button>
+            </div>
+          )}
+          <div dangerouslySetInnerHTML={{ __html: htmlRest }} />
+        </div>
       )}
 
       {/* Alternative titles */}
