@@ -29,7 +29,7 @@ export function PlaceholderForm({
 
   async function handleFile(label: string, file: File) {
     const dataUrl = await prepareImage(file);
-    onImageUpload(label, { dataUrl, posX: 50, posY: 50, scale: 1 });
+    onImageUpload(label, { dataUrl, panX: 0, panY: 0, scale: 1 });
     onActivateSlot(label);
   }
 

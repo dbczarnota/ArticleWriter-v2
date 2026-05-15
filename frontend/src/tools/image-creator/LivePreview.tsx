@@ -9,18 +9,30 @@ interface LivePreviewProps {
 
 const PADDING = 20;
 
+function applyTransform(el: HTMLImageElement, panX: number, panY: number) {
+  el.style.transform = `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))`;
+  el.dataset.panX = String(panX);
+  el.dataset.panY = String(panY);
+}
+
+function clampPan(panX: number, panY: number, el: HTMLImageElement): [number, number] {
+  const slot = el.parentElement;
+  if (!slot) return [panX, panY];
+  const maxX = Math.max(0, (el.offsetWidth - slot.clientWidth) / 2);
+  const maxY = Math.max(0, (el.offsetHeight - slot.clientHeight) / 2);
+  return [
+    Math.max(-maxX, Math.min(maxX, panX)),
+    Math.max(-maxY, Math.min(maxY, panY)),
+  ];
+}
+
 export function LivePreview({ html, activeSlot, onImageStateChange }: LivePreviewProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; startPanX: number; startPanY: number } | null>(null);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
   const [scale, setScale] = useState(1);
 
-  // After iframe content loads, measure the rendered template at its native
-  // pixel size. We trust the first element child of <body> to be the template
-  // root (e.g. <div class="card">). Templates are rendered inside an iframe
-  // for full CSS isolation — global selectors like `* { margin: 0 }` won't
-  // bleed into the host app.
   function handleLoad() {
     const doc = iframeRef.current?.contentDocument;
     if (!doc || !doc.body) return;
@@ -33,8 +45,6 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
     }
   }
 
-  // Auto-fit the template to the available preview area. Recompute on every
-  // wrapper resize and every time the template's natural size changes.
   useLayoutEffect(() => {
     const wrapper = wrapperRef.current;
     if (!wrapper || !naturalSize) return;
@@ -50,10 +60,6 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
     return () => ro.disconnect();
   }, [naturalSize]);
 
-  // Pointer/wheel handlers attached inside the iframe document. Coordinates
-  // from these events are already in template-native space (because the
-  // iframe's own viewport is the template's coordinate system), so no scale
-  // correction is needed.
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe || !activeSlot || !naturalSize) return;
@@ -64,36 +70,45 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
 
     function onPointerDown(e: PointerEvent) {
       e.preventDefault();
-      const style = el!.style;
-      const posX = parseFloat(style.objectPosition?.split(" ")[0] ?? "50") || 50;
-      const posY = parseFloat(style.objectPosition?.split(" ")[1] ?? "50") || 50;
-      dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: posX, startPosY: posY };
+      const startPanX = parseFloat(el!.dataset.panX ?? "0") || 0;
+      const startPanY = parseFloat(el!.dataset.panY ?? "0") || 0;
+      dragRef.current = { startX: e.clientX, startY: e.clientY, startPanX, startPanY };
       el!.setPointerCapture(e.pointerId);
     }
     function onPointerMove(e: PointerEvent) {
       if (!dragRef.current || !el) return;
-      const dx = ((e.clientX - dragRef.current.startX) / el.offsetWidth) * -100;
-      const dy = ((e.clientY - dragRef.current.startY) / el.offsetHeight) * -100;
-      const newX = Math.max(0, Math.min(100, dragRef.current.startPosX + dx));
-      const newY = Math.max(0, Math.min(100, dragRef.current.startPosY + dy));
-      el.style.objectPosition = `${newX}% ${newY}%`;
+      const dx = e.clientX - dragRef.current.startX;
+      const dy = e.clientY - dragRef.current.startY;
+      const [px, py] = clampPan(
+        dragRef.current.startPanX + dx,
+        dragRef.current.startPanY + dy,
+        el,
+      );
+      applyTransform(el, px, py);
     }
-    function onPointerUp(e: PointerEvent) {
+    function onPointerUp() {
       if (!dragRef.current || !el) return;
-      const dx = ((e.clientX - dragRef.current.startX) / el.offsetWidth) * -100;
-      const dy = ((e.clientY - dragRef.current.startY) / el.offsetHeight) * -100;
-      const newX = Math.max(0, Math.min(100, dragRef.current.startPosX + dx));
-      const newY = Math.max(0, Math.min(100, dragRef.current.startPosY + dy));
+      const finalPanX = parseFloat(el.dataset.panX ?? "0") || 0;
+      const finalPanY = parseFloat(el.dataset.panY ?? "0") || 0;
       dragRef.current = null;
-      onImageStateChange(activeSlot!, { posX: newX, posY: newY });
+      onImageStateChange(activeSlot!, { panX: finalPanX, panY: finalPanY });
     }
     function onWheel(e: WheelEvent) {
       e.preventDefault();
-      const currentScale = parseFloat(el!.style.transform?.match(/scale\(([^)]+)\)/)?.[1] ?? "1") || 1;
+      const currentScale = parseFloat(el!.dataset.scale ?? "1") || 1;
       const delta = e.deltaY < 0 ? 0.1 : -0.1;
-      const newScale = Math.max(1, Math.min(3, currentScale + delta));
-      el!.style.transform = `scale(${newScale})`;
-      onImageStateChange(activeSlot!, { scale: newScale });
+      const newScale = Math.max(1, Math.min(3, +(currentScale + delta).toFixed(2)));
+      el!.style.minWidth = `${newScale * 100}%`;
+      el!.style.minHeight = `${newScale * 100}%`;
+      el!.dataset.scale = String(newScale);
+      // Re-clamp pan against new image size so the picture never leaves the
+      // slot when zooming back out.
+      const panX = parseFloat(el!.dataset.panX ?? "0") || 0;
+      const panY = parseFloat(el!.dataset.panY ?? "0") || 0;
+      // offsetWidth/Height update synchronously after style write in Chrome.
+      const [px, py] = clampPan(panX, panY, el!);
+      applyTransform(el!, px, py);
+      onImageStateChange(activeSlot!, { scale: newScale, panX: px, panY: py });
     }
 
     el.style.cursor = "grab";
