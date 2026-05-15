@@ -14,8 +14,6 @@ In `headlinesforge-secrets`, ensure this key exists:
 
 In `k8s/backend-deploy.yaml` the env var is already wired (`HTML2MEDIA_ADMIN_SECRET` → `secretKeyRef: headlinesforge-secrets / HTML2MEDIA_ADMIN_SECRET`).
 
-**Also wired:** `INTERNAL_CALLBACK_BASE_URL=http://backend.headlinesforge.svc.cluster.local` (plain env value, not secret). This is the URL htmltomedia uses to call our webhook *inside the cluster*, bypassing the public hostname which is fronted by Cloudflare. Cloudflare's bot-fight-mode returns 403/1010 on non-browser User-Agents, which silently kills the callback (htmltomedia swallows exceptions). Routing the callback through k8s service DNS avoids this entirely.
-
 **No HTML2MEDIA_WEBHOOK_SECRET is needed.** Webhook authentication uses per-job nonces in the callback URL, generated at submit time. Zero shared secret means htmltomedia needs no changes.
 
 ### Database

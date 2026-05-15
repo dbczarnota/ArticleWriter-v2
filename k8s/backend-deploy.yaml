@@ -82,8 +82,6 @@ spec:
                 secretKeyRef:
                   name: headlinesforge-secrets
                   key: HTML2MEDIA_ADMIN_SECRET
-            - name: INTERNAL_CALLBACK_BASE_URL
-              value: "http://backend.headlinesforge.svc.cluster.local"
             - name: KINDE_DOMAIN
               valueFrom:
                 secretKeyRef:
