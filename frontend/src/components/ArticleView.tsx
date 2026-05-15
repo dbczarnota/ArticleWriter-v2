@@ -24,6 +24,7 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   const [article, setArticle] = useState<Article | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [titleCopied, setTitleCopied] = useState(false);
   const [deletingImageUrl, setDeletingImageUrl] = useState<string | null>(null);
 
   const [refreshTick, setRefreshTick] = useState(0);
@@ -232,9 +233,43 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {/* Article head — frameless, sits directly on canvas */}
       <div style={{ marginBottom: 24 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.015em", lineHeight: 1.3, margin: 0 }}>
-          {article.topic}
-        </h2>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-.015em", lineHeight: 1.3, margin: 0, flex: 1, minWidth: 0 }}>
+            {article.topic}
+          </h2>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(article.topic);
+                setTitleCopied(true);
+                setTimeout(() => setTitleCopied(false), 1500);
+              } catch {
+                // clipboard may be unavailable in some embeds; ignore
+              }
+            }}
+            title={lang === "pl" ? "Kopiuj tytuł do schowka" : "Copy title to clipboard"}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              marginTop: 4,
+              width: 26,
+              height: 26,
+              padding: 0,
+              background: "transparent",
+              border: "1px solid var(--card-border)",
+              borderRadius: "var(--radius)",
+              color: titleCopied ? "var(--success, #16a34a)" : "var(--ink-subtle)",
+              cursor: "pointer",
+              transition: "color .15s, border-color .15s",
+              lineHeight: 0,
+            }}
+          >
+            {titleCopied ? <CheckIcon width={12} height={12} /> : <CopyIcon width={12} height={12} />}
+          </button>
+        </div>
 
         {/* Meta pills — author · date · mark-done */}
         <div style={{ display: "flex", gap: 6, fontSize: 12, color: "var(--ink-subtle)", flexWrap: "wrap", alignItems: "center" }}>
