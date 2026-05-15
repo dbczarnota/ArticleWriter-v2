@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useT } from "../i18n";
 import { useImageCreatorEnabled } from "../tools/image-creator/useImageTemplates";
+import { ToolsIcon, ImageIcon } from "./ui/icons";
 
 interface ToolsMenuProps {
   onCreateImage: () => void;
@@ -67,7 +68,7 @@ export function ToolsMenu({ onCreateImage }: ToolsMenuProps) {
           }
         }}
       >
-        🔧
+        <ToolsIcon />
         {t.topbar.tools}
       </button>
 
@@ -111,7 +112,10 @@ export function ToolsMenu({ onCreateImage }: ToolsMenuProps) {
               e.currentTarget.style.background = "transparent";
             }}
           >
-            🖼️ {t.topbar.createImage}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <ImageIcon />
+              {t.topbar.createImage}
+            </span>
           </button>
         </div>
       )}

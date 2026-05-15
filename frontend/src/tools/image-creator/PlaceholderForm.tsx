@@ -3,6 +3,7 @@ import type { Placeholder } from "./parsePlaceholders";
 import type { ImageState } from "./htmlBuilder";
 import { prepareImage } from "./imagePrepare";
 import { useT } from "../../i18n";
+import { TextIcon, ImageIcon, UploadIcon } from "../../components/ui/icons";
 
 interface PlaceholderFormProps {
   placeholders: Placeholder[];
@@ -36,8 +37,9 @@ export function PlaceholderForm({
     <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "12px 14px", overflowY: "auto" }}>
       {placeholders.map((ph) => (
         <div key={`${ph.type}:${ph.label}`}>
-          <label style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--ink-subtle)", display: "block", marginBottom: 4 }}>
-            {ph.type === "TEXT" ? "🔤" : "🖼"} {ph.label}
+          <label style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", color: "var(--ink-subtle)", display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+            {ph.type === "TEXT" ? <TextIcon width={11} height={11} /> : <ImageIcon width={11} height={11} />}
+            {ph.label}
           </label>
           {ph.type === "TEXT" ? (
             <input
@@ -80,7 +82,9 @@ export function PlaceholderForm({
                   </span>
                 </>
               ) : (
-                <span>📁 {t.imageCreator.uploadImage}</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <UploadIcon /> {t.imageCreator.uploadImage}
+                </span>
               )}
             </div>
           )}
