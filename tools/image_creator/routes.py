@@ -13,7 +13,7 @@ from backend.db.models import Org
 from backend.repositories import get_article_repo, get_org_config_repo
 from backend.repositories.protocols import ArticleRepository, OrgConfigRepository
 from tools.image_creator import service
-from tools.image_creator.config import PUBLIC_BASE_URL, WEBHOOK_PATH
+from tools.image_creator.config import INTERNAL_CALLBACK_BASE_URL, WEBHOOK_PATH
 from tools.image_creator.schemas import (
     CreateJobRequest,
     CreateJobResponse,
@@ -124,7 +124,7 @@ async def create_job(
                 detail="Article not found in this organization.",
             )
 
-    callback_url = PUBLIC_BASE_URL + WEBHOOK_PATH
+    callback_url = INTERNAL_CALLBACK_BASE_URL + WEBHOOK_PATH
     job_id = await service.submit_job(
         html=body.html,
         article_id=body.article_id,
