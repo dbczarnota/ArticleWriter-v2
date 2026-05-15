@@ -193,11 +193,8 @@ export default function App() {
           >
             <ImageCreatorModal
               onClose={() => setShowImageCreator(false)}
-              currentArticle={
-                selectedArticleId
-                  ? articles.find((a) => a.id === selectedArticleId) ?? null
-                  : null
-              }
+              articles={articles}
+              currentArticleId={selectedArticleId}
             />
           </div>
         </div>
