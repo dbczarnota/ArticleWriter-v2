@@ -3,7 +3,7 @@ import type { Placeholder } from "./parsePlaceholders";
 import type { ImageState } from "./htmlBuilder";
 import { prepareImage } from "./imagePrepare";
 import { useT } from "../../i18n";
-import { TextIcon, ImageIcon, UploadIcon } from "../../components/ui/icons";
+import { TextIcon, ImageIcon, UploadIcon, CloseIcon } from "../../components/ui/icons";
 
 interface PlaceholderFormProps {
   placeholders: Placeholder[];
@@ -12,6 +12,7 @@ interface PlaceholderFormProps {
   activeSlot: string | null;
   onTextChange: (label: string, value: string) => void;
   onImageUpload: (label: string, state: ImageState) => void;
+  onImageRemove: (label: string) => void;
   onActivateSlot: (label: string) => void;
 }
 
@@ -22,6 +23,7 @@ export function PlaceholderForm({
   activeSlot,
   onTextChange,
   onImageUpload,
+  onImageRemove,
   onActivateSlot,
 }: PlaceholderFormProps) {
   const t = useT();
@@ -77,9 +79,59 @@ export function PlaceholderForm({
                     alt=""
                     style={{ width: 40, height: 28, objectFit: "cover", borderRadius: 3, flexShrink: 0 }}
                   />
-                  <span style={{ color: "var(--accent)", fontWeight: 500 }}>
+                  <span style={{ color: "var(--accent)", fontWeight: 500, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {activeSlot === ph.label ? "↔ Przeciągnij na podglądzie" : "Kliknij by kadrować"}
                   </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRefs.current[ph.label]?.click();
+                    }}
+                    title="Zmień zdjęcie"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 22,
+                      height: 22,
+                      padding: 0,
+                      background: "var(--card-bg)",
+                      border: "1px solid var(--card-border)",
+                      borderRadius: "var(--radius)",
+                      color: "var(--ink-subtle)",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                      lineHeight: 0,
+                    }}
+                  >
+                    <UploadIcon width={11} height={11} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onImageRemove(ph.label);
+                    }}
+                    title="Usuń zdjęcie"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 22,
+                      height: 22,
+                      padding: 0,
+                      background: "var(--card-bg)",
+                      border: "1px solid var(--card-border)",
+                      borderRadius: "var(--radius)",
+                      color: "var(--error, #b91c1c)",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                      lineHeight: 0,
+                    }}
+                  >
+                    <CloseIcon width={11} height={11} />
+                  </button>
                 </>
               ) : (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>

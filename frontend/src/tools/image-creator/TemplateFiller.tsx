@@ -56,6 +56,15 @@ export function TemplateFiller({
     setImageStates((prev) => ({ ...prev, [label]: state }));
   }
 
+  function handleImageRemove(label: string) {
+    setImageStates((prev) => {
+      const next = { ...prev };
+      delete next[label];
+      return next;
+    });
+    setActiveSlot((cur) => (cur === label ? null : cur));
+  }
+
   function handleActivateSlot(label: string) {
     setActiveSlot(label);
   }
@@ -82,6 +91,7 @@ export function TemplateFiller({
             activeSlot={activeSlot}
             onTextChange={handleTextChange}
             onImageUpload={handleImageUpload}
+            onImageRemove={handleImageRemove}
             onActivateSlot={handleActivateSlot}
           />
         </div>
