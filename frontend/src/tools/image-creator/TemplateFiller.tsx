@@ -27,6 +27,22 @@ export function TemplateFiller({
 
   const placeholders = useMemo(() => parsePlaceholders(template.html), [template.html]);
 
+  // Two HTML outputs:
+  //   - previewHtml — pan/zoom stripped to defaults; passed to LivePreview's
+  //     iframe srcDoc. Because the string is byte-identical across pan/zoom
+  //     changes, React skips the srcDoc DOM update and the iframe doesn't
+  //     reload (no flicker, no base64 re-decode). LivePreview re-applies the
+  //     current pan/zoom imperatively after load.
+  //   - filledHtml — full state baked in; used at submit time so htmltomedia
+  //     receives the user's final crop and zoom.
+  const previewHtml = useMemo(() => {
+    const stable: Record<string, ImageState> = {};
+    for (const [k, v] of Object.entries(imageStates)) {
+      stable[k] = { dataUrl: v.dataUrl, panX: 0, panY: 0, scale: 1 };
+    }
+    return buildHtml(template.html, textValues, stable);
+  }, [template.html, textValues, imageStates]);
+
   const filledHtml = useMemo(
     () => buildHtml(template.html, textValues, imageStates),
     [template.html, textValues, imageStates]
@@ -100,7 +116,8 @@ export function TemplateFiller({
       </div>
 
       <LivePreview
-        html={filledHtml}
+        html={previewHtml}
+        imageStates={imageStates}
         activeSlot={activeSlot}
         onImageStateChange={handleImageStateChange}
       />

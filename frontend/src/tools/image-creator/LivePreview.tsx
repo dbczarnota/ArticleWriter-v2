@@ -3,6 +3,11 @@ import type { ImageState } from "./htmlBuilder";
 
 interface LivePreviewProps {
   html: string;
+  /** Current pan/zoom for each slot, applied to the DOM after iframe load.
+   * The iframe srcDoc itself ignores pan/zoom (always renders at defaults)
+   * so srcDoc stays byte-identical across pan/zoom changes and the iframe
+   * doesn't reload mid-interaction. */
+  imageStates: Record<string, ImageState>;
   activeSlot: string | null;
   onImageStateChange: (label: string, state: Partial<ImageState>) => void;
 }
@@ -26,12 +31,18 @@ function clampPan(panX: number, panY: number, el: HTMLImageElement): [number, nu
   ];
 }
 
-export function LivePreview({ html, activeSlot, onImageStateChange }: LivePreviewProps) {
+export function LivePreview({ html, imageStates, activeSlot, onImageStateChange }: LivePreviewProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; startPanX: number; startPanY: number } | null>(null);
+  const wheelCommitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
   const [scale, setScale] = useState(1);
+
+  // Keep a ref to the latest imageStates so wheel/drag handlers and the
+  // iframe-load handler can read fresh values without re-binding.
+  const imageStatesRef = useRef(imageStates);
+  imageStatesRef.current = imageStates;
 
   function handleLoad() {
     const doc = iframeRef.current?.contentDocument;
@@ -43,6 +54,23 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
     if (w > 0 && h > 0) {
       setNaturalSize({ w, h });
     }
+    // srcDoc renders images at defaults (panX=0, panY=0, scale=1) — apply the
+    // current state to each <img data-slot=...> imperatively so persisted
+    // pan/zoom is restored on reload (which only happens on text/image
+    // structural changes, not on pan/zoom).
+    const imgs = doc.querySelectorAll<HTMLImageElement>("[data-slot]");
+    imgs.forEach((el) => {
+      const slot = el.dataset.slot;
+      if (!slot) return;
+      const st = imageStatesRef.current[slot];
+      if (!st) return;
+      el.style.minWidth = `${st.scale * 100}%`;
+      el.style.minHeight = `${st.scale * 100}%`;
+      el.style.transform = `translate(calc(-50% + ${st.panX}px), calc(-50% + ${st.panY}px))`;
+      el.dataset.panX = String(st.panX);
+      el.dataset.panY = String(st.panY);
+      el.dataset.scale = String(st.scale);
+    });
   }
 
   useLayoutEffect(() => {
@@ -108,7 +136,16 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
       // offsetWidth/Height update synchronously after style write in Chrome.
       const [px, py] = clampPan(panX, panY, el!);
       applyTransform(el!, px, py);
-      onImageStateChange(activeSlot!, { scale: newScale, panX: px, panY: py });
+      // Debounce the React state push — every wheel tick used to trigger a
+      // state update which (even with stable srcDoc) caused a re-render
+      // cascade. Now we commit only after the user stops scrolling.
+      if (wheelCommitRef.current) clearTimeout(wheelCommitRef.current);
+      wheelCommitRef.current = setTimeout(() => {
+        const finalScale = parseFloat(el!.dataset.scale ?? "1") || 1;
+        const finalPanX = parseFloat(el!.dataset.panX ?? "0") || 0;
+        const finalPanY = parseFloat(el!.dataset.panY ?? "0") || 0;
+        onImageStateChange(activeSlot!, { scale: finalScale, panX: finalPanX, panY: finalPanY });
+      }, 200);
     }
 
     el.style.cursor = "grab";
@@ -122,6 +159,10 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
       el.removeEventListener("pointermove", onPointerMove);
       el.removeEventListener("pointerup", onPointerUp);
       el.removeEventListener("wheel", onWheel);
+      if (wheelCommitRef.current) {
+        clearTimeout(wheelCommitRef.current);
+        wheelCommitRef.current = null;
+      }
     };
   }, [html, activeSlot, naturalSize, onImageStateChange]);
 
