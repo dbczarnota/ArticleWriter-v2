@@ -32,6 +32,7 @@ from backend.api.streams import router as streams_router
 from backend.api.v2 import router as v2_router
 from backend.database import close_db, get_db_backend, get_session_maker, init_db
 from backend.db.models import Article
+from tools.image_creator.routes import router as image_creator_router
 
 _log = logging.getLogger(__name__)
 
@@ -191,6 +192,7 @@ app.add_middleware(
 
 app.include_router(v2_router)
 app.include_router(streams_router)
+app.include_router(image_creator_router, prefix="/v2")
 
 
 @app.get("/health")
