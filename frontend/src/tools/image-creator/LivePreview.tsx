@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState, useLayoutEffect } from "react";
 import type { ImageState } from "./htmlBuilder";
 
 interface LivePreviewProps {
@@ -7,9 +7,45 @@ interface LivePreviewProps {
   onImageStateChange: (label: string, state: Partial<ImageState>) => void;
 }
 
+const PADDING = 20;
+
 export function LivePreview({ html, activeSlot, onImageStateChange }: LivePreviewProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
+  const [scale, setScale] = useState(1);
+  const scaleRef = useRef(1);
+  scaleRef.current = scale;
+
+  // Auto-fit the rendered template to the preview area. Templates are
+  // authored at their natural pixel size (e.g. 1280x720) but the preview
+  // pane is typically narrower, so without scaling the user only sees a
+  // corner. Recompute on every html change and on container resize.
+  useLayoutEffect(() => {
+    const wrapper = wrapperRef.current;
+    const container = containerRef.current;
+    if (!wrapper || !container) return;
+
+    function recompute() {
+      if (!wrapper || !container) return;
+      const child = container.firstElementChild as HTMLElement | null;
+      if (!child) return;
+      const naturalW = child.offsetWidth;
+      const naturalH = child.offsetHeight;
+      if (naturalW === 0 || naturalH === 0) return;
+      const availW = wrapper.clientWidth - PADDING * 2;
+      const availH = wrapper.clientHeight - PADDING * 2;
+      // Don't upscale beyond 1 — tiny templates should render at native size,
+      // only oversized ones get shrunk.
+      const next = Math.min(availW / naturalW, availH / naturalH, 1);
+      setScale(next > 0 ? next : 1);
+    }
+
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(wrapper);
+    return () => ro.disconnect();
+  }, [html]);
 
   useEffect(() => {
     if (!containerRef.current || !activeSlot) return;
@@ -27,8 +63,12 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
 
     function onPointerMove(e: PointerEvent) {
       if (!dragRef.current || !el) return;
-      const dx = ((e.clientX - dragRef.current.startX) / el.offsetWidth) * -100;
-      const dy = ((e.clientY - dragRef.current.startY) / el.offsetHeight) * -100;
+      // Screen-space deltas need to be expanded by 1/scale to map back into
+      // template coordinates before we divide by offsetWidth.
+      const dxTemplate = (e.clientX - dragRef.current.startX) / scaleRef.current;
+      const dyTemplate = (e.clientY - dragRef.current.startY) / scaleRef.current;
+      const dx = (dxTemplate / el.offsetWidth) * -100;
+      const dy = (dyTemplate / el.offsetHeight) * -100;
       const newX = Math.max(0, Math.min(100, dragRef.current.startPosX + dx));
       const newY = Math.max(0, Math.min(100, dragRef.current.startPosY + dy));
       el.style.objectPosition = `${newX}% ${newY}%`;
@@ -36,8 +76,10 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
 
     function onPointerUp(e: PointerEvent) {
       if (!dragRef.current || !el) return;
-      const dx = ((e.clientX - dragRef.current.startX) / el.offsetWidth) * -100;
-      const dy = ((e.clientY - dragRef.current.startY) / el.offsetHeight) * -100;
+      const dxTemplate = (e.clientX - dragRef.current.startX) / scaleRef.current;
+      const dyTemplate = (e.clientY - dragRef.current.startY) / scaleRef.current;
+      const dx = (dxTemplate / el.offsetWidth) * -100;
+      const dy = (dyTemplate / el.offsetHeight) * -100;
       const newX = Math.max(0, Math.min(100, dragRef.current.startPosX + dx));
       const newY = Math.max(0, Math.min(100, dragRef.current.startPosY + dy));
       dragRef.current = null;
@@ -69,7 +111,20 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
   }, [html, activeSlot, onImageStateChange]);
 
   return (
-    <div style={{ flex: 1, overflow: "auto", background: "var(--canvas-bg)", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+    <div
+      ref={wrapperRef}
+      style={{
+        flex: 1,
+        overflow: "hidden",
+        background: "var(--canvas-bg)",
+        position: "relative",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: PADDING,
+        minHeight: 0,
+      }}
+    >
       {activeSlot && (
         <div style={{ position: "absolute", top: 8, left: 0, right: 0, textAlign: "center", zIndex: 10, pointerEvents: "none" }}>
           <span style={{ background: "var(--accent)", color: "white", fontSize: 11, padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>
@@ -81,7 +136,12 @@ export function LivePreview({ html, activeSlot, onImageStateChange }: LivePrevie
         ref={containerRef}
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: html }}
-        style={{ maxWidth: "100%", maxHeight: "100%", boxShadow: "0 4px 16px rgba(0,0,0,.08)" }}
+        style={{
+          transform: `scale(${scale})`,
+          transformOrigin: "center center",
+          boxShadow: "0 4px 16px rgba(0,0,0,.08)",
+          flexShrink: 0,
+        }}
       />
     </div>
   );
