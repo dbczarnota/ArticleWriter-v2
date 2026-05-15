@@ -44,9 +44,10 @@ export function ImageCreatorModal({
 
   function handleDownload() {
     if (result.url) {
+      const ext = result.url.match(/\.(png|jpe?g|webp|gif)(?:\?|$)/i)?.[1] ?? "png";
       const link = document.createElement("a");
       link.href = result.url;
-      link.download = `image-${Date.now()}.png`;
+      link.download = `image-${Date.now()}.${ext.toLowerCase()}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

@@ -99,13 +99,30 @@ async def handle_webhook(
         await db_session.commit()
 
 
+SSE_WAIT_TIMEOUT_SECONDS = 120.0
+
+
 async def wait_for_result(job_id: str) -> AsyncIterator[str]:
-    """Async generator that yields a single SSE data chunk then cleans up."""
+    """Async generator that yields a single SSE data chunk then cleans up.
+
+    Times out after SSE_WAIT_TIMEOUT_SECONDS (2 min) if no webhook arrives,
+    yielding an error payload so the client can show feedback instead of
+    hanging indefinitely.
+    """
     job = _jobs.get(job_id)
     if job is None:
+        payload = json.dumps({"status": "error", "error": "Job not found"})
+        yield f"data: {payload}\n\n"
         return
 
-    result = await job["queue"].get()
+    try:
+        result = await asyncio.wait_for(
+            job["queue"].get(), timeout=SSE_WAIT_TIMEOUT_SECONDS
+        )
+    except asyncio.TimeoutError:
+        result = {"status": "error", "url": None, "error": "Timed out waiting for image render"}
+    finally:
+        _jobs.pop(job_id, None)
+
     payload = json.dumps(result, ensure_ascii=False)
     yield f"data: {payload}\n\n"
-    _jobs.pop(job_id, None)

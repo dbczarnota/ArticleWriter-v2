@@ -397,6 +397,9 @@ class OrgConfig(SQLModel, table=True):
     )
     """List of image card templates: [{id: str, name: str, html: str}]."""
 
+    image_creator_enabled: bool = Field(default=False)
+    image_creator_api_key: str | None = Field(default=None, max_length=256)
+
     # ── Discovery ────────────────────────────────────────────────────────────
     discovery_enabled: bool = Field(default=False)
     discovery_feeds: list = Field(

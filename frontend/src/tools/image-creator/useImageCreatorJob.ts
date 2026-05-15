@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useApi } from "../../lib/useApi";
 
 export type JobStatus = "idle" | "submitting" | "waiting" | "done" | "error";
@@ -9,7 +9,7 @@ export interface JobResult {
 }
 
 export function useImageCreatorJob() {
-  const api = useApi();
+  const { request } = useApi();
   const [status, setStatus] = useState<JobStatus>("idle");
   const [result, setResult] = useState<JobResult>({ url: null, error: null });
   const esRef = useRef<EventSource | null>(null);
@@ -19,12 +19,15 @@ export function useImageCreatorJob() {
       setStatus("submitting");
       setResult({ url: null, error: null });
       try {
-        const { job_id } = await api.post<{ job_id: string }>(
-          "/api/v2/tools/image-creator/jobs",
-          { html, article_id: articleId, template_name: templateName }
+        const { job_id } = await request<{ job_id: string }>(
+          "/v2/tools/image-creator/jobs",
+          {
+            method: "POST",
+            body: JSON.stringify({ html, article_id: articleId, template_name: templateName }),
+          }
         );
         setStatus("waiting");
-        const es = new EventSource(`/api/v2/tools/image-creator/jobs/${job_id}/stream`);
+        const es = new EventSource(`/v2/tools/image-creator/jobs/${job_id}/stream`);
         esRef.current = es;
         es.onmessage = (e) => {
           const data = JSON.parse(e.data) as { status: string; url?: string; error?: string };
@@ -49,7 +52,7 @@ export function useImageCreatorJob() {
         setStatus("error");
       }
     },
-    [api]
+    [request]
   );
 
   const reset = useCallback(() => {
@@ -59,6 +62,15 @@ export function useImageCreatorJob() {
     }
     setStatus("idle");
     setResult({ url: null, error: null });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (esRef.current) {
+        esRef.current.close();
+        esRef.current = null;
+      }
+    };
   }, []);
 
   return { status, result, submit, reset };

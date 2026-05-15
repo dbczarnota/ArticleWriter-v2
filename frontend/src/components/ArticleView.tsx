@@ -348,9 +348,10 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
                 )}
                 <button
                   onClick={() => {
+                    const ext = img.url.match(/\.(png|jpe?g|webp|gif)(?:\?|$)/i)?.[1] ?? "png";
                     const link = document.createElement("a");
                     link.href = img.url;
-                    link.download = `${img.name || `image-${i + 1}`}.png`;
+                    link.download = `${img.name || `image-${i + 1}`}.${ext.toLowerCase()}`;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
