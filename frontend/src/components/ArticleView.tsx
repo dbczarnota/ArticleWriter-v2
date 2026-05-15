@@ -5,7 +5,7 @@ import { useArticles } from "../lib/useArticles";
 import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { Button } from "./ui/Button";
-import { CodeIcon, CopyIcon, DownloadIcon, CheckIcon, TitlesIcon, DiscoveryIcon, ShareIcon, GlobeIcon, InfoIcon, QuoteIcon, SourcesIcon, ClockIcon, PlayIcon } from "./ui/icons";
+import { CodeIcon, CopyIcon, DownloadIcon, CheckIcon, TitlesIcon, DiscoveryIcon, ShareIcon, GlobeIcon, InfoIcon, QuoteIcon, SourcesIcon, ClockIcon, PlayIcon, CloseIcon } from "./ui/icons";
 import { safeHref } from "../lib/safeHref";
 import { useApi } from "../lib/useApi";
 
@@ -17,14 +17,41 @@ interface ArticleViewProps {
 
 export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleViewProps) {
   const { fetchArticle } = useArticles();
+  const { request } = useApi();
   const t = useT();
   const av = t.articleView;
   const { lang } = useLang();
   const [article, setArticle] = useState<Article | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [deletingImageUrl, setDeletingImageUrl] = useState<string | null>(null);
 
   const [refreshTick, setRefreshTick] = useState(0);
+
+  async function handleDeleteGeneratedImage(imageUrl: string) {
+    if (!article) return;
+    const confirmMsg = lang === "pl"
+      ? "Usunąć ten obraz z artykułu? (Plik na R2 zostanie zachowany)"
+      : "Remove this image from the article? (The R2 file is kept)";
+    if (!window.confirm(confirmMsg)) return;
+    setDeletingImageUrl(imageUrl);
+    try {
+      await request(
+        `/v2/tools/image-creator/articles/${article.id}/images?url=${encodeURIComponent(imageUrl)}`,
+        { method: "DELETE" },
+      );
+      // Optimistic local update so the thumbnail disappears immediately.
+      setArticle((a) =>
+        a
+          ? { ...a, generated_images: a.generated_images.filter((img) => img.url !== imageUrl) }
+          : a,
+      );
+    } catch (e: unknown) {
+      window.alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeletingImageUrl(null);
+    }
+  }
 
   useEffect(() => {
     setArticle(null);
@@ -345,49 +372,100 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
       {/* Generated images */}
       {!isFailed && article.generated_images && article.generated_images.length > 0 && (
         <CollapsibleSection prominent icon={<ShareIcon />} title={av.generatedImages} count={article.generated_images.length} defaultOpen>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, marginTop: 4 }}>
             {article.generated_images.map((img, i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <img
-                  src={img.url}
-                  alt={img.name || `Generated image ${i + 1}`}
-                  style={{
-                    maxWidth: "100%",
-                    height: "auto",
-                    borderRadius: "var(--radius)",
-                    border: "1px solid var(--card-border)",
-                  }}
-                />
-                {img.name && (
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                    {img.name}
-                  </div>
-                )}
-                <button
-                  onClick={() => {
-                    const ext = img.url.match(/\.(png|jpe?g|webp|gif)(?:\?|$)/i)?.[1] ?? "png";
-                    const link = document.createElement("a");
-                    link.href = img.url;
-                    link.download = `${img.name || `image-${i + 1}`}.${ext.toLowerCase()}`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }}
-                  style={{
-                    alignSelf: "flex-start",
-                    padding: "6px 12px",
-                    background: "var(--accent)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "var(--radius)",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  💾 {lang === "pl" ? "Pobierz" : "Download"}
-                </button>
+              <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ position: "relative", aspectRatio: "16 / 9" }}>
+                  <a
+                    href={img.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={lang === "pl" ? "Otwórz w pełnym rozmiarze" : "Open full size"}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      height: "100%",
+                      overflow: "hidden",
+                      borderRadius: "var(--radius)",
+                      border: "1px solid var(--card-border)",
+                      background: "var(--canvas-bg)",
+                      cursor: "zoom-in",
+                    }}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.name || `Generated image ${i + 1}`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  </a>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDeleteGeneratedImage(img.url);
+                    }}
+                    disabled={deletingImageUrl === img.url}
+                    title={lang === "pl" ? "Usuń obraz" : "Remove image"}
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      right: 6,
+                      width: 24,
+                      height: 24,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: 0,
+                      background: "rgba(0, 0, 0, .55)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "50%",
+                      cursor: deletingImageUrl === img.url ? "default" : "pointer",
+                      opacity: deletingImageUrl === img.url ? 0.5 : 1,
+                      lineHeight: 0,
+                      backdropFilter: "blur(2px)",
+                    }}
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minHeight: 24 }}>
+                  <span style={{ fontSize: 11, color: "var(--ink-subtle)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                    {img.name || `#${i + 1}`}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const ext = img.url.match(/\.(png|jpe?g|webp|gif)(?:\?|$)/i)?.[1] ?? "png";
+                      const link = document.createElement("a");
+                      link.href = img.url;
+                      link.download = `${img.name || `image-${i + 1}`}.${ext.toLowerCase()}`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    title={lang === "pl" ? "Pobierz" : "Download"}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: 4,
+                      background: "transparent",
+                      color: "var(--ink-subtle)",
+                      border: "1px solid var(--card-border)",
+                      borderRadius: "var(--radius)",
+                      cursor: "pointer",
+                      flexShrink: 0,
+                      lineHeight: 0,
+                    }}
+                  >
+                    <DownloadIcon />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

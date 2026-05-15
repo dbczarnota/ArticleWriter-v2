@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
@@ -151,6 +152,44 @@ async def stream_job(job_id: str) -> StreamingResponse:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.delete("/articles/{article_id}/images")
+async def delete_generated_image(
+    article_id: UUID,
+    url: str = Query(..., description="URL of the image to remove from generated_images"),
+    org: Org = Depends(get_current_org),
+    article_repo: ArticleRepository = Depends(get_article_repo),
+) -> dict:
+    """Remove a single generated image entry (matched by URL) from the
+    article's generated_images JSONB array. Idempotent — no-op if no entry
+    with that URL exists. R2 object is NOT deleted (cheap storage, kept for
+    audit/recovery)."""
+    article = await article_repo.get(article_id, org_code=org.code)
+    if article is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Article not found in this organization.",
+        )
+
+    sm = get_session_maker()
+    if sm is None:
+        return {"ok": True}
+    async with sm() as session:  # type: ignore[union-attr]
+        await session.execute(
+            sa.text(
+                "UPDATE articles "
+                "SET generated_images = COALESCE( "
+                "  (SELECT jsonb_agg(elem) "
+                "   FROM jsonb_array_elements(generated_images) elem "
+                "   WHERE elem->>'url' != :url), "
+                "  CAST('[]' AS jsonb)) "
+                "WHERE id = CAST(:article_id AS uuid) AND org_code = :org_code"
+            ),
+            {"url": url, "article_id": str(article_id), "org_code": org.code},
+        )
+        await session.commit()
+    return {"ok": True}
 
 
 @router.post("/webhook")
