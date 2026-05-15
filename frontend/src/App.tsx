@@ -9,6 +9,7 @@ import { Sidebar } from "./components/Sidebar";
 import { ArticleView } from "./components/ArticleView";
 import { NewArticleForm } from "./components/NewArticleForm";
 import { StatusMessage } from "./components/ui/StatusMessage";
+import { ImageCreatorModal } from "./tools/image-creator/ImageCreatorModal";
 
 const SettingsView = lazy(() => import("./components/SettingsView").then((m) => ({ default: m.SettingsView })));
 const DiscoveryHub = lazy(() => import("./components/DiscoveryHub").then((m) => ({ default: m.DiscoveryHub })));
@@ -25,6 +26,7 @@ export default function App() {
   const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
   const [newModalOpen, setNewModalOpen] = useState(false);
   const [newFormKey, setNewFormKey] = useState(0);
+  const [showImageCreator, setShowImageCreator] = useState(false);
   // Default: open on desktop, closed on mobile (drawer must not cover content
   // out of the gate). The user toggles via the hamburger in Topbar.
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
@@ -86,6 +88,7 @@ export default function App() {
       <Topbar
         onSettings={() => setView("settings")}
         onDiscovery={() => setView("discovery")}
+        onCreateImage={() => setShowImageCreator(true)}
         onToggleSidebar={() => setSidebarOpen((v) => !v)}
         sidebarOpen={sidebarOpen}
       />
@@ -156,6 +159,44 @@ export default function App() {
             selectArticle(id);
           }}
         />
+      )}
+      {showImageCreator && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowImageCreator(false);
+          }}
+        >
+          <div
+            style={{
+              background: "var(--chrome-bg)",
+              borderRadius: "var(--radius)",
+              boxShadow: "0 10px 40px rgba(0, 0, 0, 0.2)",
+              width: "90vw",
+              maxWidth: 900,
+              height: "80vh",
+              maxHeight: 600,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <ImageCreatorModal
+              onClose={() => setShowImageCreator(false)}
+              articleId={selectedArticleId}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

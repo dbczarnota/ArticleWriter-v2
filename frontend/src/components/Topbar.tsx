@@ -1,16 +1,18 @@
 import { UserMenu } from "./UserMenu";
 import { Logo } from "./Logo";
+import { ToolsMenu } from "./ToolsMenu";
 import { DiscoveryIcon, SettingsIcon } from "./ui/icons";
 import { useLang, useT } from "../i18n";
 
 interface TopbarProps {
   onSettings: () => void;
   onDiscovery: () => void;
+  onCreateImage: () => void;
   onToggleSidebar: () => void;
   sidebarOpen: boolean;
 }
 
-export function Topbar({ onSettings, onDiscovery, onToggleSidebar, sidebarOpen }: TopbarProps) {
+export function Topbar({ onSettings, onDiscovery, onCreateImage, onToggleSidebar, sidebarOpen }: TopbarProps) {
   const { lang, setLang } = useLang();
   const t = useT();
 
@@ -60,6 +62,7 @@ export function Topbar({ onSettings, onDiscovery, onToggleSidebar, sidebarOpen }
       {/* Right: nav + lang + user */}
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <NavButton onClick={onDiscovery} icon={<DiscoveryIcon />} label={t.topbar.discovery} />
+        <ToolsMenu onCreateImage={onCreateImage} />
         <NavButton onClick={onSettings} icon={<SettingsIcon />} label={t.topbar.settings} />
 
         <div style={{ display: "flex", alignItems: "center", gap: 2, padding: "0 8px", borderLeft: "1px solid var(--chrome-border)", marginLeft: 4 }}>
