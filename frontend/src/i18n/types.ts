@@ -40,6 +40,8 @@ export interface Translations {
   topbar: {
     discovery: string;
     settings: string;
+    tools: string;
+    createImage: string;
   };
   userMenu: {
     account: string;
@@ -61,6 +63,7 @@ export interface Translations {
     exampleTitles: string;
     exampleArticles: string;
     templates: string;
+    imageTemplates: string;
     discovery: string;
     streams: string;
   };
@@ -532,6 +535,21 @@ export interface Translations {
       retentionDays: string;
       retentionHint: string;
     };
+  };
+  imageCreator: {
+    modalTitle: string;
+    selectTemplate: string;
+    noTemplates: string;
+    textPlaceholder: string;
+    uploadImage: string;
+    assignToArticle: string;
+    noArticle: string;
+    save: string;
+    generating: string;
+    download: string;
+    copyLink: string;
+    copied: string;
+    errorGeneration: string;
   };
   landing: {
     nav: {

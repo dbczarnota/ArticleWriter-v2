@@ -42,6 +42,8 @@ export const pl: Translations = {
   topbar: {
     discovery: "Odkrywanie",
     settings: "Ustawienia",
+    tools: "Narzędzia",
+    createImage: "Stwórz obraz",
   },
   userMenu: {
     account: "konto",
@@ -63,6 +65,7 @@ export const pl: Translations = {
     exampleTitles: "Przykładowe H1",
     exampleArticles: "Przykładowe artykuły",
     templates: "Szablony",
+    imageTemplates: "Szablony obrazków",
     discovery: "Discovery",
     streams: "Streamy",
   },
@@ -517,6 +520,21 @@ export const pl: Translations = {
       retentionDays: "Retencja itemów ze streamów (dni)",
       retentionHint: "Stream topicy starsze niż X dni są usuwane raz dziennie.",
     },
+  },
+  imageCreator: {
+    modalTitle: "Stwórz obraz",
+    selectTemplate: "Wybierz szablon",
+    noTemplates: "Brak szablonów — dodaj je w Ustawieniach → Szablony obrazków",
+    textPlaceholder: "Wpisz tekst…",
+    uploadImage: "Wgraj zdjęcie",
+    assignToArticle: "Przypisz do artykułu",
+    noArticle: "Nie przypisuj",
+    save: "Zapisz",
+    generating: "Generowanie…",
+    download: "Pobierz",
+    copyLink: "Kopiuj link",
+    copied: "Skopiowano!",
+    errorGeneration: "Błąd generowania obrazka",
   },
   landing: {
     nav: {

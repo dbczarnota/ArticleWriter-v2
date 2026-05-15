@@ -77,6 +77,7 @@ export interface Article extends ArticleListItem {
   followup_topics: string[];
   facebook_teasers: string[];
   social_media_attachments: SocialMediaAttachment[];
+  generated_images: GeneratedImage[];
   sources: string[];
   pipeline_timing: Record<string, number>;
   errors: Array<Record<string, string>>;
@@ -104,6 +105,18 @@ export interface ArticleTemplate {
   name: string;
   body: string;
   image_instructions?: string;
+}
+
+export interface ImageTemplate {
+  id: string;
+  name: string;
+  html: string;
+}
+
+export interface GeneratedImage {
+  url: string;
+  name: string;
+  created_at: string;
 }
 
 export interface EditorFact {
@@ -159,6 +172,7 @@ export interface DomainConfigData {
   agent_models: Record<string, string>;
   agent_fallback_models: Record<string, string[]>;
   article_templates: ArticleTemplate[];
+  image_templates: ImageTemplate[];
   discovery_enabled: boolean;
   discovery_feeds: FeedConfig[];
   discovery_categories: CategoryConfig[];

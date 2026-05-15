@@ -42,6 +42,8 @@ export const en: Translations = {
   topbar: {
     discovery: "Discovery",
     settings: "Settings",
+    tools: "Tools",
+    createImage: "Create image",
   },
   userMenu: {
     account: "account",
@@ -63,6 +65,7 @@ export const en: Translations = {
     exampleTitles: "Example H1s",
     exampleArticles: "Example articles",
     templates: "Templates",
+    imageTemplates: "Image templates",
     discovery: "Discovery",
     streams: "Streams",
   },
@@ -517,6 +520,21 @@ export const en: Translations = {
       retentionDays: "Stream item retention (days)",
       retentionHint: "Stream topics older than X days are deleted by a daily cleanup job.",
     },
+  },
+  imageCreator: {
+    modalTitle: "Create image",
+    selectTemplate: "Select template",
+    noTemplates: "No templates — add them in Settings → Image templates",
+    textPlaceholder: "Enter text…",
+    uploadImage: "Upload image",
+    assignToArticle: "Assign to article",
+    noArticle: "Don't assign",
+    save: "Save",
+    generating: "Generating…",
+    download: "Download",
+    copyLink: "Copy link",
+    copied: "Copied!",
+    errorGeneration: "Image generation failed",
   },
   landing: {
     nav: {
