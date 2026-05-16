@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApi } from "../../lib/useApi";
 import { useT, useLang } from "../../i18n";
 import { CopyIcon, CheckIcon, DownloadIcon } from "../../components/ui/icons";
@@ -63,13 +63,43 @@ function friendlyError(
 export function SocialDownloadModal({ platform, onClose }: SocialDownloadModalProps) {
   const t = useT();
   const { lang } = useLang();
-  const { request, downloadFile } = useApi();
+  const { request, downloadFile, fetchBlob } = useApi();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<FetchResult | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [downloadingMedia, setDownloadingMedia] = useState(false);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+
+  // CDN URLs (twimg.com, cdninstagram.com) require a Referer header that the
+  // browser won't send for a direct <img src> / <video src> request — so the
+  // inline preview would 403 even though the explicit Download button works
+  // (it goes through our authenticated /v2/download_media proxy). Mirror that
+  // path here: fetch the proxied URL with auth headers, wrap the bytes in a
+  // blob URL, and use that for the preview. Cleanup the blob URL on unmount
+  // or when the result changes.
+  useEffect(() => {
+    setPreviewBlobUrl(null);
+    if (!result?.media_url) return;
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    (async () => {
+      try {
+        const proxied = `/v2/download_media?url=${encodeURIComponent(result.media_url)}`;
+        const blob = await fetchBlob(proxied);
+        if (cancelled) return;
+        createdUrl = URL.createObjectURL(blob);
+        setPreviewBlobUrl(createdUrl);
+      } catch {
+        // fall through — preview just won't render; Download button still works
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [result?.media_url, fetchBlob]);
 
   async function handleFetch() {
     const trimmed = url.trim();
@@ -232,16 +262,20 @@ export function SocialDownloadModal({ platform, onClose }: SocialDownloadModalPr
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {result.media_url && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ display: "flex", justifyContent: "center", background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--radius)", padding: 8 }}>
-                  {result.media_type.startsWith("video") ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "var(--card-bg)", border: "1px solid var(--card-border)", borderRadius: "var(--radius)", padding: 8, minHeight: 200 }}>
+                  {!previewBlobUrl ? (
+                    <span style={{ fontSize: 12, color: "var(--ink-subtle)" }}>
+                      {lang === "pl" ? "Ładowanie podglądu…" : "Loading preview…"}
+                    </span>
+                  ) : result.media_type.startsWith("video") ? (
                     <video
-                      src={result.media_url}
+                      src={previewBlobUrl}
                       controls
                       style={{ maxWidth: "100%", maxHeight: 380, borderRadius: 4 }}
                     />
                   ) : (
                     <img
-                      src={result.media_url}
+                      src={previewBlobUrl}
                       alt=""
                       style={{ maxWidth: "100%", maxHeight: 380, borderRadius: 4 }}
                     />

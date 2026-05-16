@@ -80,5 +80,15 @@ export function useApi() {
     URL.revokeObjectURL(url);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { request, downloadFile, orgCode: "", authReady };
+  const fetchBlob = useCallback(async function (path: string): Promise<Blob> {
+    const headers = await buildAuthHeaders();
+    const res = await fetch(path, { headers });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`${res.status}: ${text}`);
+    }
+    return res.blob();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { request, downloadFile, fetchBlob, orgCode: "", authReady };
 }
