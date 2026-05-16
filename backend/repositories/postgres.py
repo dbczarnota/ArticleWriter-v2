@@ -240,6 +240,22 @@ class PostgresArticleRepository:
                 marked_done_by_name=marked_done_by_name,
             )
 
+    async def record_webhook_delivery(
+        self,
+        article_id: UUID,
+        *,
+        org_code: str,
+        entry: dict,
+    ) -> None:
+        async with self._session_maker() as session:
+            stmt = select(Article).where(Article.id == article_id, Article.org_code == org_code)
+            result = await session.execute(stmt)
+            article = result.scalar_one_or_none()
+            if article is None:
+                return
+            article.webhook_deliveries = [*list(article.webhook_deliveries or []), entry]
+            await session.commit()
+
     async def count_running_for_org(self, org_code: str) -> int:
         from sqlalchemy import func
 

@@ -144,6 +144,21 @@ class ArticleRepository(Protocol):
         """Toggle editorial done flag. Stores who made the change. No-op when article not found (idempotent)."""
         ...
 
+    async def record_webhook_delivery(
+        self,
+        article_id: UUID,
+        *,
+        org_code: str,
+        entry: dict,
+    ) -> None:
+        """Append `entry` to articles.webhook_deliveries for the given article.
+
+        `entry` must already match WebhookDeliveryRecord shape (sent_at, status,
+        http_status, error). No-op when the article does not exist or belongs
+        to a different org (idempotent across tenants).
+        """
+        ...
+
     async def count_running_for_org(self, org_code: str) -> int:
         """Number of articles currently in `running` status for this org.
         Used as a concurrent-run guard on write endpoints to cap LLM

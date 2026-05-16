@@ -156,6 +156,20 @@ class NullArticleRepository:
             marked_done,
         )
 
+    async def record_webhook_delivery(
+        self,
+        article_id: UUID,
+        *,
+        org_code: str,
+        entry: dict,
+    ) -> None:
+        _log.debug(
+            "[null-repo] record_webhook_delivery article_id=%s org=%s status=%s (no-op)",
+            article_id,
+            org_code,
+            entry.get("status"),
+        )
+
     async def count_running_for_org(self, org_code: str) -> int:
         # NullArticleRepository doesn't actually persist — return 0 so
         # local-dev / null backend never hits the rate limit.
