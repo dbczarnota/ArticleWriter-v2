@@ -559,6 +559,12 @@ export const en: Translations = {
     tryAgain: "Try again",
     close: "Close",
     done: "Done",
+    advanced: "Advanced",
+    metaFilename: "Filename",
+    metaCaption: "Caption",
+    metaDescription: "Description",
+    metaAlt: "Alt text",
+    metaOptional: "All fields optional — forwarded to the webhook.",
   },
   landing: {
     nav: {

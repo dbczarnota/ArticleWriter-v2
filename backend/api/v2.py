@@ -2014,15 +2014,19 @@ def _build_webhook_payload(article, *, domain_name: str, sent_at_iso: str) -> di
     title = article.alternative_titles[0] if article.alternative_titles else ""
     raw_facts = "\n".join(f.text for f in (article.facts or []))
     related = [{"title": t, "reason": ""} for t in (article.followup_topics or [])]
-    images = [
-        {
+    images = []
+    for img in article.generated_images or []:
+        entry: dict[str, Any] = {
             "label": img.get("name", ""),
             "url": img.get("url", ""),
             "template_id": img.get("template_id"),
             "created_at": img.get("created_at"),
         }
-        for img in (article.generated_images or [])
-    ]
+        for key in ("filename", "caption", "description", "alt"):
+            val = img.get(key)
+            if isinstance(val, str) and val.strip():
+                entry[key] = val
+        images.append(entry)
     return {
         "article_id": str(article.id),
         "org_code": article.org_code,

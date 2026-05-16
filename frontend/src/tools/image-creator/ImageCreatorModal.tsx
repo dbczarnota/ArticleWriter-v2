@@ -62,9 +62,12 @@ export function ImageCreatorModal({
     setStep("template");
   }
 
-  async function handleSubmitFilled(html: string) {
+  async function handleSubmitFilled(
+    html: string,
+    meta: { filename: string; caption: string; description: string; alt: string },
+  ) {
     submittedArticleIdRef.current = targetArticleId;
-    await submit(html, targetArticleId, selectedTemplate?.name ?? "");
+    await submit(html, targetArticleId, selectedTemplate?.name ?? "", meta);
     setStep("result");
   }
 

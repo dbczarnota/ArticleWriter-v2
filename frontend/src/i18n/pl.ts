@@ -559,6 +559,12 @@ export const pl: Translations = {
     tryAgain: "Spróbuj ponownie",
     close: "Zamknij",
     done: "Gotowe",
+    advanced: "Zaawansowane",
+    metaFilename: "Nazwa pliku",
+    metaCaption: "Etykieta",
+    metaDescription: "Opis",
+    metaAlt: "Alternatywny tekst",
+    metaOptional: "Wszystkie pola opcjonalne — przekazywane do webhooka.",
   },
   landing: {
     nav: {

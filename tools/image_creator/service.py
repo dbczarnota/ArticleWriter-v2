@@ -16,7 +16,7 @@ import sqlalchemy as sa
 from tools.image_creator.config import HTML2MEDIA_ADMIN_SECRET, HTML2MEDIA_BASE_URL
 
 # job_id → {"queue": asyncio.Queue, "article_id": str|None, "org_code": str,
-#           "template_name": str, "nonce": str}
+#           "template_name": str, "nonce": str, "meta": dict[str, str]}
 _jobs: dict[str, dict[str, Any]] = {}
 
 
@@ -40,6 +40,7 @@ async def submit_job(
     template_name: str,
     callback_url: str,
     api_key: str,
+    meta: dict[str, str] | None = None,
 ) -> str:
     """Submit an HTML-to-image job to the htmltomedia service.
 
@@ -71,6 +72,7 @@ async def submit_job(
         "org_code": org_code,
         "template_name": template_name,
         "nonce": nonce,
+        "meta": {k: v for k, v in (meta or {}).items() if v},
     }
     return job_id
 
@@ -109,11 +111,16 @@ async def handle_webhook(
     await job["queue"].put(result)
 
     if status == "done" and url and job["article_id"]:
-        entry = {
+        entry: dict[str, Any] = {
             "url": url,
             "name": job["template_name"],
             "created_at": datetime.now(UTC).isoformat(),
         }
+        meta = job.get("meta") or {}
+        for key in ("filename", "caption", "description", "alt"):
+            val = meta.get(key)
+            if isinstance(val, str) and val.strip():
+                entry[key] = val.strip()
         # CAST(... AS jsonb) instead of '::jsonb' — SQLAlchemy's text() parser
         # sees '::' as colon-ambiguous and refuses to bind parameters around it.
         await db_session.execute(
@@ -147,7 +154,7 @@ async def wait_for_result(job_id: str) -> AsyncIterator[str]:
         result = await asyncio.wait_for(
             job["queue"].get(), timeout=SSE_WAIT_TIMEOUT_SECONDS
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         result = {"status": "error", "url": None, "error": "Timed out waiting for image render"}
     finally:
         _jobs.pop(job_id, None)

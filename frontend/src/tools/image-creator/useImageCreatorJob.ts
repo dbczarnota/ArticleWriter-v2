@@ -15,15 +15,30 @@ export function useImageCreatorJob() {
   const esRef = useRef<EventSource | null>(null);
 
   const submit = useCallback(
-    async (html: string, articleId: string | null, templateName: string) => {
+    async (
+      html: string,
+      articleId: string | null,
+      templateName: string,
+      meta?: { filename?: string; caption?: string; description?: string; alt?: string },
+    ) => {
       setStatus("submitting");
       setResult({ url: null, error: null });
+      const cleanedMeta = meta
+        ? Object.fromEntries(
+            Object.entries(meta).filter(([, v]) => typeof v === "string" && v.trim() !== ""),
+          )
+        : {};
       try {
         const { job_id } = await request<{ job_id: string }>(
           "/v2/tools/image-creator/jobs",
           {
             method: "POST",
-            body: JSON.stringify({ html, article_id: articleId, template_name: templateName }),
+            body: JSON.stringify({
+              html,
+              article_id: articleId,
+              template_name: templateName,
+              ...(Object.keys(cleanedMeta).length ? { meta: cleanedMeta } : {}),
+            }),
           }
         );
         setStatus("waiting");

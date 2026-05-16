@@ -576,6 +576,12 @@ export interface Translations {
     copyLink: string;
     copied: string;
     errorGeneration: string;
+    advanced: string;
+    metaFilename: string;
+    metaCaption: string;
+    metaDescription: string;
+    metaAlt: string;
+    metaOptional: string;
   };
   landing: {
     nav: {

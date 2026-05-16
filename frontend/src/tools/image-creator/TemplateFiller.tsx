@@ -5,10 +5,11 @@ import { parsePlaceholders } from "./parsePlaceholders";
 import { buildHtml } from "./htmlBuilder";
 import { PlaceholderForm } from "./PlaceholderForm";
 import { LivePreview } from "./LivePreview";
+import { ImageMetaAccordion, EMPTY_META, type ImageMeta } from "./ImageMetaAccordion";
 
 interface TemplateFillerProps {
   template: ImageTemplate;
-  onSubmit: (html: string) => void;
+  onSubmit: (html: string, meta: ImageMeta) => void;
   articleSelector?: React.ReactNode;
   submitLabel: string;
   isSubmitting: boolean;
@@ -24,6 +25,7 @@ export function TemplateFiller({
   const [textValues, setTextValues] = useState<Record<string, string>>({});
   const [imageStates, setImageStates] = useState<Record<string, ImageState>>({});
   const [activeSlot, setActiveSlot] = useState<string | null>(null);
+  const [meta, setMeta] = useState<ImageMeta>(EMPTY_META);
 
   const placeholders = useMemo(() => parsePlaceholders(template.html), [template.html]);
 
@@ -77,7 +79,7 @@ export function TemplateFiller({
   }
 
   function handleSubmit() {
-    onSubmit(filledHtml);
+    onSubmit(filledHtml, meta);
   }
 
   return (
@@ -125,12 +127,17 @@ export function TemplateFiller({
         </div>
       </div>
 
-      <LivePreview
-        html={previewHtml}
-        imageStates={imageStates}
-        activeSlot={activeSlot}
-        onImageStateChange={handleImageStateChange}
-      />
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <LivePreview
+            html={previewHtml}
+            imageStates={imageStates}
+            activeSlot={activeSlot}
+            onImageStateChange={handleImageStateChange}
+          />
+        </div>
+        <ImageMetaAccordion value={meta} onChange={setMeta} />
+      </div>
     </div>
   );
 }

@@ -133,6 +133,7 @@ async def create_job(
         template_name=body.template_name,
         callback_url=callback_url,
         api_key=config.image_creator_api_key,
+        meta=body.meta.model_dump(),
     )
     return CreateJobResponse(job_id=job_id)
 
