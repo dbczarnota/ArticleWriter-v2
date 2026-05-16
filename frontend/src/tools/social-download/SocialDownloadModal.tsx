@@ -29,6 +29,37 @@ const URL_PLACEHOLDER: Record<SocialPlatform, string> = {
   x: "https://x.com/.../status/...",
 };
 
+const URL_REGEX: Record<SocialPlatform, RegExp> = {
+  instagram: /^https?:\/\/(www\.)?instagram\.com\/(p|reel|reels|tv)\/[\w-]+/i,
+  x: /^https?:\/\/(www\.)?(x\.com|twitter\.com)\/[^/]+\/status\/\d+/i,
+};
+
+function friendlyError(
+  raw: string,
+  platform: SocialPlatform,
+  lang: string,
+): string {
+  // Server returned 422 with a parse/validation message → translate.
+  if (/^422\b/.test(raw) || /shortcode|invalid|parse|tweet url/i.test(raw)) {
+    if (platform === "instagram") {
+      return lang === "pl"
+        ? "To nie wygląda na link do posta na Instagramie. Wklej URL postaci https://www.instagram.com/p/... (lub /reel/...)."
+        : "That doesn't look like an Instagram post link. Paste a URL like https://www.instagram.com/p/... (or /reel/...).";
+    }
+    return lang === "pl"
+      ? "To nie wygląda na link do posta na X.com. Wklej URL postaci https://x.com/<użytkownik>/status/<id>."
+      : "That doesn't look like an X.com post link. Paste a URL like https://x.com/<user>/status/<id>.";
+  }
+  // Apify token missing
+  if (/APIFY_API_TOKEN/i.test(raw)) {
+    return lang === "pl"
+      ? "Serwis pobierający (Apify) nie jest skonfigurowany po stronie serwera. Skontaktuj się z administratorem."
+      : "The fetcher service (Apify) is not configured on the server. Contact your admin.";
+  }
+  // Generic fallback — keep the raw message but strip leading status code
+  return raw.replace(/^\d{3}:\s*/, "");
+}
+
 export function SocialDownloadModal({ platform, onClose }: SocialDownloadModalProps) {
   const t = useT();
   const { lang } = useLang();
@@ -41,18 +72,26 @@ export function SocialDownloadModal({ platform, onClose }: SocialDownloadModalPr
   const [downloadingMedia, setDownloadingMedia] = useState(false);
 
   async function handleFetch() {
-    if (!url.trim()) return;
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    // Quick client-side check — saves a round-trip and gives the same friendly
+    // message immediately instead of waiting for the 422.
+    if (!URL_REGEX[platform].test(trimmed)) {
+      setError(friendlyError("422", platform, lang));
+      return;
+    }
     setLoading(true);
     setError(null);
     setResult(null);
     try {
       const data = await request<FetchResult>(`/v2/tools/social-download/${platform}`, {
         method: "POST",
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: trimmed }),
       });
       setResult(data);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      const raw = e instanceof Error ? e.message : String(e);
+      setError(friendlyError(raw, platform, lang));
     } finally {
       setLoading(false);
     }
