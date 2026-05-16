@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { Placeholder } from "./parsePlaceholders";
 import type { ImageState } from "./htmlBuilder";
 import { prepareImage } from "./imagePrepare";
@@ -28,11 +28,19 @@ export function PlaceholderForm({
 }: PlaceholderFormProps) {
   const t = useT();
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [dragOver, setDragOver] = useState<string | null>(null);
 
   async function handleFile(label: string, file: File) {
     const dataUrl = await prepareImage(file);
     onImageUpload(label, { dataUrl, panX: 0, panY: 0, scale: 1 });
     onActivateSlot(label);
+  }
+
+  function handleDrop(e: React.DragEvent, label: string) {
+    e.preventDefault();
+    setDragOver(null);
+    const file = Array.from(e.dataTransfer.files).find((f) => f.type.startsWith("image/"));
+    if (file) handleFile(label, file);
   }
 
   return (
@@ -59,17 +67,39 @@ export function PlaceholderForm({
                   fileInputRefs.current[ph.label]?.click();
                 }
               }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (dragOver !== ph.label) setDragOver(ph.label);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                if (dragOver === ph.label) setDragOver(null);
+              }}
+              onDrop={(e) => handleDrop(e, ph.label)}
               style={{
-                border: `1.5px ${activeSlot === ph.label ? "solid var(--accent)" : "dashed var(--card-border)"}`,
+                border: `1.5px ${
+                  dragOver === ph.label
+                    ? "solid var(--accent)"
+                    : activeSlot === ph.label
+                    ? "solid var(--accent)"
+                    : "dashed var(--card-border)"
+                }`,
                 borderRadius: "var(--radius)",
-                padding: 8,
+                padding: imageStates[ph.label]?.dataUrl ? 8 : 16,
+                minHeight: imageStates[ph.label]?.dataUrl ? undefined : 110,
                 cursor: "pointer",
-                background: activeSlot === ph.label ? "var(--accent-lt)" : "var(--card-bg)",
+                background:
+                  dragOver === ph.label || activeSlot === ph.label
+                    ? "var(--accent-lt)"
+                    : "var(--card-bg)",
                 display: "flex",
                 alignItems: "center",
+                justifyContent: imageStates[ph.label]?.dataUrl ? "flex-start" : "center",
                 gap: 8,
                 fontSize: 12,
                 color: "var(--ink-subtle)",
+                textAlign: "center",
+                transition: "background-color .12s ease, border-color .12s ease",
               }}
             >
               {imageStates[ph.label]?.dataUrl ? (
@@ -134,8 +164,12 @@ export function PlaceholderForm({
                   </button>
                 </>
               ) : (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <UploadIcon /> {t.imageCreator.uploadImage}
+                <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                  <UploadIcon width={22} height={22} />
+                  <span style={{ fontWeight: 500 }}>{t.imageCreator.uploadImage}</span>
+                  <span style={{ fontSize: 11, opacity: 0.75 }}>
+                    {dragOver === ph.label ? "Upuść tutaj" : "lub przeciągnij i upuść"}
+                  </span>
                 </span>
               )}
             </div>
