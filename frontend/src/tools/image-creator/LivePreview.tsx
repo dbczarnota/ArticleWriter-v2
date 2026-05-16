@@ -9,10 +9,13 @@ interface LivePreviewProps {
    * doesn't reload mid-interaction. */
   imageStates: Record<string, ImageState>;
   activeSlot: string | null;
+  onActivateSlot: (label: string) => void;
   onImageStateChange: (label: string, state: Partial<ImageState>) => void;
 }
 
 const PADDING = 20;
+const PAN_STEP = 30;
+const ZOOM_STEP = 0.15;
 
 function applyTransform(el: HTMLImageElement, panX: number, panY: number) {
   el.style.transform = `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))`;
@@ -31,18 +34,54 @@ function clampPan(panX: number, panY: number, el: HTMLImageElement): [number, nu
   ];
 }
 
-export function LivePreview({ html, imageStates, activeSlot, onImageStateChange }: LivePreviewProps) {
+function nudgeZoom(
+  el: HTMLImageElement,
+  slot: string,
+  delta: number,
+  commit: (label: string, state: Partial<ImageState>) => void,
+) {
+  const cur = parseFloat(el.dataset.scale ?? "1") || 1;
+  const next = Math.max(1, Math.min(3, +(cur + delta).toFixed(2)));
+  el.style.minWidth = `${next * 100}%`;
+  el.style.minHeight = `${next * 100}%`;
+  el.dataset.scale = String(next);
+  const panX = parseFloat(el.dataset.panX ?? "0") || 0;
+  const panY = parseFloat(el.dataset.panY ?? "0") || 0;
+  const [px, py] = clampPan(panX, panY, el);
+  applyTransform(el, px, py);
+  commit(slot, { scale: next, panX: px, panY: py });
+}
+
+function nudgePan(
+  el: HTMLImageElement,
+  slot: string,
+  dx: number,
+  dy: number,
+  commit: (label: string, state: Partial<ImageState>) => void,
+) {
+  const panX = parseFloat(el.dataset.panX ?? "0") || 0;
+  const panY = parseFloat(el.dataset.panY ?? "0") || 0;
+  const [px, py] = clampPan(panX + dx, panY + dy, el);
+  applyTransform(el, px, py);
+  commit(slot, { panX: px, panY: py });
+}
+
+export function LivePreview({ html, imageStates, activeSlot, onActivateSlot, onImageStateChange }: LivePreviewProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const dragRef = useRef<{ startX: number; startY: number; startPanX: number; startPanY: number } | null>(null);
-  const wheelCommitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
   const [scale, setScale] = useState(1);
 
-  // Keep a ref to the latest imageStates so wheel/drag handlers and the
-  // iframe-load handler can read fresh values without re-binding.
+  // Refs so per-slot handlers read fresh values without re-binding the
+  // whole effect on every render.
   const imageStatesRef = useRef(imageStates);
   imageStatesRef.current = imageStates;
+  const activeSlotRef = useRef(activeSlot);
+  activeSlotRef.current = activeSlot;
+  const onActivateSlotRef = useRef(onActivateSlot);
+  onActivateSlotRef.current = onActivateSlot;
+  const onImageStateChangeRef = useRef(onImageStateChange);
+  onImageStateChangeRef.current = onImageStateChange;
 
   function handleLoad() {
     const doc = iframeRef.current?.contentDocument;
@@ -88,83 +127,158 @@ export function LivePreview({ html, imageStates, activeSlot, onImageStateChange 
     return () => ro.disconnect();
   }, [naturalSize]);
 
+  // Bind pan/zoom handlers AND inject on-screen controls per slot. Hover-
+  // entering a slot makes it the active one (so the left column highlight
+  // follows the mouse) — no need to click the slot list before zooming.
   useEffect(() => {
     const iframe = iframeRef.current;
-    if (!iframe || !activeSlot || !naturalSize) return;
+    if (!iframe || !naturalSize) return;
     const doc = iframe.contentDocument;
     if (!doc) return;
-    const el = doc.querySelector<HTMLImageElement>(`[data-slot="${activeSlot}"]`);
-    if (!el) return;
 
-    function onPointerDown(e: PointerEvent) {
-      e.preventDefault();
-      const startPanX = parseFloat(el!.dataset.panX ?? "0") || 0;
-      const startPanY = parseFloat(el!.dataset.panY ?? "0") || 0;
-      dragRef.current = { startX: e.clientX, startY: e.clientY, startPanX, startPanY };
-      el!.setPointerCapture(e.pointerId);
-    }
-    function onPointerMove(e: PointerEvent) {
-      if (!dragRef.current || !el) return;
-      const dx = e.clientX - dragRef.current.startX;
-      const dy = e.clientY - dragRef.current.startY;
-      const [px, py] = clampPan(
-        dragRef.current.startPanX + dx,
-        dragRef.current.startPanY + dy,
-        el,
-      );
-      applyTransform(el, px, py);
-    }
-    function onPointerUp() {
-      if (!dragRef.current || !el) return;
-      const finalPanX = parseFloat(el.dataset.panX ?? "0") || 0;
-      const finalPanY = parseFloat(el.dataset.panY ?? "0") || 0;
-      dragRef.current = null;
-      onImageStateChange(activeSlot!, { panX: finalPanX, panY: finalPanY });
-    }
-    function onWheel(e: WheelEvent) {
-      e.preventDefault();
-      const currentScale = parseFloat(el!.dataset.scale ?? "1") || 1;
-      const delta = e.deltaY < 0 ? 0.1 : -0.1;
-      const newScale = Math.max(1, Math.min(3, +(currentScale + delta).toFixed(2)));
-      el!.style.minWidth = `${newScale * 100}%`;
-      el!.style.minHeight = `${newScale * 100}%`;
-      el!.dataset.scale = String(newScale);
-      // Re-clamp pan against new image size so the picture never leaves the
-      // slot when zooming back out.
-      const panX = parseFloat(el!.dataset.panX ?? "0") || 0;
-      const panY = parseFloat(el!.dataset.panY ?? "0") || 0;
-      // offsetWidth/Height update synchronously after style write in Chrome.
-      const [px, py] = clampPan(panX, panY, el!);
-      applyTransform(el!, px, py);
-      // Debounce the React state push — every wheel tick used to trigger a
-      // state update which (even with stable srcDoc) caused a re-render
-      // cascade. Now we commit only after the user stops scrolling.
-      if (wheelCommitRef.current) clearTimeout(wheelCommitRef.current);
-      wheelCommitRef.current = setTimeout(() => {
-        const finalScale = parseFloat(el!.dataset.scale ?? "1") || 1;
-        const finalPanX = parseFloat(el!.dataset.panX ?? "0") || 0;
-        const finalPanY = parseFloat(el!.dataset.panY ?? "0") || 0;
-        onImageStateChange(activeSlot!, { scale: finalScale, panX: finalPanX, panY: finalPanY });
-      }, 200);
-    }
+    const slots = Array.from(doc.querySelectorAll<HTMLImageElement>("[data-slot]"));
+    const cleanups: Array<() => void> = [];
+    const commit: (label: string, st: Partial<ImageState>) => void = (label, st) =>
+      onImageStateChangeRef.current(label, st);
 
-    el.style.cursor = "grab";
-    el.addEventListener("pointerdown", onPointerDown);
-    el.addEventListener("pointermove", onPointerMove);
-    el.addEventListener("pointerup", onPointerUp);
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => {
-      el.style.cursor = "";
-      el.removeEventListener("pointerdown", onPointerDown);
-      el.removeEventListener("pointermove", onPointerMove);
-      el.removeEventListener("pointerup", onPointerUp);
-      el.removeEventListener("wheel", onWheel);
-      if (wheelCommitRef.current) {
-        clearTimeout(wheelCommitRef.current);
-        wheelCommitRef.current = null;
+    slots.forEach((el) => {
+      const slot = el.dataset.slot;
+      if (!slot) return;
+
+      let drag: { startX: number; startY: number; startPanX: number; startPanY: number } | null = null;
+      let wheelTimer: ReturnType<typeof setTimeout> | null = null;
+
+      function onPointerEnter() {
+        if (activeSlotRef.current !== slot) onActivateSlotRef.current(slot!);
       }
-    };
-  }, [html, activeSlot, naturalSize, onImageStateChange]);
+      function onPointerDown(e: PointerEvent) {
+        e.preventDefault();
+        const startPanX = parseFloat(el.dataset.panX ?? "0") || 0;
+        const startPanY = parseFloat(el.dataset.panY ?? "0") || 0;
+        drag = { startX: e.clientX, startY: e.clientY, startPanX, startPanY };
+        el.setPointerCapture(e.pointerId);
+      }
+      function onPointerMove(e: PointerEvent) {
+        if (!drag) return;
+        const dx = e.clientX - drag.startX;
+        const dy = e.clientY - drag.startY;
+        const [px, py] = clampPan(drag.startPanX + dx, drag.startPanY + dy, el);
+        applyTransform(el, px, py);
+      }
+      function onPointerUp() {
+        if (!drag) return;
+        drag = null;
+        const finalPanX = parseFloat(el.dataset.panX ?? "0") || 0;
+        const finalPanY = parseFloat(el.dataset.panY ?? "0") || 0;
+        commit(slot!, { panX: finalPanX, panY: finalPanY });
+      }
+      function onWheel(e: WheelEvent) {
+        e.preventDefault();
+        const cur = parseFloat(el.dataset.scale ?? "1") || 1;
+        const delta = e.deltaY < 0 ? 0.1 : -0.1;
+        const next = Math.max(1, Math.min(3, +(cur + delta).toFixed(2)));
+        el.style.minWidth = `${next * 100}%`;
+        el.style.minHeight = `${next * 100}%`;
+        el.dataset.scale = String(next);
+        const panX = parseFloat(el.dataset.panX ?? "0") || 0;
+        const panY = parseFloat(el.dataset.panY ?? "0") || 0;
+        const [px, py] = clampPan(panX, panY, el);
+        applyTransform(el, px, py);
+        if (wheelTimer) clearTimeout(wheelTimer);
+        wheelTimer = setTimeout(() => {
+          commit(slot!, { scale: next, panX: px, panY: py });
+        }, 200);
+      }
+
+      el.style.cursor = "grab";
+      el.addEventListener("pointerenter", onPointerEnter);
+      el.addEventListener("pointerdown", onPointerDown);
+      el.addEventListener("pointermove", onPointerMove);
+      el.addEventListener("pointerup", onPointerUp);
+      el.addEventListener("wheel", onWheel, { passive: false });
+
+      // Inject on-screen controls (−, +, ◀, ▲, ▼, ▶) into the slot's
+      // parent, so they ride on top of the image inside the overflow:hidden
+      // crop. Subtle by default, full opacity on hover. Accessibility
+      // fallback for users without a working mouse wheel.
+      const parent = el.parentElement;
+      let removeBar = () => {};
+      if (parent) {
+        parent.querySelector(".aw-slot-controls")?.remove();
+        const view = doc.defaultView;
+        if (view && view.getComputedStyle(parent).position === "static") {
+          parent.style.position = "relative";
+        }
+
+        const bar = doc.createElement("div");
+        bar.className = "aw-slot-controls";
+        bar.style.cssText =
+          "position:absolute;bottom:8px;left:50%;transform:translateX(-50%);" +
+          "display:flex;gap:1px;align-items:center;background:rgba(0,0,0,.55);" +
+          "padding:3px;border-radius:6px;opacity:.3;transition:opacity .15s;" +
+          "z-index:5;font-family:system-ui,sans-serif;backdrop-filter:blur(2px);";
+
+        const mkBtn = (glyph: string, title: string, onClick: () => void) => {
+          const b = doc.createElement("button");
+          b.type = "button";
+          b.title = title;
+          b.textContent = glyph;
+          b.style.cssText =
+            "background:transparent;color:#fff;border:none;width:22px;height:22px;" +
+            "padding:0;font:600 13px/1 inherit;cursor:pointer;border-radius:4px;" +
+            "display:inline-flex;align-items:center;justify-content:center;user-select:none;";
+          b.addEventListener("mouseenter", () => {
+            b.style.background = "rgba(255,255,255,.22)";
+          });
+          b.addEventListener("mouseleave", () => {
+            b.style.background = "transparent";
+          });
+          b.addEventListener("pointerdown", (e) => e.stopPropagation());
+          b.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClick();
+          });
+          return b;
+        };
+
+        bar.appendChild(mkBtn("−", "Pomniejsz", () => nudgeZoom(el, slot!, -ZOOM_STEP, commit)));
+        bar.appendChild(mkBtn("+", "Powiększ", () => nudgeZoom(el, slot!, +ZOOM_STEP, commit)));
+        const sep = doc.createElement("span");
+        sep.style.cssText = "display:inline-block;width:6px;";
+        bar.appendChild(sep);
+        bar.appendChild(mkBtn("◀", "Przesuń w lewo", () => nudgePan(el, slot!, -PAN_STEP, 0, commit)));
+        bar.appendChild(mkBtn("▲", "Przesuń w górę", () => nudgePan(el, slot!, 0, -PAN_STEP, commit)));
+        bar.appendChild(mkBtn("▼", "Przesuń w dół", () => nudgePan(el, slot!, 0, +PAN_STEP, commit)));
+        bar.appendChild(mkBtn("▶", "Przesuń w prawo", () => nudgePan(el, slot!, +PAN_STEP, 0, commit)));
+
+        bar.addEventListener("pointerenter", () => {
+          bar.style.opacity = "1";
+        });
+        bar.addEventListener("pointerleave", () => {
+          bar.style.opacity = ".3";
+        });
+        // Don't let pointer interactions on the toolbar start an image drag
+        bar.addEventListener("pointerdown", (e) => e.stopPropagation());
+
+        parent.appendChild(bar);
+        removeBar = () => bar.remove();
+      }
+
+      cleanups.push(() => {
+        el.style.cursor = "";
+        el.removeEventListener("pointerenter", onPointerEnter);
+        el.removeEventListener("pointerdown", onPointerDown);
+        el.removeEventListener("pointermove", onPointerMove);
+        el.removeEventListener("pointerup", onPointerUp);
+        el.removeEventListener("wheel", onWheel);
+        if (wheelTimer) clearTimeout(wheelTimer);
+        removeBar();
+      });
+    });
+
+    return () => cleanups.forEach((fn) => fn());
+  }, [html, naturalSize]);
 
   return (
     <div

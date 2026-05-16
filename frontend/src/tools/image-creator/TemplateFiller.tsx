@@ -132,6 +132,7 @@ export function TemplateFiller({
           html={previewHtml}
           imageStates={imageStates}
           activeSlot={activeSlot}
+          onActivateSlot={handleActivateSlot}
           onImageStateChange={handleImageStateChange}
         />
         <ImageMetaAccordion value={meta} onChange={setMeta} />
