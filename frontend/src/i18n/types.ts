@@ -68,6 +68,7 @@ export interface Translations {
     imageTemplates: string;
     discovery: string;
     streams: string;
+    integrations: string;
   };
   settings: {
     loading: string;
@@ -143,6 +144,13 @@ export interface Translations {
     tipTemplates: string;
     // image templates section
     imageTemplates: string;
+    // webhook section
+    webhookSectionTitle: string;
+    webhookSectionHint: string;
+    webhookUrl: string;
+    webhookUrlPlaceholder: string;
+    webhookSecret: string;
+    webhookSecretPlaceholder: string;
     // actions
     saving: string;
     save: string;
@@ -372,6 +380,12 @@ export interface Translations {
     copyHtml: string;
     copied: string;
     exportHtml: string;
+    send: string;
+    sending: string;
+    sendOk: string;
+    sendError: string;
+    sentAgoMinutes: string;
+    sentJustNow: string;
     markDone: string;
     markedBy: string;
     me: string;
