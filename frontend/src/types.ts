@@ -78,6 +78,7 @@ export interface Article extends ArticleListItem {
   facebook_teasers: string[];
   social_media_attachments: SocialMediaAttachment[];
   generated_images: GeneratedImage[];
+  webhook_deliveries: WebhookDelivery[];
   sources: string[];
   pipeline_timing: Record<string, number>;
   errors: Array<Record<string, string>>;
@@ -138,6 +139,13 @@ export interface EditorExtraction {
   keywords: string[];
 }
 
+export interface WebhookDelivery {
+  sent_at: string;
+  status: "success" | "error";
+  http_status: number | null;
+  error: string | null;
+}
+
 export interface DomainConfigData {
   org_code: string;
   domain_name: string;
@@ -174,6 +182,8 @@ export interface DomainConfigData {
   article_templates: ArticleTemplate[];
   image_templates: ImageTemplate[];
   image_creator_enabled: boolean;
+  webhook_url: string | null;
+  webhook_secret: string | null;
   discovery_enabled: boolean;
   discovery_feeds: FeedConfig[];
   discovery_categories: CategoryConfig[];

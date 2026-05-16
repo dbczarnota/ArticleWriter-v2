@@ -40,6 +40,8 @@ const BASE_CONFIG: DomainConfigData = {
   article_templates: [],
   image_templates: [],
   image_creator_enabled: false,
+  webhook_url: null,
+  webhook_secret: null,
   discovery_enabled: false,
   discovery_feeds: [],
   discovery_categories: [],
