@@ -49,8 +49,11 @@ function applyTransform(el: HTMLImageElement, panX: number, panY: number) {
 function clampPan(panX: number, panY: number, el: HTMLImageElement): [number, number] {
   const slot = el.parentElement;
   if (!slot) return [panX, panY];
-  const maxX = Math.max(0, (el.offsetWidth - slot.clientWidth) / 2);
-  const maxY = Math.max(0, (el.offsetHeight - slot.clientHeight) / 2);
+  // scale ≥ 1 (image overflows slot): clamp so image edges don't pull away from slot edges.
+  // scale < 1 (image smaller than slot): allow image to roam inside slot bounds.
+  // Both cases: range is ±|halfDiff|.
+  const maxX = Math.abs((el.offsetWidth - slot.clientWidth) / 2);
+  const maxY = Math.abs((el.offsetHeight - slot.clientHeight) / 2);
   return [
     Math.max(-maxX, Math.min(maxX, panX)),
     Math.max(-maxY, Math.min(maxY, panY)),
