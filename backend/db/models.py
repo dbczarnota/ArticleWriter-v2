@@ -144,6 +144,12 @@ class Article(SQLModel, table=True):
     )
     """Images generated via the Image Creator tool and pinned to this article.
     Each entry: {url: str, name: str, created_at: ISO str}."""
+    webhook_deliveries: list[dict] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=False, server_default=text("'[]'")),
+    )
+    """Append-only history of POSTs to OrgConfig.webhook_url. Each entry:
+    {sent_at: iso, status: 'success'|'error', http_status: int|None, error: str|None}."""
     sources: list[str] = Field(default_factory=list, sa_column=Column(JSONB))
 
     # Operational metadata:
@@ -399,6 +405,16 @@ class OrgConfig(SQLModel, table=True):
 
     image_creator_enabled: bool = Field(default=False)
     image_creator_api_key: str | None = Field(default=None, max_length=256)
+
+    webhook_url: str | None = Field(
+        default=None, sa_column=Column(String(2048), nullable=True)
+    )
+    """Per-org outbound webhook for sending finished articles. None = button hidden."""
+
+    webhook_secret: str | None = Field(
+        default=None, sa_column=Column(String(256), nullable=True)
+    )
+    """Optional shared secret sent as X-Webhook-Secret header when set."""
 
     # ── Discovery ────────────────────────────────────────────────────────────
     discovery_enabled: bool = Field(default=False)
