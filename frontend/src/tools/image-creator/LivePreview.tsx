@@ -16,6 +16,29 @@ interface LivePreviewProps {
 const PADDING = 20;
 const PAN_STEP = 30;
 const ZOOM_STEP = 0.15;
+const MIN_SCALE = 0.2;
+const MAX_SCALE = 3;
+
+/** Apply the chosen scale to the image element. Two sizing modes:
+ *  - scale ≥ 1: image min-width/min-height = scale*100% (cover behaviour,
+ *    image overflows the slot in at least one axis).
+ *  - scale < 1: image width = scale*100% with height auto (image shrinks
+ *    below slot size, aspect ratio preserved). Kept in sync with
+ *    htmlBuilder's initial render. */
+function applyScaleSize(el: HTMLImageElement, scale: number) {
+  const pct = scale * 100;
+  if (scale >= 1) {
+    el.style.minWidth = `${pct}%`;
+    el.style.minHeight = `${pct}%`;
+    el.style.width = "auto";
+    el.style.height = "auto";
+  } else {
+    el.style.minWidth = "0";
+    el.style.minHeight = "0";
+    el.style.width = `${pct}%`;
+    el.style.height = "auto";
+  }
+}
 
 function applyTransform(el: HTMLImageElement, panX: number, panY: number) {
   el.style.transform = `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))`;
@@ -41,9 +64,8 @@ function nudgeZoom(
   commit: (label: string, state: Partial<ImageState>) => void,
 ) {
   const cur = parseFloat(el.dataset.scale ?? "1") || 1;
-  const next = Math.max(1, Math.min(3, +(cur + delta).toFixed(2)));
-  el.style.minWidth = `${next * 100}%`;
-  el.style.minHeight = `${next * 100}%`;
+  const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, +(cur + delta).toFixed(2)));
+  applyScaleSize(el, next);
   el.dataset.scale = String(next);
   const panX = parseFloat(el.dataset.panX ?? "0") || 0;
   const panY = parseFloat(el.dataset.panY ?? "0") || 0;
@@ -155,8 +177,7 @@ export function LivePreview({ html, imageStates, activeSlot, onActivateSlot, onI
       if (!slot) return;
       const st = imageStatesRef.current[slot];
       if (!st) return;
-      el.style.minWidth = `${st.scale * 100}%`;
-      el.style.minHeight = `${st.scale * 100}%`;
+      applyScaleSize(el, st.scale);
       el.style.transform = `translate(calc(-50% + ${st.panX}px), calc(-50% + ${st.panY}px))`;
       el.dataset.panX = String(st.panX);
       el.dataset.panY = String(st.panY);
@@ -228,9 +249,8 @@ export function LivePreview({ html, imageStates, activeSlot, onActivateSlot, onI
         e.preventDefault();
         const cur = parseFloat(el.dataset.scale ?? "1") || 1;
         const delta = e.deltaY < 0 ? 0.1 : -0.1;
-        const next = Math.max(1, Math.min(3, +(cur + delta).toFixed(2)));
-        el.style.minWidth = `${next * 100}%`;
-        el.style.minHeight = `${next * 100}%`;
+        const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, +(cur + delta).toFixed(2)));
+        applyScaleSize(el, next);
         el.dataset.scale = String(next);
         const panX = parseFloat(el.dataset.panX ?? "0") || 0;
         const panY = parseFloat(el.dataset.panY ?? "0") || 0;
