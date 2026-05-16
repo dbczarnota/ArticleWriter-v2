@@ -49,6 +49,11 @@ def test_domain_override_key_map_covers_renamed_fields():
         "discovery_matcher_fallback_models",
         "discovery_topic_writer_model",
         "discovery_topic_writer_fallback_models",
+        # Settings-managed only — not part of per-article DomainConfig overrides.
+        "image_creator_enabled",
+        "image_templates",
+        "webhook_url",
+        "webhook_secret",
     }
     for upd_name in update_fields:
         if upd_name in KNOWN_NON_OVERRIDE:
