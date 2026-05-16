@@ -52,6 +52,39 @@ function nudgeZoom(
   commit(slot, { scale: next, panX: px, panY: py });
 }
 
+function CtrlButton({ glyph, title, onClick }: { glyph: string; title: string; onClick: () => void }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: hover ? "rgba(255,255,255,.22)" : "transparent",
+        color: "#fff",
+        border: "none",
+        width: 24,
+        height: 24,
+        padding: 0,
+        fontFamily: "inherit",
+        fontSize: 13,
+        fontWeight: 600,
+        lineHeight: 1,
+        cursor: "pointer",
+        borderRadius: 4,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        userSelect: "none",
+      }}
+    >
+      {glyph}
+    </button>
+  );
+}
+
 function nudgePan(
   el: HTMLImageElement,
   slot: string,
@@ -82,6 +115,25 @@ export function LivePreview({ html, imageStates, activeSlot, onActivateSlot, onI
   onActivateSlotRef.current = onActivateSlot;
   const onImageStateChangeRef = useRef(onImageStateChange);
   onImageStateChangeRef.current = onImageStateChange;
+
+  // Look up the <img data-slot=...> for a given slot label inside the iframe.
+  function lookupSlotEl(slot: string | null): HTMLImageElement | null {
+    if (!slot) return null;
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc) return null;
+    return doc.querySelector<HTMLImageElement>(`[data-slot="${slot}"]`);
+  }
+
+  function handleNudgePan(dx: number, dy: number) {
+    const el = lookupSlotEl(activeSlot);
+    if (!el || !activeSlot) return;
+    nudgePan(el, activeSlot, dx, dy, onImageStateChange);
+  }
+  function handleNudgeZoom(delta: number) {
+    const el = lookupSlotEl(activeSlot);
+    if (!el || !activeSlot) return;
+    nudgeZoom(el, activeSlot, delta, onImageStateChange);
+  }
 
   function handleLoad() {
     const doc = iframeRef.current?.contentDocument;
@@ -197,74 +249,6 @@ export function LivePreview({ html, imageStates, activeSlot, onActivateSlot, onI
       el.addEventListener("pointerup", onPointerUp);
       el.addEventListener("wheel", onWheel, { passive: false });
 
-      // Inject on-screen controls (−, +, ◀, ▲, ▼, ▶) into the slot's
-      // parent, so they ride on top of the image inside the overflow:hidden
-      // crop. Subtle by default, full opacity on hover. Accessibility
-      // fallback for users without a working mouse wheel.
-      const parent = el.parentElement;
-      let removeBar = () => {};
-      if (parent) {
-        parent.querySelector(".aw-slot-controls")?.remove();
-        const view = doc.defaultView;
-        if (view && view.getComputedStyle(parent).position === "static") {
-          parent.style.position = "relative";
-        }
-
-        const bar = doc.createElement("div");
-        bar.className = "aw-slot-controls";
-        bar.style.cssText =
-          "position:absolute;bottom:8px;left:50%;transform:translateX(-50%);" +
-          "display:flex;gap:1px;align-items:center;background:rgba(0,0,0,.55);" +
-          "padding:3px;border-radius:6px;opacity:.3;transition:opacity .15s;" +
-          "z-index:5;font-family:system-ui,sans-serif;backdrop-filter:blur(2px);";
-
-        const mkBtn = (glyph: string, title: string, onClick: () => void) => {
-          const b = doc.createElement("button");
-          b.type = "button";
-          b.title = title;
-          b.textContent = glyph;
-          b.style.cssText =
-            "background:transparent;color:#fff;border:none;width:22px;height:22px;" +
-            "padding:0;font:600 13px/1 inherit;cursor:pointer;border-radius:4px;" +
-            "display:inline-flex;align-items:center;justify-content:center;user-select:none;";
-          b.addEventListener("mouseenter", () => {
-            b.style.background = "rgba(255,255,255,.22)";
-          });
-          b.addEventListener("mouseleave", () => {
-            b.style.background = "transparent";
-          });
-          b.addEventListener("pointerdown", (e) => e.stopPropagation());
-          b.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onClick();
-          });
-          return b;
-        };
-
-        bar.appendChild(mkBtn("−", "Pomniejsz", () => nudgeZoom(el, slot!, -ZOOM_STEP, commit)));
-        bar.appendChild(mkBtn("+", "Powiększ", () => nudgeZoom(el, slot!, +ZOOM_STEP, commit)));
-        const sep = doc.createElement("span");
-        sep.style.cssText = "display:inline-block;width:6px;";
-        bar.appendChild(sep);
-        bar.appendChild(mkBtn("◀", "Przesuń w lewo", () => nudgePan(el, slot!, -PAN_STEP, 0, commit)));
-        bar.appendChild(mkBtn("▲", "Przesuń w górę", () => nudgePan(el, slot!, 0, -PAN_STEP, commit)));
-        bar.appendChild(mkBtn("▼", "Przesuń w dół", () => nudgePan(el, slot!, 0, +PAN_STEP, commit)));
-        bar.appendChild(mkBtn("▶", "Przesuń w prawo", () => nudgePan(el, slot!, +PAN_STEP, 0, commit)));
-
-        bar.addEventListener("pointerenter", () => {
-          bar.style.opacity = "1";
-        });
-        bar.addEventListener("pointerleave", () => {
-          bar.style.opacity = ".3";
-        });
-        // Don't let pointer interactions on the toolbar start an image drag
-        bar.addEventListener("pointerdown", (e) => e.stopPropagation());
-
-        parent.appendChild(bar);
-        removeBar = () => bar.remove();
-      }
-
       cleanups.push(() => {
         el.style.cursor = "";
         el.removeEventListener("pointerenter", onPointerEnter);
@@ -273,7 +257,6 @@ export function LivePreview({ html, imageStates, activeSlot, onActivateSlot, onI
         el.removeEventListener("pointerup", onPointerUp);
         el.removeEventListener("wheel", onWheel);
         if (wheelTimer) clearTimeout(wheelTimer);
-        removeBar();
       });
     });
 
@@ -298,8 +281,42 @@ export function LivePreview({ html, imageStates, activeSlot, onActivateSlot, onI
       {activeSlot && (
         <div style={{ position: "absolute", top: 8, left: 0, right: 0, textAlign: "center", zIndex: 10, pointerEvents: "none" }}>
           <span style={{ background: "var(--accent)", color: "white", fontSize: 11, padding: "3px 10px", borderRadius: 10, fontWeight: 600 }}>
-            ↔ Przeciągnij · Scroll = zoom
+            ↔ Przeciągnij · Scroll = zoom · {activeSlot}
           </span>
+        </div>
+      )}
+      {activeSlot && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 10,
+            left: "50%",
+            transform: "translateX(-50%)",
+            display: "flex",
+            gap: 1,
+            alignItems: "center",
+            background: "rgba(0,0,0,.65)",
+            padding: 3,
+            borderRadius: 8,
+            zIndex: 10,
+            backdropFilter: "blur(4px)",
+            opacity: 0.85,
+            transition: "opacity .15s",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLDivElement).style.opacity = "1";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLDivElement).style.opacity = "0.85";
+          }}
+        >
+          <CtrlButton glyph="−" title="Pomniejsz" onClick={() => handleNudgeZoom(-ZOOM_STEP)} />
+          <CtrlButton glyph="+" title="Powiększ" onClick={() => handleNudgeZoom(+ZOOM_STEP)} />
+          <span style={{ display: "inline-block", width: 6 }} />
+          <CtrlButton glyph="◀" title="Przesuń w lewo" onClick={() => handleNudgePan(-PAN_STEP, 0)} />
+          <CtrlButton glyph="▲" title="Przesuń w górę" onClick={() => handleNudgePan(0, -PAN_STEP)} />
+          <CtrlButton glyph="▼" title="Przesuń w dół" onClick={() => handleNudgePan(0, +PAN_STEP)} />
+          <CtrlButton glyph="▶" title="Przesuń w prawo" onClick={() => handleNudgePan(+PAN_STEP, 0)} />
         </div>
       )}
       <iframe
