@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -1138,6 +1138,80 @@ async def patch_article(
     return {"ok": True}
 
 
+@router.post(
+    "/articles/{article_id}/send-webhook",
+    summary="POST the article to the org's configured webhook URL",
+    tags=["articles"],
+)
+async def send_article_webhook(
+    article_id: UUID,
+    org: Org = Depends(get_current_org),
+    article_repo: ArticleRepository = Depends(get_article_repo),
+    org_config_repo: OrgConfigRepository = Depends(get_org_config_repo),
+) -> dict:
+    """Sends the finished article to OrgConfig.webhook_url. Synchronous;
+    30s timeout; no retry. Always appends a row to article.webhook_deliveries
+    and returns the same record to the caller.
+    """
+    article = await article_repo.get(article_id, org_code=org.code)
+    if article is None:
+        raise HTTPException(status_code=404, detail="Article not found")
+    config = await org_config_repo.get(org.code)
+    webhook_url = (config.webhook_url if config else None) or ""
+    if not webhook_url:
+        raise HTTPException(status_code=400, detail="Webhook not configured for this org")
+    if not webhook_url.startswith("https://"):
+        raise HTTPException(status_code=400, detail="Webhook URL must use https://")
+
+    sent_at = datetime.now(UTC).isoformat()
+    payload = _build_webhook_payload(article, domain_name=org.domain_name, sent_at_iso=sent_at)
+    headers: dict[str, str] = {
+        "Content-Type": "application/json",
+        "User-Agent": "ArticleWriter/2",
+    }
+    if config and config.webhook_secret:
+        headers["X-Webhook-Secret"] = config.webhook_secret
+
+    entry: dict[str, Any]
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(webhook_url, json=payload, headers=headers)
+        if 200 <= resp.status_code < 300:
+            entry = {
+                "sent_at": sent_at,
+                "status": "success",
+                "http_status": resp.status_code,
+                "error": None,
+            }
+        else:
+            entry = {
+                "sent_at": sent_at,
+                "status": "error",
+                "http_status": resp.status_code,
+                "error": f"http {resp.status_code}",
+            }
+    except httpx.TimeoutException:
+        entry = {"sent_at": sent_at, "status": "error", "http_status": None, "error": "timeout"}
+    except httpx.HTTPError as exc:
+        entry = {
+            "sent_at": sent_at,
+            "status": "error",
+            "http_status": None,
+            "error": str(exc)[:200],
+        }
+
+    await article_repo.record_webhook_delivery(article_id, org_code=org.code, entry=entry)
+    logfire.info(
+        "article webhook delivery",
+        article_id=str(article_id),
+        org_code=org.code,
+        webhook_host=httpx.URL(webhook_url).host,
+        status=entry["status"],
+        http_status=entry["http_status"],
+    )
+    return entry
+
+
 @router.get(
     "/domain-config",
     summary="Get the calling org's domain config",
@@ -1933,6 +2007,38 @@ def _apply_article_domain_overrides(domain: DomainConfig, overrides: dict) -> Do
         patches[dc_key] = v
 
     return dc_replace(domain, **patches) if patches else domain
+
+
+def _build_webhook_payload(article, *, domain_name: str, sent_at_iso: str) -> dict:
+    """Materialize the JSON body sent to org_config.webhook_url."""
+    title = article.alternative_titles[0] if article.alternative_titles else ""
+    raw_facts = "\n".join(f.text for f in (article.facts or []))
+    related = [{"title": t, "reason": ""} for t in (article.followup_topics or [])]
+    images = [
+        {
+            "label": img.get("name", ""),
+            "url": img.get("url", ""),
+            "template_id": img.get("template_id"),
+            "created_at": img.get("created_at"),
+        }
+        for img in (article.generated_images or [])
+    ]
+    return {
+        "article_id": str(article.id),
+        "org_code": article.org_code,
+        "sent_at": sent_at_iso,
+        "topic": article.topic,
+        "title": title,
+        "alternative_titles": list(article.alternative_titles or []),
+        "html": article.html or "",
+        "raw_facts": raw_facts,
+        "related_topics": related,
+        "generated_images": images,
+        "metadata": {
+            "created_at": article.created_at.isoformat() if article.created_at else None,
+            "domain": domain_name,
+        },
+    }
 
 
 def _org_config_to_dict(config: OrgConfig, *, domain_name: str | None = None) -> dict:
