@@ -227,6 +227,8 @@ class DomainConfigUpdate(BaseModel):
     article_templates: list[ArticleTemplateItem] = PydanticField(default_factory=list)
     image_templates: list[ImageTemplateItem] = PydanticField(default_factory=list)
     image_creator_enabled: bool = False
+    webhook_url: str | None = None
+    webhook_secret: str | None = None
 
 
 class ContactRequest(BaseModel):
@@ -234,3 +236,47 @@ class ContactRequest(BaseModel):
     email: EmailStr
     company: str | None = PydanticField(default=None, max_length=200)
     message: str = PydanticField(min_length=1, max_length=4000)
+
+
+class GeneratedImagePayload(BaseModel):
+    label: str = ""
+    url: str
+    template_id: str | None = None
+    created_at: str | None = None
+
+
+class RelatedTopicPayload(BaseModel):
+    title: str
+    reason: str = ""
+
+
+class WebhookPayloadMetadata(BaseModel):
+    created_at: str | None = None
+    domain: str = ""
+
+
+class WebhookPayload(BaseModel):
+    """Stable contract sent to OrgConfig.webhook_url. Fields with no data
+    are sent as empty lists / null — never omitted."""
+
+    article_id: str
+    org_code: str
+    sent_at: str
+    topic: str
+    title: str = ""
+    alternative_titles: list[str] = PydanticField(default_factory=list)
+    html: str = ""
+    raw_facts: str = ""
+    related_topics: list[RelatedTopicPayload] = PydanticField(default_factory=list)
+    generated_images: list[GeneratedImagePayload] = PydanticField(default_factory=list)
+    metadata: WebhookPayloadMetadata = PydanticField(default_factory=WebhookPayloadMetadata)
+
+
+class WebhookDeliveryRecord(BaseModel):
+    """One entry in Article.webhook_deliveries — also the response shape
+    of POST /v2/articles/{id}/send-webhook."""
+
+    sent_at: str
+    status: str  # "success" | "error"
+    http_status: int | None = None
+    error: str | None = None
