@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import DOMPurify from "dompurify";
-import type { Article, EmbedCandidate, Fact, Quote, SocialMediaAttachment } from "../types";
+import type { Article, DomainConfigData, EmbedCandidate, Fact, Quote, SocialMediaAttachment, WebhookDelivery } from "../types";
 import { useArticles } from "../lib/useArticles";
 import { useLang, useT } from "../i18n";
 import { CollapsibleSection } from "./CollapsibleSection";
@@ -26,8 +26,26 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
   const [copied, setCopied] = useState(false);
   const [titleCopied, setTitleCopied] = useState(false);
   const [deletingImageUrl, setDeletingImageUrl] = useState<string | null>(null);
+  const [domainConfig, setDomainConfig] = useState<DomainConfigData | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendBanner, setSendBanner] = useState<{ ok: boolean; text: string } | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const [refreshTick, setRefreshTick] = useState(0);
+
+  // Re-render the "X min ago" label once a minute.
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    request<DomainConfigData>("/v2/domain-config")
+      .then((cfg) => { if (!cancelled) setDomainConfig(cfg); })
+      .catch(() => { /* not configured — button stays hidden */ });
+    return () => { cancelled = true; };
+  }, [request]);
 
   // Split the rendered article HTML into "first H1 text" + "the rest" so we
   // can render the H1 with a copy-to-clipboard button beside it without
@@ -42,6 +60,31 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
     h1.remove();
     return { h1Text: text, htmlRest: doc.body.innerHTML };
   }, [article?.html]);
+
+  async function handleSendWebhook() {
+    if (!article) return;
+    setSending(true);
+    setSendBanner(null);
+    try {
+      const delivery = await request<WebhookDelivery>(
+        `/v2/articles/${article.id}/send-webhook`,
+        { method: "POST" },
+      );
+      setArticle((a) =>
+        a
+          ? { ...a, webhook_deliveries: [...(a.webhook_deliveries ?? []), delivery] }
+          : a,
+      );
+      setSendBanner({
+        ok: delivery.status === "success",
+        text: delivery.status === "success" ? av.sendOk : (delivery.error ?? av.sendError),
+      });
+    } catch (e: unknown) {
+      setSendBanner({ ok: false, text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setSending(false);
+    }
+  }
 
   async function handleDeleteGeneratedImage(imageUrl: string) {
     if (!article) return;
@@ -318,11 +361,43 @@ export function ArticleView({ articleId, currentUserId, onMarkDone }: ArticleVie
             >
               {copied ? av.copied : av.copyHtml}
             </Button>
+            {domainConfig?.webhook_url ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSendWebhook}
+                disabled={sending}
+              >
+                {sending ? av.sending : av.send}
+              </Button>
+            ) : null}
             <Button variant="primary" size="sm" onClick={handleExport} iconLeft={<DownloadIcon />}>
               {av.exportHtml}
             </Button>
           </div>
         </div>
+
+        {/* Webhook delivery status — last entry, right-aligned. */}
+        {domainConfig?.webhook_url && (article.webhook_deliveries?.length ?? 0) > 0 && (() => {
+          const last: WebhookDelivery = article.webhook_deliveries[article.webhook_deliveries.length - 1];
+          const minsAgo = Math.max(0, Math.round((nowMs - new Date(last.sent_at).getTime()) / 60000));
+          const ago = minsAgo < 1 ? av.sentJustNow : av.sentAgoMinutes.replace("{n}", String(minsAgo));
+          const ok = last.status === "success";
+          const icon = ok ? "✓" : "✕";
+          const colorVar = ok ? "var(--success-fg)" : "var(--error-fg)";
+          const label = ok ? `${icon} ${av.sendOk} ${ago}` : `${icon} ${last.error ?? av.sendError} (${ago})`;
+          return (
+            <div style={{ fontSize: 11, color: colorVar, marginTop: 6, textAlign: "right" }}>
+              {label}
+            </div>
+          );
+        })()}
+
+        {sendBanner && (
+          <div style={{ fontSize: 11, color: sendBanner.ok ? "var(--success-fg)" : "var(--error-fg)", marginTop: 4, textAlign: "right" }}>
+            {sendBanner.text}
+          </div>
+        )}
       </div>
       </div>
 
