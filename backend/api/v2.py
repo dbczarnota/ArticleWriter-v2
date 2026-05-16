@@ -1972,6 +1972,8 @@ def _org_config_to_dict(config: OrgConfig, *, domain_name: str | None = None) ->
         "article_templates": config.article_templates,
         "image_templates": config.image_templates,
         "image_creator_enabled": config.image_creator_enabled,
+        "webhook_url": config.webhook_url,
+        "webhook_secret": config.webhook_secret,
         "discovery_enabled": config.discovery_enabled,
         "discovery_feeds": config.discovery_feeds,
         "discovery_categories": config.discovery_categories,
