@@ -738,6 +738,35 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
           )}
         </section>
 
+        {/* Integracje — webhook */}
+        <section id="integracje" style={{ display: sectionVisible("integracje") ? "block" : "none", marginBottom: 32 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{dc.webhookSectionTitle}</h3>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>{dc.webhookSectionHint}</p>
+
+          <label style={labelStyle}>
+            {dc.webhookUrl}
+            <input
+              type="url"
+              value={form.webhook_url ?? ""}
+              onChange={(e) => set("webhook_url", e.target.value || null)}
+              placeholder={dc.webhookUrlPlaceholder}
+              style={inputStyle}
+            />
+          </label>
+
+          <label style={labelStyle}>
+            {dc.webhookSecret}
+            <input
+              type="password"
+              value={form.webhook_secret ?? ""}
+              onChange={(e) => set("webhook_secret", e.target.value || null)}
+              placeholder={dc.webhookSecretPlaceholder}
+              autoComplete="off"
+              style={inputStyle}
+            />
+          </label>
+        </section>
+
         {/* Discovery */}
         <section id="discovery" style={{ display: sectionVisible("discovery") ? "block" : "none", marginBottom: 32 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{dc.sectionDiscovery}</h3>

@@ -1,6 +1,6 @@
 import { useT } from "../i18n";
 
-const SECTION_IDS = ["podstawowe", "modele", "wyszukiwanie", "media", "wytyczne", "html", "stance", "tytuly", "przyklady", "szablony", "szablony-obrazkow", "discovery", "streamy"] as const;
+const SECTION_IDS = ["podstawowe", "modele", "wyszukiwanie", "media", "wytyczne", "html", "stance", "tytuly", "przyklady", "szablony", "szablony-obrazkow", "discovery", "streamy", "integracje"] as const;
 type SectionId = typeof SECTION_IDS[number];
 
 interface SettingsNavProps {
@@ -25,6 +25,7 @@ export function SettingsNav({ activeSection, onSelect }: SettingsNavProps) {
     "szablony-obrazkow": t.settingsNav.imageTemplates,
     discovery: t.settingsNav.discovery,
     streamy: t.settingsNav.streams,
+    integracje: t.settingsNav.integrations,
   };
 
   return (
