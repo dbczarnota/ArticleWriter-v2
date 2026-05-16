@@ -127,15 +127,13 @@ export function TemplateFiller({
         </div>
       </div>
 
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, minHeight: 0 }}>
-          <LivePreview
-            html={previewHtml}
-            imageStates={imageStates}
-            activeSlot={activeSlot}
-            onImageStateChange={handleImageStateChange}
-          />
-        </div>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
+        <LivePreview
+          html={previewHtml}
+          imageStates={imageStates}
+          activeSlot={activeSlot}
+          onImageStateChange={handleImageStateChange}
+        />
         <ImageMetaAccordion value={meta} onChange={setMeta} />
       </div>
     </div>
