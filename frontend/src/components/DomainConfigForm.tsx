@@ -128,10 +128,24 @@ function SourceDomainListField({ label, hint, value, max, onChange, counterTempl
   const overLimit = dedup.length > max;
   const counter = counterTemplate.replace("{count}", String(dedup.length)).replace("{max}", String(max));
 
-  function handleBlur() {
-    if (invalid.length > 0 || overLimit) return;
-    const same = dedup.length === safeValue.length && dedup.every((d, i) => d === safeValue[i]);
-    if (!same) onChange(dedup);
+  function handleChange(next: string) {
+    setText(next);
+    // Commit valid+within-limit parses to parent immediately so a click on
+    // Save right after typing doesn't race with a blur event.
+    const nextLines = next.split("\n").map((l) => l.trim().toLowerCase()).filter(Boolean);
+    const nextInvalid = nextLines.some((l) => l.startsWith("http://") || l.startsWith("https://") || l.includes("/") || l.includes(":") || !DOMAIN_RE.test(l));
+    if (nextInvalid) return;
+    const nextDedup: string[] = [];
+    const nextSeen = new Set<string>();
+    for (const l of nextLines) {
+      if (!nextSeen.has(l)) {
+        nextSeen.add(l);
+        nextDedup.push(l);
+      }
+    }
+    if (nextDedup.length > max) return;
+    const same = nextDedup.length === safeValue.length && nextDedup.every((d, i) => d === safeValue[i]);
+    if (!same) onChange(nextDedup);
   }
 
   return (
@@ -139,8 +153,7 @@ function SourceDomainListField({ label, hint, value, max, onChange, counterTempl
       {label}
       <textarea
         value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={handleBlur}
+        onChange={(e) => handleChange(e.target.value)}
         rows={6}
         style={{
           ...inputStyle,
