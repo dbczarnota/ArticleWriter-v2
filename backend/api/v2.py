@@ -2084,6 +2084,8 @@ def _org_config_to_dict(config: OrgConfig, *, domain_name: str | None = None) ->
         "image_creator_enabled": config.image_creator_enabled,
         "webhook_url": config.webhook_url,
         "webhook_secret": config.webhook_secret,
+        "source_whitelist": config.source_whitelist,
+        "source_blacklist": config.source_blacklist,
         "discovery_enabled": config.discovery_enabled,
         "discovery_feeds": config.discovery_feeds,
         "discovery_categories": config.discovery_categories,

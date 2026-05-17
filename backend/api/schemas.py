@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, EmailStr, field_validator
 from pydantic import Field as PydanticField
 
+_DOMAIN_RE = re.compile(r"^[a-z0-9.-]+\.[a-z]{2,}$")
 SOURCE_WHITELIST_MAX = 40
 SOURCE_BLACKLIST_MAX = 20
 
@@ -232,6 +234,40 @@ class DomainConfigUpdate(BaseModel):
     image_creator_enabled: bool = False
     webhook_url: str | None = None
     webhook_secret: str | None = None
+    source_whitelist: list[str] = PydanticField(default_factory=list)
+    source_blacklist: list[str] = PydanticField(default_factory=list)
+
+    @field_validator("source_whitelist", "source_blacklist", mode="before")
+    @classmethod
+    def _validate_source_list(cls, v: Any, info: Any) -> list[str]:
+        if v is None:
+            return []
+        if not isinstance(v, list):
+            raise ValueError(f"{info.field_name} must be a list of domains")
+        seen: set[str] = set()
+        result: list[str] = []
+        for raw in v:
+            if not isinstance(raw, str):
+                raise ValueError(f"{info.field_name}: each entry must be a string")
+            d = raw.strip().lower()
+            if not d:
+                continue
+            if d.startswith(("http://", "https://")):
+                raise ValueError(f"invalid domain: {raw!r} — drop protocol prefix")
+            if "/" in d or ":" in d:
+                raise ValueError(f"invalid domain: {raw!r} — no paths or ports")
+            if not _DOMAIN_RE.match(d):
+                raise ValueError(f"invalid domain: {raw!r}")
+            if d in seen:
+                continue
+            seen.add(d)
+            result.append(d)
+        max_n = (
+            SOURCE_WHITELIST_MAX if info.field_name == "source_whitelist" else SOURCE_BLACKLIST_MAX
+        )
+        if len(result) > max_n:
+            raise ValueError(f"max {max_n} domains (Serper query length limit)")
+        return result
 
 
 class ContactRequest(BaseModel):

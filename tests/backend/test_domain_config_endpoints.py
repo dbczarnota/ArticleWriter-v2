@@ -345,3 +345,95 @@ def test_unauthenticated_requests_rejected():
 
     resp_put = client.put("/v2/domain-config", json={"description": "x"})
     assert resp_put.status_code in (401, 403, 422)
+
+
+# --- source_whitelist / source_blacklist ---------------------------------
+
+
+def test_get_returns_source_lists_default_empty(client_with_config):
+    client, _, _ = client_with_config
+    resp = client.get("/v2/domain-config")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["source_whitelist"] == []
+    assert data["source_blacklist"] == []
+
+
+def test_put_persists_source_whitelist_and_blacklist(client_with_config):
+    client, stub, _ = client_with_config
+    resp = client.put(
+        "/v2/domain-config",
+        json={
+            "source_whitelist": ["wp.pl", "onet.pl"],
+            "source_blacklist": ["pudelek.pl"],
+        },
+    )
+    assert resp.status_code == 200
+    assert stub.last_upserted is not None
+    assert stub.last_upserted.source_whitelist == ["wp.pl", "onet.pl"]
+    assert stub.last_upserted.source_blacklist == ["pudelek.pl"]
+    body = resp.json()
+    assert body["source_whitelist"] == ["wp.pl", "onet.pl"]
+    assert body["source_blacklist"] == ["pudelek.pl"]
+
+
+def test_put_whitelist_over_40_rejected(client_with_config):
+    client, _, _ = client_with_config
+    domains = [f"domain{i}.pl" for i in range(41)]
+    resp = client.put("/v2/domain-config", json={"source_whitelist": domains})
+    assert resp.status_code == 422
+    assert "40" in resp.text
+
+
+def test_put_blacklist_over_20_rejected(client_with_config):
+    client, _, _ = client_with_config
+    domains = [f"bad{i}.pl" for i in range(21)]
+    resp = client.put("/v2/domain-config", json={"source_blacklist": domains})
+    assert resp.status_code == 422
+    assert "20" in resp.text
+
+
+def test_put_rejects_https_prefix(client_with_config):
+    client, _, _ = client_with_config
+    resp = client.put(
+        "/v2/domain-config",
+        json={"source_whitelist": ["https://wp.pl"]},
+    )
+    assert resp.status_code == 422
+
+
+def test_put_rejects_path_in_domain(client_with_config):
+    client, _, _ = client_with_config
+    resp = client.put(
+        "/v2/domain-config",
+        json={"source_whitelist": ["wp.pl/news"]},
+    )
+    assert resp.status_code == 422
+
+
+def test_put_rejects_invalid_domain_format(client_with_config):
+    client, _, _ = client_with_config
+    resp = client.put(
+        "/v2/domain-config",
+        json={"source_whitelist": ["not a domain"]},
+    )
+    assert resp.status_code == 422
+
+
+def test_put_accepts_empty_list(client_with_config):
+    client, stub, _ = client_with_config
+    resp = client.put("/v2/domain-config", json={"source_whitelist": []})
+    assert resp.status_code == 200
+    assert stub.last_upserted is not None
+    assert stub.last_upserted.source_whitelist == []
+
+
+def test_put_deduplicates_and_lowercases(client_with_config):
+    client, stub, _ = client_with_config
+    resp = client.put(
+        "/v2/domain-config",
+        json={"source_whitelist": ["WP.PL", "wp.pl", "  onet.pl  "]},
+    )
+    assert resp.status_code == 200
+    assert stub.last_upserted is not None
+    assert stub.last_upserted.source_whitelist == ["wp.pl", "onet.pl"]
