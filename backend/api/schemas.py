@@ -6,6 +6,9 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, EmailStr, field_validator
 from pydantic import Field as PydanticField
 
+SOURCE_WHITELIST_MAX = 40
+SOURCE_BLACKLIST_MAX = 20
+
 
 class ArticleTemplateItem(BaseModel):
     id: str

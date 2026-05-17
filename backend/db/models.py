@@ -355,6 +355,22 @@ class OrgConfig(SQLModel, table=True):
             server_default=text("ARRAY['en'::text]"),
         ),
     )
+    source_whitelist: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(
+            ARRAY(String()),
+            nullable=False,
+            server_default=text("ARRAY[]::text[]"),
+        ),
+    )
+    source_blacklist: list[str] = Field(
+        default_factory=list,
+        sa_column=Column(
+            ARRAY(String()),
+            nullable=False,
+            server_default=text("ARRAY[]::text[]"),
+        ),
+    )
     media_search_num: int = Field(default=5)
     media_search_max_query_tiers: int = Field(default=2)
     youtube_sort_by_date: bool = Field(default=True)
