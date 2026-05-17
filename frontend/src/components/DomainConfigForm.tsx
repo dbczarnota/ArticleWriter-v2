@@ -112,7 +112,8 @@ interface SourceDomainListFieldProps {
 }
 
 function SourceDomainListField({ label, hint, value, max, onChange, counterTemplate, overLimitText, invalidTemplate, inputStyle, labelStyle }: SourceDomainListFieldProps) {
-  const [text, setText] = useState<string>(() => value.join("\n"));
+  const safeValue = Array.isArray(value) ? value : [];
+  const [text, setText] = useState<string>(() => safeValue.join("\n"));
 
   const lines = text.split("\n").map((l) => l.trim().toLowerCase()).filter(Boolean);
   const invalid = lines.filter((l) => l.startsWith("http://") || l.startsWith("https://") || l.includes("/") || l.includes(":") || !DOMAIN_RE.test(l));
@@ -129,7 +130,7 @@ function SourceDomainListField({ label, hint, value, max, onChange, counterTempl
 
   function handleBlur() {
     if (invalid.length > 0 || overLimit) return;
-    const same = dedup.length === value.length && dedup.every((d, i) => d === value[i]);
+    const same = dedup.length === safeValue.length && dedup.every((d, i) => d === safeValue[i]);
     if (!same) onChange(dedup);
   }
 
