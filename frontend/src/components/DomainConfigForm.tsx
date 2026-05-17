@@ -96,6 +96,74 @@ function CustomCheckbox({ checked }: { checked: boolean }) {
   );
 }
 
+const DOMAIN_RE = /^[a-z0-9.-]+\.[a-z]{2,}$/;
+
+interface SourceDomainListFieldProps {
+  label: string;
+  hint: string;
+  value: string[];
+  max: number;
+  onChange: (next: string[]) => void;
+  counterTemplate: string;
+  overLimitText: string;
+  invalidTemplate: string;
+  inputStyle: React.CSSProperties;
+  labelStyle: React.CSSProperties;
+}
+
+function SourceDomainListField({ label, hint, value, max, onChange, counterTemplate, overLimitText, invalidTemplate, inputStyle, labelStyle }: SourceDomainListFieldProps) {
+  const [text, setText] = useState<string>(() => value.join("\n"));
+
+  const lines = text.split("\n").map((l) => l.trim().toLowerCase()).filter(Boolean);
+  const invalid = lines.filter((l) => l.startsWith("http://") || l.startsWith("https://") || l.includes("/") || l.includes(":") || !DOMAIN_RE.test(l));
+  const dedup: string[] = [];
+  const seen = new Set<string>();
+  for (const l of lines) {
+    if (!seen.has(l)) {
+      seen.add(l);
+      dedup.push(l);
+    }
+  }
+  const overLimit = dedup.length > max;
+  const counter = counterTemplate.replace("{count}", String(dedup.length)).replace("{max}", String(max));
+
+  function handleBlur() {
+    if (invalid.length > 0 || overLimit) return;
+    const same = dedup.length === value.length && dedup.every((d, i) => d === value[i]);
+    if (!same) onChange(dedup);
+  }
+
+  return (
+    <label style={{ ...labelStyle, marginBottom: 20, display: "block" }}>
+      {label}
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={handleBlur}
+        rows={6}
+        style={{
+          ...inputStyle,
+          resize: "vertical",
+          fontFamily: "monospace",
+          borderColor: overLimit || invalid.length > 0 ? "var(--error, #c33)" : (inputStyle.border as string | undefined)?.includes("var(--border)") ? "var(--border)" : undefined,
+        }}
+      />
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 4 }}>
+        <span style={{ color: "var(--muted)" }}>{hint}</span>
+        <span style={{ color: overLimit ? "var(--error, #c33)" : "var(--muted)", fontWeight: overLimit ? 600 : 400 }}>{counter}</span>
+      </div>
+      {overLimit && (
+        <div style={{ fontSize: 12, color: "var(--error, #c33)", marginTop: 4 }}>{overLimitText}</div>
+      )}
+      {invalid.length > 0 && (
+        <div style={{ fontSize: 12, color: "var(--error, #c33)", marginTop: 4 }}>
+          {invalid.slice(0, 3).map((d) => invalidTemplate.replace("{value}", d)).join(" · ")}
+        </div>
+      )}
+    </label>
+  );
+}
+
 interface DomainConfigFormProps {
   initialConfig: DomainConfigData;
   activeSection: string;
@@ -308,6 +376,38 @@ export function DomainConfigForm({ initialConfig, activeSection, saving, error, 
               <input type="number" value={form.reflection_context_articles} onChange={(e) => set("reflection_context_articles", +e.target.value)} min={0} max={10} style={inputStyle} />
             </div>
           </div>
+        </section>
+
+        {/* Źródła — whitelist + blacklist domen */}
+        <section id="zrodla" style={{ display: sectionVisible("zrodla") ? "block" : "none", marginBottom: 32 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>{dc.sourcesSectionTitle}</h3>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 16 }}>{dc.sourcesSectionHint}</p>
+
+          <SourceDomainListField
+            label={dc.sourceWhitelist}
+            hint={dc.sourceWhitelistHint}
+            value={form.source_whitelist}
+            max={40}
+            onChange={(v) => set("source_whitelist", v)}
+            counterTemplate={dc.sourceCounter}
+            overLimitText={dc.sourceOverLimit}
+            invalidTemplate={dc.sourceInvalidDomain}
+            inputStyle={inputStyle}
+            labelStyle={labelStyle}
+          />
+
+          <SourceDomainListField
+            label={dc.sourceBlacklist}
+            hint={dc.sourceBlacklistHint}
+            value={form.source_blacklist}
+            max={20}
+            onChange={(v) => set("source_blacklist", v)}
+            counterTemplate={dc.sourceCounter}
+            overLimitText={dc.sourceOverLimit}
+            invalidTemplate={dc.sourceInvalidDomain}
+            inputStyle={inputStyle}
+            labelStyle={labelStyle}
+          />
         </section>
 
         {/* Media search */}

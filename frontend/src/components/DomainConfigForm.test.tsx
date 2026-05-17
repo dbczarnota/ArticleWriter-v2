@@ -55,6 +55,8 @@ const BASE_CONFIG: DomainConfigData = {
   discovery_topic_writer_fallback_models: [],
   discovery_retention_days: 14,
   stream_retention_days: 7,
+  source_whitelist: [],
+  source_blacklist: [],
   updated_at: null,
 };
 

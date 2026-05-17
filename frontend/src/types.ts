@@ -197,6 +197,8 @@ export interface DomainConfigData {
   discovery_classifier_fallback_models: string[];
   discovery_matcher_fallback_models: string[];
   discovery_topic_writer_fallback_models: string[];
+  source_whitelist: string[];
+  source_blacklist: string[];
   updated_at: string | null;
 }
 

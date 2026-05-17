@@ -58,6 +58,7 @@ export interface Translations {
     basic: string;
     models: string;
     search: string;
+    sources: string;
     mediaSearch: string;
     guidelines: string;
     htmlFormat: string;
@@ -151,6 +152,15 @@ export interface Translations {
     webhookUrlPlaceholder: string;
     webhookSecret: string;
     webhookSecretPlaceholder: string;
+    sourcesSectionTitle: string;
+    sourcesSectionHint: string;
+    sourceWhitelist: string;
+    sourceWhitelistHint: string;
+    sourceBlacklist: string;
+    sourceBlacklistHint: string;
+    sourceCounter: string;
+    sourceOverLimit: string;
+    sourceInvalidDomain: string;
     // actions
     saving: string;
     save: string;
