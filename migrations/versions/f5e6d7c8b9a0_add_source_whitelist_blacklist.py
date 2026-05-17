@@ -1,6 +1,6 @@
 """add source_whitelist and source_blacklist to org_configs
 
-Revision ID: d4e5f6a7b8c9
+Revision ID: f5e6d7c8b9a0
 Revises: c1d2e3f4a5b6
 Create Date: 2026-05-17 07:42:00.000000
 
@@ -13,7 +13,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "d4e5f6a7b8c9"
+revision: str = "f5e6d7c8b9a0"
 down_revision: str | Sequence[str] | None = "c1d2e3f4a5b6"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

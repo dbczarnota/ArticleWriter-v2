@@ -1251,13 +1251,6 @@ async def put_domain_config_endpoint(
     values. Used by the Settings UI to persist editor changes.
     """
     patch = body.model_dump(exclude_unset=True)
-    logfire.info(
-        "domain_config.put.debug",
-        org_code=org.code,
-        patch_keys=sorted(patch.keys()),
-        patch_source_whitelist=patch.get("source_whitelist"),
-        patch_source_blacklist=patch.get("source_blacklist"),
-    )
     new_domain_name = patch.pop("domain_name", None)
     effective_domain = org.domain_name
     if new_domain_name is not None and new_domain_name != org.domain_name:
