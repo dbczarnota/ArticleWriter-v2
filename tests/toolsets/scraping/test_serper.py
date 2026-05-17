@@ -233,3 +233,56 @@ async def test_search_reddit_returns_embed_candidates():
     assert results[0].source == "reddit"
     assert "reddit.com" in results[0].url
     assert results[0].description and "1234" in results[0].description
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_search_injects_site_include_and_exclude_into_q():
+    route = respx.post("https://google.serper.dev/search").mock(
+        return_value=httpx.Response(200, json={"organic": []})
+    )
+    await search(
+        "topic",
+        num=10,
+        freshness="qdr:w",
+        language="pl",
+        api_key="key",
+        site_include=("wp.pl", "onet.pl"),
+        site_exclude=("pudelek.pl",),
+    )
+    import json as _json
+
+    body = _json.loads(route.calls.last.request.content)
+    assert body["q"] == "topic (site:wp.pl OR site:onet.pl) -site:pudelek.pl"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_search_without_filters_sends_query_unchanged():
+    route = respx.post("https://google.serper.dev/search").mock(
+        return_value=httpx.Response(200, json={"organic": []})
+    )
+    await search("topic", num=10, freshness="qdr:w", language="pl", api_key="key")
+    import json as _json
+
+    body = _json.loads(route.calls.last.request.content)
+    assert body["q"] == "topic"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_search_news_injects_site_exclude():
+    route = respx.post("https://google.serper.dev/news").mock(
+        return_value=httpx.Response(200, json={"news": []})
+    )
+    await search_news(
+        "topic",
+        num=10,
+        language="pl",
+        api_key="key",
+        site_exclude=("badsite.pl",),
+    )
+    import json as _json
+
+    body = _json.loads(route.calls.last.request.content)
+    assert body["q"] == "topic -site:badsite.pl"

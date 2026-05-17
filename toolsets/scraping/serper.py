@@ -7,6 +7,7 @@ import logfire
 
 from agents._base.run_context import record_serper_query
 from agents._base.types import EmbedCandidate, SearchResult
+from toolsets.scraping._serper_q import compose_serper_q
 
 _BASE = "https://google.serper.dev"
 _SERPER_COST_PER_QUERY = float(os.environ.get("SERPER_COST_PER_QUERY_USD", "0.001"))
@@ -26,6 +27,9 @@ def _log_serper_results(
     title_key: str = "title",
     snippet_key: str = "snippet",
     cost_usd: float = _SERPER_COST_PER_QUERY,
+    q_final: str | None = None,
+    site_include: tuple[str, ...] = (),
+    site_exclude: tuple[str, ...] = (),
 ) -> None:
     """Emit a structured `serper.results` event with the response shape.
 
@@ -51,6 +55,9 @@ def _log_serper_results(
         "serper.results",
         endpoint=endpoint,
         query=query,
+        q_final=q_final if q_final is not None else query,
+        site_include_count=len(site_include),
+        site_exclude_count=len(site_exclude),
         result_count=len(items),
         results=summarized,
         cost_usd=cost_usd,
@@ -66,16 +73,26 @@ async def search(
     freshness: str = "qdr:w",
     language: str = "pl",
     api_key: str,
+    site_include: tuple[str, ...] = (),
+    site_exclude: tuple[str, ...] = (),
 ) -> list[SearchResult]:
     """Google web search via Serper."""
-    payload = {"q": query, "num": num, "tbs": freshness, **_lang_payload(language)}
+    q_final = compose_serper_q(query, include=site_include, exclude=site_exclude)
+    payload = {"q": q_final, "num": num, "tbs": freshness, **_lang_payload(language)}
     headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.post(f"{_BASE}/search", json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
     organic = data.get("organic", [])
-    _log_serper_results("/search", query, organic)
+    _log_serper_results(
+        "/search",
+        query,
+        organic,
+        q_final=q_final,
+        site_include=site_include,
+        site_exclude=site_exclude,
+    )
     return [
         SearchResult(
             url=item["link"], title=item["title"], snippet=item.get("snippet", ""), source="web"
@@ -90,16 +107,26 @@ async def search_news(
     num: int = 10,
     language: str = "pl",
     api_key: str,
+    site_include: tuple[str, ...] = (),
+    site_exclude: tuple[str, ...] = (),
 ) -> list[SearchResult]:
     """Google News via Serper /news endpoint."""
-    payload = {"q": query, "num": num, **_lang_payload(language)}
+    q_final = compose_serper_q(query, include=site_include, exclude=site_exclude)
+    payload = {"q": q_final, "num": num, **_lang_payload(language)}
     headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.post(f"{_BASE}/news", json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
     news = data.get("news", [])
-    _log_serper_results("/news", query, news)
+    _log_serper_results(
+        "/news",
+        query,
+        news,
+        q_final=q_final,
+        site_include=site_include,
+        site_exclude=site_exclude,
+    )
     return [
         SearchResult(
             url=item["link"], title=item["title"], snippet=item.get("snippet", ""), source="web"
