@@ -148,6 +148,7 @@ async def adaptive_search_loop(
                         freshness=settings.search.search_freshness,
                         language=domain.language,
                         api_key=serper_api_key,
+                        site_exclude=domain.source_blacklist,
                     ):
                         if r.url not in seen_urls:
                             seen_urls.add(r.url)

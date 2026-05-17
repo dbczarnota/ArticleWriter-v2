@@ -292,6 +292,8 @@ async def _run_pipeline_inner(
                         config=settings.search,
                         domain_language=domain.language,
                         serper_api_key=serper_api_key,
+                        site_include=domain.source_whitelist,
+                        site_exclude=domain.source_blacklist,
                     )
                     log.search_done(search_results)
             except Exception as e:

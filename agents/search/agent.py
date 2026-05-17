@@ -30,6 +30,8 @@ async def run_search_agent(
     config: SearchAgentConfig,
     domain_language: str,
     serper_api_key: str,
+    site_include: tuple[str, ...] = (),
+    site_exclude: tuple[str, ...] = (),
     _agent: Agent[Any, Any] | None = None,
 ) -> list[SearchResult]:
     """Generate search queries via LLM, fetch results from Serper for each query.
@@ -92,12 +94,19 @@ async def run_search_agent(
                 freshness=config.search_freshness,
                 language=domain_language,
                 api_key=serper_api_key,
+                site_include=site_include,
+                site_exclude=site_exclude,
             )
         ]
         if config.news_search:
             coros.append(
                 serper_search_news(
-                    query, num=config.max_results, language=domain_language, api_key=serper_api_key
+                    query,
+                    num=config.max_results,
+                    language=domain_language,
+                    api_key=serper_api_key,
+                    site_include=site_include,
+                    site_exclude=site_exclude,
                 )
             )
         batches = await asyncio.gather(*coros)

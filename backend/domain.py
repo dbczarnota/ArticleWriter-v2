@@ -108,6 +108,13 @@ class DomainConfig:
     article_templates: list[ArticleTemplate] = field(default_factory=list)
     """Available article templates for this domain."""
 
+    source_whitelist: tuple[str, ...] = ()
+    """Domains the first-pass search is restricted to (Google `site:` filter).
+    Empty tuple = no restriction. Adaptive search ignores this on purpose."""
+
+    source_blacklist: tuple[str, ...] = ()
+    """Domains excluded from both first-pass and adaptive search (`-site:`)."""
+
 
 def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:
     return DomainConfig(
@@ -175,6 +182,8 @@ def to_domain_config(config: OrgConfig, domain_name: str) -> DomainConfig:
             ArticleTemplate(id=t["id"], name=t["name"], body=t["body"])
             for t in (config.article_templates or [])
         ],
+        source_whitelist=tuple(config.source_whitelist or ()),
+        source_blacklist=tuple(config.source_blacklist or ()),
     )
 
 

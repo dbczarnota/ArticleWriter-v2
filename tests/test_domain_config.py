@@ -39,3 +39,23 @@ def test_immutable_tuple_fields():
     d = DomainConfig(name="t", description="t", media_search_languages=("en", "pl"))
     assert isinstance(d.media_search_languages, tuple)
     assert d.media_search_languages == ("en", "pl")
+
+
+def test_source_whitelist_blacklist_defaults_empty():
+    d = DomainConfig(name="t", description="t")
+    assert d.source_whitelist == ()
+    assert d.source_blacklist == ()
+
+
+def test_to_domain_config_carries_source_lists():
+    from backend.db.models import OrgConfig
+    from backend.domain import to_domain_config
+
+    cfg = OrgConfig(
+        org_code="org-1",
+        source_whitelist=["wp.pl", "onet.pl"],
+        source_blacklist=["pudelek.pl"],
+    )
+    dom = to_domain_config(cfg, "styl_fm")
+    assert dom.source_whitelist == ("wp.pl", "onet.pl")
+    assert dom.source_blacklist == ("pudelek.pl",)

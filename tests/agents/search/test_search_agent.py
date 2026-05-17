@@ -123,3 +123,31 @@ async def test_search_agent_calls_news_when_enabled():
     urls = [r.url for r in results]
     assert "https://web.com/1" in urls
     assert "https://news.com/1" in urls
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_run_search_agent_forwards_site_include_and_exclude_to_serper():
+    """Whitelist and blacklist must reach Serper's `q` payload verbatim."""
+    import json as _json
+
+    route = respx.post("https://google.serper.dev/search").mock(
+        return_value=httpx.Response(200, json={"organic": []})
+    )
+
+    await run_search_agent(
+        "topic",
+        config=SearchAgentConfig(num_queries=1),
+        domain_language="pl",
+        serper_api_key="k",
+        site_include=("wp.pl", "onet.pl"),
+        site_exclude=("pudelek.pl",),
+        _agent=_make_test_agent(["query1"]),
+    )
+
+    # At least one call — assert every payload carries the composed q.
+    assert route.calls.call_count > 0
+    for call in route.calls:
+        body = _json.loads(call.request.content)
+        assert "(site:wp.pl OR site:onet.pl)" in body["q"]
+        assert "-site:pudelek.pl" in body["q"]
